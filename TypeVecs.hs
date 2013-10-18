@@ -29,7 +29,7 @@ import Data.Traversable ( Traversable )
 import qualified Data.Vector as V
 
 -- length-indexed vectors using phantom types
-newtype Vec s a = Vec {unVec :: V.Vector a} deriving (Eq, Functor, Foldable, Traversable)
+newtype Vec s a = Vec' {unVec :: V.Vector a} deriving (Eq, Functor, Foldable, Traversable)
 
 --infixr 5 <|
 --infixl 5 |>
@@ -41,11 +41,15 @@ newtype Vec s a = Vec {unVec :: V.Vector a} deriving (Eq, Functor, Foldable, Tra
 
 -- create a Vec with a runtime check
 unsafeVec :: Nat s => V.Vector a -> Vec s a
-unsafeVec xs = case Vec xs of
+unsafeVec xs = case Vec' xs of
   ret ->
     if vlength ret == V.length xs
     then ret
     else error "unsafeVec: dynamic/static length mismatch"
+
+mkVec :: Nat s => V.Vector a -> Vec s a
+--mkVec = Vec'
+mkVec = unsafeVec -- lets just run the check every time for now
 
 vlength :: Nat s => Vec s a -> Int
 vlength = toInt . (undefined `asLengthOf`)
@@ -58,33 +62,33 @@ asLengthOf x _ = x
 
 -- split into two
 --vsplit :: (Nat i, i :<=: s, Sub s i si) => i -> Vec s a -> (Vec i a, Vec si a)
-vsplit :: (Nat i, Sub s i si) => i -> Vec s a -> (Vec i a, Vec si a)
-vsplit i v = (Vec x, Vec y)
+vsplit :: (Nat i, Nat si, Sub s i si) => i -> Vec s a -> (Vec i a, Vec si a)
+vsplit i v = (mkVec x, mkVec y)
   where
     (x,y) = V.splitAt (toInt i) (unVec v)
 
 vhead :: Pos s => Vec s a -> a
-vhead (Vec vs) = V.head vs
+vhead = V.head . unVec
 
-vzipWith :: (a -> b -> c) -> Vec s a -> Vec s b -> Vec s c
-vzipWith f (Vec x) (Vec y) = Vec (V.zipWith f x y)
+vzipWith :: Nat s => (a -> b -> c) -> Vec s a -> Vec s b -> Vec s c
+vzipWith f x y = mkVec (V.zipWith f (unVec x) (unVec y))
 
 vinit :: (Succ sm1 s) => Vec s a -> Vec sm1 a
-vinit (Vec vs) = Vec (V.init vs)
+vinit = mkVec . V.init . unVec
 
 vtail :: (Succ sm1 s) => Vec s a -> Vec sm1 a
-vtail (Vec vs) = Vec (V.tail vs)
+vtail = mkVec . V.tail . unVec
 
 vlast :: Pos s => Vec s a -> a
-vlast (Vec vs) = V.last vs
+vlast = V.last . unVec
 
 vreplicate :: Nat n => n -> a -> Vec n a
-vreplicate n x = Vec $ V.replicate (toInt n) x
+vreplicate n = mkVec . (V.replicate (toInt n))
 
 -- concatenate two vectors
 infixr 5 <++>
 (<++>) :: (Nat s1, Nat s2, Add s1 s2 s3) => Vec s1 a -> Vec s2 a -> Vec s3 a
-(<++>) (Vec x) (Vec y) = Vec (x V.++ y)
+(<++>) x y = mkVec $ (unVec x) V.++ (unVec y)
 
 instance Show a => Show (Vec s a) where
   showsPrec _ = showV . V.toList . unVec
