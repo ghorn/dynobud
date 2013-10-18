@@ -23,7 +23,7 @@ class (Functor f, Nat n) => Vectorize f n | f -> n where
 fill :: Vectorize f n => a -> f a
 fill x = fmap (const x) empty
 
-instance (Nat n) => Vectorize (Vec n) n where
+instance Nat n => Vectorize (Vec n) n where
   vectorize = id
   devectorize = id
   empty = ret

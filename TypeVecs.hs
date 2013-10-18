@@ -48,15 +48,12 @@ unsafeVec l xs
 
 vlength :: Nat s => Vec s a -> Int
 vlength = toInt . (undefined `asLengthOf`)
-  where
-    asLengthOf :: s -> Vec s a -> s
-    asLengthOf x _ = x
 
 vlengthT :: Vec s a -> s
 vlengthT = (undefined `asLengthOf`)
-  where
-    asLengthOf :: s -> Vec s a -> s
-    asLengthOf x _ = x
+
+asLengthOf :: s -> Vec s a -> s
+asLengthOf x _ = x
 
 -- split into two
 --vsplit :: (Nat i, i :<=: s, Sub s i si) => i -> Vec s a -> (Vec i a, Vec si a)
@@ -87,3 +84,12 @@ vreplicate n x = Vec $ V.replicate (toInt n) x
 infixr 5 <++>
 (<++>) :: (Nat s1, Nat s2, Add s1 s2 s3) => Vec s1 a -> Vec s2 a -> Vec s3 a
 (<++>) (Vec x) (Vec y) = Vec (x V.++ y)
+
+instance Show a => Show (Vec s a) where
+  showsPrec _ = showV . V.toList . unVec
+    where
+      showV []      = showString "<>"
+      showV (x:xs)  = showChar '<' . shows x . showl xs
+        where
+          showl []      = showChar '>'
+          showl (y:ys)  = showChar ',' . shows y . showl ys

@@ -16,6 +16,7 @@ import Vectorize
 type ExplicitOde x u a = (x a -> u a -> x a)
 --data ImplicitOde x u a = ImplicitOde (x a -> u a -> Vec nn a)
 
+-- instead of Vec nbc a, let user pass Vectorize type
 data OcpPhase x u nbc npc a =
   OcpPhase { ocpMeyer :: x a -> a
            , ocpLagrange :: x a -> u a -> a
