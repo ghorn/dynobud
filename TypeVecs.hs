@@ -4,7 +4,7 @@
 {-# LANGUAGE DeriveTraversable #-}
 
 module TypeVecs
-       ( Vec(..)
+       ( Vec ( unVec )
        , vlength
        , vlengthT
        , (<++>)
@@ -21,7 +21,7 @@ module TypeVecs
        )
        where
 
-import Data.TypeLevel.Num.Ops
+import Data.TypeLevel.Num.Ops ( Add, Sub, Succ )
 import Data.TypeLevel.Num.Sets
 
 import Data.Foldable ( Foldable )
@@ -39,12 +39,13 @@ newtype Vec s a = Vec {unVec :: V.Vector a} deriving (Eq, Functor, Foldable, Tra
 --(|>) :: Succ n np1 => Vec n a -> a -> Vec np1 a
 --(|>) (Vec xs) x = Vec (V.snoc xs x)
 
--- construct one with a runtime check
-unsafeVec :: Nat s => s -> V.Vector a -> Vec s a
-unsafeVec l xs
-  | toInt l /= V.length xs =
-    error "unsafeVec: dynamic/static lenght mismatch"
-  | otherwise = Vec xs
+-- create a Vec with a runtime check
+unsafeVec :: Nat s => V.Vector a -> Vec s a
+unsafeVec xs = case Vec xs of
+  ret ->
+    if vlength ret == V.length xs
+    then ret
+    else error "unsafeVec: dynamic/static length mismatch"
 
 vlength :: Nat s => Vec s a -> Int
 vlength = toInt . (undefined `asLengthOf`)

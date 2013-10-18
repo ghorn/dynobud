@@ -9,7 +9,7 @@ import qualified Data.Vector as V
 import Data.TypeLevel.Num.Ops ( Succ )
 import Data.TypeLevel.Num.Sets ( Nat )
 
-import TypeVecs ( Vec(..) )
+import TypeVecs ( Vec, unVec )
 import qualified TypeVecs as TV
 import Vectorize
 

@@ -28,7 +28,7 @@ instance Nat n => Vectorize (Vec n) n where
   devectorize = id
   empty = ret
     where
-      ret = Vec (V.replicate k ())
+      ret = unsafeVec (V.replicate k ())
       k = vlength ret
 
 -- test:

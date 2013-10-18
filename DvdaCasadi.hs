@@ -40,13 +40,14 @@ newtype AlgorithmV f g a = AlgorithmV (Algorithm a)
 main :: IO ()
 main = do
   let fun :: Num a => Vec D2 a -> Vec D1 a
-      fun (Vec xs) = Vec (V.fromList [z])
+      fun xs' = TV.unsafeVec (V.fromList [z])
         where
+          xs = unVec xs'
           x = xs V.! 0
           y = xs V.! 1
           z = x*x + y
   f <- toCallSXFun fun
-  out <- f (Vec (V.fromList [1,2]))
+  out <- f (TV.unsafeVec (V.fromList [1,2]))
   print out
 
 
@@ -57,20 +58,20 @@ constructAlgorithmV f = fmap AlgorithmV (constructAlgorithm vf vg)
     inputs = ssymsV "x"
     outputs = f (devectorize inputs)
 
-    Vec vf = inputs
-    Vec vg = vectorize outputs
+    vf = unVec inputs
+    vg = unVec (vectorize outputs)
 
 ssymsV :: Nat n => String -> Vec n (Expr a)
 ssymsV name = ret
   where
-    ret = Vec $ V.fromList $ take n allSyms
+    ret = TV.unsafeVec $ V.fromList $ take n allSyms
     n = TV.vlength ret
     allSyms = map (sym . ((name ++ "_") ++) . show) [(0::Int)..]
 
 runAlgorithmV :: (Vectorize f n, Vectorize g m) => AlgorithmV f g a -> f a -> g a
-runAlgorithmV (AlgorithmV alg) inputs = devectorize (Vec outputVec)
+runAlgorithmV (AlgorithmV alg) inputs = devectorize (TV.unsafeVec outputVec)
   where
-    Vec inputVec = vectorize inputs
+    inputVec = unVec $ vectorize inputs
     outputVec = runAlgorithm alg inputVec
 
 toCallAlgorithmV :: (Vectorize f n, Vectorize g m) => (f (Expr a) -> g (Expr a)) -> IO (f a -> g a)
@@ -86,12 +87,12 @@ toCallSXFun userFun = do
   sharedObject_init' f
 
   return $ \x -> do
-    let (Vec vec) = vectorize x
+    let vec = unVec $ vectorize x
     ioInterfaceFX_setInput''' f vec 0
     fx_evaluate'' f
     dmat <- ioInterfaceFX_output f 0
     dmatData <- dmatrix_data dmat
-    return (devectorize (Vec dmatData))
+    return (devectorize (TV.unsafeVec dmatData))
 
 casadiSsyms :: String -> Int -> IO (V.Vector SX)
 casadiSsyms name k = fmap V.fromList $ mapM (sx'' . (name ++) . show) (take k [(0::Int)..])
