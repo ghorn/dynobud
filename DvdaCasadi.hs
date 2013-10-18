@@ -97,8 +97,20 @@ toCallSXFun userFun = do
 casadiSsyms :: String -> Int -> IO (V.Vector SX)
 casadiSsyms name k = fmap V.fromList $ mapM (sx'' . (name ++) . show) (take k [(0::Int)..])
 
-toSXFun :: AlgorithmV f g Double -> IO SXFunction
-toSXFun (AlgorithmV alg) = do
+toSXFun :: (Vectorize f n, Vectorize g m) => AlgorithmV f g Double -> IO SXFunction
+toSXFun alg = do
+  (f,g) <- toSX alg
+  let inputsSX = unVec (vectorize f)
+      outputsSX = unVec (vectorize g)
+
+  outputVec <- sxMatrix''''''''''' outputsSX >>= densify''
+
+  -- input SXMatrix
+  sxmat <- sxMatrix''''''''''' inputsSX
+  sxFunction''' (V.fromList [sxmat]) (V.fromList [outputVec])
+
+toSX :: (Vectorize f n, Vectorize g m) => AlgorithmV f g Double -> IO (f SX, g SX)
+toSX (AlgorithmV alg) = do
   -- work vector
   workVec <- VM.new (algWorkSize alg)
 
@@ -109,12 +121,10 @@ toSXFun (AlgorithmV alg) = do
   inputsSX <- casadiSsyms "x" (algInDims alg)
 
   mapM_ (op workVec inputsSX outputMVec) (algOps alg)
-  
-  outputVec <- V.freeze outputMVec >>= sxMatrix''''''''''' >>= densify''
 
-  -- input SXMatrix
-  sxmat <- sxMatrix''''''''''' inputsSX
-  sxFunction''' (V.fromList [sxmat]) (V.fromList [outputVec])
+  outputVec <- V.freeze outputMVec
+
+  return (devectorize (TV.unsafeVec inputsSX), devectorize (TV.unsafeVec outputVec))
 
 op :: (G.Vector v1 SX, GM.MVector v SX, GM.MVector v2 SX) =>
       v RealWorld SX -> v1 SX -> v2 RealWorld SX -> AlgOp Double -> IO ()
@@ -171,4 +181,3 @@ bin work (Node k) (Node kx) (Node ky) f = do
 
 un :: (PrimMonad m, GM.MVector v a) => v (PrimState m) a -> Node -> Node -> (a -> m a) -> m ()
 un work (Node k) (Node kx) f = GM.read work kx >>= f >>= GM.write work k
-
