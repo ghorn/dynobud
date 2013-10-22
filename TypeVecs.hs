@@ -11,6 +11,9 @@ module TypeVecs
        , (<++>)
 --       , (|>)
 --       , (<|)
+       , mkSeq
+       , mkVec
+       , unsafeSeq
        , unsafeVec
        , vsplit
        , vhead
@@ -75,9 +78,9 @@ unsafeSeq xs = case MkVec xs of
     then ret
     else error "unsafeVec: dynamic/static length mismatch"
 
---mkVec :: Nat s => V.Vector a -> Vec s a
-----mkVec = MkVec . S.fromList . V.toList
---mkVec = unsafeVec -- lets just run the check every time for now
+mkVec :: Nat s => V.Vector a -> Vec s a
+--mkVec = MkVec . S.fromList . V.toList
+mkVec = unsafeVec -- lets just run the check every time for now
 
 mkSeq :: Nat s => S.Seq a -> Vec s a
 --mkSeq = MkVec

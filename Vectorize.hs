@@ -5,6 +5,7 @@
 
 module Vectorize ( Vectorize(..)
                  , GVectorize(..)
+                 , vlength
                  , fill
                  ) where
 
