@@ -8,8 +8,9 @@ module Dae where
 import qualified Data.Vector as V
 import Data.TypeLevel.Num.Ops ( Succ )
 import Data.TypeLevel.Num.Sets ( Nat )
+import qualified Data.Foldable as F
 
-import TypeVecs ( Vec, unVec )
+import TypeVecs ( Vec )
 import qualified TypeVecs as TV
 import Vectorize
 
@@ -50,7 +51,7 @@ getDvBnds ocp = ExplEulerMsDvs x u
     x = fill (ocpXbnd ocp)
     u = fill (ocpUbnd ocp)
   
-getGBnds :: (Vectorize x nx, Nat n, Nat nbc) =>
+getGBnds :: (Vectorize x, Nat n, Nat nbc) =>
             OcpPhase x u nbc npc a ->
             ExplEulerMsConstraints x n nbc npc (Maybe Double, Maybe Double)
 getGBnds ocp =
@@ -60,7 +61,7 @@ getGBnds ocp =
   , ecDynamics = fill (fill (Just 0, Just 0))
   }
 
-getFg :: (Succ nu nx, Fractional a, Vectorize x nx', Vectorize u nu') =>
+getFg :: (Succ nu nx, Fractional a, Vectorize x, Vectorize u) =>
          OcpPhase x u nbc npc a -> ExplEulerMsDvs x u nx nu a -> 
          ( (a, ExplEulerMsConstraints x nu nbc npc a) )
 getFg ocp (ExplEulerMsDvs xs us) = (objective, constraints)
@@ -76,15 +77,17 @@ getFg ocp (ExplEulerMsDvs xs us) = (objective, constraints)
         x0s = TV.vzipWith (ocpDae ocp) initxs us
         x1s = TV.vtail xs
     
-    zipWith' :: Vectorize f n => (a -> b -> c) -> f a -> f b -> f c
-    zipWith' f x y = devectorize (TV.vzipWith f (vectorize x) (vectorize y))
+    zipWith' :: Vectorize f => (a -> b -> c) -> f a -> f b -> f c
+    zipWith' f x y = devectorize (V.zipWith f (vectorize x) (vectorize y))
     
     objective =
       (ocpMeyer ocp) (TV.vlast xs) +
-      (V.sum (unVec (TV.vzipWith (ocpLagrange ocp) initxs us))) / fromIntegral (TV.vlength us)
+      (ssum (TV.vzipWith (ocpLagrange ocp) initxs us)) / fromIntegral (TV.vlength us)
 
+ssum :: Num a => Vec n a -> a
+ssum = F.foldl' (+) 0
 
-makeNlp :: (Fractional a, Vectorize u nu, Vectorize x nx, Nat nu, Succ nu nx, Nat nbc) =>
+makeNlp :: (Fractional a, Vectorize u, Vectorize x, Nat nu, Succ nu nx, Nat nbc) =>
            OcpPhase x u nbc npc a ->
            Nlp (ExplEulerMsDvs x u nx nu) (ExplEulerMsConstraints x nu nbc npc) a
 makeNlp ocp = Nlp (getFg ocp) (getDvBnds ocp) (getGBnds ocp)
