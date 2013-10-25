@@ -71,23 +71,23 @@ getFg :: (Floating a, Succ nu nx, Vectorize x, Pos nu) =>
          NlpFun (ExplEulerMsConstraints x nu bc pc) a
 getFg ocp (ExplEulerMsDvs xs us) = NlpFun objective constraints
   where
-    initxs = TV.vinit xs
+    initxs = TV.tvinit xs
     constraints =
       ExplEulerMsConstraints
-      { ecBc = (ocpBc ocp) (TV.vhead xs) (TV.vlast xs)
-      , ecPathc = TV.vzipWith (ocpPathC ocp) initxs us
-      , ecDynamics = TV.vzipWith (zipWith' (-)) x0s x1s
+      { ecBc = (ocpBc ocp) (TV.tvhead xs) (TV.tvlast xs)
+      , ecPathc = TV.tvzipWith (ocpPathC ocp) initxs us
+      , ecDynamics = TV.tvzipWith (zipWith' (-)) x0s x1s
       }
       where
-        x0s = TV.vzipWith (ocpDae ocp) initxs us
-        x1s = TV.vtail xs
+        x0s = TV.tvzipWith (ocpDae ocp) initxs us
+        x1s = TV.tvtail xs
 
     zipWith' :: Vectorize f => (a -> b -> c) -> f a -> f b -> f c
     zipWith' f x y = devectorize (V.zipWith f (vectorize x) (vectorize y))
 
     objective =
-      (ocpMeyer ocp) (TV.vlast xs) +
-      (ssum (TV.vzipWith (ocpLagrange ocp) initxs us)) / fromIntegral (TV.vlength us)
+      (ocpMeyer ocp) (TV.tvlast xs) +
+      (ssum (TV.tvzipWith (ocpLagrange ocp) initxs us)) / fromIntegral (TV.tvlength us)
 
 ssum :: Num a => Vec n a -> a
 ssum = F.foldl' (+) 0

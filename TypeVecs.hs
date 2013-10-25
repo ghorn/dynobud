@@ -6,8 +6,8 @@
 
 module TypeVecs
        ( Vec ( unVec )
-       , vlength
-       , vlengthT
+       , tvlength
+       , tvlengthT
        , (<++>)
 --       , (|>)
 --       , (<|)
@@ -15,13 +15,13 @@ module TypeVecs
        , mkVec
        , unsafeSeq
        , unsafeVec
-       , vsplit
-       , vhead
-       , vzipWith
-       , vinit
-       , vtail
-       , vlast
-       , vreplicate
+       , tvsplit
+       , tvhead
+       , tvzipWith
+       , tvinit
+       , tvtail
+       , tvlast
+       , tvreplicate
        )
        where
 
@@ -48,7 +48,7 @@ instance Nat n => Vectorize (Vec n) where
   empty = ret
     where
       ret = mkSeq $ S.replicate k ()
-      k = vlength ret
+      k = tvlength ret
 
       --V.fromList . F.toList . unVec
 instance Nat n => GVectorize (Vec n) where
@@ -57,7 +57,7 @@ instance Nat n => GVectorize (Vec n) where
   gempty = ret
     where
       ret = mkSeq $ S.replicate k ()
-      k = vlength ret
+      k = tvlength ret
 
 --infixr 5 <|
 --infixl 5 |>
@@ -73,7 +73,7 @@ unsafeVec = unsafeSeq . S.fromList . V.toList
 
 unsafeSeq :: Nat s => S.Seq a -> Vec s a
 unsafeSeq xs = case MkVec xs of
-  ret -> let staticLen = vlength ret
+  ret -> let staticLen = tvlength ret
              dynLen = S.length xs
          in if staticLen == dynLen
             then ret
@@ -88,47 +88,47 @@ mkSeq :: Nat s => S.Seq a -> Vec s a
 --mkSeq = MkVec
 mkSeq = unsafeSeq -- lets just run the check every time for now
 
-vlength :: Nat s => Vec s a -> Int
-vlength = toInt . (undefined `asLengthOf`)
+tvlength :: Nat s => Vec s a -> Int
+tvlength = toInt . (undefined `asLengthOf`)
 
-vlengthT :: Vec s a -> s
-vlengthT = (undefined `asLengthOf`)
+tvlengthT :: Vec s a -> s
+tvlengthT = (undefined `asLengthOf`)
 
 asLengthOf :: s -> Vec s a -> s
 asLengthOf x _ = x
 
 -- split into two
 --vsplit :: (Nat i, i :<=: s, Sub s i si) => i -> Vec s a -> (Vec i a, Vec si a)
-vsplit :: (Nat i, Nat si, Add i si s) => i -> Vec s a -> (Vec i a, Vec si a)
-vsplit i v = (mkSeq x, mkSeq y)
+tvsplit :: (Nat i, Nat si, Add i si s) => i -> Vec s a -> (Vec i a, Vec si a)
+tvsplit i v = (mkSeq x, mkSeq y)
   where
     (x,y) = S.splitAt (toInt i) (unVec v)
 
-vzipWith :: Nat s => (a -> b -> c) -> Vec s a -> Vec s b -> Vec s c
-vzipWith f x y = mkSeq (S.zipWith f (unVec x) (unVec y))
+tvzipWith :: Nat s => (a -> b -> c) -> Vec s a -> Vec s b -> Vec s c
+tvzipWith f x y = mkSeq (S.zipWith f (unVec x) (unVec y))
 
-vhead :: Pos s => Vec s a -> a
-vhead x = case S.viewl (unVec x) of
+tvhead :: Pos s => Vec s a -> a
+tvhead x = case S.viewl (unVec x) of
   y S.:< _ -> y
   S.EmptyL -> error "vhead: empty"
 
-vtail :: (Succ sm1 s) => Vec s a -> Vec sm1 a
-vtail x = case S.viewl (unVec x) of
+tvtail :: (Succ sm1 s) => Vec s a -> Vec sm1 a
+tvtail x = case S.viewl (unVec x) of
   _ S.:< ys -> mkSeq ys
   S.EmptyL -> error "vtail: empty"
 
-vinit :: (Succ sm1 s) => Vec s a -> Vec sm1 a
-vinit x = case S.viewr (unVec x) of
+tvinit :: (Succ sm1 s) => Vec s a -> Vec sm1 a
+tvinit x = case S.viewr (unVec x) of
   ys S.:> _ -> mkSeq ys
   S.EmptyR -> error "vinit: empty"
 
-vlast :: Pos s => Vec s a -> a
-vlast x = case S.viewr (unVec x) of
+tvlast :: Pos s => Vec s a -> a
+tvlast x = case S.viewr (unVec x) of
   _ S.:> y -> y
   S.EmptyR -> error "vlast: empty"
 
-vreplicate :: Nat n => n -> a -> Vec n a
-vreplicate n = mkSeq . (S.replicate (toInt n))
+tvreplicate :: Nat n => n -> a -> Vec n a
+tvreplicate n = mkSeq . (S.replicate (toInt n))
 
 -- concatenate two vectors
 infixr 5 <++>
