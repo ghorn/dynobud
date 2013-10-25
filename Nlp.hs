@@ -22,7 +22,6 @@ import Casadi.Wrappers.Classes.SharedObject
 import Casadi.Wrappers.Classes.IpoptSolver
 import Casadi.Wrappers.Classes.IOInterfaceFX
 
-
 data NlpFun g a = NlpFun a (g a) deriving (Show, Functor, Generic1)
 instance Vectorize g => Vectorize (NlpFun g)
 
@@ -32,8 +31,11 @@ data Nlp x g =
       , nlpBG :: g (Maybe Double, Maybe Double)
       }
 
+inf :: Double
+inf = read "Infinity"
+
 toBnds :: V.Vector (Maybe Double, Maybe Double) -> (V.Vector Double, V.Vector Double)
-toBnds vs = (V.map (fromMaybe (-1e30)) lb, V.map (fromMaybe 1e30) ub)
+toBnds vs = (V.map (fromMaybe (-inf)) lb, V.map (fromMaybe inf) ub)
   where
     (lb,ub) = V.unzip vs
 

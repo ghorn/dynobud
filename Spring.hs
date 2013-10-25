@@ -14,8 +14,8 @@ import TypeVecs ( Vec(..), mkVec )
 import Dae
 import Nlp
 
---data None a = None deriving (Generic1, Functor, Show)
---instance Vectorize None
+data None a = None deriving (Generic1, Functor, Show)
+instance Vectorize None
 
 data SpringX a = SpringX a a deriving (Functor, Generic1, Show)
 data SpringU a = SpringU a deriving (Functor, Generic1, Show)
@@ -36,14 +36,14 @@ springOde (SpringX x v) (SpringU u) = SpringX (x + ts*v) (v + ts*acc)
     b = 0.2
     ts = 1
 
-springOcp :: Floating a => OcpPhase SpringX SpringU D4 D0 a
+springOcp :: Floating a => OcpPhase SpringX SpringU (Vec D4) None a
 springOcp = OcpPhase meyer lagrange springOde bc pathc pathcb xbnd ubnd
 
-pathc :: f -> g -> Vec D0 a
-pathc _ _ = mkVec $ V.empty
+pathc :: f -> g -> None a
+pathc _ _ = None
 
-pathcb :: Vec D0 a
-pathcb = mkVec $ V.empty
+pathcb :: None a
+pathcb = None
 
 xbnd :: SpringX (Maybe Double, Maybe Double)
 xbnd = SpringX (Just (-10), Just (10)) (Just (-10), Just (10))
@@ -55,7 +55,7 @@ bc :: Num a => SpringX a -> SpringX a -> Vec D4 a
 bc (SpringX x0 v0) (SpringX xf vf) = mkVec (V.fromList [x0-5,v0,xf-1,vf])
 
 
-nlp :: Nlp (ExplEulerMsDvs SpringX SpringU D10 D9) (ExplEulerMsConstraints SpringX D9 D4 D0)
+nlp :: Nlp (ExplEulerMsDvs SpringX SpringU D10 D9) (ExplEulerMsConstraints SpringX D9 (Vec D4) None)
 nlp = makeNlp springOcp
 
 main :: IO ()
