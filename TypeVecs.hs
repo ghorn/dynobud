@@ -1,32 +1,44 @@
 {-# OPTIONS_GHC -Wall #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TypeFamilies #-}
+
+--{-# LANGUAGE MultiParamTypeClasses #-}
+--{-# LANGUAGE FlexibleInstances #-}
+--{-# LANGUAGE FlexibleContexts #-}
+--{-# LANGUAGE UndecidableInstances #-}
+--{-# LANGUAGE TypeOperators #-}
+--{-# LANGUAGE ScopedTypeVariables #-}
 
 module TypeVecs
-       ( Vec ( unVec )
+       ( Vec ( unSeq )
+       , unVec
        , tvlength
        , tvlengthT
        , (<++>)
---       , (|>)
---       , (<|)
+       , (|>)
+       , (<|)
        , mkSeq
        , mkVec
        , unsafeSeq
        , unsafeVec
-       , tvsplit
+       , tvsplitAt
        , tvhead
        , tvzipWith
        , tvinit
        , tvtail
        , tvlast
        , tvreplicate
+       , tvconcatMap
+       , tvempty
+       , tvsingleton
+       , tvindex
+       , tvsplitsAt
        )
        where
-
-import Data.TypeLevel.Num.Ops ( Add, Succ )
-import Data.TypeLevel.Num.Sets
 
 import Data.Foldable ( Foldable )
 import Data.Traversable ( Traversable )
@@ -34,44 +46,29 @@ import qualified Data.Foldable as F
 import qualified Data.Sequence as S
 import qualified Data.Vector as V
 
-import GHC.Generics
+import GHC.Generics ( Generic1 )
 
-import Vectorize ( GVectorize(..), Vectorize(..) )
-
+import TypeNats
 
 -- length-indexed vectors using phantom types
-newtype Vec s a = MkVec {unVec :: S.Seq a} deriving (Eq, Ord, Functor, Foldable, Traversable, Generic1)
+newtype Vec n a = MkVec {unSeq :: S.Seq a} deriving (Eq, Ord, Functor, Foldable, Traversable, Generic1)
 
-instance Nat n => Vectorize (Vec n) where
-  vectorize = V.fromList . F.toList . unVec
-  devectorize = mkSeq . S.fromList . V.toList
-  empty = ret
-    where
-      ret = mkSeq $ S.replicate k ()
-      k = tvlength ret
+unVec :: Vec n a -> V.Vector a
+unVec = V.fromList . F.toList . unSeq
 
-      --V.fromList . F.toList . unVec
-instance Nat n => GVectorize (Vec n) where
-  gvectorize = V.fromList . F.toList . unVec
-  gdevectorize = mkSeq . S.fromList . V.toList
-  gempty = ret
-    where
-      ret = mkSeq $ S.replicate k ()
-      k = tvlength ret
+infixr 5 <|
+infixl 5 |>
+(<|) :: a -> Vec n a -> Vec (Succ n) a
+(<|) x xs = MkVec $ x S.<| (unSeq xs)
 
---infixr 5 <|
---infixl 5 |>
---(<|) :: Succ n np1 => a -> Vec n a -> Vec np1 a
---(<|) x (Vec xs) = Vec (V.cons x xs)
---
---(|>) :: Succ n np1 => Vec n a -> a -> Vec np1 a
---(|>) (Vec xs) x = Vec (V.snoc xs x)
+(|>) :: Vec n a -> a -> Vec (Succ n) a
+(|>) xs x = MkVec $ (unSeq xs) S.|> x
 
 -- create a Vec with a runtime check
-unsafeVec :: Nat s => V.Vector a -> Vec s a
+unsafeVec :: (IntegerT n) => V.Vector a -> Vec n a
 unsafeVec = unsafeSeq . S.fromList . V.toList
 
-unsafeSeq :: Nat s => S.Seq a -> Vec s a
+unsafeSeq :: (IntegerT n) => S.Seq a -> Vec n a
 unsafeSeq xs = case MkVec xs of
   ret -> let staticLen = tvlength ret
              dynLen = S.length xs
@@ -80,63 +77,116 @@ unsafeSeq xs = case MkVec xs of
             else error $ "unsafeVec: static/dynamic length mismatch: " ++
                  "static: " ++ show staticLen ++ ", dynamic: " ++ show  dynLen
 
-mkVec :: Nat s => V.Vector a -> Vec s a
---mkVec = MkVec . S.fromList . V.toList
-mkVec = unsafeVec -- lets just run the check every time for now
+mkVec :: V.Vector a -> Vec n a
+mkVec = MkVec . S.fromList . V.toList
+--mkVec = unsafeVec -- lets just run the check every time for now
 
-mkSeq :: Nat s => S.Seq a -> Vec s a
---mkSeq = MkVec
-mkSeq = unsafeSeq -- lets just run the check every time for now
+mkSeq :: S.Seq a -> Vec n a
+mkSeq = MkVec
+--mkSeq = unsafeSeq -- lets just run the check every time for now
 
-tvlength :: Nat s => Vec s a -> Int
-tvlength = toInt . (undefined `asLengthOf`)
+--mkVec :: (IntegerT n) => V.Vector a -> Vec n a
+--mkVec = unsafeVec -- lets just run the check every time for now
 
-tvlengthT :: Vec s a -> s
+--mkSeq :: (IntegerT n) => S.Seq a -> Vec n a
+--mkSeq = unsafeSeq -- lets just run the check every time for now
+
+tvlength :: IntegerT n => Vec n a -> Int
+tvlength = fromIntegerT . (undefined `asLengthOf`)
+
+tvlengthT :: Vec n a -> n
 tvlengthT = (undefined `asLengthOf`)
 
-asLengthOf :: s -> Vec s a -> s
+asLengthOf :: n -> Vec n a -> n
 asLengthOf x _ = x
 
--- split into two
---vsplit :: (Nat i, i :<=: s, Sub s i si) => i -> Vec s a -> (Vec i a, Vec si a)
-tvsplit :: (Nat i, Nat si, Add i si s) => i -> Vec s a -> (Vec i a, Vec si a)
-tvsplit i v = (mkSeq x, mkSeq y)
+---- split into two
+tvsplitAt :: (IntegerT i
+              --(i :<=: n) ~ True
+              ) =>
+             i -> Vec (i :+: n) a -> (Vec i a, Vec n a)
+tvsplitAt i v = (mkSeq x, mkSeq y)
   where
-    (x,y) = S.splitAt (toInt i) (unVec v)
+    (x,y) = S.splitAt (fromIntegerT i) (unSeq v)
 
-tvzipWith :: Nat s => (a -> b -> c) -> Vec s a -> Vec s b -> Vec s c
-tvzipWith f x y = mkSeq (S.zipWith f (unVec x) (unVec y))
+tvzipWith :: (IntegerT n) => (a -> b -> c) -> Vec n a -> Vec n b -> Vec n c
+tvzipWith f x y = mkSeq (S.zipWith f (unSeq x) (unSeq y))
 
-tvhead :: Pos s => Vec s a -> a
-tvhead x = case S.viewl (unVec x) of
+tvempty :: Vec D0 a
+tvempty = mkSeq S.empty
+
+tvsingleton :: a -> Vec D1 a
+tvsingleton = mkSeq . S.singleton
+
+tvindex :: (IntegerT i,
+            IntegerT n,
+            (i :<=: n) ~ True) => i -> Vec n a -> a
+tvindex k v = S.index (unSeq v) (fromIntegerT k)
+
+tvhead :: (PositiveT n) => Vec n a -> a
+tvhead x = case S.viewl (unSeq x) of
   y S.:< _ -> y
   S.EmptyL -> error "vhead: empty"
 
-tvtail :: (Succ sm1 s) => Vec s a -> Vec sm1 a
-tvtail x = case S.viewl (unVec x) of
+tvtail :: (NaturalT n) => Vec (Succ n) a -> Vec n a
+tvtail x = case S.viewl (unSeq x) of
   _ S.:< ys -> mkSeq ys
   S.EmptyL -> error "vtail: empty"
 
-tvinit :: (Succ sm1 s) => Vec s a -> Vec sm1 a
-tvinit x = case S.viewr (unVec x) of
+tvinit :: (NaturalT n) => Vec (Succ n) a -> Vec n a
+tvinit x = case S.viewr (unSeq x) of
   ys S.:> _ -> mkSeq ys
   S.EmptyR -> error "vinit: empty"
 
-tvlast :: Pos s => Vec s a -> a
-tvlast x = case S.viewr (unVec x) of
+tvlast :: (PositiveT n) => Vec n a -> a
+tvlast x = case S.viewr (unSeq x) of
   _ S.:> y -> y
   S.EmptyR -> error "vlast: empty"
 
-tvreplicate :: Nat n => n -> a -> Vec n a
-tvreplicate n = mkSeq . (S.replicate (toInt n))
+tvreplicate :: (IntegerT n) => n -> a -> Vec n a
+tvreplicate n = mkSeq . (S.replicate (fromIntegerT n))
+
+tvconcatMap :: (a -> Vec n b) -> Vec m a -> Vec (n :*: m) b
+tvconcatMap f = mkVec . (V.concatMap (unVec . f)) . unVec
 
 -- concatenate two vectors
 infixr 5 <++>
-(<++>) :: (Nat s1, Nat s2, Add s1 s2 s3) => Vec s1 a -> Vec s2 a -> Vec s3 a
-(<++>) x y = mkSeq $ (unVec x) S.>< (unVec y)
+(<++>) :: Vec n1 a -> Vec n2 a -> Vec (n1 :+: n2) a
+(<++>) x y = mkSeq $ (unSeq x) S.>< (unSeq y)
 
-instance Show a => Show (Vec s a) where
-  showsPrec _ = showV . F.toList . unVec
+
+-- break a vector jOuter vectors, each of length kInner
+splitsAt' :: (IntegerT kInner) => kInner -> Int -> S.Seq a -> [Vec kInner a]
+splitsAt' kInner jOuter v
+  | kInner' == 0 =
+    if S.null v
+    then replicate jOuter (mkSeq S.empty)
+    else error $ "splitsAt 0 " ++ show jOuter ++ ": got non-zero vector"
+  | jOuter == 0 =
+      if S.null v
+      then []
+      else error $ "splitsAt " ++ show kInner' ++ " 0: leftover vector of length: " ++ show (S.length v)
+  | kv0 < kInner' =
+    error $ "splitsAt " ++ show kInner' ++ " " ++ show jOuter ++ ": " ++ "ran out of vector input"
+  | otherwise = mkSeq v0 : splitsAt' kInner (jOuter - 1) v1
+  where
+    kv0 = S.length v0
+    (v0,v1) = S.splitAt kInner' v
+    kInner' = fromIntegerT kInner :: Int
+--    jOuter' = fromIntegerT jOuter :: Int
+
+
+-- break a vector jOuter vectors, each of length kFixed
+tvsplitsAt :: (IntegerT kInner, IntegerT jOuter) =>
+              kInner -> jOuter -> Vec (kInner :*: jOuter) a -> Vec jOuter (Vec kInner a)
+tvsplitsAt k j vs = mkSeq (S.fromList x)
+  where
+    --x :: [Vec kInner a]
+    x = splitsAt' k (fromIntegerT j) (unSeq vs)
+
+
+instance Show a => Show (Vec n a) where
+  showsPrec _ = showV . F.toList . unSeq
     where
       showV []      = showString "<>"
       showV (x:xs)  = showChar '<' . shows x . showl xs

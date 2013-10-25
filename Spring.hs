@@ -1,26 +1,25 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language DeriveFunctor #-}
 {-# Language DeriveGeneric #-}
+{-# Language TypeSynonymInstances #-}
+{-# Language FlexibleInstances #-}
+{-# Language MultiParamTypeClasses #-}
 
 module Main where
 
-import GHC.Generics ( Generic1 )
 import qualified Data.Vector as V
-import Data.TypeLevel.Num.Reps
-import Data.TypeLevel.Num.Aliases
+
 import Vectorize
 import TypeVecs ( Vec(..), mkVec )
+import TypeNats
 
 import Ocp
 import Nlp
 
-data None a = None deriving (Generic1, Functor, Show)
-instance Vectorize None
-
 data SpringX a = SpringX a a deriving (Functor, Generic1, Show)
 data SpringU a = SpringU a deriving (Functor, Generic1, Show)
-instance Vectorize SpringX
-instance Vectorize SpringU
+instance Vectorize SpringX D2
+instance Vectorize SpringU D1
 
 meyer :: Num a => t -> a
 meyer _ = 0
@@ -55,7 +54,7 @@ bc :: Num a => SpringX a -> SpringX a -> Vec D4 a
 bc (SpringX x0 v0) (SpringX xf vf) = mkVec (V.fromList [x0-5,v0,xf-1,vf])
 
 
-nlp :: Nlp (ExplEulerMsDvs SpringX SpringU D10 D9) (ExplEulerMsConstraints SpringX D9 (Vec D4) None)
+nlp :: Nlp (ExplEulerMsDvs SpringX SpringU D9) (ExplEulerMsConstraints SpringX D9 (Vec D4) None)
 nlp = makeNlp springOcp
 
 main :: IO ()
