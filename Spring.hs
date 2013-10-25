@@ -1,43 +1,64 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language MultiParamTypeClasses #-}
 {-# Language DeriveFunctor #-}
+{-# Language DeriveGeneric #-}
 
-module Spring where
+module Main where
 
+import GHC.Generics ( Generic1 )
 import qualified Data.Vector as V
 import Data.TypeLevel.Num.Reps
-
-import TypeVecs ( Vec(..) )
-
+import Data.TypeLevel.Num.Aliases
 import Vectorize
+import TypeVecs ( Vec(..), mkVec )
+
 import Dae
+import Nlp
 
-data Xyz a = Xyz a a a deriving (Functor)
+--data None a = None deriving (Generic1, Functor, Show)
+--instance Vectorize None
 
-instance Vectorize Xyz D3 where
-  vectorize (Xyz x y z) = Vec $ V.fromList [x,y,z]
-  devectorize (Vec v) = case V.toList v of
-    [x,y,z] -> Xyz x y z
-    _ -> error "Vectorize Xyz: unvectorize error"
-  empty = Xyz () () ()
+data SpringX a = SpringX a a deriving (Functor, Generic1, Show)
+data SpringU a = SpringU a deriving (Functor, Generic1, Show)
+instance Vectorize SpringX
+instance Vectorize SpringU
 
-data Spring a = Spring { pos :: Xyz a
-                       , vel :: Xyz a
-                       }
-data SpringForce a = SpringForce a
+meyer :: Num a => t -> a
+meyer _ = 0
 
-ddtSpring :: Fractional a => Spring a -> SpringForce a -> Spring a
-ddtSpring (Spring (Xyz x y z) (Xyz x' y' z')) (SpringForce u) =
-  Spring (Xyz x' y' z') (Xyz x'' y'' z'')
+lagrange :: Floating a => SpringX a -> SpringU a -> a
+lagrange (SpringX x v) (SpringU u) = x**2 + 2*v**2 + 10*u**2
+
+springOde :: Floating a => ExplicitOde SpringX SpringU a
+springOde (SpringX x v) (SpringU u) = SpringX (x + ts*v) (v + ts*acc)
   where
-    x'' = -k*x - b*x'
-    y'' = -k*y - b*y'
-    z'' = -k*z - b*z' + u
-
+    acc = -k*x -b*v + u 
     k = 2.6
     b = 0.2
+    ts = 1
 
-data None a = None
+springOcp :: Floating a => OcpPhase SpringX SpringU D4 D0 a
+springOcp = OcpPhase meyer lagrange springOde bc pathc pathcb xbnd ubnd
 
-springOde :: Fractional a => ExplicitOde Spring SpringForce a
-springOde = ddtSpring
+pathc :: f -> g -> Vec D0 a
+pathc _ _ = mkVec $ V.empty
+
+pathcb :: Vec D0 a
+pathcb = mkVec $ V.empty
+
+xbnd :: SpringX (Maybe Double, Maybe Double)
+xbnd = SpringX (Just (-10), Just (10)) (Just (-10), Just (10))
+
+ubnd :: SpringU (Maybe Double, Maybe Double)
+ubnd = SpringU (Just (-10), Just (10))
+
+bc :: Num a => SpringX a -> SpringX a -> Vec D4 a
+bc (SpringX x0 v0) (SpringX xf vf) = mkVec (V.fromList [x0-5,v0,xf-1,vf])
+
+
+nlp :: Nlp (ExplEulerMsDvs SpringX SpringU D10 D9) (ExplEulerMsConstraints SpringX D9 D4 D0)
+nlp = makeNlp springOcp
+
+main :: IO ()
+main = do
+  xopt <- solveNlp nlp
+  print xopt

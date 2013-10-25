@@ -1,18 +1,22 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language GADTs #-}
-{-# Language MultiParamTypeClasses #-}
 {-# Language DeriveFunctor #-}
+{-# Language DeriveGeneric #-}
+{-# Language RankNTypes #-}
+{-# Language ScopedTypeVariables #-}
 
 module Dae where
 
 import qualified Data.Vector as V
 import Data.TypeLevel.Num.Ops ( Succ )
-import Data.TypeLevel.Num.Sets ( Nat )
+import Data.TypeLevel.Num.Sets ( Nat, Pos )
 import qualified Data.Foldable as F
+import GHC.Generics
 
 import TypeVecs ( Vec )
 import qualified TypeVecs as TV
 import Vectorize
+import Nlp
 
 type ExplicitOde x u a = (x a -> u a -> x a)
 --data ImplicitOde x u a = ImplicitOde (x a -> u a -> Vec nn a)
@@ -33,18 +37,20 @@ data ExplEulerMsDvs x u nx nu a =
   ExplEulerMsDvs
     { eeX :: Vec nx (x a)
     , eeU :: Vec nu (u a)
-    } deriving Functor
+    } deriving (Functor, Generic1, Show)
+instance (Vectorize x, Vectorize u, Nat nx, Nat nu) => Vectorize (ExplEulerMsDvs x u nx nu)
 
 data ExplEulerMsConstraints x n nbc npc a =
   ExplEulerMsConstraints
   { ecBc :: Vec nbc a
   , ecPathc :: Vec n (Vec npc a)
   , ecDynamics :: Vec n (x a)
-  } deriving Functor
+  } deriving (Functor, Generic1, Show)
+instance (Vectorize x, Nat n, Nat nbc, Nat npc) => Vectorize (ExplEulerMsConstraints x n nbc npc)
 
-getDvBnds ::
-  Succ nu nx =>
-  OcpPhase x u nbc npc a ->
+getDvBnds :: forall x u nbc npc nx nu .
+  (Succ nu nx) =>
+  OcpPhase x u nbc npc Double -> -- Double here supresses warning in makeNlp, Double is never used
   ExplEulerMsDvs x u nx nu (Maybe Double, Maybe Double)
 getDvBnds ocp = ExplEulerMsDvs x u
   where
@@ -52,7 +58,7 @@ getDvBnds ocp = ExplEulerMsDvs x u
     u = fill (ocpUbnd ocp)
   
 getGBnds :: (Vectorize x, Nat n, Nat nbc) =>
-            OcpPhase x u nbc npc a ->
+            OcpPhase x u nbc npc Double ->  -- Double here supresses warning in makeNlp, Double is never used
             ExplEulerMsConstraints x n nbc npc (Maybe Double, Maybe Double)
 getGBnds ocp =
   ExplEulerMsConstraints
@@ -61,10 +67,10 @@ getGBnds ocp =
   , ecDynamics = fill (fill (Just 0, Just 0))
   }
 
-getFg :: (Succ nu nx, Fractional a, Vectorize x, Vectorize u) =>
+getFg :: (Floating a, Succ nu nx, Vectorize x, Vectorize u, Pos nu) =>
          OcpPhase x u nbc npc a -> ExplEulerMsDvs x u nx nu a -> 
-         ( (a, ExplEulerMsConstraints x nu nbc npc a) )
-getFg ocp (ExplEulerMsDvs xs us) = (objective, constraints)
+         NlpFun (ExplEulerMsConstraints x nu nbc npc) a
+getFg ocp (ExplEulerMsDvs xs us) = NlpFun objective constraints
   where
     initxs = TV.vinit xs
     constraints =
@@ -87,13 +93,7 @@ getFg ocp (ExplEulerMsDvs xs us) = (objective, constraints)
 ssum :: Num a => Vec n a -> a
 ssum = F.foldl' (+) 0
 
-makeNlp :: (Fractional a, Vectorize u, Vectorize x, Nat nu, Succ nu nx, Nat nbc) =>
-           OcpPhase x u nbc npc a ->
-           Nlp (ExplEulerMsDvs x u nx nu) (ExplEulerMsConstraints x nu nbc npc) a
+makeNlp :: (Vectorize u, Vectorize x, Pos nu, Succ nu nx, Nat nbc) =>
+           (forall a. Floating a => OcpPhase x u nbc npc a) ->
+           Nlp (ExplEulerMsDvs x u nx nu) (ExplEulerMsConstraints x nu nbc npc)
 makeNlp ocp = Nlp (getFg ocp) (getDvBnds ocp) (getGBnds ocp)
-
-data Nlp dv g a =
-  Nlp { nlpFG :: dv a -> (a, g a)
-      , nlpBX :: dv (Maybe Double, Maybe Double)
-      , nlpBG :: g (Maybe Double, Maybe Double)
-      }
