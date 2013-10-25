@@ -5,7 +5,7 @@
 {-# Language RankNTypes #-}
 {-# Language ScopedTypeVariables #-}
 
-module Dae where
+module Ocp where
 
 import qualified Data.Vector as V
 import Data.TypeLevel.Num.Ops ( Succ )

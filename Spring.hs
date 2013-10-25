@@ -11,7 +11,7 @@ import Data.TypeLevel.Num.Aliases
 import Vectorize
 import TypeVecs ( Vec(..), mkVec )
 
-import Dae
+import Ocp
 import Nlp
 
 data None a = None deriving (Generic1, Functor, Show)
