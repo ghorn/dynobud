@@ -40,7 +40,7 @@ import Vectorize ( GVectorize(..), Vectorize(..) )
 
 
 -- length-indexed vectors using phantom types
-newtype Vec s a = MkVec {unVec :: S.Seq a} deriving (Eq, Functor, Foldable, Traversable, Generic1)
+newtype Vec s a = MkVec {unVec :: S.Seq a} deriving (Eq, Ord, Functor, Foldable, Traversable, Generic1)
 
 instance Nat n => Vectorize (Vec n) where
   vectorize = V.fromList . F.toList . unVec
@@ -73,10 +73,12 @@ unsafeVec = unsafeSeq . S.fromList . V.toList
 
 unsafeSeq :: Nat s => S.Seq a -> Vec s a
 unsafeSeq xs = case MkVec xs of
-  ret ->
-    if vlength ret == S.length xs
-    then ret
-    else error "unsafeVec: dynamic/static length mismatch"
+  ret -> let staticLen = vlength ret
+             dynLen = S.length xs
+         in if staticLen == dynLen
+            then ret
+            else error $ "unsafeVec: static/dynamic length mismatch: " ++
+                 "static: " ++ show staticLen ++ ", dynamic: " ++ show  dynLen
 
 mkVec :: Nat s => V.Vector a -> Vec s a
 --mkVec = MkVec . S.fromList . V.toList

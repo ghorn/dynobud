@@ -50,14 +50,18 @@ gvlength = V.length . gvectorize . (gempty `asFunctorOf`)
 
 instance (GVectorize f, GVectorize g) => GVectorize (f :*: g) where
   gvectorize (f :*: g) = gvectorize f V.++ gvectorize g
-  gdevectorize v0s = f0 :*: f1
+  gdevectorize v0s = ret
     where
       f0 = gdevectorize v0
       f1 = gdevectorize v1
 
-      -- unsafe!!
       (v0,v1s) = V.splitAt (gvlength f0) v0s
-      (v1,_)   = V.splitAt (gvlength f1) v1s
+      (v1,v2s) = V.splitAt (gvlength f1) v1s
+
+      ret
+        | V.length v2s > 0 =
+          error $ "GVectorize, gdevectorize f :*: g, leftover vector length: " ++ show (V.length v2s)
+        | otherwise = f0 :*: f1
   gempty = gempty :*: gempty
 
 -- Metadata (constructor name, etc)
@@ -68,8 +72,10 @@ instance GVectorize f => GVectorize (M1 i c f) where
 
 instance GVectorize Par1 where
   gvectorize = V.singleton . unPar1
-  -- unsafe!!
-  gdevectorize = Par1 . V.head
+  gdevectorize v = case V.toList v of
+    [] -> error "gdevectorize Par1: got empty list"
+    [x] -> Par1 x
+    xs -> error $ "gdevectorize Par1: got non-1 length: " ++ show (length xs)
   gempty = Par1 ()
 
 instance GVectorize U1 where
@@ -89,21 +95,33 @@ instance (Vectorize f, GVectorize g) => GVectorize (f :.: g) where
       ret = devectorize $ V.replicate k gempty
       k = vlength ret
   gvectorize = V.concatMap gvectorize . (vectorize . unComp1)
-  gdevectorize v = Comp1 (devectorize vs)
+  gdevectorize v = Comp1 ret
     where
+--      ret :: f (g a)
+      ret = devectorize vs
+
+      kf = vlength ret
       kg = gvlength (V.head vs)
-      vs = V.map gdevectorize (splitsAtV kg v)
 
--- break a vector into a bunch of length k vectors
-splitsAt :: Int -> V.Vector a -> [V.Vector a]
-splitsAt k v
-  | ks == 0 = [v0]
-  | ks < k = error "splitsAt: uneven leftover vector"
-  | otherwise = v0 : splitsAt k v1
+--      vs :: V.Vector (g a)
+      vs = V.map gdevectorize (splitsAtV kg kf v {-:: V.Vector (V.Vector a)-} )
+
+-- break a vector jOuter vectors, each of length kFixed
+splitsAt :: Int -> Int -> V.Vector a -> [V.Vector a]
+splitsAt 0 jOuter v
+  | V.null v = replicate jOuter V.empty
+  | otherwise = error $ "splitsAt' 0 " ++ show jOuter ++ ": got non-zero vector"
+splitsAt kFixed 0 v
+  | V.null v = []
+  | otherwise = error $ "splitsAt' " ++ show kFixed ++ " 0: leftover vector of length: " ++ show (V.length v)
+splitsAt kFixed jOuter v
+  | kv0 < kFixed =
+    error $ "splitsAt' " ++ show kFixed ++ " " ++ show jOuter ++ ": " ++ "ran out of vector input"
+  | otherwise = v0 : splitsAt kFixed (jOuter - 1) v1
   where
-    ks = V.length v1
-    (v0,v1) = V.splitAt k v
+    kv0 = V.length v0
+    (v0,v1) = V.splitAt kFixed v
 
 -- break a vector into a bunch of length k vectors
-splitsAtV :: Int -> V.Vector a -> V.Vector (V.Vector a)
-splitsAtV k = V.fromList . splitsAt k
+splitsAtV :: Int -> Int -> V.Vector a -> V.Vector (V.Vector a)
+splitsAtV k j = V.fromList . splitsAt k j
