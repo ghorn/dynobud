@@ -18,8 +18,8 @@ import Nlp
 
 data SpringX a = SpringX a a deriving (Functor, Generic1, Show)
 data SpringU a = SpringU a deriving (Functor, Generic1, Show)
-instance Vectorize SpringX D2
-instance Vectorize SpringU D1
+instance Vectorize SpringX
+instance Vectorize SpringU
 
 meyer :: Num a => t -> a
 meyer _ = 0

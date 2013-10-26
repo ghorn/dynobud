@@ -1,13 +1,14 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE TypeFamilies #-}
-
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE FlexibleContexts, GADTs, TypeOperators #-}
+--{-# LANGUAGE TypeOperators #-}
+--{-# LANGUAGE TypeFamilies #-}
+--{-# LANGUAGE DataKinds #-}
+--
+--{-# LANGUAGE FlexibleInstances #-}
+--{-# LANGUAGE UndecidableInstances #-}
+--{-# LANGUAGE TypeOperators #-}
+--{-# LANGUAGE Rank2Types #-}
+--{-# LANGUAGE ScopedTypeVariables #-}
+--{-# LANGUAGE FlexibleContexts, GADTs, TypeOperators #-}
 
 module TypeNats ( module Types
                 , module Types.Data.Num
@@ -45,4 +46,5 @@ import Types.Data.Num.Decimal
 --fooo :: D1
 --fooo = blah d1
 
---instance (IntegerT n0, IntegerT n1, (n0 :+: n1) ~ n) => IntegerT n where
+--instance (IntegerT n0, IntegerT n1, (n0 :+: n1) ~ n, IntegerR (Repr n)) => IntegerT n
+--instance (NaturalT n0, NaturalT n1, (n0 :+: n1) ~ n) => NaturalT n
