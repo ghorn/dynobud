@@ -10,7 +10,12 @@ module Vectorize ( Vectorize(..)
                  , GVectorize(..)
                  , Generic1
                  , None(..)
+                 , Id(..)
+                 , Tuple(..)
+                 , Triple(..)
                  , vlength
+                 , vzipWith
+                 , vzipWith3
                  , fill
                  ) where
 
@@ -21,6 +26,13 @@ import qualified Data.Vector as V
 
 data None a = None deriving (Generic1, Functor, Show)
 instance Vectorize None
+
+data Id a = Id a deriving (Generic1, Functor, Show)
+instance Vectorize Id
+data Tuple f g a = Tuple (f a) (g a) deriving (Generic1, Functor, Show)
+instance (Vectorize f, Vectorize g) => Vectorize (Tuple f g)
+data Triple f g h a = Triple (f a) (g a) (h a) deriving (Generic1, Functor, Show)
+instance (Vectorize f, Vectorize g, Vectorize h) => Vectorize (Triple f g h)
 
 fill :: Vectorize f => a -> f a
 fill x = fmap (const x) empty
@@ -44,6 +56,12 @@ class GVectorize (f :: * -> *) where
   gvectorize :: f a -> V.Vector a
   gdevectorize :: V.Vector a -> f a
   gempty :: f ()
+
+vzipWith :: Vectorize f => (a -> b -> c) -> f a -> f b -> f c
+vzipWith f x y = devectorize $ V.zipWith f (vectorize x) (vectorize y)
+
+vzipWith3 :: Vectorize f => (a -> b -> c -> d) -> f a -> f b -> f c -> f d
+vzipWith3 f x y z = devectorize $ V.zipWith3 f (vectorize x) (vectorize y) (vectorize z)
 
 vlength :: Vectorize f => f a -> Int
 vlength = V.length . vectorize . (empty `asFunctorOf`)

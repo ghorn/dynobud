@@ -133,7 +133,7 @@ tvhead x = case S.viewl (unSeq x) of
   y S.:< _ -> y
   S.EmptyL -> error "vhead: empty"
 
-tvtail :: NaturalT n => Vec (Succ n) a -> Vec n a
+tvtail :: NaturalT n => Vec n a -> Vec (Pred n) a
 tvtail x = case S.viewl (unSeq x) of
   _ S.:< ys -> mkSeq ys
   S.EmptyL -> error "vtail: empty"
