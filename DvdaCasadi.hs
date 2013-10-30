@@ -1,9 +1,8 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language Rank2Types #-}
-{-# Language PolyKinds #-}
 {-# Language FlexibleContexts #-}
 
-module DvdaCasadi ( toCallSXFun, runAlgorithmV, toCallAlgorithmV, toSX, constructAlgorithmV, funToSX, SX ) where
+module DvdaCasadi ( toCallSXFun, toSX, funToSX, SX ) where
 
 import Data.Vector.Generic ( (!) )
 import qualified Data.Vector as V
@@ -23,53 +22,11 @@ import Casadi.Wrappers.Classes.FX
 import Casadi.Wrappers.Tools ( densify'' )
 
 import Dvda.Algorithm.Construct (
-  Node(..), AlgOp(..), Algorithm(..), InputIdx(..), OutputIdx(..),
-  constructAlgorithm
+  Node(..), AlgOp(..), Algorithm(..), InputIdx(..), OutputIdx(..)
   )
-import Dvda.Algorithm.Eval ( runAlgorithm )
 import Dvda.Expr
 import Vectorize
-
-newtype AlgorithmV f g a = AlgorithmV (Algorithm a)
-
-constructAlgorithmV :: (Vectorize f, Vectorize g) =>
-                       (f (Expr a) -> g (Expr a)) -> IO (AlgorithmV f g a)
-constructAlgorithmV f = fmap AlgorithmV (constructAlgorithm vinputs voutputs)
-  where
-    vinputs = ssyms n "x"
-    n = vlength inputs
-    inputs = devectorize vinputs
-    outputs = f inputs
-
-    voutputs = vectorize outputs
-
-constructAlgorithmV' :: (Vectorize f, Vectorize g) =>
-                        (forall a . Floating a => f a -> g a) -> IO (AlgorithmV f g Double)
-constructAlgorithmV' f = fmap AlgorithmV (constructAlgorithm vinputs voutputs)
-  where
-    vinputs = ssyms n "x"
-    n = vlength inputs
-
-    inputs = devectorize vinputs
-    outputs = f inputs
-
-    voutputs = vectorize outputs
-
-ssyms :: Int -> String -> V.Vector (Expr a)
-ssyms k name = V.fromList $ take k allSyms
-  where
-    allSyms = map (sym . ((name ++ "_") ++) . show) [(0::Int)..]
-
-runAlgorithmV :: (Vectorize f, Vectorize g) => AlgorithmV f g a -> f a -> g a
-runAlgorithmV (AlgorithmV alg) inputs = devectorize outputVec
-  where
-    inputVec = vectorize inputs
-    outputVec = runAlgorithm alg inputVec
-
-toCallAlgorithmV :: (Vectorize f, Vectorize g) => (f (Expr a) -> g (Expr a)) -> IO (f a -> g a)
-toCallAlgorithmV f = do
-  alg <- constructAlgorithmV f
-  return (runAlgorithmV alg)
+import AlgorithmV
 
 toCallSXFun :: (Vectorize f, Vectorize g) =>
                (f (Expr Double) -> g (Expr Double)) -> IO (f Double -> IO (g Double))
