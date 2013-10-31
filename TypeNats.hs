@@ -1,8 +1,8 @@
 {-# OPTIONS_GHC -Wall #-}
---{-# LANGUAGE TypeOperators #-}
---{-# LANGUAGE TypeFamilies #-}
---{-# LANGUAGE DataKinds #-}
---
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DataKinds #-}
+
 --{-# LANGUAGE FlexibleInstances #-}
 --{-# LANGUAGE UndecidableInstances #-}
 --{-# LANGUAGE TypeOperators #-}

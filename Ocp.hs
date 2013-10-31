@@ -1,8 +1,8 @@
 {-# OPTIONS_GHC -Wall #-}
 
-module Ocp ( OcpPhase(..) ) where
+module Ocp ( OcpPhase(..), Dae ) where
 
-import Dae
+type Dae x z u p r a = x a -> x a -> z a -> u a -> p a -> r a
 
 data OcpPhase x z u p r bc pc a =
   OcpPhase { --ocpMeyer :: x a -> a -> x a -> a -> a

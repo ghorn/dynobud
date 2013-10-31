@@ -4,6 +4,7 @@
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module TypeVecs
@@ -16,11 +17,15 @@ module TypeVecs
        , (<|)
        , mkSeq
        , mkVec
+       , mkVec'
        , unsafeSeq
        , unsafeVec
        , tvsplitAt
        , tvhead
+       , tvtranspose
        , tvzipWith
+       , tvunzip
+       , tvunzip3
        , tvinit
        , tvtail
        , tvlast
@@ -35,6 +40,7 @@ module TypeVecs
 
 import Data.Foldable ( Foldable )
 import Data.Traversable ( Traversable )
+import qualified Data.Traversable as T
 import qualified Data.Foldable as F
 import qualified Data.Sequence as S
 import qualified Data.Vector as V
@@ -43,7 +49,7 @@ import TypeNats
 import Vectorize
 
 -- length-indexed vectors using phantom types
-newtype Vec n a = MkVec {unSeq :: S.Seq a} deriving (Eq, Ord, Functor, Foldable, Traversable, Generic1)
+newtype Vec n a = MkVec {unSeq :: S.Seq a} deriving (Eq, Ord, Functor, Foldable, Traversable, Generic1, Monad)
 
 instance NaturalT n => Vectorize (Vec n) where
   vectorize = unVec
@@ -59,6 +65,9 @@ instance NaturalT n => GVectorize (Vec n) where
     where
       ret = tvreplicate k ()
       k = tvlengthT ret
+
+tvtranspose :: Vec n (Vec m a) -> Vec m (Vec n a)
+tvtranspose vec = mkVec $ fmap mkVec $ T.sequence (unVec (fmap unVec vec))
 
 unVec :: Vec n a -> V.Vector a
 unVec = V.fromList . F.toList . unSeq
@@ -87,6 +96,9 @@ unsafeSeq xs = case MkVec xs of
 mkVec :: V.Vector a -> Vec n a
 mkVec = MkVec . S.fromList . V.toList
 
+mkVec' :: [a] -> Vec n a
+mkVec' = MkVec . S.fromList
+
 mkSeq :: S.Seq a -> Vec n a
 mkSeq = MkVec
 
@@ -106,8 +118,8 @@ asLengthOf :: n -> Vec n a -> n
 asLengthOf x _ = x
 
 ---- split into two
-tvsplitAt :: (NaturalT i,
-              (i :<=: n) ~ True
+tvsplitAt :: (NaturalT i
+--              (i :<=: n) ~ True
               ) =>
              i -> Vec (i :+: n) a -> (Vec i a, Vec n a)
 tvsplitAt i v = (mkSeq x, mkSeq y)
@@ -117,6 +129,16 @@ tvsplitAt i v = (mkSeq x, mkSeq y)
 tvzipWith :: (NaturalT n) => (a -> b -> c) -> Vec n a -> Vec n b -> Vec n c
 tvzipWith f x y = mkSeq (S.zipWith f (unSeq x) (unSeq y))
 
+tvunzip :: Vec n (a,b) -> (Vec n a, Vec n b)
+tvunzip v = (mkVec v1, mkVec v2)
+  where
+    (v1,v2) = V.unzip (unVec v)
+
+tvunzip3 :: Vec n (a,b,c) -> (Vec n a, Vec n b, Vec n c)
+tvunzip3 v = (mkVec v1, mkVec v2, mkVec v3)
+  where
+    (v1,v2,v3) = V.unzip3 (unVec v)
+
 tvempty :: Vec D0 a
 tvempty = mkSeq S.empty
 
@@ -124,8 +146,9 @@ tvsingleton :: a -> Vec D1 a
 tvsingleton = mkSeq . S.singleton
 
 tvindex :: (NaturalT i,
-            NaturalT n,
-            (i :<=: n) ~ True) => i -> Vec n a -> a
+            NaturalT n
+--            (i :<=: n) ~ True
+           ) => i -> Vec n a -> a
 tvindex k v = S.index (unSeq v) (fromIntegerT k)
 
 tvhead :: PositiveT n => Vec n a -> a

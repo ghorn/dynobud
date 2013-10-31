@@ -27,7 +27,7 @@ import qualified Data.Vector as V
 data None a = None deriving (Generic1, Functor, Show)
 instance Vectorize None
 
-data Id a = Id a deriving (Generic1, Functor, Show)
+newtype Id a = Id a deriving (Generic1, Functor, Show)
 instance Vectorize Id
 data Tuple f g a = Tuple (f a) (g a) deriving (Generic1, Functor, Show)
 instance (Vectorize f, Vectorize g) => Vectorize (Tuple f g)

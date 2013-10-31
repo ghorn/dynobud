@@ -102,6 +102,9 @@ where
 
 \begin{code}
 {-# OPTIONS_GHC -Wall #-}
+{-# Language FlexibleContexts #-}
+{-# Language GADTs #-}
+
 module LagrangePolynomials ( lagrangeDerivCoeffs, lagrangeXis, runComparison ) where
 
 import qualified Data.Vector as V
@@ -118,6 +121,7 @@ lagrangeXis taus tau j =
                                   ]
   where
     deg = length taus - 1
+
 \end{code}
 
 The derivative of this polynomial on an intermediate point is given by

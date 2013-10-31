@@ -5,6 +5,7 @@
 module AlgorithmV ( AlgorithmV(..)
                   , runAlgorithmV
                   , toCallAlgorithmV
+                  , toSymbolicAlgV
                   , constructAlgorithmV
                   , constructAlgorithmV'
                   ) where
@@ -13,10 +14,14 @@ import qualified Data.Vector as V
 
 import Dvda.Algorithm.Construct ( Algorithm(..), constructAlgorithm )
 import Dvda.Algorithm.Eval ( runAlgorithm )
+import Dvda.Algorithm ( toSymbolicAlg )
 import Dvda.Expr
 import Vectorize
 
 newtype AlgorithmV f g a = AlgorithmV (Algorithm a)
+
+toSymbolicAlgV :: Eq a => AlgorithmV f g a -> AlgorithmV f g (Expr a)
+toSymbolicAlgV (AlgorithmV alg) = AlgorithmV (toSymbolicAlg alg)
 
 constructAlgorithmV :: (Vectorize f, Vectorize g) =>
                        (f (Expr a) -> g (Expr a)) -> IO (AlgorithmV f g a)
