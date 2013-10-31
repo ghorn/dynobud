@@ -19,5 +19,5 @@ data OcpPhase x z u p r bc pc a =
            , ocpZbnd :: z (Maybe Double, Maybe Double)
            , ocpUbnd :: u (Maybe Double, Maybe Double)
            , ocpPbnd :: p (Maybe Double, Maybe Double)
-           , ocpTbnd :: (a,a)
+           , ocpTbnd :: (Maybe Double, Maybe Double)
            }

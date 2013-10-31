@@ -26,7 +26,7 @@ import Ocp
 
 data CollPoint x z u a = CollPoint (x a) (z a) (u a) deriving (Functor, Generic1)
 data CollStage x z u deg a = CollStage (x a) (Vec deg (CollPoint x z u a)) deriving (Functor, Generic1)
-data CollTraj x z u p n deg a = CollTraj (p a) (Vec n (CollStage x z u deg a)) (x a) deriving (Functor, Generic1)
+data CollTraj x z u p n deg a = CollTraj a (p a) (Vec n (CollStage x z u deg a)) (x a) deriving (Functor, Generic1)
 instance (Vectorize x, Vectorize z, Vectorize u) => Vectorize (CollPoint x z u)
 instance (Vectorize x, Vectorize z, Vectorize u, NaturalT deg) => Vectorize (CollStage x z u deg)
 instance (Vectorize x, Vectorize z, Vectorize u, Vectorize p, NaturalT n, NaturalT deg) =>
@@ -62,6 +62,12 @@ instance (Vectorize x, Vectorize r, NaturalT n, NaturalT deg, Vectorize bc, Vect
 ctDegT :: CollTraj x z u p n deg a -> deg
 ctDegT _ = undefined
 
+ctNT :: CollTraj x z u p n deg a -> n
+ctNT _ = undefined
+
+ctN :: IntegerT n => CollTraj x z u p n deg a -> Int
+ctN = fromIntegerT . ctNT
+
 ctDeg :: IntegerT deg => CollTraj x z u p n deg a -> Int
 ctDeg = fromIntegerT . ctDegT
 
@@ -73,17 +79,16 @@ mkTaus deg = case shiftedLegendreRoots deg of
 getFg :: (PositiveT n, NaturalT deg, NaturalT (Succ deg), Vectorize x, Fractional a, NaturalT n, Num a) =>
          OcpPhase x z u p r bc pc a -> CollTraj x z u p n deg a ->
          NlpFun (CollOcpConstraints n deg x r bc pc) a
-getFg ocp collTraj@(CollTraj p css xf) = NlpFun obj g
+getFg ocp collTraj@(CollTraj _ p css xf) = NlpFun obj g
   where
     obj = ocpMeyer ocp xf
 
     x0 = (\(CollStage x0' _) -> x0') (tvhead css)
     g = CollOcpConstraints
-        { coDynamics = collConstraints (ocpDae ocp) taus h collTraj
+        { coDynamics = collConstraints (ocpDae ocp) taus collTraj
         , coPathC = fmap (\(CollStage _ collPoints) -> fmap mkPathC collPoints) css
         , coBc = (ocpBc ocp) x0 xf
         }
-    h = 1
     taus = mkTaus deg
     deg = ctDeg collTraj
 
@@ -109,7 +114,7 @@ getBx ::
 getBx ocp = ct
   where
     --ct :: CollTraj x z u p n deg (Maybe Double, Maybe Double)
-    ct = CollTraj pb (fill cs) xb
+    ct = CollTraj tb pb (fill cs) xb
     
     --cs :: CollStage x z u deg (Maybe Double, Maybe Double)
     cs = CollStage xb (fill cp)
@@ -121,6 +126,7 @@ getBx ocp = ct
     ub = ocpUbnd ocp
     zb = ocpZbnd ocp
     pb = ocpPbnd ocp
+    tb = ocpTbnd ocp
 
 getBg ::
   (NaturalT n, NaturalT deg, Vectorize x, Vectorize r, Vectorize bc)
@@ -146,8 +152,8 @@ collConstraints ::
   forall x z u p r a deg n .
   (NaturalT n, NaturalT deg, NaturalT (Succ deg), Vectorize x, Fractional a)
   => Dae x z u p r a -> Vec deg a ->
-  a -> CollTraj x z u p n deg a -> CollTrajConstraints n x deg r a
-collConstraints dae taus h (CollTraj p stages xf) =
+  CollTraj x z u p n deg a -> CollTrajConstraints n x deg r a
+collConstraints dae taus collTraj@(CollTraj tf p stages xf) =
   CollTrajConstraints $ tvzipWith (dynConstraints dae taus h p) stages xfs
   where
     x0s :: Vec n (x a)
@@ -156,6 +162,8 @@ collConstraints dae taus h (CollTraj p stages xf) =
     xfs :: Vec n (x a)
     xfs = mkSeq $ unSeq $ tvtail x0s |> xf
 
+    h = tf / (fromIntegral n)
+    n = ctN collTraj
 
 interpolateXDots :: (NaturalT deg, Vectorize x, Num a) => Vec deg (Vec deg a) -> Vec deg (x a) -> Vec deg (x a)
 interpolateXDots cjks xs = fmap (`dot` xs) cjks

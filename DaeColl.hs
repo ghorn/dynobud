@@ -72,7 +72,7 @@ pendOcp = OcpPhase { ocpMeyer = meyer
                    , ocpUbnd = ubnd
                    , ocpZbnd = fill (Nothing, Nothing)
                    , ocpPbnd = fill (Just 0.3, Just 0.3)
-                   , ocpTbnd = (10, 10)
+                   , ocpTbnd = (Just 4, Just 4)
                    }
 
 pathc :: x a -> z a -> u a -> p a -> None a
