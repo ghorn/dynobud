@@ -22,6 +22,8 @@ module Hascm.DirectCollocation
 import qualified Data.Vector as V
 import qualified Data.Foldable as F
 import qualified Data.Traversable as T
+import qualified Data.Packed.Matrix as Mat
+import qualified Numeric.LinearAlgebra.Algorithms as LA
 
 import JacobiRoots
 
@@ -88,12 +90,16 @@ mkTaus deg = case shiftedLegendreRoots deg of
   Just taus -> mkVec $ V.map (fromRational . toRational) taus
   Nothing -> error "makeTaus: too high degree"
 
-getFg :: (PositiveT n, NaturalT deg, NaturalT (Succ deg), Vectorize x, Fractional a, NaturalT n, Num a) =>
+getFg :: (PositiveT n, NaturalT deg, NaturalT (Succ deg), deg ~ Pred (Succ deg),
+          Vectorize x, Fractional a, NaturalT n, Num a) =>
          OcpPhase x z u p r bc pc a -> CollTraj x z u p n deg a ->
          NlpFun (CollOcpConstraints n deg x r bc pc) a
 getFg ocp collTraj@(CollTraj _ p css xf) = NlpFun obj g
   where
-    obj = ocpMeyer ocp xf
+    obj = objLagrange + objMeyer
+
+    objMeyer = ocpMeyer ocp xf
+    objLagrange = evaluateQuadratures (ocpLagrange ocp) collTraj
 
     x0 = (\(CollStage x0' _) -> x0') (tvhead css)
     g = CollOcpConstraints
@@ -109,13 +115,15 @@ getFg ocp collTraj@(CollTraj _ p css xf) = NlpFun obj g
 
 
 makeCollNlp ::
-  (PositiveT n, Vectorize x, Vectorize r, NaturalT deg, NaturalT n, NaturalT (Succ deg), Vectorize bc) =>
+  (PositiveT n, NaturalT deg, NaturalT n, NaturalT (Succ deg), deg ~ Pred (Succ deg),
+   Vectorize x, Vectorize r, Vectorize bc) =>
   (forall a. Floating a => OcpPhase x z u p r bc pc a) ->
   Nlp (CollTraj x z u p n deg) (CollOcpConstraints n deg x r bc pc)
 makeCollNlp ocp = Nlp (getFg ocp) (getBx ocp) (getBg ocp)
 
 solveCollNlp ::
-  (PositiveT n, Vectorize x, Vectorize r, NaturalT deg, NaturalT n, NaturalT (Succ deg), Vectorize bc, Vectorize pc, Vectorize p, Vectorize u, Vectorize z) =>
+  (PositiveT n, NaturalT deg, NaturalT n, NaturalT (Succ deg), deg ~ Pred (Succ deg),
+   Vectorize x, Vectorize r, Vectorize bc, Vectorize pc, Vectorize p, Vectorize u, Vectorize z) =>
   (forall a. Floating a => OcpPhase x z u p r bc pc a) ->
   Maybe (CollTraj x z u p n deg Double -> IO Bool) ->
   IO (CollTraj x z u p n deg Double)
@@ -160,6 +168,55 @@ dot cks xs = F.foldl' (add) (fill 0) $ unSeq elemwise
   where
     elemwise :: Vec deg (x a)
     elemwise = tvzipWith (\(Id c) x -> fmap (c*) x) (fmap Id cks) xs
+
+evaluateQuadratures ::
+  forall x z u p n deg a .
+  (NaturalT deg, NaturalT (Succ deg), NaturalT n, deg ~ Pred (Succ deg), Fractional a) =>
+  (x a -> z a -> u a -> p a -> a) ->
+  CollTraj x z u p n deg a -> a
+evaluateQuadratures f collTraj@(CollTraj tf p stages _) = (h *) $ V.sum $ unVec $ fmap oneStage stages
+  where
+    h = tf / (fromIntegral n)
+    n = ctN collTraj
+
+    oneStage :: CollStage x z u deg a -> a
+    oneStage (CollStage _ stage) = qnext
+      where
+        qdots :: Vec deg a
+        qdots = fmap (\(CollPoint x z u) -> f x z u p) stage
+
+        qs = cijInvFr `mm` qdots
+
+        Id qnext = interpolate taus (Id 0) (fmap Id qs)
+
+    taus :: Vec deg a
+    taus = mkTaus deg
+
+    deg = ctDeg collTraj
+
+    mm :: Vec deg (Vec deg a) -> Vec deg a -> Vec deg a
+    mm vls vr = fmap (\vl -> V.sum (V.zipWith (*) (unVec vl) (unVec vr))) vls
+
+    tausD :: Vec deg Double
+    tausD = mkTaus deg
+
+    cijs' :: Vec (Succ deg) (Vec (Succ deg) Double)
+    cijs' = lagrangeDerivCoeffs (0 <| tausD)
+
+    cijs :: Vec deg (Vec deg Double)
+    cijs = tvtail $ fmap tvtail cijs'
+
+    cijMat :: Mat.Matrix Double
+    cijMat = Mat.fromLists $ F.toList $ fmap F.toList cijs
+
+    cijInv' :: Mat.Matrix Double
+    cijInv' = LA.inv cijMat
+
+    cijInv :: Vec deg (Vec deg Double)
+    cijInv = mkVec' (map mkVec' (Mat.toLists cijInv'))
+
+    cijInvFr :: Vec deg (Vec deg a)
+    cijInvFr = fmap (fmap realToFrac) cijInv
 
 collConstraints ::
   forall x z u p r a deg n .

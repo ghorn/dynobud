@@ -41,8 +41,8 @@ instance (Lookup a, Generic a) => Lookup (PendU a)
 meyer :: Num a => t -> a
 meyer _ = 0
 
-lagrange :: Fractional a => PendX a -> PendZ a -> PendU a -> PendP a -> a
-lagrange (PendX x y vx vy) (PendZ tau) (PendU torque) (PendP m) = 0
+lagrange :: Floating a => PendX a -> PendZ a -> PendU a -> PendP a -> a
+lagrange (PendX _ _ vx vy) (PendZ _) (PendU torque) (PendP _) = vx*vx + vy*vy + 1e-4*torque**2
 --
 --springOde :: Floating a => ExplicitOde SpringX SpringU None a
 --springOde (SpringX x v) None (SpringU u) None = SpringX v acc
@@ -50,10 +50,10 @@ lagrange (PendX x y vx vy) (PendZ tau) (PendU torque) (PendP m) = 0
 --    acc = -k*x -b*v + u
 --    k = 2.6
 --    b = 0.2
-r :: Fractional a => a
+r :: Floating a => a
 r = 0.3
 
-pendDae :: Fractional a => Dae PendX PendZ PendU PendP PendR a
+pendDae :: Floating a => Dae PendX PendZ PendU PendP PendR a
 pendDae (PendX x' y' vx' vy') (PendX x y vx vy) (PendZ tau) (PendU torque) (PendP m) =
   PendR (x' - vx) (y' - vy)
   (m*vx' + x*tau - fx)
@@ -67,7 +67,7 @@ pendDae (PendX x' y' vx' vy') (PendX x y vx vy) (PendZ tau) (PendU torque) (Pend
 --    dae['cdot'] = dae['dx']*dae['x'] + dae['dz']*dae['z']
 
 
-pendOcp :: Fractional a => OcpPhase PendX PendZ PendU PendP PendR (Vec D4) None a
+pendOcp :: Floating a => OcpPhase PendX PendZ PendU PendP PendR (Vec D8) None a
 pendOcp = OcpPhase { ocpMeyer = meyer
                    , ocpLagrange = lagrange
                    , ocpDae = pendDae
@@ -86,18 +86,28 @@ pathc _ _ _ _ = None
 
 ----pathcb :: None a
 ----pathcb = None
-----
+
 xbnd :: PendX (Maybe Double, Maybe Double)
-xbnd = PendX (Just (-10), Just (10)) (Just (-10), Just (10)) (Just (-1), Just (1)) (Just (-1), Just (1))
+xbnd = PendX { pX = (Just (-10), Just (10))
+             , pY = (Just (-10), Just (10))
+             , pVx = (Just (-1), Just (1))
+             , pVy = (Just (-1), Just (1))
+             }
 
 ubnd :: PendU (Maybe Double, Maybe Double)
-ubnd = PendU (Just (-10), Just (10))
+ubnd = PendU (Just (-100), Just (100))
 
-bc :: Num a => PendX a -> PendX a -> Vec D4 a
-bc (PendX x0 y0 vx0 vy0) (PendX xf yf vxf vyf) = mkVec' [x0, vx0, y0, vy0]
-
-----nlp :: Nlp (MsTraj SpringX SpringU None D9) (MsConstraints SpringX D9 (Vec D4) None)
-----nlp = makeNlp springOcp forwardEuler
+bc :: Floating a => PendX a -> PendX a -> Vec D8 a
+bc (PendX x0 y0 vx0 vy0) (PendX xf yf vxf vyf) =
+  mkVec' [ x0-r
+         , y0
+         , vx0
+         , vy0
+         , xf
+         , yf - r
+         , vxf
+         , vyf
+         ]
 
 xAccessors :: [(String, PendX Double -> Double)]
 xAccessors = flatten $ accessors (fill 0)
