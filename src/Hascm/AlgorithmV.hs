@@ -2,13 +2,14 @@
 {-# Language Rank2Types #-}
 {-# Language PolyKinds #-}
 
-module AlgorithmV ( AlgorithmV(..)
-                  , runAlgorithmV
-                  , toCallAlgorithmV
-                  , toSymbolicAlgV
-                  , constructAlgorithmV
-                  , constructAlgorithmV'
-                  ) where
+module Hascm.AlgorithmV
+       ( AlgorithmV(..)
+       , runAlgorithmV
+       , toCallAlgorithmV
+       , toSymbolicAlgV
+       , constructAlgorithmV
+       , constructAlgorithmV'
+       ) where
 
 import qualified Data.Vector as V
 
@@ -16,7 +17,8 @@ import Dvda.Algorithm.Construct ( Algorithm(..), constructAlgorithm )
 import Dvda.Algorithm.Eval ( runAlgorithm )
 import Dvda.Algorithm ( toSymbolicAlg )
 import Dvda.Expr
-import Vectorize
+
+import Hascm.Vectorize
 
 newtype AlgorithmV f g a = AlgorithmV (Algorithm a)
 

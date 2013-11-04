@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 
-module Ocp ( OcpPhase(..), Dae ) where
+module Hascm.Ocp ( OcpPhase(..), Dae ) where
 
 type Dae x z u p r a = x a -> x a -> z a -> u a -> p a -> r a
 

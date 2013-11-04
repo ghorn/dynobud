@@ -7,7 +7,7 @@
 {-# Language ScopedTypeVariables #-}
 --{-# Language TypeFamilies #-}
 
-module DirectCollocation
+module Hascm.DirectCollocation
        ( CollTraj(..)
        , CollStage(..)
        , CollPoint(..)
@@ -25,13 +25,13 @@ import qualified Data.Traversable as T
 
 import JacobiRoots
 
-import Vectorize
-import TypeVecs
-import TypeNats
-import LagrangePolynomials
+import Hascm.Vectorize
+import Hascm.TypeVecs
+import Hascm.TypeNats
+import Hascm.LagrangePolynomials
 
-import Nlp
-import Ocp
+import Hascm.Nlp
+import Hascm.Ocp
 --import Dvda
 --data RorL = Radau | Legendre deriving (Eq, Show)
 

@@ -10,12 +10,13 @@
 --{-# LANGUAGE ScopedTypeVariables #-}
 --{-# LANGUAGE FlexibleContexts, GADTs, TypeOperators #-}
 
-module TypeNats ( module Types
-                , module Types.Data.Num
-                , module Types.Data.Num.Decimal
-                , module Types.Data.Num.Ops
-                , module Types.Data.Ord
-                ) where
+module Hascm.TypeNats
+       ( module Types
+       , module Types.Data.Num
+       , module Types.Data.Num.Decimal
+       , module Types.Data.Num.Ops
+       , module Types.Data.Ord
+       ) where
 
 import Types
 --import Types.Base

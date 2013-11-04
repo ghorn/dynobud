@@ -7,7 +7,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module TypeVecs
+module Hascm.TypeVecs
        ( Vec ( unSeq )
        , unVec
        , tvlength
@@ -45,8 +45,8 @@ import qualified Data.Foldable as F
 import qualified Data.Sequence as S
 import qualified Data.Vector as V
 
-import TypeNats
-import Vectorize
+import Hascm.TypeNats
+import Hascm.Vectorize
 
 -- length-indexed vectors using phantom types
 newtype Vec n a = MkVec {unSeq :: S.Seq a} deriving (Eq, Ord, Functor, Foldable, Traversable, Generic1, Monad)

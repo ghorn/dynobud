@@ -4,7 +4,7 @@
 {-# Language DeriveGeneric #-}
 {-# Language ScopedTypeVariables #-}
 
-module Nlp ( Nlp(..), NlpFun(..), solveNlp ) where
+module Hascm.Nlp ( Nlp(..), NlpFun(..), solveNlp ) where
 
 import qualified Data.Vector as V
 import Data.Maybe ( fromMaybe )
@@ -20,9 +20,9 @@ import Casadi.Wrappers.Classes.SharedObject
 import Casadi.Wrappers.Classes.IpoptSolver
 import Casadi.Wrappers.Classes.IOInterfaceFX
 
-import Vectorize
-import DvdaCasadi
-import IOSchemes
+import Hascm.Vectorize
+import Hascm.DvdaCasadi
+import Hascm.IOSchemes
 
 data NlpFun g a = NlpFun a (g a) deriving (Show, Functor, Generic1)
 instance Vectorize g => Vectorize (NlpFun g)

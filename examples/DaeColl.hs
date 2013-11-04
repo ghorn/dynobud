@@ -9,14 +9,14 @@ module Main where
 
 --import qualified Data.Vector as V
 
-import Vectorize
-import TypeVecs
-import TypeNats
-import Accessors
+import Hascm.Vectorize
+import Hascm.TypeVecs
+import Hascm.TypeNats
+import Hascm.Accessors
 
-import Ocp
-import DirectCollocation
---import Nlp
+import Hascm.Ocp
+import Hascm.DirectCollocation
+--import Hascm.Nlp
 
 data PendX a = PendX { pX :: a
                      , pY :: a

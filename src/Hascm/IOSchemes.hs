@@ -1,9 +1,10 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language ScopedTypeVariables #-}
 
-module IOSchemes ( mkSchemeSXMatrix
-                 , mkSchemeCRSSparsity
-                 ) where
+module Hascm.IOSchemes
+       ( mkSchemeSXMatrix
+       , mkSchemeCRSSparsity
+       ) where
 
 import qualified Data.Map as M
 import qualified Data.Set as S

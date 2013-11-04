@@ -6,18 +6,19 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveFunctor #-}
 
-module Vectorize ( Vectorize(..)
-                 , GVectorize(..)
-                 , Generic1
-                 , None(..)
-                 , Id(..)
-                 , Tuple(..)
-                 , Triple(..)
-                 , vlength
-                 , vzipWith
-                 , vzipWith3
-                 , fill
-                 ) where
+module Hascm.Vectorize
+       ( Vectorize(..)
+       , GVectorize(..)
+       , Generic1
+       , None(..)
+       , Id(..)
+       , Tuple(..)
+       , Triple(..)
+       , vlength
+       , vzipWith
+       , vzipWith3
+       , fill
+       ) where
 
 
 import qualified GHC.Generics as G

@@ -105,12 +105,13 @@ where
 {-# Language FlexibleContexts #-}
 {-# Language GADTs #-}
 
-module LagrangePolynomials ( lagrangeDerivCoeffs, lagrangeXis, runComparison ) where
+module Hascm.LagrangePolynomials ( lagrangeDerivCoeffs, lagrangeXis, runComparison ) where
 
 import qualified Data.Vector as V
 
-import TypeVecs
 import Dvda
+
+import Hascm.TypeVecs
 
 lagrangeXis :: Fractional a => [a] -> a -> Int -> a
 lagrangeXis taus tau j =

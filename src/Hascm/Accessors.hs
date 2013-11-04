@@ -6,7 +6,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DeriveGeneric #-}
 
-module Accessors ( Generic, Lookup(..), AccessorTree(..), accessors, flatten ) where
+module Hascm.Accessors ( Generic, Lookup(..), AccessorTree(..), accessors, flatten ) where
 
 import Data.List ( intercalate )
 import GHC.Generics

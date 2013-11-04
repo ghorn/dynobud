@@ -2,7 +2,7 @@
 {-# Language Rank2Types #-}
 {-# Language FlexibleContexts #-}
 
-module DvdaCasadi ( toCallSXFun, toSX, funToSX, SX ) where
+module Hascm.DvdaCasadi ( toCallSXFun, toSX, funToSX, SX ) where
 
 import Data.Vector.Generic ( (!) )
 import qualified Data.Vector as V
@@ -25,8 +25,8 @@ import Dvda.Algorithm.Construct (
   Node(..), AlgOp(..), Algorithm(..), InputIdx(..), OutputIdx(..)
   )
 import Dvda.Expr
-import Vectorize
-import AlgorithmV
+import Hascm.Vectorize
+import Hascm.AlgorithmV
 
 toCallSXFun :: (Vectorize f, Vectorize g) =>
                (f (Expr Double) -> g (Expr Double)) -> IO (f Double -> IO (g Double))

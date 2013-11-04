@@ -5,11 +5,12 @@
 {-# Language DeriveGeneric #-}
 {-# Language GADTs #-}
 
-module MultipleShooting ( MsTraj(..)
-                        , MsPoint(..)
-                        , MsConstraints(..)
-                        , makeNlp
-                        ) where
+module Hascm.MultipleShooting
+       ( MsTraj(..)
+       , MsPoint(..)
+       , MsConstraints(..)
+       , makeNlp
+       ) where
 
 import TypeVecs ( Vec, (|>), tvzipWith, tvhead, tvtail, tvlength )
 import Vectorize

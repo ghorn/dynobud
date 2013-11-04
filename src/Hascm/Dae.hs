@@ -1,15 +1,16 @@
 {-# OPTIONS_GHC -Wall #-}
 
-module Dae ( Dae
-           , ExplicitOde
-           , ImplicitOde
-           , SemiExplicitDae
-           , Integrator
-           , forwardEuler
-           , rk4
-           ) where
+module Hascm.Dae
+       ( Dae
+       , ExplicitOde
+       , ImplicitOde
+       , SemiExplicitDae
+       , Integrator
+       , forwardEuler
+       , rk4
+       ) where
 
-import Vectorize
+import Hascm.Vectorize
 
 --type Dae x z u p r a = x a -> x a -> z a -> u a -> p a -> a -> r a
 type Dae x z u p r a = x a -> z a -> u a -> p a -> r a
