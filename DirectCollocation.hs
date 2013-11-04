@@ -27,6 +27,7 @@ import Ocp
 data CollPoint x z u a = CollPoint (x a) (z a) (u a) deriving (Functor, Generic1)
 data CollStage x z u deg a = CollStage (x a) (Vec deg (CollPoint x z u a)) deriving (Functor, Generic1)
 data CollTraj x z u p n deg a = CollTraj a (p a) (Vec n (CollStage x z u deg a)) (x a) deriving (Functor, Generic1)
+
 instance (Vectorize x, Vectorize z, Vectorize u) => Vectorize (CollPoint x z u)
 instance (Vectorize x, Vectorize z, Vectorize u, NaturalT deg) => Vectorize (CollStage x z u deg)
 instance (Vectorize x, Vectorize z, Vectorize u, Vectorize p, NaturalT n, NaturalT deg) =>
@@ -208,3 +209,4 @@ dynConstraints dae taus h p (CollStage x0 cps) xnext = CollStageConstraints dynC
 
 getX :: CollPoint x z u a -> x a
 getX (CollPoint x _ _) = x
+

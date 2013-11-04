@@ -11,7 +11,7 @@ module Dae ( Dae
 
 import Vectorize
 
---type Dae x z u p r a = x a -> z a -> u a -> p a -> a -> r a
+--type Dae x z u p r a = x a -> x a -> z a -> u a -> p a -> a -> r a
 type Dae x z u p r a = x a -> z a -> u a -> p a -> r a
 
 type ExplicitOde x u p a = Dae x None u p x a
