@@ -12,6 +12,7 @@ module Main where
 import Vectorize
 import TypeVecs
 import TypeNats
+import Accessors
 
 import Ocp
 import DirectCollocation
@@ -21,16 +22,21 @@ data PendX a = PendX { pX :: a
                      , pY :: a
                      , pVx :: a
                      , pVy :: a
-                     } deriving (Functor, Generic1, Show)
-data PendZ a = PendZ { pTau :: a}  deriving (Functor, Generic1, Show)
-data PendU a = PendU { pTorque :: a } deriving (Functor, Generic1, Show)
-data PendP a = PendP { pMass :: a } deriving (Functor, Generic1, Show)
-data PendR a = PendR a a a a a deriving (Functor, Generic1, Show)
+                     } deriving (Functor, Generic, Generic1, Show)
+data PendZ a = PendZ { pTau :: a}  deriving (Functor, Generic, Generic1, Show)
+data PendU a = PendU { pTorque :: a } deriving (Functor, Generic, Generic1, Show)
+data PendP a = PendP { pMass :: a } deriving (Functor, Generic, Generic1, Show)
+data PendR a = PendR a a a a a deriving (Functor, Generic, Generic1, Show)
+
 instance Vectorize PendX
 instance Vectorize PendZ
 instance Vectorize PendU
 instance Vectorize PendP
 instance Vectorize PendR
+
+instance (Lookup a, Generic a) => Lookup (PendX a)
+instance (Lookup a, Generic a) => Lookup (PendZ a)
+instance (Lookup a, Generic a) => Lookup (PendU a)
 
 meyer :: Num a => t -> a
 meyer _ = 0
@@ -41,7 +47,7 @@ lagrange (PendX x y vx vy) (PendZ tau) (PendU torque) (PendP m) = 0
 --springOde :: Floating a => ExplicitOde SpringX SpringU None a
 --springOde (SpringX x v) None (SpringU u) None = SpringX v acc
 --  where
---    acc = -k*x -b*v + u 
+--    acc = -k*x -b*v + u
 --    k = 2.6
 --    b = 0.2
 r :: Fractional a => a
@@ -56,10 +62,10 @@ pendDae (PendX x' y' vx' vy') (PendX x y vx vy) (PendZ tau) (PendU torque) (Pend
   where
     fx =  torque*y
     fy = -torque*x + m*9.8
-    
+
 --    dae['c']    = dae['x']*dae['x'] + dae['z']*dae['z'] - r*r
 --    dae['cdot'] = dae['dx']*dae['x'] + dae['dz']*dae['z']
-    
+
 
 pendOcp :: Fractional a => OcpPhase PendX PendZ PendU PendP PendR (Vec D4) None a
 pendOcp = OcpPhase { ocpMeyer = meyer
@@ -93,7 +99,22 @@ bc (PendX x0 y0 vx0 vy0) (PendX xf yf vxf vyf) = mkVec' [x0, vx0, y0, vy0]
 ----nlp :: Nlp (MsTraj SpringX SpringU None D9) (MsConstraints SpringX D9 (Vec D4) None)
 ----nlp = makeNlp springOcp forwardEuler
 
+xAccessors :: [(String, PendX Double -> Double)]
+xAccessors = flatten $ accessors (fill 0)
+
+xAccessors' :: AccessorTree (PendX Double)
+xAccessors' = accessors (fill 0)
+
+callback :: CollTraj PendX PendZ PendU PendP D10 D3 Double -> IO Bool
+callback traj = do
+  let xs :: [[(Double, PendX Double)]]
+      (xs,_,_) = plotPointLists $ plotPoints traj
+  print $ map (map (\(t,x) -> (t, pX x))) xs
+
+  return True
+
+
 main :: IO ()
 main = do
-  xopt <- solveCollNlp pendOcp Nothing :: IO (CollTraj PendX PendZ PendU PendP D10 D3 Double)
+  xopt <- solveCollNlp pendOcp (Just callback) :: IO (CollTraj PendX PendZ PendU PendP D10 D3 Double)
   print (vectorize xopt)

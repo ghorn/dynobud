@@ -1,16 +1,27 @@
 {-# OPTIONS_GHC -Wall #-}
+{-# Language RankNTypes #-}
 {-# Language DeriveFunctor #-}
 {-# Language DeriveGeneric #-}
-{-# Language GADTs #-}
-{-# Language TypeFamilies #-}
 {-# Language FlexibleContexts #-}
+{-# Language GADTs #-}
 {-# Language ScopedTypeVariables #-}
-{-# Language RankNTypes #-}
+--{-# Language TypeFamilies #-}
 
-module DirectCollocation where
+module DirectCollocation
+       ( CollTraj(..)
+       , CollStage(..)
+       , CollPoint(..)
+       , CollTrajConstraints(..)
+       , makeCollNlp
+       , solveCollNlp
+       , PlotPoints(..)
+       , plotPoints
+       , plotPointLists
+       ) where
 
 import qualified Data.Vector as V
 import qualified Data.Foldable as F
+import qualified Data.Traversable as T
 
 import JacobiRoots
 
@@ -26,7 +37,7 @@ import Ocp
 
 data CollPoint x z u a = CollPoint (x a) (z a) (u a) deriving (Functor, Generic1)
 data CollStage x z u deg a = CollStage (x a) (Vec deg (CollPoint x z u a)) deriving (Functor, Generic1)
-data CollTraj x z u p n deg a = CollTraj a (p a) (Vec n (CollStage x z u deg a)) (x a) deriving (Functor, Generic1)
+data CollTraj x z u p n deg a = CollTraj a (p a) (Vec n (CollStage x z u deg a)) (x a) deriving (Functor, Generic1) -- endtime, params, coll stages, xf
 
 instance (Vectorize x, Vectorize z, Vectorize u) => Vectorize (CollPoint x z u)
 instance (Vectorize x, Vectorize z, Vectorize u, NaturalT deg) => Vectorize (CollStage x z u deg)
@@ -117,13 +128,13 @@ getBx ocp = ct
   where
     --ct :: CollTraj x z u p n deg (Maybe Double, Maybe Double)
     ct = CollTraj tb pb (fill cs) xb
-    
+
     --cs :: CollStage x z u deg (Maybe Double, Maybe Double)
     cs = CollStage xb (fill cp)
-    
+
     --cp :: CollPoint x z u (Maybe Double, Maybe Double)
     cp = CollPoint xb zb ub
-    
+
     xb = ocpXbnd ocp
     ub = ocpUbnd ocp
     zb = ocpZbnd ocp
@@ -180,7 +191,7 @@ dynConstraints dae taus h p (CollStage x0 cps) xnext = CollStageConstraints dynC
     dynC = CollDynConstraint dynConstrs
 
     integratorC = vzipWith (-) xnext' xnext
-    
+
     dynConstrs :: Vec deg (r a)
     dynConstrs = tvzipWith applyDae xdots cps
 
@@ -199,15 +210,52 @@ dynConstraints dae taus h p (CollStage x0 cps) xnext = CollStageConstraints dynC
     cijs :: Vec (Succ deg) (Vec (Succ deg) a)
     cijs = lagrangeDerivCoeffs (0 <| taus)
 
-    deg = tvlength taus
-
     xnext' :: x a
-    xnext' = dot (mkVec' woo) (x0 <| xs)
-      
-    woo :: [a] -- deg + 1
-    woo = map (lagrangeXis (0 : (F.toList taus)) 1) [0..deg]
-
+    xnext' = interpolate taus x0 xs
 
 getX :: CollPoint x z u a -> x a
 getX (CollPoint x _ _) = x
 
+
+interpolate :: (NaturalT deg, NaturalT (Succ deg), Fractional a, Vectorize x)
+               => Vec deg a -> x a -> Vec deg (x a) -> x a
+interpolate taus x0 xs = dot (mkVec' xis) (x0 <| xs)
+  where
+    xis = map (lagrangeXis (0 : (F.toList taus)) 1) [0..deg]
+    deg = tvlength taus
+
+data PlotPoints n deg x z u a =
+  PlotPoints (Vec n ((a, x a), Vec deg (a, x a, z a, u a), (a, x a))) (a, x a)
+
+plotPoints ::
+  forall x z u p n deg a .
+  (NaturalT n, NaturalT deg, NaturalT (Succ deg), Fractional a, Vectorize x)
+  => CollTraj x z u p n deg a ->
+  PlotPoints n deg x z u a
+plotPoints ct@(CollTraj tf _ stages xf) = PlotPoints ret (tf', xf)
+  where
+    (tf', ret) = T.mapAccumL f 0 stages
+    nStages = tvlength stages
+    h = tf / (fromIntegral nStages)
+    taus = mkTaus (ctDeg ct)
+
+    f :: a -> CollStage x z u deg a -> (a, ((a, x a), Vec deg (a, x a, z a, u a), (a, x a)))
+    f t0 (CollStage x0 xs) = (tnext, stage)
+      where
+        tnext = t0 + h
+        stage = ( (t0, x0)
+                , tvzipWith (\(CollPoint x z u) tau -> (t0 + h*tau, x, z, u)) xs taus
+                , (tnext, interpolate taus x0 (fmap getX xs))
+                )
+
+plotPointLists :: forall n deg x z u a .
+                  PlotPoints n deg x z u a ->
+                  ([[(a, x a)]], [[(a, z a)]], [[(a, u a)]])
+plotPointLists (PlotPoints vec txf) = (xs' ++ [[txf]], zs', us')
+  where
+    (xs', zs', us') = unzip3 $ map f (F.toList vec)
+
+    f :: ((a, x a), Vec deg (a, x a, z a, u a), (a, x a)) -> ([(a, x a)], [(a, z a)], [(a, u a)])
+    f (x0, stage, xf) = (x0 : xs ++ [xf], zs, us)
+      where
+        (xs,zs,us) = unzip3 $ map (\(t, x, z, u) -> ((t,x), (t,z), (t,u))) (F.toList stage)
