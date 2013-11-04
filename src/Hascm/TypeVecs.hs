@@ -24,6 +24,7 @@ module Hascm.TypeVecs
        , tvhead
        , tvtranspose
        , tvzipWith
+       , tvzipWith3
        , tvunzip
        , tvunzip3
        , tvinit
@@ -128,6 +129,9 @@ tvsplitAt i v = (mkSeq x, mkSeq y)
 
 tvzipWith :: (NaturalT n) => (a -> b -> c) -> Vec n a -> Vec n b -> Vec n c
 tvzipWith f x y = mkSeq (S.zipWith f (unSeq x) (unSeq y))
+
+tvzipWith3 :: (NaturalT n) => (a -> b -> c -> d) -> Vec n a -> Vec n b -> Vec n c -> Vec n d
+tvzipWith3 f x y z = mkSeq (S.zipWith3 f (unSeq x) (unSeq y) (unSeq z))
 
 tvunzip :: Vec n (a,b) -> (Vec n a, Vec n b)
 tvunzip v = (mkVec v1, mkVec v2)

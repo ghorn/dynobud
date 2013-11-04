@@ -41,11 +41,11 @@ instance (Lookup a, Generic a) => Lookup (PendX a)
 instance (Lookup a, Generic a) => Lookup (PendZ a)
 instance (Lookup a, Generic a) => Lookup (PendU a)
 
-meyer :: Num a => t -> a
-meyer _ = 0
+meyer :: Num a => PendX a -> a -> a
+meyer _ _ = 0
 
-lagrange :: Floating a => PendX a -> PendZ a -> PendU a -> PendP a -> a
-lagrange (PendX _ _ vx vy) (PendZ _) (PendU torque) (PendP _) = vx*vx + vy*vy + 1e-4*torque**2
+lagrange :: Floating a => PendX a -> PendZ a -> PendU a -> PendP a -> a -> a
+lagrange (PendX _ _ vx vy) (PendZ _) (PendU torque) (PendP _) _ = vx*vx + vy*vy + 1e-4*torque**2
 --
 --springOde :: Floating a => ExplicitOde SpringX SpringU None a
 --springOde (SpringX x v) None (SpringU u) None = SpringX v acc
@@ -57,7 +57,7 @@ r :: Floating a => a
 r = 0.3
 
 pendDae :: Floating a => Dae PendX PendZ PendU PendP PendR a
-pendDae (PendX x' y' vx' vy') (PendX x y vx vy) (PendZ tau) (PendU torque) (PendP m) =
+pendDae (PendX x' y' vx' vy') (PendX x y vx vy) (PendZ tau) (PendU torque) (PendP m) _ =
   PendR (x' - vx) (y' - vy)
   (m*vx' + x*tau - fx)
   (m*vy' + y*tau - fy)
@@ -84,8 +84,8 @@ pendOcp = OcpPhase { ocpMeyer = meyer
                    , ocpTbnd = (Just 4, Just 4)
                    }
 
-pathc :: x a -> z a -> u a -> p a -> None a
-pathc _ _ _ _ = None
+pathc :: x a -> z a -> u a -> p a -> a -> None a
+pathc _ _ _ _ _ = None
 
 ----pathcb :: None a
 ----pathcb = None
