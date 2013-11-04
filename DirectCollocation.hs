@@ -106,8 +106,9 @@ makeCollNlp ocp = Nlp (getFg ocp) (getBx ocp) (getBg ocp)
 solveCollNlp ::
   (PositiveT n, Vectorize x, Vectorize r, NaturalT deg, NaturalT n, NaturalT (Succ deg), Vectorize bc, Vectorize pc, Vectorize p, Vectorize u, Vectorize z) =>
   (forall a. Floating a => OcpPhase x z u p r bc pc a) ->
+  Maybe (CollTraj x z u p n deg Double -> IO Bool) ->
   IO (CollTraj x z u p n deg Double)
-solveCollNlp ocp = solveNlp (makeCollNlp ocp)
+solveCollNlp ocp callback = solveNlp (makeCollNlp ocp) callback
 
 getBx ::
   (NaturalT n, NaturalT deg)

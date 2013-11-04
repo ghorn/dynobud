@@ -95,5 +95,5 @@ bc (PendX x0 y0 vx0 vy0) (PendX xf yf vxf vyf) = mkVec' [x0, vx0, y0, vy0]
 
 main :: IO ()
 main = do
-  xopt <- solveCollNlp pendOcp :: IO (CollTraj PendX PendZ PendU PendP D10 D3 Double)
+  xopt <- solveCollNlp pendOcp Nothing :: IO (CollTraj PendX PendZ PendU PendP D10 D3 Double)
   print (vectorize xopt)
