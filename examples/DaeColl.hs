@@ -9,6 +9,9 @@ module Main where
 
 --import qualified Data.Vector as V
 
+import qualified Control.Concurrent as CC
+import Plotter ( runPlotter, newChannel )
+
 import Hascm.Vectorize
 import Hascm.TypeVecs
 import Hascm.TypeNats
@@ -115,16 +118,26 @@ xAccessors = flatten $ accessors (fill 0)
 xAccessors' :: AccessorTree (PendX Double)
 xAccessors' = accessors (fill 0)
 
-callback :: CollTraj PendX PendZ PendU PendP D10 D3 Double -> IO Bool
-callback traj = do
-  let xs :: [[(Double, PendX Double)]]
-      (xs,_,_) = plotPointLists $ plotPoints traj
-  print $ map (map (\(t,x) -> (t, pX x))) xs
+type NCollStages = D40
+type CollDeg = D3
 
+callback :: (PlotPointsL PendX PendZ PendU Double -> IO ())
+            -> CollTraj PendX PendZ PendU PendP NCollStages CollDeg Double -> IO Bool
+callback writeMe traj = do
+  writeMe $ plotPointLists $ plotPoints traj
+--  CC.threadDelay 100000
   return True
 
 
 main :: IO ()
 main = do
-  xopt <- solveCollNlp pendOcp (Just callback) :: IO (CollTraj PendX PendZ PendU PendP D10 D3 Double)
-  print (vectorize xopt)
+  (chan, writeMe) <- newChannel "woo" (toPlotTree)
+  _ <- CC.forkIO $ runPlotter chan []
+
+  let runAFew 0 = return ()
+      runAFew k = do
+        _ <- solveCollNlp pendOcp (Just (callback writeMe))
+             :: IO (CollTraj PendX PendZ PendU PendP NCollStages CollDeg Double)
+        CC.threadDelay 1000000
+        runAFew (k-1 :: Int)
+  runAFew 100

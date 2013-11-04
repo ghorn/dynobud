@@ -15,10 +15,13 @@ module Hascm.DirectCollocation
        , makeCollNlp
        , solveCollNlp
        , PlotPoints(..)
+       , PlotPointsL(..)
        , plotPoints
        , plotPointLists
+       , toPlotTree
        ) where
 
+import Data.Tree ( Tree(..) )
 import qualified Data.Vector as V
 import qualified Data.Foldable as F
 import qualified Data.Traversable as T
@@ -27,6 +30,7 @@ import qualified Numeric.LinearAlgebra.Algorithms as LA
 
 import JacobiRoots
 
+import Hascm.Accessors
 import Hascm.Vectorize
 import Hascm.TypeVecs
 import Hascm.TypeNats
@@ -284,6 +288,9 @@ interpolate taus x0 xs = dot (mkVec' xis) (x0 <| xs)
 data PlotPoints n deg x z u a =
   PlotPoints (Vec n ((a, x a), Vec deg (a, x a, z a, u a), (a, x a))) (a, x a)
 
+data PlotPointsL x z u a =
+  PlotPointsL [[(a, x a)]] [[(a, z a)]] [[(a, u a)]]
+
 plotPoints ::
   forall x z u p n deg a .
   (NaturalT n, NaturalT deg, NaturalT (Succ deg), Fractional a, Vectorize x)
@@ -306,9 +313,11 @@ plotPoints ct@(CollTraj tf _ stages xf) = PlotPoints ret (tf', xf)
                 )
 
 plotPointLists :: forall n deg x z u a .
+                  (RealFrac a, Read a, Vectorize x, Vectorize z, Vectorize u) =>
                   PlotPoints n deg x z u a ->
-                  ([[(a, x a)]], [[(a, z a)]], [[(a, u a)]])
-plotPointLists (PlotPoints vec txf) = (xs' ++ [[txf]], zs', us')
+                  PlotPointsL x z u a
+plotPointLists (PlotPoints vec txf) =
+  PlotPointsL (xs' ++ [[txf]]) zs' us'
   where
     (xs', zs', us') = unzip3 $ map f (F.toList vec)
 
@@ -316,3 +325,28 @@ plotPointLists (PlotPoints vec txf) = (xs' ++ [[txf]], zs', us')
     f (x0, stage, xf) = (x0 : xs ++ [xf], zs, us)
       where
         (xs,zs,us) = unzip3 $ map (\(t, x, z, u) -> ((t,x), (t,z), (t,u))) (F.toList stage)
+
+
+toPlotTree :: forall x z u .
+              (Lookup (x Double), Lookup (z Double), Lookup (u Double),
+               Vectorize x, Vectorize z, Vectorize u) =>
+              Tree (String, String, Maybe (PlotPointsL x z u Double -> [[(Double, Double)]]))
+toPlotTree = Node ("", "", Nothing) [xtree, ztree, utree]
+  where
+    xtree :: Tree ( String, String, Maybe (PlotPointsL x z u Double -> [[(Double, Double)]]))
+    xtree = toGetterTree (\(PlotPointsL x _ _) -> x) "x" "xx" $ accessors (fill 0)
+
+    ztree :: Tree ( String, String, Maybe (PlotPointsL x z u Double -> [[(Double, Double)]]))
+    ztree = toGetterTree (\(PlotPointsL _ z _) -> z) "z" "zz" $ accessors (fill 0)
+
+    utree :: Tree ( String, String, Maybe (PlotPointsL x z u Double -> [[(Double, Double)]]))
+    utree = toGetterTree (\(PlotPointsL _ _ u) -> u) "u" "uu" $ accessors (fill 0)
+
+toGetterTree ::
+  (b -> [[(Double, x Double)]]) -> String -> String -> AccessorTree (x Double)
+  -> Tree (String, String, Maybe (b -> [[(Double,Double)]]))
+toGetterTree toXs msg name (Getter f) = Node (name, msg, Just g) []
+  where
+    g = map (map (\(t,x) -> (t,f x))) . toXs
+toGetterTree toXs msg name (Data (_,name') children) =
+  Node (msg, name ++ ".." ++ name', Nothing) $ map (\(n,t) -> toGetterTree toXs (msg ++ name) n t) children

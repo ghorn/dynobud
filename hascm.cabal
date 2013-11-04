@@ -51,5 +51,6 @@ executable daeColl
   main-is:             DaeColl.hs
   default-language:    Haskell2010
   build-depends:       hascm,
-                       base >=4.6 && <4.7
-                       
+                       base >=4.6 && <4.7,
+                       Plot-ho-matic >= 0.3.0.0
+  ghc-options:         -threaded -O2
