@@ -23,8 +23,8 @@ data SpringU a = SpringU a deriving (Functor, Generic1, Show)
 instance Vectorize SpringX
 instance Vectorize SpringU
 
-meyer :: Num a => t -> a
-meyer _ = 0
+mayer :: Num a => t -> a
+mayer _ = 0
 
 lagrange :: Floating a => SpringX a -> None a -> SpringU a -> None a -> a
 lagrange (SpringX x v) None (SpringU u) None = x**2 + 2*v**2 + 10*u**2
@@ -37,7 +37,7 @@ springOde (SpringX x v) None (SpringU u) None = SpringX v acc
     b = 0.2
 
 springOcp :: Floating a => OcpPhase SpringX None SpringU None SpringX (Vec D4) None a
-springOcp = OcpPhase { ocpMeyer = meyer
+springOcp = OcpPhase { ocpMayer = mayer
                      , ocpLagrange = lagrange
                      , ocpDae = springOde
                      , ocpBc = bc

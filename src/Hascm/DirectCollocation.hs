@@ -101,9 +101,9 @@ getFg :: forall z x u p r bc pc a n deg .
          NlpFun (CollOcpConstraints n deg x r bc pc) a
 getFg ocp collTraj@(CollTraj tf p stages xf) = NlpFun obj g
   where
-    obj = objLagrange + objMeyer
+    obj = objLagrange + objMayer
 
-    objMeyer = ocpMeyer ocp xf tf
+    objMayer = ocpMayer ocp xf tf
     objLagrange = evaluateQuadratures (ocpLagrange ocp) collTraj h taus times
 
     -- timestep

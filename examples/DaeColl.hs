@@ -41,8 +41,8 @@ instance (Lookup a, Generic a) => Lookup (PendX a)
 instance (Lookup a, Generic a) => Lookup (PendZ a)
 instance (Lookup a, Generic a) => Lookup (PendU a)
 
-meyer :: Num a => PendX a -> a -> a
-meyer _ _ = 0
+mayer :: Num a => PendX a -> a -> a
+mayer _ _ = 0
 
 lagrange :: Floating a => PendX a -> PendZ a -> PendU a -> PendP a -> a -> a
 lagrange (PendX _ _ vx vy) (PendZ _) (PendU torque) (PendP _) _ = vx*vx + vy*vy + 1e-4*torque**2
@@ -71,7 +71,7 @@ pendDae (PendX x' y' vx' vy') (PendX x y vx vy) (PendZ tau) (PendU torque) (Pend
 
 
 pendOcp :: Floating a => OcpPhase PendX PendZ PendU PendP PendR (Vec D8) None a
-pendOcp = OcpPhase { ocpMeyer = meyer
+pendOcp = OcpPhase { ocpMayer = mayer
                    , ocpLagrange = lagrange
                    , ocpDae = pendDae
                    , ocpBc = bc

@@ -78,7 +78,7 @@ getFg ocp integrator (MsTraj p xus xf tf) = NlpFun objective constraints
             x1' = integrator (ocpDae ocp) ts x0 u0 p
         x1s = tvtail xs |> xf
 
-    objective = (ocpMeyer ocp) xf
+    objective = (ocpMayer ocp) xf
 --    objectiveL = V.foldl' f 0 (vectorize xus)
 --      where
 --        f acc (MsPoint x u) = integrator dae' ts x u p + acc
