@@ -5,11 +5,11 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveTraversable #-}
 
 module Hascm.Vectorize
        ( Vectorize(..)
-       , GVectorize(..)
-       , Generic1
        , None(..)
        , Id(..)
        , Tuple(..)
@@ -18,21 +18,35 @@ module Hascm.Vectorize
        , vzipWith
        , vzipWith3
        , fill
+       , GVectorize(..)
+       , Generic1
        ) where
 
 
 import qualified GHC.Generics as G
 import GHC.Generics hiding ( D1, (:+:), (:*:) )
 import qualified Data.Vector as V
+import Data.Foldable ( Foldable )
+import Data.Traversable ( Traversable )
 
-data None a = None deriving (Generic1, Functor, Show)
+-- | a length-0 vectorizable type
+data None a = None
+            deriving (Generic, Generic1, Functor, Foldable, Traversable, Show)
 instance Vectorize None
 
-newtype Id a = Id a deriving (Generic1, Functor, Show)
+-- | a length-1 vectorizable type
+newtype Id a = Id a
+             deriving (Generic, Generic1, Functor, Foldable, Traversable, Show)
 instance Vectorize Id
-data Tuple f g a = Tuple (f a) (g a) deriving (Generic1, Functor, Show)
+
+-- | a length-2 vectorizable type
+data Tuple f g a = Tuple (f a) (g a)
+                 deriving (Generic, Generic1, Functor, Foldable, Traversable, Show)
 instance (Vectorize f, Vectorize g) => Vectorize (Tuple f g)
-data Triple f g h a = Triple (f a) (g a) (h a) deriving (Generic1, Functor, Show)
+
+-- | a length-3 vectorizable type
+data Triple f g h a = Triple (f a) (g a) (h a)
+                    deriving (Generic, Generic1, Functor, Foldable, Traversable, Show)
 instance (Vectorize f, Vectorize g, Vectorize h) => Vectorize (Triple f g h)
 
 fill :: Vectorize f => a -> f a
