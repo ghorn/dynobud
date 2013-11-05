@@ -27,6 +27,8 @@ import qualified Data.Foldable as F
 import qualified Data.Traversable as T
 import qualified Data.Packed.Matrix as Mat
 import qualified Numeric.LinearAlgebra.Algorithms as LA
+import Linear.Vector
+import Linear.Matrix
 
 import JacobiRoots
 
@@ -203,10 +205,10 @@ add :: (Vectorize x, Num a) => x a -> x a -> x a
 add x y = devectorize $ V.zipWith (+) (vectorize x) (vectorize y)
 
 dot :: forall x deg a. (NaturalT deg, Vectorize x, Num a) => Vec deg a -> Vec deg (x a) -> x a
-dot cks xs = F.foldl' (add) (fill 0) $ unSeq elemwise
+dot cks xs = F.foldl' add (fill 0) $ unSeq elemwise
   where
     elemwise :: Vec deg (x a)
-    elemwise = tvzipWith (\(Id c) x -> fmap (c*) x) (fmap Id cks) xs
+    elemwise = tvzipWith (\(Id c) x -> c *^ x) (fmap Id cks) xs
 
 evaluateQuadratures ::
   forall x z u p n deg a .
@@ -222,12 +224,9 @@ evaluateQuadratures f (CollTraj _ p stages _) h taus times =
         qdots :: Vec deg a
         qdots = tvzipWith (\(CollPoint x z u) t -> f x z u p t) stage stageTimes
 
-        qs = cijInvFr `mm` qdots
+        qs = cijInvFr !* qdots
 
         Id qnext = interpolate taus (Id 0) (fmap Id qs)
-
-    mm :: Vec deg (Vec deg a) -> Vec deg a -> Vec deg a
-    mm vls vr = fmap (\vl -> V.sum (V.zipWith (*) (unVec vl) (unVec vr))) vls
 
     cijs' :: Vec (Succ deg) (Vec (Succ deg) Double)
     cijs' = lagrangeDerivCoeffs (0 <| taus)

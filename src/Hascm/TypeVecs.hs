@@ -30,7 +30,6 @@ module Hascm.TypeVecs
        , tvinit
        , tvtail
        , tvlast
-       , tvreplicate
        , tvconcatMap
        , tvempty
        , tvsingleton
@@ -39,12 +38,14 @@ module Hascm.TypeVecs
        )
        where
 
+import Control.Applicative
 import Data.Foldable ( Foldable )
 import Data.Traversable ( Traversable )
 import qualified Data.Traversable as T
 import qualified Data.Foldable as F
 import qualified Data.Sequence as S
 import qualified Data.Vector as V
+import Linear.Vector
 
 import Hascm.TypeNats
 import Hascm.Vectorize
@@ -52,20 +53,26 @@ import Hascm.Vectorize
 -- length-indexed vectors using phantom types
 newtype Vec n a = MkVec {unSeq :: S.Seq a} deriving (Eq, Ord, Functor, Foldable, Traversable, Generic1, Monad)
 
+instance NaturalT n => Applicative (Vec n) where
+  pure x = ret
+    where
+      ret = MkVec $ S.replicate (tvlength ret) x
+  MkVec xs <*> MkVec ys = MkVec $ S.zipWith id xs ys
+
+instance NaturalT n => Additive (Vec n) where
+  zero = pure 0
+  MkVec xs ^+^ MkVec ys = MkVec (S.zipWith (+) xs ys)
+  MkVec xs ^-^ MkVec ys = MkVec (S.zipWith (-) xs ys)
+
 instance NaturalT n => Vectorize (Vec n) where
   vectorize = unVec
   devectorize = mkVec
-  empty = ret
-    where
-      ret = tvreplicate k ()
-      k = tvlengthT ret
+  empty = pure ()
+
 instance NaturalT n => GVectorize (Vec n) where
   gvectorize = unVec
   gdevectorize = mkVec
-  gempty = ret
-    where
-      ret = tvreplicate k ()
-      k = tvlengthT ret
+  gempty = pure ()
 
 tvtranspose :: Vec n (Vec m a) -> Vec m (Vec n a)
 tvtranspose vec = mkVec $ fmap mkVec $ T.sequence (unVec (fmap unVec vec))
@@ -174,9 +181,6 @@ tvlast :: PositiveT n => Vec n a -> a
 tvlast x = case S.viewr (unSeq x) of
   _ S.:> y -> y
   S.EmptyR -> error "vlast: empty"
-
-tvreplicate :: IntegerT n => n -> a -> Vec n a
-tvreplicate n = mkSeq . (S.replicate (fromIntegerT n))
 
 tvconcatMap :: (a -> Vec n b) -> Vec m a -> Vec (n :*: m) b
 tvconcatMap f = mkVec . (V.concatMap (unVec . f)) . unVec
