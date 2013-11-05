@@ -1,8 +1,8 @@
 {-# OPTIONS_GHC -Wall #-}
 
-module Hascm.Ocp ( OcpPhase(..), Dae ) where
+module Hascm.Ocp ( Dae, OcpPhase(..) ) where
 
--- differential-algebraic equation of the form:
+-- | fully implicit differential-algebraic equation of the form:
 --
 -- > f(x'(t), x(t), z(t), u(t), p(t), t) == 0
 type Dae x z u p r a = x a -> x a -> z a -> u a -> p a -> a -> r a
