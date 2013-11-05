@@ -23,8 +23,7 @@ module Hascm.Vectorize
        ) where
 
 
-import qualified GHC.Generics as G
-import GHC.Generics hiding ( D1, (:+:), (:*:) )
+import GHC.Generics
 import qualified Data.Vector as V
 import Data.Foldable ( Foldable )
 import Data.Traversable ( Traversable )
@@ -90,14 +89,14 @@ gvlength = V.length . gvectorize . (gempty `asFunctorOf`)
     asFunctorOf :: f a -> f b -> f a
     asFunctorOf x _ = x
 
-instance (GVectorize f, GVectorize g) => GVectorize (f G.:*: g) where
-  gvectorize (f G.:*: g) = gvectorize f V.++ gvectorize g
+instance (GVectorize f, GVectorize g) => GVectorize (f :*: g) where
+  gvectorize (f :*: g) = gvectorize f V.++ gvectorize g
   gdevectorize v0s
     | V.length v0s < n0 =
       error $ "gdevectorize (f :*: g): V.length v0s < vlength f0"
     | V.length v1 /= n1 =
       error $ "gdevectorize (f :*: g): V.length v1 /= vlength f1"
-    | otherwise = f0 G.:*: f1
+    | otherwise = f0 :*: f1
     where
       f0 = gdevectorize v0
       f1 = gdevectorize v1
@@ -107,7 +106,7 @@ instance (GVectorize f, GVectorize g) => GVectorize (f G.:*: g) where
 
       (v0,v1) = V.splitAt n0 v0s
 
-  gempty = gempty G.:*: gempty
+  gempty = gempty :*: gempty
 
 -- Metadata (constructor name, etc)
 instance GVectorize f => GVectorize (M1 i c f) where
