@@ -68,14 +68,14 @@ data CollTrajConstraints n x deg r a =
 instance (Vectorize x, Vectorize r, NaturalT n, NaturalT deg) =>
          Vectorize (CollTrajConstraints n x deg r)
 
-data CollOcpConstraints n deg x r bc pc a =
+data CollOcpConstraints n deg x r c h a =
   CollOcpConstraints
   { coDynamics :: CollTrajConstraints n x deg r a
-  , coPathC :: Vec n (Vec deg (pc a))
-  , coBc :: bc a
+  , coPathC :: Vec n (Vec deg (h a))
+  , coBc :: c a
   } deriving (Functor, Generic1)
-instance (Vectorize x, Vectorize r, NaturalT n, NaturalT deg, Vectorize bc, Vectorize pc) =>
-         Vectorize (CollOcpConstraints n deg x r bc pc)
+instance (Vectorize x, Vectorize r, NaturalT n, NaturalT deg, Vectorize c, Vectorize h) =>
+         Vectorize (CollOcpConstraints n deg x r c h)
 
 ctDegT :: CollTraj x z u p n deg a -> deg
 ctDegT _ = undefined
@@ -94,11 +94,11 @@ mkTaus deg = case shiftedLegendreRoots deg of
   Just taus -> mkVec $ V.map (fromRational . toRational) taus
   Nothing -> error "makeTaus: too high degree"
 
-getFg :: forall z x u p r bc pc a n deg .
+getFg :: forall z x u p r c h a n deg .
          (PositiveT n, NaturalT deg, NaturalT (Succ deg), deg ~ Pred (Succ deg),
           Vectorize x, Fractional a, NaturalT n, Num a) =>
-         OcpPhase x z u p r bc pc a -> CollTraj x z u p n deg a ->
-         NlpFun (CollOcpConstraints n deg x r bc pc) a
+         OcpPhase x z u p r c h a -> CollTraj x z u p n deg a ->
+         NlpFun (CollOcpConstraints n deg x r c h) a
 getFg ocp collTraj@(CollTraj tf p stages xf) = NlpFun obj g
   where
     obj = objLagrange + objMayer
@@ -145,32 +145,32 @@ getFg ocp collTraj@(CollTraj tf p stages xf) = NlpFun obj g
         , coBc = (ocpBc ocp) x0 xf
         }
 
-    mkPathConstraints :: CollStage x z u deg a -> Vec deg a -> Vec deg (pc a)
+    mkPathConstraints :: CollStage x z u deg a -> Vec deg a -> Vec deg (h a)
     mkPathConstraints (CollStage _ collPoints) stageTimes =
       tvzipWith mkPathC collPoints stageTimes
 
-    mkPathC :: CollPoint x z u a -> a -> pc a
+    mkPathC :: CollPoint x z u a -> a -> h a
     mkPathC (CollPoint x z u) t = ocpPathC ocp x z u p t
 
 
 makeCollNlp ::
   (PositiveT n, NaturalT deg, NaturalT n, NaturalT (Succ deg), deg ~ Pred (Succ deg),
-   Vectorize x, Vectorize r, Vectorize bc) =>
-  (forall a. Floating a => OcpPhase x z u p r bc pc a) ->
-  Nlp (CollTraj x z u p n deg) (CollOcpConstraints n deg x r bc pc)
+   Vectorize x, Vectorize r, Vectorize c) =>
+  (forall a. Floating a => OcpPhase x z u p r c h a) ->
+  Nlp (CollTraj x z u p n deg) (CollOcpConstraints n deg x r c h)
 makeCollNlp ocp = Nlp (getFg ocp) (getBx ocp) (getBg ocp)
 
 solveCollNlp ::
   (PositiveT n, NaturalT deg, NaturalT n, NaturalT (Succ deg), deg ~ Pred (Succ deg),
-   Vectorize x, Vectorize r, Vectorize bc, Vectorize pc, Vectorize p, Vectorize u, Vectorize z) =>
-  (forall a. Floating a => OcpPhase x z u p r bc pc a) ->
+   Vectorize x, Vectorize r, Vectorize c, Vectorize h, Vectorize p, Vectorize u, Vectorize z) =>
+  (forall a. Floating a => OcpPhase x z u p r c h a) ->
   Maybe (CollTraj x z u p n deg Double -> IO Bool) ->
   IO (CollTraj x z u p n deg Double)
 solveCollNlp ocp callback = solveNlp (makeCollNlp ocp) callback
 
 getBx ::
   (NaturalT n, NaturalT deg)
-  => OcpPhase x z u p r bc pc Double -> CollTraj x z u p n deg (Maybe Double, Maybe Double)
+  => OcpPhase x z u p r c h Double -> CollTraj x z u p n deg (Maybe Double, Maybe Double)
 getBx ocp = ct
   where
     --ct :: CollTraj x z u p n deg (Maybe Double, Maybe Double)
@@ -189,9 +189,9 @@ getBx ocp = ct
     tb = ocpTbnd ocp
 
 getBg ::
-  (NaturalT n, NaturalT deg, Vectorize x, Vectorize r, Vectorize bc)
-  => OcpPhase x z u p r bc pc Double ->
-  CollOcpConstraints n deg x r bc pc (Maybe Double, Maybe Double)
+  (NaturalT n, NaturalT deg, Vectorize x, Vectorize r, Vectorize c)
+  => OcpPhase x z u p r c h Double ->
+  CollOcpConstraints n deg x r c h (Maybe Double, Maybe Double)
 getBg ocp =
   CollOcpConstraints
   { coDynamics = fill (Just 0, Just 0)

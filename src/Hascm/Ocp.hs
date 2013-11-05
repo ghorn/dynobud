@@ -37,7 +37,7 @@ type Dae x z u p r a = x a -> x a -> z a -> u a -> p a -> a -> r a
 --
 -- > c(x(0), 0, x(T), T) == 0
 
-data OcpPhase x z u p r bc pc a =
+data OcpPhase x z u p r c h a =
   OcpPhase { -- | the Mayer term @Jm(x(T),T)@
              ocpMayer :: x a -> a -> a
              -- | the Lagrange term @Jl(x(t),z(t),u(t),p,t)@
@@ -45,11 +45,11 @@ data OcpPhase x z u p r bc pc a =
              -- | the system dynamics of the stage: @f(x'(t), x(t), z(t), u(t), p(t), t)@
            , ocpDae :: Dae x z u p r a
              -- | the boundary conditions @c(x(0), x(T))@
-           , ocpBc :: x a -> x a -> bc a
+           , ocpBc :: x a -> x a -> c a
              -- | the path constraints @h(x(t), z(t), u(t), p(t), t)@
-           , ocpPathC :: x a -> z a -> u a -> p a -> a -> pc a
+           , ocpPathC :: x a -> z a -> u a -> p a -> a -> h a
              -- | the path constraint bounds @(hlb, hub)@
-           , ocpPathCBnds :: pc (Maybe Double, Maybe Double)
+           , ocpPathCBnds :: h (Maybe Double, Maybe Double)
              -- | differential state bounds @(xlb, xub)@
            , ocpXbnd :: x (Maybe Double, Maybe Double)
              -- | algebraic variable bounds @(zlb, zub)@
