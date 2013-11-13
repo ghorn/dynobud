@@ -2,7 +2,7 @@
 {-# Language Rank2Types #-}
 {-# Language FlexibleContexts #-}
 
-module Hascm.DvdaCasadi ( toCallSXFun, toSX, funToSX, SX ) where
+module Hascm.Casadi.SX ( toSX, funToSX, SX ) where
 
 import Data.Vector.Generic ( (!) )
 import qualified Data.Vector as V
@@ -13,13 +13,6 @@ import Control.Monad.Primitive ( PrimState, PrimMonad )
 import GHC.Prim ( RealWorld )
 
 import Casadi.Wrappers.Classes.SX
-import Casadi.Wrappers.Classes.DMatrix
-import Casadi.Wrappers.Classes.SXMatrix
-import Casadi.Wrappers.Classes.SXFunction
-import Casadi.Wrappers.Classes.SharedObject
-import Casadi.Wrappers.Classes.IOInterfaceFX
-import Casadi.Wrappers.Classes.FX
-import Casadi.Wrappers.Tools ( densify'' )
 
 import Dvda.Algorithm.Construct (
   Node(..), AlgOp(..), Algorithm(..), InputIdx(..), OutputIdx(..)
@@ -28,35 +21,10 @@ import Dvda.Expr
 import Hascm.Vectorize
 import Hascm.AlgorithmV
 
-toCallSXFun :: (Vectorize f, Vectorize g) =>
-               (f (Expr Double) -> g (Expr Double)) -> IO (f Double -> IO (g Double))
-toCallSXFun userFun = do
-  alg <- constructAlgorithmV userFun
-  f <- toSXFun alg
-  sharedObject_init' f
-
-  return $ \x -> do
-    let vec = vectorize x
-    ioInterfaceFX_setInput''' f vec 0
-    fx_evaluate'' f
-    dmat <- ioInterfaceFX_output f 0
-    dmatData <- dmatrix_data dmat
-    return (devectorize dmatData)
 
 casadiSsyms :: String -> Int -> IO (V.Vector SX)
 casadiSsyms name k = fmap V.fromList $ mapM (sx'' . (name ++) . show) (take k [(0::Int)..])
 
-toSXFun :: (Vectorize f, Vectorize g) => AlgorithmV f g Double -> IO SXFunction
-toSXFun alg = do
-  (f,g) <- toSX alg
-  let inputsSX = vectorize f
-      outputsSX = vectorize g
-
-  outputVec <- sxMatrix''''''''''' outputsSX >>= densify''
-
-  -- input SXMatrix
-  sxmat <- sxMatrix''''''''''' inputsSX
-  sxFunction''' (V.fromList [sxmat]) (V.fromList [outputVec])
 
 funToSX :: (Vectorize f, Vectorize g) =>
            (forall a . Floating a => f a -> g a) -> IO (f SX, g SX)

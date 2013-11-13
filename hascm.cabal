@@ -21,11 +21,16 @@ library
                        Hascm.Accessors,
                        Hascm.Ocp,
                        Hascm.DirectCollocation,
-                       Hascm.IOSchemes,
                        Hascm.TypeNats,
                        Hascm.Vectorize,
                        Hascm.Nlp,
-                       Hascm.DvdaCasadi
+                       Hascm.Ipopt
+                       Hascm.Casadi.IOSchemes,
+                       Hascm.Casadi.SXFunction
+                       Hascm.Casadi.SX
+                       Hascm.Casadi.SXMatrix
+                       Hascm.Casadi.DMatrix
+                       Hascm.Casadi.QP
 
   -- other-modules:       
   build-depends:       base >=4.6 && <4.7,

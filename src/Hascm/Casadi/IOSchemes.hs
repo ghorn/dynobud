@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language ScopedTypeVariables #-}
 
-module Hascm.IOSchemes
+module Hascm.Casadi.IOSchemes
        ( mkSchemeSXMatrix
        , mkSchemeCRSSparsity
        ) where
@@ -57,3 +57,4 @@ mkSchemeSXMatrix = mkScheme sxMatrix
 
 mkSchemeCRSSparsity :: InputOutputScheme -> [(String,CRSSparsity)] -> IO (V.Vector CRSSparsity)
 mkSchemeCRSSparsity = mkScheme crsSparsity'
+

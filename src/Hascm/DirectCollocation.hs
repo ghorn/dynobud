@@ -13,7 +13,6 @@ module Hascm.DirectCollocation
        , CollPoint(..)
        , CollTrajConstraints(..)
        , makeCollNlp
-       , solveCollNlp
        , PlotPoints(..)
        , PlotPointsL(..)
        , plotPoints
@@ -161,14 +160,6 @@ makeCollNlp ::
   (forall a. Floating a => OcpPhase x z u p r c h a) ->
   Nlp (CollTraj x z u p n deg) (CollOcpConstraints n deg x r c h)
 makeCollNlp ocp = Nlp (getFg ocp) (getBx ocp) (getBg ocp)
-
-solveCollNlp ::
-  (PositiveT n, NaturalT deg, NaturalT n, NaturalT (Succ deg), deg ~ Pred (Succ deg),
-   Vectorize x, Vectorize r, Vectorize c, Vectorize h, Vectorize p, Vectorize u, Vectorize z) =>
-  (forall a. Floating a => OcpPhase x z u p r c h a) ->
-  Maybe (CollTraj x z u p n deg Double -> IO Bool) ->
-  IO (CollTraj x z u p n deg Double)
-solveCollNlp ocp callback = solveNlp (makeCollNlp ocp) callback
 
 getBx ::
   (NaturalT n, NaturalT deg)

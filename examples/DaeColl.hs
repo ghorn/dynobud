@@ -4,6 +4,9 @@
 {-# Language TypeSynonymInstances #-}
 {-# Language FlexibleInstances #-}
 {-# Language MultiParamTypeClasses #-}
+{-# Language RankNTypes #-}
+{-# Language FlexibleContexts #-}
+{-# Language GADTs #-}
 
 module Main where
 
@@ -16,6 +19,7 @@ import Hascm.Vectorize
 import Hascm.TypeVecs
 import Hascm.TypeNats
 import Hascm.Accessors
+import Hascm.Ipopt
 
 import Hascm.Ocp
 import Hascm.DirectCollocation
@@ -81,7 +85,7 @@ pendOcp = OcpPhase { ocpMayer = mayer
                    , ocpUbnd = ubnd
                    , ocpZbnd = fill (Nothing, Nothing)
                    , ocpPbnd = fill (Just 0.3, Just 0.3)
-                   , ocpTbnd = (Just 4, Just 4)
+                   , ocpTbnd = (Just 4, Just 10)
                    }
 
 pathc :: x a -> z a -> u a -> p a -> a -> None a
@@ -93,17 +97,17 @@ pathc _ _ _ _ _ = None
 xbnd :: PendX (Maybe Double, Maybe Double)
 xbnd = PendX { pX = (Just (-10), Just (10))
              , pY = (Just (-10), Just (10))
-             , pVx = (Just (-1), Just (1))
-             , pVy = (Just (-1), Just (1))
+             , pVx = (Just (-10), Just (10))
+             , pVy = (Just (-10), Just (10))
              }
 
 ubnd :: PendU (Maybe Double, Maybe Double)
-ubnd = PendU (Just (-100), Just (100))
+ubnd = PendU (Just (-40), Just (40))
 
 bc :: Floating a => PendX a -> PendX a -> Vec D8 a
 bc (PendX x0 y0 vx0 vy0) (PendX xf yf vxf vyf) =
-  mkVec' [ x0-r
-         , y0
+  mkVec' [ x0
+         , y0 + r
          , vx0
          , vy0
          , xf
@@ -118,15 +122,23 @@ xAccessors = flatten $ accessors (fill 0)
 xAccessors' :: AccessorTree (PendX Double)
 xAccessors' = accessors (fill 0)
 
-type NCollStages = D40
+type NCollStages = D80
 type CollDeg = D3
 
 callback :: (PlotPointsL PendX PendZ PendU Double -> IO ())
             -> CollTraj PendX PendZ PendU PendP NCollStages CollDeg Double -> IO Bool
 callback writeMe traj = do
   writeMe $ plotPointLists $ plotPoints traj
---  CC.threadDelay 100000
+  CC.threadDelay 100000
   return True
+
+solveCollNlp ::
+  (PositiveT n, NaturalT deg, NaturalT n, NaturalT (Succ deg), deg ~ Pred (Succ deg),
+   Vectorize x, Vectorize r, Vectorize c, Vectorize h, Vectorize p, Vectorize u, Vectorize z) =>
+  (forall a. Floating a => OcpPhase x z u p r c h a) ->
+  Maybe (CollTraj x z u p n deg Double -> IO Bool) ->
+  IO (CollTraj x z u p n deg Double)
+solveCollNlp ocp = solveNlpIpopt (makeCollNlp ocp) (Just (fill 1))
 
 
 main :: IO ()
@@ -140,4 +152,4 @@ main = do
              :: IO (CollTraj PendX PendZ PendU PendP NCollStages CollDeg Double)
         CC.threadDelay 1000000
         runAFew (k-1 :: Int)
-  runAFew 100
+  runAFew 10
