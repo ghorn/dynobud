@@ -59,6 +59,8 @@ toSqpSymbolics ::
   Nlp x g -> IO (SXFunction SqpIn SqpOut,
                  SXFunction Id SqpOut')
 toSqpSymbolics sqp = do
+  debug "toSqpSymbolics"
+
   -- run the function to make SX
   (x', NlpFun f' g') <- funToSX (nlpFG sqp)
 
@@ -84,14 +86,17 @@ toSqpSymbolics sqp = do
   jacobG <- sjacobian g x
   gradL <- sgradient lagrangian x
   hessL <- shessian lagrangian x
-  
+
   -- create an SXFunction
   let sqpIn = SqpIn x lambdaX lambdaG
       sqpOut   = SqpOut   f g gradF gradL jacobG hessL
       sqpOut'  = SqpOut'  f g gradF jacobG
   out <- toSXFunction sqpIn sqpOut
   out' <- toSXFunction (Id x) sqpOut'
-  
+
+  debug $ show sqpOut
+  debug $ show sqpOut'
+
   return (out, out')
 
 cpx_ON :: CInt
@@ -118,7 +123,7 @@ solveSqp nlp x0_ = do
   (sqp ,sqp') <- toSqpSymbolics nlp
 
   let x0 = dvector (vectorize x0_)
-  
+
   SqpOut' _ g0 gradF0 jacG0 <- evalSXFun sqp' (Id x0)
   SqpOut _ _ _ _ _ hessL0 <- evalSXFun sqp (SqpIn x0 x0 g0)
   let gradF0' = ddata $ ddensify gradF0
@@ -133,12 +138,12 @@ solveSqp nlp x0_ = do
         obj = gradF0'
         rhs = toSense $ vectorize (nlpBG nlp)
         xbnds = vectorize (nlpBX nlp) ------- WRONG, need to be delta bounds
-    putStrLn "=========================== COPY LP ================================"
-    putStrLn $ "objsen: " ++ show objsen
-    putStrLn $ "obj: " ++ show obj
-    putStrLn $ "rhs: " ++ show rhs
-    putStrLn $ "amat: " ++ show amat
-    putStrLn $ "xbnds: " ++ show xbnds
+    debug "=========================== COPY LP ================================"
+    debug $ "objsen: " ++ show objsen
+    debug $ "obj: " ++ show obj
+    debug $ "rhs: " ++ show rhs
+    debug $ "amat: " ++ show amat
+    debug $ "xbnds: " ++ show xbnds
     statusLp <- copyLp env lp objsen obj rhs amat xbnds
 
     case statusLp of
@@ -156,15 +161,15 @@ solveSqp nlp x0_ = do
     case statusOpt of
       Nothing -> return ()
       Just msg -> error $ "CPXqpopt error: " ++ msg
-      
+
     statusSol <- getSolution env lp
     case statusSol of
       Left msg -> error $ "CPXsolution error: " ++ msg
-      Right sol -> runSqpIter 0 (vectorize (nlpBX nlp)) (vectorize (nlpBG nlp)) env lp sqp (vectorize x0_)
+      Right _ -> runSqpIter 0 (vectorize (nlpBX nlp)) (vectorize (nlpBG nlp)) env lp sqp (vectorize x0_)
 
 
 -----------------------------------------------------------------
-        
+
 toDeltaXBnds :: V.Vector (Maybe Double, Maybe Double) -> V.Vector Double -> V.Vector (Col, Bound)
 toDeltaXBnds xbnds xk = V.fromList $ f 0 (V.toList xk) (V.toList xbnds)
   where
@@ -293,6 +298,14 @@ printLine (IterPrint xs) x = field xs
     field ((_, f):xs') = f x  ++ " " ++ field xs'
     field [] = []
 
+-- map a vector input function over a functor, if vector is empty, use default
+fvmapDefault :: Functor f => b -> (V.Vector a -> b) -> f (V.Vector a) -> f b
+fvmapDefault default' f = fmap fmaybe
+  where
+    fmaybe x
+      | V.null x = default'
+      | otherwise = f x
+
 runSqpIter :: Int -> V.Vector (Maybe Double, Maybe Double) -> V.Vector (Maybe Double, Maybe Double) -> CpxEnv -> CpxLp -> SXFunction SqpIn SqpOut -> V.Vector Double -> IO (SqpIn DMatrix, SqpOut DMatrix, Kkt Double)
 runSqpIter iter bx bg env lp sqp xk = do
   statusOpt <- qpopt env lp
@@ -310,15 +323,15 @@ runSqpIter iter bx bg env lp sqp xk = do
       lambdaXSol = V.fromList $ VS.toList (solDj sol)
       xkp1 = V.zipWith (+) xk dxSol
       deltaxBnds = toDeltaXBnds bx xkp1
-  
+
   let xkp1' = dvector xkp1
       lambdaX' = dvector lambdaXSol
       lambdaG' = dvector lambdaGSol
       sqpIn = (SqpIn xkp1' lambdaX' lambdaG')
-  sqpOut@(SqpOut f0 g0 gradF0 _ jacG0 hessL0) <- evalSXFun sqp sqpIn
+  sqpOut@(SqpOut _ g0 gradF0 _ jacG0 hessL0) <- evalSXFun sqp sqpIn
 
   let kkt = toKkt bx lambdaXSol xkp1 bg lambdaGSol sqpOut
-      kktInf = fmap (V.maximum . V.map abs) kkt
+      kktInf = fvmapDefault 0 (V.maximum . V.map abs) kkt
 
   when (iter `mod` 10 == 0) $ putStrLn $ printHeader ipKkt
   putStrLn $ printLine ipKkt (iter, kktInf)
@@ -354,7 +367,7 @@ runSqpIter iter bx bg env lp sqp xk = do
       case cobj of
         Nothing -> return ()
         Just msg -> error $ "changeObj error: " ++ msg
-    
+
       -- change rhs
       let g0' = dsparse g0
           rhs = toRhs bg g0'
@@ -363,27 +376,27 @@ runSqpIter iter bx bg env lp sqp xk = do
       case crhs of
         Nothing -> return ()
         Just msg -> error $ "changeRhs error: " ++ msg
-    
+
       -- change bounds
       debug $ "new deltaxBds: " ++ show deltaxBnds
       cb <- changeBds env lp deltaxBnds
       case cb of
         Nothing -> return ()
         Just msg -> error $ "changeBds error: " ++ msg
-    
+
       let amat = toRc $ dsparse jacG0
-    
+
       debug $ "new coefs: " ++ show amat
       ccl <- changeCoefList env lp amat
       case ccl of
         Nothing -> return ()
         Just msg -> error $ "changeCoefList error: " ++ msg
-    
+
       let qmat = toRc $ V.toList $ dsparse hessL0
       debug $ "new qp coefs: " ++ show qmat
       cqps <- mapM (\(r,c,v) -> changeQpCoef env lp r c v) qmat
       case catMaybes cqps of
         [] -> return ()
         msgs -> error $ "changeQpCoef errors: " ++ show msgs
-    
+
       runSqpIter (iter + 1) bx bg env lp sqp xkp1
