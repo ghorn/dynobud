@@ -54,6 +54,5 @@ myNlp = Nlp fg bx bg
 main :: IO ()
 main = do
   (SqpIn x0 _ _ _, _, kktInf) <- solveSqp myNlp (mkVec' [-8,-8] :: Vec D2 Double) None
-  putStrLn "\n\n"
   print x0
   print kktInf

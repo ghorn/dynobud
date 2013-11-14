@@ -15,11 +15,6 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Storable as VS
 import Text.Printf
 
-
---import Casadi.Wrappers.Enums
---import Casadi.Wrappers.Classes.QPStructure
---import Casadi.Wrappers.Classes.CRSSparsity
-
 import CPLEX
 import CPLEX.Param
 
@@ -28,11 +23,12 @@ import Hascm.Casadi.DMatrix
 import Hascm.Casadi.SXMatrix
 import Hascm.Casadi.SXFunction
 import Hascm.Casadi.SX
---import Hascm.Casadi.QP
---import Hascm.Casadi.IOSchemes
-
 
 import Hascm.Nlp
+
+debug :: String -> IO ()
+--debug = putStrLn
+debug _ = return ()
 
 data SqpIn a = SqpIn { sqpInX :: a
                      , sqpInP :: a
@@ -140,14 +136,22 @@ solveSqp nlp x0_ p0_ = do
     let objsen = CPX_MIN
         obj = gradF0'
         rhs = toSense $ vectorize (nlpBG nlp)
-        xbnds = vectorize (nlpBX nlp) ------- WRONG, need to be delta bounds
+        xbnds = vectorize (nlpBX nlp)
+        toDeltaXBnd _ (Nothing, Nothing) = (Nothing, Nothing)
+        toDeltaXBnd x0' (Just lb, Nothing) = (Just (lb - x0'), Nothing)
+        toDeltaXBnd x0' (Nothing, Just ub) = (Nothing, Just (ub - x0'))
+        toDeltaXBnd x0' (Just lb, Just ub) = (Just (lb - x0'), Just (ub - x0'))
+
+        deltaXBnds = V.zipWith toDeltaXBnd (vectorize x0_) xbnds
+
     debug "=========================== COPY LP ================================"
     debug $ "objsen: " ++ show objsen
     debug $ "obj: " ++ show obj
     debug $ "rhs: " ++ show rhs
     debug $ "amat: " ++ show amat
     debug $ "xbnds: " ++ show xbnds
-    statusLp <- copyLp env lp objsen obj rhs amat xbnds
+    debug $ "deltaXBnds: " ++ show deltaXBnds
+    statusLp <- copyLp env lp objsen obj rhs amat deltaXBnds
 
     case statusLp of
       Nothing -> return ()
@@ -165,10 +169,16 @@ solveSqp nlp x0_ p0_ = do
       Nothing -> return ()
       Just msg -> error $ "CPXqpopt error: " ++ msg
 
+    let lambdaX0 = vectorize $ fmap (const 0) x0_
+        lambdaG0 = fmap (const 0) (ddata $ ddensify g0)
     statusSol <- getSolution env lp
     case statusSol of
       Left msg -> error $ "CPXsolution error: " ++ msg
-      Right _ -> runSqpIter 0 (vectorize (nlpBX nlp)) (vectorize (nlpBG nlp)) env lp sqp (vectorize x0_) (vectorize p0_)
+      Right _ -> runSqpIter
+                   0 (vectorize (nlpBX nlp)) (vectorize (nlpBG nlp))
+                   env lp sqp
+                   (vectorize p0_) (vectorize x0_)
+                   lambdaX0 lambdaG0
 
 
 
@@ -235,10 +245,11 @@ toKkt
      -> V.Vector Double
      -> V.Vector (Maybe Double, Maybe Double)
      -> V.Vector Double
-     -> SqpOut DMatrix
+     -> V.Vector Double
+     -> V.Vector Double
      -> Kkt (V.Vector Double)
-toKkt xbnd lambdaX x0 gbnd lambdaG (SqpOut _ g0 _ gradL _ _) =
-  Kkt { kktStationarity = ddata $ ddensify gradL
+toKkt xbnd lambdaX x0 gbnd lambdaG g0 gradL =
+  Kkt { kktStationarity = gradL
       , kktXPrimal = xPrimal
       , kktXDual   = xDual
       , kktXComplimentarity   = V.zipWith (*) xPrimal xDual
@@ -248,7 +259,7 @@ toKkt xbnd lambdaX x0 gbnd lambdaG (SqpOut _ g0 _ gradL _ _) =
       }
   where
     (xPrimal, xDual) = V.unzip $ feasibility lambdaX x0 xbnd
-    (gPrimal, gDual) = V.unzip $ feasibility lambdaG (ddata $ ddensify g0) gbnd
+    (gPrimal, gDual) = V.unzip $ feasibility lambdaG g0 gbnd
 
 sqpConverged :: Kkt Double -> Bool
 sqpConverged kktInf
@@ -273,10 +284,6 @@ summarizeQp sol =
   , "solstat: " ++ show (solStat sol)
   , "objval : " ++ show (solObj sol)
   ]
-
-debug :: String -> IO ()
---debug = putStrLn
-debug _ = return ()
 
 data IterPrint a = IterPrint [(String, a -> String)]
 
@@ -325,98 +332,104 @@ fvmapDefault default' f = fmap fmaybe
 
 runSqpIter ::
   Int -> V.Vector (Maybe Double, Maybe Double) -> V.Vector (Maybe Double, Maybe Double)
-  -> CpxEnv -> CpxLp -> SXFunction SqpIn SqpOut -> V.Vector Double -> V.Vector Double
+  -> CpxEnv -> CpxLp -> SXFunction SqpIn SqpOut
+  -> V.Vector Double -> V.Vector Double
+  -> V.Vector Double -> V.Vector Double
   -> IO (SqpIn DMatrix, SqpOut DMatrix, Kkt Double)
-runSqpIter iter bx bg env lp sqp xk p0 = do
-  statusOpt <- qpopt env lp
-  case statusOpt of
-    Nothing -> return ()
-    Just msg -> error $ "CPXqpopt error: " ++ msg
+runSqpIter iter bx bg env lp sqp p0 xk lambdaXk lambdaGk = do
+  -- test the current point
+  let sqpIn :: SqpIn DMatrix
+      sqpIn = fmap dvector $ SqpIn xk p0 lambdaXk lambdaGk
+  sqpOut@(SqpOut _ g0 gradF0 gradL0 jacG0 hessL0) <- evalSXFun sqp sqpIn
 
-  statusSol <- getSolution env lp
-  sol <- case statusSol of
-    Left msg -> error $ "CPXsolution error: " ++ msg
-    Right sol' -> return sol'
-
-  let dxSol = V.fromList $ VS.toList (solX sol)
-      lambdaGSol = V.fromList $ VS.toList (solPi sol)
-      lambdaXSol = V.fromList $ VS.toList (solDj sol)
-      xkp1 = V.zipWith (+) xk dxSol
-      deltaxBnds = toDeltaXBnds bx xkp1
-
-  let xkp1' = dvector xkp1
-      lambdaX' = dvector lambdaXSol
-      lambdaG' = dvector lambdaGSol
-      sqpIn = (SqpIn xkp1' (dvector p0) lambdaX' lambdaG')
-  sqpOut@(SqpOut _ g0 gradF0 _ jacG0 hessL0) <- evalSXFun sqp sqpIn
-
-  let kkt = toKkt bx lambdaXSol xkp1 bg lambdaGSol sqpOut
+  let kkt = toKkt bx lambdaXk xk bg lambdaGk (ddata $ ddensify g0) (ddata $ ddensify gradL0)
       kktInf = fvmapDefault 0 (V.maximum . V.map abs) kkt
 
+  -- print the header and iterations and everything
   when (iter `mod` 10 == 0) $ putStrLn $ printHeader ipKkt
   putStrLn $ printLine ipKkt (iter, kktInf)
 
   -- check for convergence
   if | sqpConverged kktInf -> do
      putStrLn "============================= sqp converged ====================================="
-     putStrLn $ summarizeQp sol
      return (sqpIn, sqpOut, kktInf)
 
      | iter == 500 -> do
      putStrLn "=========================== out of iterations =================================="
-     putStrLn $ summarizeQp sol
      return (sqpIn, sqpOut, kktInf)
 
-     | xk == xkp1 -> do
-     putStrLn "========================= not converged, but x unchanged ======================="
-     putStrLn $ summarizeQp sol
-     return (sqpIn, sqpOut, kktInf)
+--     | xk == xkp1 -> do
+--     putStrLn "========================= not converged, but x unchanged ======================="
+--     return (sqpIn, sqpOut, kktInf)
 
      | otherwise -> do
       debug "\n\n------------------------ STARTING A NEW ITERATION ------------------------------"
-      debug $ summarizeQp sol
-      debug $ "x0: " ++ show xkp1
+      debug $ "xk: " ++ show xk
       debug $ "sqpIn: " ++ show sqpIn
       debug $ "sqpOut: " ++ show sqpOut
 
-      -- change obj
-      let gradF0' = dsparse (dtrans gradF0)
-      let obj = toObj gradF0'
-      debug $ "new obj: " ++ show obj
-      cobj <- changeObj env lp obj
-      case cobj of
+      let deltaxBnds = toDeltaXBnds bx xk
+      updateQp env lp gradF0 jacG0 hessL0 g0 deltaxBnds bg
+
+      statusOpt <- qpopt env lp
+      case statusOpt of
         Nothing -> return ()
-        Just msg -> error $ "changeObj error: " ++ msg
+        Just msg -> error $ "CPXqpopt error: " ++ msg
 
-      -- change rhs
-      let g0' = dsparse g0
-          rhs = toRhs bg g0'
-      debug $ "new rhs: " ++ show rhs
-      crhs <- changeRhs env lp rhs
-      case crhs of
-        Nothing -> return ()
-        Just msg -> error $ "changeRhs error: " ++ msg
+      statusSol <- getSolution env lp
+      sol <- case statusSol of
+        Left msg -> error $ "CPXsolution error: " ++ msg
+        Right sol' -> return sol'
+      debug $ summarizeQp sol
 
-      -- change bounds
-      debug $ "new deltaxBds: " ++ show deltaxBnds
-      cb <- changeBds env lp deltaxBnds
-      case cb of
-        Nothing -> return ()
-        Just msg -> error $ "changeBds error: " ++ msg
+      let dxSol = V.fromList $ VS.toList (solX sol)
+          lambdaGkp1 = V.fromList $ VS.toList (solPi sol)
+          lambdaXkp1 = V.fromList $ VS.toList (solDj sol)
+          xkp1 = V.zipWith (+) xk dxSol
 
-      let amat = toRc $ dsparse jacG0
+      runSqpIter (iter + 1) bx bg env lp sqp p0 xkp1 lambdaXkp1 lambdaGkp1
 
-      debug $ "new coefs: " ++ show amat
-      ccl <- changeCoefList env lp amat
-      case ccl of
-        Nothing -> return ()
-        Just msg -> error $ "changeCoefList error: " ++ msg
+updateQp
+  :: CpxEnv -> CpxLp -> DMatrix -> DMatrix -> DMatrix -> DMatrix -> V.Vector (Col, Bound)
+     -> V.Vector (Maybe Double, Maybe Double)
+     -> IO ()
+updateQp env lp gradF0 jacG0 hessL0 g0 deltaxBnds bg = do
+  -- change obj
+  let gradF0' = dsparse (dtrans gradF0)
+  let obj = toObj gradF0'
+  debug $ "new obj: " ++ show obj
+  cobj <- changeObj env lp obj
+  case cobj of
+    Nothing -> return ()
+    Just msg -> error $ "changeObj error: " ++ msg
 
-      let qmat = toRc $ V.toList $ dsparse hessL0
-      debug $ "new qp coefs: " ++ show qmat
-      cqps <- mapM (\(r,c,v) -> changeQpCoef env lp r c v) qmat
-      case catMaybes cqps of
-        [] -> return ()
-        msgs -> error $ "changeQpCoef errors: " ++ show msgs
+  -- change rhs
+  let g0' = dsparse g0
+      rhs = toRhs bg g0'
+  debug $ "new rhs: " ++ show rhs
+  crhs <- changeRhs env lp rhs
+  case crhs of
+    Nothing -> return ()
+    Just msg -> error $ "changeRhs error: " ++ msg
 
-      runSqpIter (iter + 1) bx bg env lp sqp xkp1 p0
+  -- change bounds
+  debug $ "new deltaxBds: " ++ show deltaxBnds
+  cb <- changeBds env lp deltaxBnds
+  case cb of
+    Nothing -> return ()
+    Just msg -> error $ "changeBds error: " ++ msg
+
+  let amat = toRc $ dsparse jacG0
+
+  debug $ "new coefs: " ++ show amat
+  ccl <- changeCoefList env lp amat
+  case ccl of
+    Nothing -> return ()
+    Just msg -> error $ "changeCoefList error: " ++ msg
+
+  let qmat = toRc $ V.toList $ dsparse hessL0
+  debug $ "new qp coefs: " ++ show qmat
+  cqps <- mapM (\(r,c,v) -> changeQpCoef env lp r c v) qmat
+  case catMaybes cqps of
+    [] -> return ()
+    msgs -> error $ "changeQpCoef errors: " ++ show msgs
