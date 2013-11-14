@@ -280,14 +280,27 @@ debug _ = return ()
 
 data IterPrint a = IterPrint [(String, a -> String)]
 
+strip :: String -> String
+strip = reverse . strip' . reverse . strip'
+  where
+    strip' (' ':xs) = strip' xs
+    strip' xs = xs
+
+printe :: Int -> Int -> Int -> Double -> String
+printe k j e v = printf "%*s" k $ strip $ toExp $ printf "%*.*E" k j v
+  where
+    toExp ('E':xs) = 'E' : printf "%+0*d" (e+1) (read xs :: Int)
+    toExp (x:xs) = x : toExp xs
+    toExp [] = []
+
 ipKkt :: IterPrint (Int, Kkt Double)
 ipKkt = IterPrint
         [ (printf "%6.6s" "iter ", \(k, _) -> printf "%5d" k)
-        , (printf "%8.8s" "|∇L|  ", \(_, Kkt {kktStationarity = x}) -> printf "%8.2E" x)
-        , (printf "%8.8s" "|xp|  ", \(_, Kkt {kktXPrimal = x})     -> printf "%8.2E" x)
-        , (printf "%8.8s" "|xd|  ", \(_, Kkt {kktXDual = x})       -> printf "%8.2E" x)
-        , (printf "%8.8s" "|gp|  ", \(_, Kkt {kktGPrimal = x})     -> printf "%8.2E" x)
-        , (printf "%8.8s" "|gd|  ", \(_, Kkt {kktGDual = x})       -> printf "%8.2E" x)
+        , (printf "%9.9s" "|∇L|  ", \(_, Kkt {kktStationarity = x}) -> printe 9 2 2 x)
+        , (printf "%9.9s" "|xp|  ", \(_, Kkt {kktXPrimal = x})     -> printe 9 2 2 x)
+        , (printf "%9.9s" "|xd|  ", \(_, Kkt {kktXDual = x})       -> printe 9 2 2 x)
+        , (printf "%9.9s" "|gp|  ", \(_, Kkt {kktGPrimal = x})     -> printe 9 2 2 x)
+        , (printf "%9.9s" "|gd|  ", \(_, Kkt {kktGDual = x})       -> printe 9 2 2 x)
         ]
 
 printHeader :: IterPrint a -> String
