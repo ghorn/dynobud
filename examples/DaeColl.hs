@@ -138,7 +138,7 @@ solveCollNlp ::
   (forall a. Floating a => OcpPhase x z u p r c h a) ->
   Maybe (CollTraj x z u p n deg Double -> IO Bool) ->
   IO (CollTraj x z u p n deg Double)
-solveCollNlp ocp = solveNlpIpopt (makeCollNlp ocp) (Just (fill 1))
+solveCollNlp ocp = solveNlpIpopt (makeCollNlp ocp) (Just (fill 1)) None
 
 
 main :: IO ()

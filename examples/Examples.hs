@@ -15,7 +15,7 @@ import Hascm.TypeVecs ( Vec(..), mkVec' )
 import Hascm.Nlp
 import Hascm.Sqp
 
-myNlp :: Nlp (Vec D2) (Vec D1)
+myNlp :: Nlp (Vec D2) None (Vec D1)
 myNlp = Nlp fg bx bg
   where
     bx = mkVec' [ (Just (-21), Just 0.5)
@@ -24,8 +24,8 @@ myNlp = Nlp fg bx bg
                 ]
     bg = mkVec' [(Just (-10), Just 10)]
     
-    fg :: forall a . Floating a => Vec D2 a -> NlpFun (Vec D1) a
-    fg xs' = NlpFun f g
+    fg :: forall a . Floating a => NlpInputs (Vec D2) None a -> NlpFun (Vec D1) a
+    fg (NlpInputs xs' _) = NlpFun f g
       where
         f = (1-x)**2 + 100*(y - x**2)**2
         g = mkVec' [x]
@@ -53,7 +53,7 @@ myNlp = Nlp fg bx bg
 
 main :: IO ()
 main = do
-  (SqpIn x0 _ _, _, kktInf) <- solveSqp myNlp (mkVec' [-8,-8] :: Vec D2 Double)
+  (SqpIn x0 _ _ _, _, kktInf) <- solveSqp myNlp (mkVec' [-8,-8] :: Vec D2 Double) None
   putStrLn "\n\n"
   print x0
   print kktInf

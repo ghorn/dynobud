@@ -35,6 +35,7 @@ import Hascm.Casadi.SX
 import Hascm.Nlp
 
 data SqpIn a = SqpIn { sqpInX :: a
+                     , sqpInP :: a
                      , sqpInLambdaX :: a
                      , sqpInLambdaG :: a
                      } deriving (Functor, Generic1, Show)
@@ -55,20 +56,20 @@ instance Vectorize SqpOut
 instance Vectorize SqpOut'
 
 toSqpSymbolics ::
-  (Vectorize x, Vectorize g) =>
-  Nlp x g -> IO (SXFunction SqpIn SqpOut,
-                 SXFunction Id SqpOut')
+  (Vectorize x, Vectorize p, Vectorize g) =>
+  Nlp x p g -> IO (SXFunction SqpIn SqpOut, SXFunction (Tuple Id Id) SqpOut')
 toSqpSymbolics sqp = do
   debug "toSqpSymbolics"
 
   -- run the function to make SX
-  (x', NlpFun f' g') <- funToSX (nlpFG sqp)
+  (NlpInputs x' p', NlpFun f' g') <- funToSX (nlpFG sqp)
 
   let nG = V.length (vectorize g')
       nX = V.length (vectorize x')
 
   -- create SXMatrices
   x <- svector (vectorize x')
+  p <- svector (vectorize p')
   lambdaX <- ssymV "lambdaX" nX
   lambdaG <- ssymV "lambdaG" nG
   f <- svector (V.singleton f')
@@ -88,11 +89,11 @@ toSqpSymbolics sqp = do
   hessL <- shessian lagrangian x
 
   -- create an SXFunction
-  let sqpIn = SqpIn x lambdaX lambdaG
-      sqpOut   = SqpOut   f g gradF gradL jacobG hessL
-      sqpOut'  = SqpOut'  f g gradF jacobG
+  let sqpIn   = SqpIn x p lambdaX lambdaG
+      sqpOut  = SqpOut  f g gradF gradL jacobG hessL
+      sqpOut' = SqpOut' f g gradF jacobG
   out <- toSXFunction sqpIn sqpOut
-  out' <- toSXFunction (Id x) sqpOut'
+  out' <- toSXFunction (Tuple (Id x) (Id p)) sqpOut'
 
   debug $ show sqpOut
   debug $ show sqpOut'
@@ -118,14 +119,16 @@ toRc = fmap toRc'
   where
     toRc' (x,y,z) = (Row x, Col y, z)
 
-solveSqp :: (Vectorize x, Vectorize g) => Nlp x g -> x Double -> IO (SqpIn DMatrix, SqpOut DMatrix, Kkt Double)
-solveSqp nlp x0_ = do
+solveSqp :: (Vectorize x, Vectorize p, Vectorize g) =>
+            Nlp x p g -> x Double -> p Double -> IO (SqpIn DMatrix, SqpOut DMatrix, Kkt Double)
+solveSqp nlp x0_ p0_ = do
   (sqp ,sqp') <- toSqpSymbolics nlp
 
   let x0 = dvector (vectorize x0_)
+      p0 = dvector (vectorize p0_)
 
-  SqpOut' _ g0 gradF0 jacG0 <- evalSXFun sqp' (Id x0)
-  SqpOut _ _ _ _ _ hessL0 <- evalSXFun sqp (SqpIn x0 x0 g0)
+  SqpOut' _ g0 gradF0 jacG0 <- evalSXFun sqp' (Tuple (Id x0) (Id p0))
+  SqpOut _ _ _ _ _ hessL0 <- evalSXFun sqp (SqpIn x0 p0 x0 g0)
   let gradF0' = ddata $ ddensify gradF0
       amat = toRc $ V.toList $ dsparse jacG0
       qmat = toRc $ V.toList $ dsparse hessL0
@@ -165,7 +168,8 @@ solveSqp nlp x0_ = do
     statusSol <- getSolution env lp
     case statusSol of
       Left msg -> error $ "CPXsolution error: " ++ msg
-      Right _ -> runSqpIter 0 (vectorize (nlpBX nlp)) (vectorize (nlpBG nlp)) env lp sqp (vectorize x0_)
+      Right _ -> runSqpIter 0 (vectorize (nlpBX nlp)) (vectorize (nlpBG nlp)) env lp sqp (vectorize x0_) (vectorize p0_)
+
 
 
 -----------------------------------------------------------------
@@ -306,8 +310,11 @@ fvmapDefault default' f = fmap fmaybe
       | V.null x = default'
       | otherwise = f x
 
-runSqpIter :: Int -> V.Vector (Maybe Double, Maybe Double) -> V.Vector (Maybe Double, Maybe Double) -> CpxEnv -> CpxLp -> SXFunction SqpIn SqpOut -> V.Vector Double -> IO (SqpIn DMatrix, SqpOut DMatrix, Kkt Double)
-runSqpIter iter bx bg env lp sqp xk = do
+runSqpIter ::
+  Int -> V.Vector (Maybe Double, Maybe Double) -> V.Vector (Maybe Double, Maybe Double)
+  -> CpxEnv -> CpxLp -> SXFunction SqpIn SqpOut -> V.Vector Double -> V.Vector Double
+  -> IO (SqpIn DMatrix, SqpOut DMatrix, Kkt Double)
+runSqpIter iter bx bg env lp sqp xk p0 = do
   statusOpt <- qpopt env lp
   case statusOpt of
     Nothing -> return ()
@@ -327,7 +334,7 @@ runSqpIter iter bx bg env lp sqp xk = do
   let xkp1' = dvector xkp1
       lambdaX' = dvector lambdaXSol
       lambdaG' = dvector lambdaGSol
-      sqpIn = (SqpIn xkp1' lambdaX' lambdaG')
+      sqpIn = (SqpIn xkp1' (dvector p0) lambdaX' lambdaG')
   sqpOut@(SqpOut _ g0 gradF0 _ jacG0 hessL0) <- evalSXFun sqp sqpIn
 
   let kkt = toKkt bx lambdaXSol xkp1 bg lambdaGSol sqpOut
@@ -399,4 +406,4 @@ runSqpIter iter bx bg env lp sqp xk = do
         [] -> return ()
         msgs -> error $ "changeQpCoef errors: " ++ show msgs
 
-      runSqpIter (iter + 1) bx bg env lp sqp xkp1
+      runSqpIter (iter + 1) bx bg env lp sqp xkp1 p0

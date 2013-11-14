@@ -32,18 +32,19 @@ toBnds vs = (V.map (fromMaybe (-inf)) lb, V.map (fromMaybe inf) ub)
     (lb,ub) = V.unzip vs
 
 solveNlpIpopt ::
-  forall x g . (Vectorize x, Vectorize g) =>
-  Nlp x g -> Maybe (x Double) -> Maybe (x Double -> IO Bool) -> IO (x Double)
-solveNlpIpopt nlp x0 callback' = do
-  (inputs', NlpFun obj g') <- funToSX (nlpFG nlp)
-  let inputs = vectorize inputs' :: V.Vector SX
+  forall x p g . (Vectorize x, Vectorize p, Vectorize g) =>
+  Nlp x p g -> Maybe (x Double) -> p Double -> Maybe (x Double -> IO Bool) -> IO (x Double)
+solveNlpIpopt nlp x0 p0 callback' = do
+  (NlpInputs inputsX' inputsP', NlpFun obj g') <- funToSX (nlpFG nlp)
+  let inputsX = vectorize inputsX' :: V.Vector SX
+      inputsP = vectorize inputsP' :: V.Vector SX
       g = vectorize g' :: V.Vector SX
-  inputsMat <- sxMatrix''''''''''' inputs
-  paramsMat <- sxMatrix''''''''''' V.empty
+  inputsXMat <- sxMatrix''''''''''' inputsX
+  inputsPMat <- sxMatrix''''''''''' inputsP
   objMat    <- sxMatrix''''''''''' (V.singleton obj)
   gMat      <- sxMatrix''''''''''' g
 
-  inputScheme <- mkSchemeSXMatrix SCHEME_NLPInput [("x", inputsMat), ("p", paramsMat)]
+  inputScheme <- mkSchemeSXMatrix SCHEME_NLPInput [("x", inputsXMat), ("p", inputsPMat)]
   outputScheme <- mkSchemeSXMatrix SCHEME_NLPOutput [("f", objMat), ("g", gMat)]
   f <- sxFunction''' inputScheme outputScheme
   ipopt <- ipoptSolver'' (castFX f)
@@ -52,12 +53,12 @@ solveNlpIpopt nlp x0 callback' = do
   case callback' of
     Nothing -> return ()
     Just callback -> do
-      spX  <- sp_dense (V.length inputs) 1
-      spLX <- sp_dense (V.length inputs) 1
+      spX  <- sp_dense (V.length inputsX) 1
+      spLX <- sp_dense (V.length inputsX) 1
       spF  <- sp_dense 1 1
       spG  <- sp_dense (V.length g) 1
       spLG <- sp_dense (V.length g) 1
-      spLP <- sp_dense 0 1
+      spLP <- sp_dense (V.length inputsP) 1
       cfunInput <- mkSchemeCRSSparsity SCHEME_NLPSolverOutput
                    [ ("x",spX)
                    , ("f",spF)
@@ -83,6 +84,7 @@ solveNlpIpopt nlp x0 callback' = do
       (lbg,ubg) = toBnds (vectorize $ nlpBG nlp)
   case x0 of Nothing -> return ()
              Just x0' -> ioInterfaceFX_setInput''''' ipopt (vectorize x0') "x0"
+  ioInterfaceFX_setInput''''' ipopt (vectorize p0) "p"
   ioInterfaceFX_setInput''''' ipopt lbx "lbx"
   ioInterfaceFX_setInput''''' ipopt ubx "ubx"
   ioInterfaceFX_setInput''''' ipopt lbg "lbg"

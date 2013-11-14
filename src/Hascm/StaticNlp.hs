@@ -58,7 +58,7 @@ newtype NlpMonad a =
              )
 
 emptySymbolicNlp :: NlpState
-emptySymbolicNlp = NlpState S.empty HS.empty S.empty ObjectiveUnset
+emptySymbolicNlp = NlpState S.empty HS.empty S.empty ObjectiveUnset HomotopyParamUnset
 
 build' :: NlpState -> NlpMonad a -> (Either ErrorMessage a, [LogMessage], NlpState)
 build' nlp0 builder = (result, logs, state)
@@ -147,7 +147,7 @@ convertAlgorithm alg = alg { algOps = newAlgOps }
 
 buildNlp :: forall nx ng .
             (NaturalT nx, NaturalT ng) =>
-            NlpMonad () -> IO (Nlp (Vec nx) (Vec ng), [LogMessage])
+            NlpMonad () -> IO (Nlp (Vec nx) None (Vec ng), [LogMessage])
 buildNlp nlp = do
   let (_,logs,state) = build nlp
   obj <- case nlpObj state of
@@ -167,8 +167,8 @@ buildNlp nlp = do
   alg' <- constructAlgorithm (V.fromList inputs) (vectorize nlpFun)
   let alg :: forall b . Floating b => Algorithm b
       alg = convertAlgorithm alg'
-      fg :: forall b . Floating b => Vec nx b -> NlpFun (Vec ng) b
-      fg x = devectorize $ runAlgorithm alg (vectorize x)
+      fg :: forall b . Floating b => NlpInputs (Vec nx) None b -> NlpFun (Vec ng) b
+      fg (NlpInputs x _) = devectorize $ runAlgorithm alg (vectorize x)
   --mapM_ print (algOps alg)
   --print inputs
   return (Nlp fg xbnd gbnd, logs)

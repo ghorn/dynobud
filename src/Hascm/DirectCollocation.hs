@@ -98,9 +98,9 @@ mkTaus deg = case shiftedLegendreRoots deg of
 getFg :: forall z x u p r c h a n deg .
          (PositiveT n, NaturalT deg, NaturalT (Succ deg), deg ~ Pred (Succ deg),
           Vectorize x, Fractional a, NaturalT n, Num a) =>
-         OcpPhase x z u p r c h a -> CollTraj x z u p n deg a ->
+         OcpPhase x z u p r c h a -> NlpInputs (CollTraj x z u p n deg) None a ->
          NlpFun (CollOcpConstraints n deg x r c h) a
-getFg ocp collTraj@(CollTraj tf p stages xf) = NlpFun obj g
+getFg ocp (NlpInputs collTraj@(CollTraj tf p stages xf) _) = NlpFun obj g
   where
     obj = objLagrange + objMayer
 
@@ -158,7 +158,7 @@ makeCollNlp ::
   (PositiveT n, NaturalT deg, NaturalT n, NaturalT (Succ deg), deg ~ Pred (Succ deg),
    Vectorize x, Vectorize r, Vectorize c) =>
   (forall a. Floating a => OcpPhase x z u p r c h a) ->
-  Nlp (CollTraj x z u p n deg) (CollOcpConstraints n deg x r c h)
+  Nlp (CollTraj x z u p n deg) None (CollOcpConstraints n deg x r c h)
 makeCollNlp ocp = Nlp (getFg ocp) (getBx ocp) (getBg ocp)
 
 getBx ::

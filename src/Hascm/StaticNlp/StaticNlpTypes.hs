@@ -4,6 +4,7 @@
 module Hascm.StaticNlp.StaticNlpTypes
        ( Constraint(..)
        , Objective(..)
+       , HomotopyParam(..)
        , NlpState(..)
        ) where
 
@@ -17,9 +18,11 @@ data Constraint a = Eq2 a a
 --                  | Ineq3 a a a
 
 data Objective a = ObjectiveUnset | Objective a
+data HomotopyParam a = HomotopyParamUnset | HomotopyParam a
 
 data NlpState = NlpState { nlpX :: S.Seq Sym
                          , nlpXSet :: HS.HashSet Sym
                          , nlpConstraints :: S.Seq (Constraint (Expr Double))
                          , nlpObj :: Objective (Expr Double)
-                       }
+                         , nlpHomoParam :: HomotopyParam (Expr Double)
+                         }

@@ -2,13 +2,14 @@
 
 module Main where
 
+import Hascm.Vectorize
 import Hascm.TypeNats
 import Hascm.TypeVecs ( Vec(..), mkVec' )
 import Hascm.Nlp
 import Hascm.StaticNlp
 import Hascm.Sqp
 
-buildRosen :: IO (Nlp (Vec D2) (Vec D0))
+buildRosen :: IO (Nlp (Vec D2) None (Vec D0))
 buildRosen = fmap fst $ buildNlp $ do
   
   x <- designVar "position"
@@ -23,6 +24,6 @@ main = do
 
   let x0 = [-8,8]
   
-  (SqpIn xopt _ _, _, kktInf) <- solveSqp rosen (mkVec' x0 :: Vec D2 Double)
+  (SqpIn xopt _ _ _, _, kktInf) <- solveSqp rosen (mkVec' x0 :: Vec D2 Double) None
   print xopt
   print kktInf
