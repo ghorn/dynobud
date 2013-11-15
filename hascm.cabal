@@ -18,7 +18,7 @@ library
                        Hascm.TypeVecs,
 --                       Hascm.MultipleShooting,
                        Hascm.Dae,
-                       Hascm.Sqp,
+                       Hascm.Sqp.Sqp,
                        Hascm.Accessors,
                        Hascm.Ocp,
                        Hascm.DirectCollocation,
