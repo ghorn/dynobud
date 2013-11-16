@@ -6,7 +6,7 @@
 --{-# LANGUAGE FlexibleContexts #-}
 --{-# LANGUAGE FlexibleInstances #-}
 
-module Hascm.Sqp.Sqp ( solveSqp, SqpIn(..), SqpOut(..) ) where
+module Hascm.Sqp.Sqp ( solveSqp, SqpIn(..), SqpOut(..), SqpIn'(..), SqpOut'(..) ) where
 
 import Control.Monad ( when )
 import Foreign.C.Types ( CInt )
@@ -17,6 +17,8 @@ import Text.Printf
 
 import CPLEX
 import CPLEX.Param
+
+import Hascm.Sqp.LineSearch
 
 import Hascm.Vectorize
 import Hascm.Casadi.DMatrix
@@ -42,10 +44,19 @@ data SqpOut a = SqpOut { sqpOutF :: a
                        , sqpOutJacG :: a
                        , sqpOutHessL :: a
                        } deriving (Functor, Generic1, Show)
+data SqpIn' a = SqpIn' { sqpInX' :: a
+                       , sqpInP' :: a
+                       } deriving (Functor, Generic1, Show)
+data SqpOut' a = SqpOut' { sqpOutF' :: a
+                         , sqpOutG' :: a
+                         } deriving (Functor, Generic1, Show)
 instance Vectorize SqpIn
 instance Vectorize SqpOut
+instance Vectorize SqpIn'
+instance Vectorize SqpOut'
 
-toSqpSymbolics :: (Vectorize x, Vectorize p, Vectorize g) => Nlp x p g -> IO (SXFunction SqpIn SqpOut)
+toSqpSymbolics :: (Vectorize x, Vectorize p, Vectorize g) => Nlp x p g ->
+                  IO (SXFunction SqpIn SqpOut, SXFunction SqpIn' SqpOut')
 toSqpSymbolics sqp = do
   -- run the function to make SX
   (NlpInputs x' p', NlpFun f' g') <- funToSX (nlpFG sqp)
@@ -75,10 +86,14 @@ toSqpSymbolics sqp = do
   hessL <- shessian lagrangian x
 
   -- create an SXFunction
-  let sqpIn   = SqpIn x p lambdaX lambdaG
+  let sqpIn  = SqpIn  x p lambdaX lambdaG
+      sqpIn' = SqpIn' x p
       sqpOut  = SqpOut  f g gradF gradL jacobG hessL
+      sqpOut' = SqpOut' f g
   debug $ show sqpOut
-  toSXFunction sqpIn sqpOut
+  sqpFun  <- toSXFunction sqpIn  sqpOut
+  sqpFun' <- toSXFunction sqpIn' sqpOut'
+  return (sqpFun, sqpFun')
 
 
 cpx_ON :: CInt
@@ -107,9 +122,9 @@ toDeltaXBnd0 x0' (Just lb, Just ub) = (Just (lb - x0'), Just (ub - x0'))
 toDeltaXBnd0 _ (Nothing, Nothing) = (Nothing, Nothing)
 
 solveSqp :: (Vectorize x, Vectorize p, Vectorize g) =>
-            Nlp x p g -> x Double -> p Double -> IO (SqpIn DMatrix, SqpOut DMatrix, Kkt Double)
-solveSqp nlp x0_ p0_ = do
-  sqp <- toSqpSymbolics nlp
+            Nlp x p g -> LineSearch IO Double -> x Double -> p Double -> IO (SqpIn DMatrix, SqpOut DMatrix, Kkt Double)
+solveSqp nlp lineSearch x0_ p0_ = do
+  (sqp, sqp') <- toSqpSymbolics nlp
 
   let x0 = dvector (vectorize x0_)
       p0 = dvector (vectorize p0_)
@@ -150,24 +165,24 @@ solveSqp nlp x0_ p0_ = do
       Just msg -> error $ "CPXcopyquad error: " ++ msg
 
     -- if all goes well, start sqp iterations
-    runSqpIter 0 (vectorize (nlpBX nlp)) (vectorize (nlpBG nlp))
-      env lp sqp (vectorize p0_) (vectorize x0_) lambdaX0 lambdaG0
+    runSqpIter 0 lineSearch (vectorize (nlpBX nlp)) (vectorize (nlpBG nlp))
+      env lp sqp sqp' (vectorize p0_) (vectorize x0_) lambdaX0 lambdaG0
 
 
 runSqpIter ::
-  Int -> V.Vector (Maybe Double, Maybe Double) -> V.Vector (Maybe Double, Maybe Double)
-  -> CpxEnv -> CpxLp -> SXFunction SqpIn SqpOut
+  Int -> LineSearch IO Double -> V.Vector (Maybe Double, Maybe Double) -> V.Vector (Maybe Double, Maybe Double)
+  -> CpxEnv -> CpxLp -> SXFunction SqpIn SqpOut -> SXFunction SqpIn' SqpOut'
   -> V.Vector Double -> V.Vector Double
   -> V.Vector Double -> V.Vector Double
   -> IO (SqpIn DMatrix, SqpOut DMatrix, Kkt Double)
-runSqpIter iter bx bg env lp sqp p0 xk lambdaXk lambdaGk = do
+runSqpIter iter lineSearch bx bg env lp sqp sqp' p0 xk lambdaXk lambdaGk = do
   -- test the current point
   let sqpIn :: SqpIn DMatrix
       sqpIn = fmap dvector $ SqpIn xk p0 lambdaXk lambdaGk
-  sqpOut@(SqpOut _ g0 gradF0 gradL0 jacG0 hessL0) <- evalSXFun sqp sqpIn
+  sqpOut@(SqpOut _ gk gradFk gradLk jacGk hessLk) <- evalSXFun sqp sqpIn
 
-  let kkt = toKkt bx lambdaXk xk bg lambdaGk (ddata $ ddensify g0) (ddata $ ddensify gradL0)
-      kktInf = fvmapDefault 0 (V.maximum . V.map abs) kkt
+  let kkt = toKkt bx lambdaXk xk bg lambdaGk (ddata $ ddensify gk) (ddata $ ddensify gradLk)
+      kktInf = fmap normInf kkt
 
   -- print the header and iterations and everything
   when (iter `mod` 10 == 0) $ putStrLn $ printHeader ipKkt
@@ -193,7 +208,7 @@ runSqpIter iter bx bg env lp sqp p0 xk lambdaXk lambdaGk = do
       debug $ "sqpOut: " ++ show sqpOut
 
       let deltaxBnds = toDeltaXBnds bx xk
-      updateQp env lp gradF0 jacG0 hessL0 g0 deltaxBnds bg
+      updateQp env lp gradFk jacGk hessLk gk deltaxBnds bg
 
       statusOpt <- qpopt env lp
       case statusOpt of
@@ -206,12 +221,27 @@ runSqpIter iter bx bg env lp sqp p0 xk lambdaXk lambdaGk = do
         Right sol' -> return sol'
       debug $ summarizeQp sol
 
-      let dxSol = V.fromList $ VS.toList (solX sol)
-          lambdaGkp1 = V.fromList $ VS.toList (solPi sol)
-          lambdaXkp1 = V.fromList $ VS.toList (solDj sol)
-          xkp1 = V.zipWith (+) xk dxSol
+      let pk = V.fromList $ VS.toList (solX sol)
+          lambdaGkp1Hat = V.fromList $ VS.toList (solPi sol)
+          lambdaXkp1Hat = V.fromList $ VS.toList (solDj sol)
+          sigma = 100
+          projGrad = V.sum (V.zipWith (*) (ddata (ddensify gradFk)) pk) - sigma*(norm1 (kktXPrimal kkt) + norm1 (kktGPrimal kkt))
+          meritFun x = do
+            SqpOut' f0' g0 <- fmap (fmap (ddata . ddensify)) $ evalSXFun sqp' (fmap dvector (SqpIn' x p0))
+            let f0 = V.head f0'
+                xViol = V.sum $ V.map abs $ fst $ V.unzip $ feasibility  x  x bx
+                gViol = V.sum $ V.map abs $ fst $ V.unzip $ feasibility g0 g0 bg
 
-      runSqpIter (iter + 1) bx bg env lp sqp p0 xkp1 lambdaXkp1 lambdaGkp1
+            return $ f0 + sigma*(xViol + gViol)
+
+      lineSearchRet <- lineSearch meritFun xk projGrad pk
+      case lineSearchRet of
+        Left err -> error $ "line search fail: " ++ err
+        Right (xkp1, t) -> do
+          let lambdaXkp1 = V.zipWith (+) lambdaXk $ V.map (*t) (V.zipWith (-) lambdaXkp1Hat lambdaXk)
+              lambdaGkp1 = V.zipWith (+) lambdaGk $ V.map (*t) (V.zipWith (-) lambdaGkp1Hat lambdaGk)
+
+          runSqpIter (iter + 1) lineSearch bx bg env lp sqp sqp' p0 xkp1 lambdaXkp1 lambdaGkp1
 
 updateQp
   :: CpxEnv -> CpxLp -> DMatrix -> DMatrix -> DMatrix -> DMatrix -> V.Vector (Col, Bound)
@@ -397,11 +427,10 @@ printLine (IterPrint xs) x = field xs
     field ((_, f):xs') = f x  ++ " " ++ field xs'
     field [] = []
 
--- map a vector input function over a functor, if vector is empty, use default
-fvmapDefault :: Functor f => b -> (V.Vector a -> b) -> f (V.Vector a) -> f b
-fvmapDefault default' f = fmap fmaybe
-  where
-    fmaybe x
-      | V.null x = default'
-      | otherwise = f x
+norm1 :: Num a => V.Vector a -> a
+norm1 x = V.sum (V.map abs x)
 
+normInf :: (Ord a, Num a) => V.Vector a -> a
+normInf x
+  | V.null x = 0
+  | otherwise = V.maximum (V.map abs x)

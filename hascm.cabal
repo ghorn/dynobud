@@ -1,7 +1,7 @@
 name:                hascm
 version:             0.1.0.0
 synopsis:            optimal control environment
--- description:         
+-- description:
 license:             LGPL-3
 license-file:        LICENSE
 author:              Greg Horn
@@ -9,7 +9,7 @@ maintainer:          gregmainland@gmail.com
 copyright:           (c) Greg Horn 2013
 category:            Science
 build-type:          Simple
--- extra-source-files:  
+-- extra-source-files:
 cabal-version:       >=1.10
 
 library
@@ -19,6 +19,7 @@ library
 --                       Hascm.MultipleShooting,
                        Hascm.Dae,
                        Hascm.Sqp.Sqp,
+                       Hascm.Sqp.LineSearch,
                        Hascm.Accessors,
                        Hascm.Ocp,
                        Hascm.DirectCollocation,
@@ -36,7 +37,7 @@ library
                        Hascm.Casadi.DMatrix
                        Hascm.Casadi.QP
 
-  -- other-modules:       
+  -- other-modules:
   build-depends:       base >=4.6 && <4.7,
                        vector >=0.10 && <0.11,
                        dvda >=0.4 && <0.5,
