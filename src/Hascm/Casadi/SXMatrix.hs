@@ -105,3 +105,9 @@ instance Num SXMatrix where
   {-# NOINLINE abs #-}
   signum = unsafePerformIO . ssignum
   {-# NOINLINE signum #-}
+
+instance Fractional SXMatrix where
+  (/) x y = unsafePerformIO (sxMatrix___truediv__ x y)
+  {-# NOINLINE (/) #-}
+  fromRational = unsafePerformIO . sscalar . fromRational
+  {-# NOINLINE fromRational #-}

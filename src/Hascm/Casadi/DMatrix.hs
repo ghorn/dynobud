@@ -67,3 +67,9 @@ instance Num DMatrix where
   {-# NOINLINE abs #-}
   signum = unsafePerformIO . dmatrix_sign
   {-# NOINLINE signum #-}
+
+instance Fractional DMatrix where
+  (/) x y = unsafePerformIO (dmatrix___truediv__ x y)
+  {-# NOINLINE (/) #-}
+  fromRational = dscalar . fromRational
+  {-# NOINLINE fromRational #-}
