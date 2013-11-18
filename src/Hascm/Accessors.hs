@@ -11,6 +11,16 @@ module Hascm.Accessors ( Generic, Lookup(..), AccessorTree(..), accessors, flatt
 import Data.List ( intercalate )
 import GHC.Generics
 
+import Hascm.Vectorize ( None, Id, Tuple, Triple )
+
+instance Lookup (None a)
+instance (Lookup a, Generic a) => Lookup (Id a)
+instance (Lookup (f a), Generic (f a),
+          Lookup (g a), Generic (g a)) => Lookup (Tuple f g a)
+instance (Lookup (f a), Generic (f a),
+          Lookup (g a), Generic (g a),
+          Lookup (h a), Generic (h a)) => Lookup (Triple f g h a)
+
 showAccTree :: String -> AccessorTree a -> [String]
 showAccTree spaces (Getter _) = [spaces ++ "Getter {}"]
 showAccTree spaces (Data name trees) =
@@ -66,6 +76,9 @@ instance (Lookup f, Generic f) => GLookup (Rec0 f) where
 
 instance (Selector s, GLookup a) => GLookupS (S1 s a) where
   gtoAccessorTreeS x f = [(selName x, gtoAccessorTree (unM1 x) (unM1 . f))]
+
+instance GLookupS U1 where
+  gtoAccessorTreeS _ _ = []
 
 instance (GLookupS f, GLookupS g) => GLookupS (f :*: g) where
   gtoAccessorTreeS (x :*: y) f = tf ++ tg
