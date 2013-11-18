@@ -54,6 +54,6 @@ myNlp = Nlp fg bx bg
 
 main :: IO ()
 main = do
-  (SqpIn x0 _ _ _, _, kktInf) <- solveSqp myNlp armilloSearch (mkVec' [-8,-8] :: Vec D2 Double) None
+  (x0, kktInf) <- solveSqp myNlp armilloSearch (mkVec' [-8,-8] :: Vec D2 Double) None
   print x0
   print kktInf

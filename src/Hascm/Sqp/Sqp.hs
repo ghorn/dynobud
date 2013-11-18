@@ -6,7 +6,7 @@
 --{-# LANGUAGE FlexibleContexts #-}
 --{-# LANGUAGE FlexibleInstances #-}
 
-module Hascm.Sqp.Sqp ( solveSqp, SqpIn(..), SqpOut(..), SqpIn'(..), SqpOut'(..) ) where
+module Hascm.Sqp.Sqp ( solveSqp, SqpIn(..), SqpOut(..), SqpIn'(..), SqpOut'(..), Kkt(..) ) where
 
 import Control.Monad ( when )
 import Foreign.C.Types ( CInt )
@@ -122,7 +122,7 @@ toDeltaXBnd0 x0' (Just lb, Just ub) = (Just (lb - x0'), Just (ub - x0'))
 toDeltaXBnd0 _ (Nothing, Nothing) = (Nothing, Nothing)
 
 solveSqp :: (Vectorize x, Vectorize p, Vectorize g) =>
-            Nlp x p g -> LineSearch IO Double -> x Double -> p Double -> IO (SqpIn DMatrix, SqpOut DMatrix, Kkt Double)
+            Nlp x p g -> LineSearch IO Double -> x Double -> p Double -> IO (x Double, Kkt Double)
 solveSqp nlp lineSearch x0_ p0_ = do
   (sqp, sqp') <- toSqpSymbolics nlp
 
@@ -136,6 +136,7 @@ solveSqp nlp lineSearch x0_ p0_ = do
   withEnv $ \env -> withLp env "sqp_baby" $ \lp -> do
     setIntParam env CPX_PARAM_SCRIND cpx_OFF
     setIntParam env CPX_PARAM_DATACHECK cpx_ON
+    --setIntParam env CPX_PARAM_SOLUTIONTARGET 2
 
     let objsen = CPX_MIN
         obj = ddata $ ddensify gradF0
@@ -165,8 +166,9 @@ solveSqp nlp lineSearch x0_ p0_ = do
       Just msg -> error $ "CPXcopyquad error: " ++ msg
 
     -- if all goes well, start sqp iterations
-    runSqpIter 0 lineSearch (vectorize (nlpBX nlp)) (vectorize (nlpBG nlp))
+    (SqpIn xopt _ _ _, _, kkts) <- runSqpIter 0 lineSearch (vectorize (nlpBX nlp)) (vectorize (nlpBG nlp))
       env lp sqp sqp' (vectorize p0_) (vectorize x0_) lambdaX0 lambdaG0
+    return (devectorize (ddata xopt), kkts)
 
 
 runSqpIter ::
