@@ -10,7 +10,7 @@ module Hascm.Sqp.Sqp ( solveSqp, SqpIn(..), SqpOut(..), SqpIn'(..), SqpOut'(..),
 
 import Control.Monad ( when )
 import Foreign.C.Types ( CInt )
-import Data.Maybe ( catMaybes )
+import Data.Maybe ( catMaybes, fromMaybe )
 import qualified Data.Vector as V
 import qualified Data.Vector.Storable as VS
 import Text.Printf
@@ -166,8 +166,10 @@ solveSqp nlp lineSearch x0_ p0_ = do
       Just msg -> error $ "CPXcopyquad error: " ++ msg
 
     -- if all goes well, start sqp iterations
-    (SqpIn xopt _ _ _, _, kkts) <- runSqpIter 0 lineSearch (vectorize (nlpBX nlp)) (vectorize (nlpBG nlp))
-      env lp sqp sqp' (vectorize p0_) (vectorize x0_) lambdaX0 lambdaG0
+    (SqpIn xopt _ _ _, _, kkts) <-
+      runSqpIter 0 lineSearch
+      (vectorize (nlpBX nlp)) (vectorize (nlpBG nlp))
+      env lp sqp sqp' (vectorize p0_) (vectorize x0_) lambdaX0 lambdaG0  Nothing
     return (devectorize (ddata xopt), kkts)
 
 
@@ -176,8 +178,9 @@ runSqpIter ::
   -> CpxEnv -> CpxLp -> SXFunction SqpIn SqpOut -> SXFunction SqpIn' SqpOut'
   -> V.Vector Double -> V.Vector Double
   -> V.Vector Double -> V.Vector Double
+  -> Maybe (V.Vector Double, Double)
   -> IO (SqpIn DMatrix, SqpOut DMatrix, Kkt Double)
-runSqpIter iter lineSearch bx bg env lp sqp sqp' p0 xk lambdaXk lambdaGk = do
+runSqpIter iter lineSearch bx bg env lp sqp sqp' p0 xk lambdaXk lambdaGk lastStep = do
   -- test the current point
   let sqpIn :: SqpIn DMatrix
       sqpIn = fmap dvector $ SqpIn xk p0 lambdaXk lambdaGk
@@ -188,7 +191,7 @@ runSqpIter iter lineSearch bx bg env lp sqp sqp' p0 xk lambdaXk lambdaGk = do
 
   -- print the header and iterations and everything
   when (iter `mod` 10 == 0) $ putStrLn $ printHeader ipKkt
-  putStrLn $ printLine ipKkt (iter, kktInf)
+  putStrLn $ printLine ipKkt (iter, kktInf, lastStep)
 
   -- check for convergence
   if | sqpConverged kktInf -> do
@@ -243,7 +246,9 @@ runSqpIter iter lineSearch bx bg env lp sqp sqp' p0 xk lambdaXk lambdaGk = do
           let lambdaXkp1 = V.zipWith (+) lambdaXk $ V.map (*t) (V.zipWith (-) lambdaXkp1Hat lambdaXk)
               lambdaGkp1 = V.zipWith (+) lambdaGk $ V.map (*t) (V.zipWith (-) lambdaGkp1Hat lambdaGk)
 
-          runSqpIter (iter + 1) lineSearch bx bg env lp sqp sqp' p0 xkp1 lambdaXkp1 lambdaGkp1
+              deltaX = V.zipWith (-) xkp1 xk
+
+          runSqpIter (iter + 1) lineSearch bx bg env lp sqp sqp' p0 xkp1 lambdaXkp1 lambdaGkp1 (Just (deltaX, t))
 
 updateQp
   :: CpxEnv -> CpxLp -> DMatrix -> DMatrix -> DMatrix -> DMatrix -> V.Vector (Col, Bound)
@@ -407,18 +412,23 @@ printe k j e v = printf "%*s" k $ strip $ toExp $ printf "%*.*E" k j v
     toExp (x:xs) = x : toExp xs
     toExp [] = []
 
-ipKkt :: IterPrint (Int, Kkt Double)
+ipKkt :: IterPrint (Int, Kkt Double, Maybe (V.Vector Double,Double))
 ipKkt = IterPrint
-        [ (printf "%6.6s" "iter ", \(k, _) -> printf "%5d" k)
-        , (printf "%9.9s" "|∇L|  ", \(_, Kkt {kktStationarity = x}) -> printe 9 2 2 x)
-        , (printf "%9.9s" "|xp|  ", \(_, Kkt {kktXPrimal = x})     -> printe 9 2 2 x)
-        , (printf "%9.9s" "|xd|  ", \(_, Kkt {kktXDual = x})       -> printe 9 2 2 x)
-        , (printf "%9.9s" "|gp|  ", \(_, Kkt {kktGPrimal = x})     -> printe 9 2 2 x)
-        , (printf "%9.9s" "|gd|  ", \(_, Kkt {kktGDual = x})       -> printe 9 2 2 x)
+        [ (printf "%6.6s" "iter ", \(k, _,_) -> printf "%5d" k)
+        , (printf "%9.9s" "|∇L|  ", \(_, Kkt {kktStationarity = x},_) -> printe 9 2 2 x)
+        , (printf "%9.9s" "|xp|  ", \(_, Kkt {kktXPrimal = x},_)     -> printe 9 2 2 x)
+        , (printf "%9.9s" "|xd|  ", \(_, Kkt {kktXDual = x},_)       -> printe 9 2 2 x)
+        , (printf "%9.9s" "|gp|  ", \(_, Kkt {kktGPrimal = x},_)     -> printe 9 2 2 x)
+        , (printf "%9.9s" "|gd|  ", \(_, Kkt {kktGDual = x},_)       -> printe 9 2 2 x)
+        , (printf "%9.9s" "|Δx|  ", \(_, _, dxt) -> fromMaybe "         " (fmap printDx dxt))
+        , (printf "%9.9s" " t    ", \(_, _, dxt) -> fromMaybe "         " (fmap printT dxt))
         ]
+  where
+    printDx (dx,_) = printe 9 2 2 (normInf dx)
+    printT (_,t) = printe 9 2 2 t
 
 printHeader :: IterPrint a -> String
-printHeader (IterPrint xs) = field xs
+printHeader (IterPrint xs) = '\n' : field xs
   where
     field ((name, _):xs') = name ++ " " ++ field xs'
     field [] = []
