@@ -322,27 +322,26 @@ plotPointLists (PlotPoints vec txf) =
       where
         (xs,zs,us) = unzip3 $ map (\(t, x, z, u) -> ((t,x), (t,z), (t,u))) (F.toList stage)
 
-
 toPlotTree :: forall x z u .
               (Lookup (x Double), Lookup (z Double), Lookup (u Double),
                Vectorize x, Vectorize z, Vectorize u) =>
               Tree (String, String, Maybe (PlotPointsL x z u Double -> [[(Double, Double)]]))
-toPlotTree = Node ("", "", Nothing) [xtree, ztree, utree]
+toPlotTree = Node ("trajectory", "trajectory", Nothing) [xtree, ztree, utree]
   where
     xtree :: Tree ( String, String, Maybe (PlotPointsL x z u Double -> [[(Double, Double)]]))
-    xtree = toGetterTree (\(PlotPointsL x _ _) -> x) "x" "xx" $ accessors (fill 0)
+    xtree = toGetterTree (\(PlotPointsL x _ _) -> x) "differential states" $ accessors (fill 0)
 
     ztree :: Tree ( String, String, Maybe (PlotPointsL x z u Double -> [[(Double, Double)]]))
-    ztree = toGetterTree (\(PlotPointsL _ z _) -> z) "z" "zz" $ accessors (fill 0)
+    ztree = toGetterTree (\(PlotPointsL _ z _) -> z) "algebraic variables" $ accessors (fill 0)
 
     utree :: Tree ( String, String, Maybe (PlotPointsL x z u Double -> [[(Double, Double)]]))
-    utree = toGetterTree (\(PlotPointsL _ _ u) -> u) "u" "uu" $ accessors (fill 0)
+    utree = toGetterTree (\(PlotPointsL _ _ u) -> u) "controls" $ accessors (fill 0)
 
 toGetterTree ::
-  (b -> [[(Double, x Double)]]) -> String -> String -> AccessorTree (x Double)
+  (b -> [[(Double, x Double)]]) -> String -> AccessorTree (x Double)
   -> Tree (String, String, Maybe (b -> [[(Double,Double)]]))
-toGetterTree toXs msg name (Getter f) = Node (name, msg, Just g) []
+toGetterTree toXs name (Getter f) = Node (name, name, Just g) []
   where
     g = map (map (\(t,x) -> (t,f x))) . toXs
-toGetterTree toXs msg name (Data (_,name') children) =
-  Node (msg, name ++ ".." ++ name', Nothing) $ map (\(n,t) -> toGetterTree toXs (msg ++ name) n t) children
+toGetterTree toXs name (Data (_,name') children) =
+  Node (name, name', Nothing) $ map (\(n,t) -> toGetterTree toXs n t) children

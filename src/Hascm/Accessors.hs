@@ -11,6 +11,8 @@ module Hascm.Accessors ( Generic, Lookup(..), AccessorTree(..), accessors, flatt
 import Data.List ( intercalate )
 import GHC.Generics
 
+import Linear
+
 import Hascm.Vectorize ( None, Id, Tuple, Triple )
 
 instance Lookup (None a)
@@ -20,6 +22,17 @@ instance (Lookup (f a), Generic (f a),
 instance (Lookup (f a), Generic (f a),
           Lookup (g a), Generic (g a),
           Lookup (h a), Generic (h a)) => Lookup (Triple f g h a)
+
+instance (Lookup a, Generic a) => Lookup (V3 a) where
+  toAccessorTree xyz f =
+    Data ("V3", "V3") [ ("x", toAccessorTree (getX xyz) (getX . f))
+                      , ("y", toAccessorTree (getY xyz) (getY . f))
+                      , ("z", toAccessorTree (getZ xyz) (getZ . f))
+                      ]
+    where
+      getX (V3 x _ _) = x
+      getY (V3 _ y _) = y
+      getZ (V3 _ _ z) = z
 
 showAccTree :: String -> AccessorTree a -> [String]
 showAccTree spaces (Getter _) = [spaces ++ "Getter {}"]
@@ -75,7 +88,11 @@ instance (Lookup f, Generic f) => GLookup (Rec0 f) where
   gtoAccessorTree x f = toAccessorTree (unK1 x) (unK1 . f)
 
 instance (Selector s, GLookup a) => GLookupS (S1 s a) where
-  gtoAccessorTreeS x f = [(selName x, gtoAccessorTree (unM1 x) (unM1 . f))]
+  gtoAccessorTreeS x f = [(selname, gtoAccessorTree (unM1 x) (unM1 . f))]
+    where
+      selname = case selName x of
+        [] -> "()"
+        y -> y
 
 instance GLookupS U1 where
   gtoAccessorTreeS _ _ = []
