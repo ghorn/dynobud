@@ -20,6 +20,9 @@ library
                        Hascm.Dae,
                        Hascm.Sqp.Sqp,
                        Hascm.Sqp.LineSearch,
+                       Hascm.Models.Aircraft,
+                       Hascm.Models.AeroCoeffs,
+                       Hascm.Models.Betty,
                        Hascm.Accessors,
                        Hascm.Ocp,
                        Hascm.DirectCollocation,
@@ -83,5 +86,32 @@ executable daeColl
   default-language:    Haskell2010
   build-depends:       hascm,
                        base >=4.6 && <4.7,
+                       Plot-ho-matic >= 0.3.0.0
+  ghc-options:         -threaded -O2
+
+executable glider
+  hs-source-dirs:      examples
+  main-is:             Glider.hs
+  default-language:    Haskell2010
+  build-depends:       hascm,
+                       base >=4.6 && <4.7,
+                       containers,
+                       linear,
+                       bytestring,
+                       cereal,
+                       vector,
+                       zeromq-haskell
+  ghc-options:         -threaded -O2
+
+executable gliderPlot
+  hs-source-dirs:      examples
+  main-is:             GliderPlotter.hs
+  default-language:    Haskell2010
+  build-depends:       hascm,
+                       base >=4.6 && <4.7,
+                       zeromq-haskell,
+                       containers,
+                       vector,
+                       cereal,
                        Plot-ho-matic >= 0.3.0.0
   ghc-options:         -threaded -O2
