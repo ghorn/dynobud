@@ -10,6 +10,7 @@ import Casadi.Wrappers.Enums ( InputOutputScheme(..) )
 import Casadi.Callback
 import Casadi.Wrappers.Tools ( sp_dense )
 import Casadi.Wrappers.Classes.FX
+import Casadi.Wrappers.Classes.PrintableObject
 import Casadi.Wrappers.Classes.DMatrix
 import Casadi.Wrappers.Classes.SXMatrix
 import Casadi.Wrappers.Classes.SXFunction ( sxFunction''' )
@@ -33,7 +34,8 @@ toBnds vs = (V.map (fromMaybe (-inf)) lb, V.map (fromMaybe inf) ub)
 
 solveNlpIpopt ::
   forall x p g . (Vectorize x, Vectorize p, Vectorize g) =>
-  Nlp x p g -> Maybe (x Double) -> p Double -> Maybe (x Double -> IO Bool) -> IO (x Double)
+  Nlp x p g -> Maybe (x Double) -> p Double -> Maybe (x Double -> IO Bool)
+  -> IO (Either String (NlpOut x g Double))
 solveNlpIpopt nlp x0 p0 callback' = do
   (NlpInputs inputsX' inputsP', NlpFun obj g') <- funToSX (nlpFG nlp)
   let inputsX = vectorize inputsX' :: V.Vector SX
@@ -93,5 +95,21 @@ solveNlpIpopt nlp x0 p0 callback' = do
   fxSolveSafe ipopt
   --fx_solve ipopt
 
+  solveStatus <- fx_getStat ipopt "return_status"  >>= printableObject_getDescription
+
+  fopt <- fmap V.head $ ioInterfaceFX_output'' ipopt "f" >>= dmatrix_data
   xopt <- ioInterfaceFX_output'' ipopt "x" >>= dmatrix_data
-  return (devectorize xopt)
+  gopt <- ioInterfaceFX_output'' ipopt "g" >>= dmatrix_data
+  lamXOpt <- ioInterfaceFX_output'' ipopt "lam_x" >>= dmatrix_data
+  lamGOpt <- ioInterfaceFX_output'' ipopt "lam_g" >>= dmatrix_data
+  let lambdaOut = Multipliers { lambdaX = devectorize lamXOpt
+                              , lambdaG = devectorize lamGOpt
+                              }
+      nlpOut = NlpOut { fOpt = fopt
+                      , xOpt = devectorize xopt
+                      , gOpt = devectorize gopt
+                      , lambdaOpt = lambdaOut
+                      }
+  if solveStatus `elem` ["Solve_Succeeded", "Solved_To_Acceptable_Level"]
+    then return (Right nlpOut)
+    else return (Left solveStatus)

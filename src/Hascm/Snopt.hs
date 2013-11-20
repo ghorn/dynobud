@@ -11,7 +11,6 @@ import qualified Data.Vector as V
 import Data.Maybe ( fromMaybe )
 
 import Control.Monad ( unless, when )
-import Control.Monad.IO.Class
 import qualified Data.HashSet as HS
 import Foreign.ForeignPtr ( newForeignPtr_ )
 import Foreign.Storable ( peek )
@@ -47,7 +46,7 @@ toBnds (lb,ub) = (fromMaybe (-inf) lb, fromMaybe inf ub)
 --  putStrLn "makeFG: f outputs:"
 --  repr sxOuts
 ----  desc sxOuts
---  
+--
 --
 data SnoptIn a = SnoptIn { snoptInX :: a
                          , snoptInP :: a
@@ -72,7 +71,7 @@ toSnoptSymbolics nlp = do
 
   -- jacobian
   fgJacob <- sjacobian fg x
-  
+
   fgSparse <- ssparse fgJacob
 
   -- create an SXFunction
@@ -87,14 +86,16 @@ toSnoptSymbolics nlp = do
 
 
 solveNlpSnopt :: forall x p g . (Vectorize x, Vectorize p, Vectorize g) =>
-            Nlp x p g -> Maybe (x Double -> IO Bool) -> x Double -> p Double -> IO (Either String (x Double))
-solveNlpSnopt nlp callback x0 p = do
+            Nlp x p g -> Maybe (x Double -> IO Bool) -> x Double -> p Double ->
+            Maybe (Multipliers x g Double) ->
+            IO (Either String (NlpOut x g Double))
+solveNlpSnopt nlp callback x0 p lambda0 = do
   (snoptFun, jacobSparsity) <- toSnoptSymbolics nlp
-  
+
   let fgbnds = V.map toBnds $ V.singleton (Nothing, Nothing) V.++ (vectorize $ nlpBG nlp)
       xbnds = V.map toBnds $ vectorize $ nlpBX nlp
       (flow, fupp) = V.unzip fgbnds
-      
+
       nx = V.length (vectorize x0)
       (xlow, xupp) = V.unzip xbnds
       xInit = vectorize x0
@@ -104,10 +105,10 @@ solveNlpSnopt nlp callback x0 p = do
 
   let ijxA :: [((Int,Int),Double)]
       ijxA = []
-      
+
       ijG :: V.Vector (Int,Int)
       ijG = V.map (\(x,y,_) -> (x+1,y+1)) jacobSparsity
-      
+
       (ijA,aval) = unzip ijxA
       (iAfun,jAvar) = unzip ijA
       (iGfun,jGvar) = unzip $ V.toList ijG
@@ -121,7 +122,7 @@ solveNlpSnopt nlp callback x0 p = do
     "ijG and ijA overlap, shared elements: " ++ show inter
 
   let --userfg :: U_fp
-      userfg status n' x' needF nF' f' needG lenG' g' _ _ _ _ _ _ = do
+      userfg _status n' x' needF nF' f' needG lenG' g' _ _ _ _ _ _ = do
         xp <- newForeignPtr_ x'
         fp <- newForeignPtr_ f'
         gp <- newForeignPtr_ g'
@@ -131,7 +132,7 @@ solveNlpSnopt nlp callback x0 p = do
         lenG <- fmap fromIntegral $ peek lenG'
         --statuss <- peek status
         --putStrLn $ "status: " ++ show statuss
-        
+
         when (n /= V.length (vectorize x0)) $ error "x length mismatch lol"
         when (nF /= V.length fgbnds) $ error "f length mismatch lol"
         when (lenG /= ng) $ error "lenG mismatch lol"
@@ -141,7 +142,7 @@ solveNlpSnopt nlp callback x0 p = do
 
         when (nF /= V.length fg) $ error "fg length mismatch lol"
         when (lenG /= V.length jacob) $ error "jacob mismatch lol"
-        
+
         case callback of
           Nothing -> return ()
           Just cb -> cb (devectorize xvec) >> return () -- should halt of callback returns False
@@ -166,11 +167,8 @@ solveNlpSnopt nlp callback x0 p = do
         sninit
 
         --snseti "Verify level" 3
-        
-        liftIO $ putStrLn $ "xlow: " ++ show xlow
-        liftIO $ putStrLn $ "xupp: " ++ show xupp
-        liftIO $ putStrLn $ "flow: " ++ show flow
-        liftIO $ putStrLn $ "fupp: " ++ show fupp
+        --snseti "Major print level" 111111
+
         setIAfun $ VS.fromList $ map fromIntegral iAfun
         setXlow $ VS.fromList $ V.toList xlow
         setXupp $ VS.fromList $ V.toList xupp
@@ -183,9 +181,6 @@ solveNlpSnopt nlp callback x0 p = do
         setObjRow 1
         setObjAdd 0
 
-        liftIO $ putStrLn $ "iAfun: " ++ show iAfun
-        liftIO $ putStrLn $ "jAvar: " ++ show jAvar
-        liftIO $ putStrLn $ "aVal: " ++ show aval
         setIAfun $ VS.fromList $ map fromIntegral iAfun
         setJAvar $ VS.fromList $ map fromIntegral jAvar
         setA $ VS.fromList aval
@@ -193,17 +188,29 @@ solveNlpSnopt nlp callback x0 p = do
         setIGfun $ VS.fromList $ map fromIntegral iGfun
         setJGvar $ VS.fromList $ map fromIntegral jGvar
 
+        -- if lagrange multipliers are available, use them
+        case lambda0 of
+          Nothing -> return ()
+          Just (Multipliers lamX lamG) -> do
+            setXmul $ VS.fromList $ V.toList (vectorize lamX)
+            setFmul $ VS.fromList $ 0 : V.toList (vectorize lamG)
+
         snopta ""-- "toy1"
 
-        xs'' <- getX
-        xlow'' <- getXlow
-        xupp'' <- getXupp
-        fs'' <- getF
-        flow'' <- getFlow
-        fupp'' <- getFupp
+        xopt <- getX
+        fopt <- getF
+        lambdaX' <- getXmul
+        lambdaF <- getFmul
 
-        return xs''
+        let lambdaOpt' =
+              Multipliers { lambdaX = devectorize $ V.fromList $ VS.toList lambdaX'
+                          , lambdaG = devectorize $ V.fromList $ tail $ VS.toList lambdaF
+                          }
 
-  ret <- runSnopt
-  
-  return (fmap (devectorize . V.fromList . VS.toList) ret)
+        return NlpOut { fOpt = VS.head fopt
+                      , xOpt = devectorize $ V.fromList $ VS.toList xopt
+                      , gOpt = devectorize $ V.fromList $ tail $ VS.toList xopt
+                      , lambdaOpt = lambdaOpt'
+                      }
+
+  runSnopt

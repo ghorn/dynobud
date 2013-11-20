@@ -3,9 +3,19 @@
 {-# Language DeriveFunctor #-}
 {-# Language DeriveGeneric #-}
 
-module Hascm.Nlp ( Nlp(..), NlpInputs(..), NlpFun(..) ) where
+module Hascm.Nlp ( Nlp(..), NlpInputs(..), NlpFun(..), NlpOut(..), Multipliers(..) ) where
 
 import Hascm.Vectorize
+
+data NlpOut x g a = NlpOut { fOpt :: a
+                           , xOpt :: x a
+                           , gOpt :: g a
+                           , lambdaOpt :: Multipliers x g a
+                           } deriving (Show, Functor, Generic1)
+
+data Multipliers x g a = Multipliers { lambdaX :: x a
+                                     , lambdaG :: g a
+                                     } deriving (Show, Functor, Generic1)
 
 data NlpFun g a = NlpFun a (g a) deriving (Show, Functor, Generic1)
 instance Vectorize g => Vectorize (NlpFun g)
