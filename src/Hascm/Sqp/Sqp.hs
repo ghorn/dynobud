@@ -26,7 +26,8 @@ import Hascm.Casadi.SXMatrix
 import Hascm.Casadi.SXFunction
 import Hascm.Casadi.SX
 
-import Hascm.Nlp
+import Hascm.Nlp ( Nlp(..), NlpInputs(..), NlpFun(..) )
+--import qualified Hascm.Nlp as Nlp
 
 debug :: String -> IO ()
 --debug = putStrLn

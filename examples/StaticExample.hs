@@ -29,7 +29,7 @@ main = do
   let x0 = [-8,8]
       x0' = mkVec' x0 :: Vec D2 Double
 
-  ret <- solveNlpSnopt rosen Nothing x0' None
+  ret <- solveNlpSnopt rosen Nothing x0' None Nothing
   print ret
   (xopt , kktInf) <- solveSqp rosen armilloSearch x0' None
   print xopt

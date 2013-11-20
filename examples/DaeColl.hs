@@ -19,11 +19,14 @@ import Hascm.Vectorize
 import Hascm.TypeVecs
 import Hascm.TypeNats
 import Hascm.Accessors
-import Hascm.Ipopt
+--import Hascm.Ipopt
+import Hascm.Snopt
+import Hascm.Sqp.Sqp
+import Hascm.Sqp.LineSearch
 
 import Hascm.Ocp
 import Hascm.DirectCollocation
---import Hascm.Nlp
+import qualified Hascm.Nlp as Nlp
 
 data PendX a = PendX { pX :: a
                      , pY :: a
@@ -50,13 +53,7 @@ mayer _ _ = 0
 
 lagrange :: Floating a => PendX a -> PendZ a -> PendU a -> PendP a -> a -> a
 lagrange (PendX _ _ vx vy) (PendZ _) (PendU torque) (PendP _) _ = vx*vx + vy*vy + 1e-4*torque**2
---
---springOde :: Floating a => ExplicitOde SpringX SpringU None a
---springOde (SpringX x v) None (SpringU u) None = SpringX v acc
---  where
---    acc = -k*x -b*v + u
---    k = 2.6
---    b = 0.2
+
 r :: Floating a => a
 r = 0.3
 
@@ -129,7 +126,7 @@ callback :: (PlotPointsL PendX PendZ PendU Double -> IO ())
             -> CollTraj PendX PendZ PendU PendP NCollStages CollDeg Double -> IO Bool
 callback writeMe traj = do
   writeMe $ plotPointLists $ plotPoints traj
-  CC.threadDelay 100000
+  --CC.threadDelay 100000
   return True
 
 solveCollNlp ::
@@ -138,18 +135,32 @@ solveCollNlp ::
   (forall a. Floating a => OcpPhase x z u p r c h a) ->
   Maybe (CollTraj x z u p n deg Double -> IO Bool) ->
   IO (CollTraj x z u p n deg Double)
-solveCollNlp ocp = solveNlpIpopt (makeCollNlp ocp) (Just (fill 1)) None
+--solveCollNlp ocp = solveNlpIpopt (makeCollNlp ocp) (Just (fill 1)) None
+--solveCollNlp ocp cb = solveNlpSnopt (makeCollNlp ocp) cb (fill 1) None
+solveCollNlp ocp _ = fmap fst $ solveSqp (makeCollNlp ocp) armilloSearch (fill 1) None
+  --print xopt
+  --print kktInf
 
+
+--main :: IO ()
+--main = do
+--  (chan, writeMe) <- newChannel "woo" (toPlotTree)
+--  _ <- CC.forkIO $ runPlotter chan []
+--
+--  let runAFew 0 = return ()
+--      runAFew k = do
+--        _ <- solveCollNlp pendOcp (Just (callback writeMe))
+--             :: IO (Either String (CollTraj PendX PendZ PendU PendP NCollStages CollDeg Double))
+--        CC.threadDelay 1000000
+--        runAFew (k-1 :: Int)
+--  runAFew 10
+
+guess :: CollTraj PendX PendZ PendU PendP NCollStages CollDeg Double
+guess = fill 1
 
 main :: IO ()
 main = do
-  (chan, writeMe) <- newChannel "woo" (toPlotTree)
-  _ <- CC.forkIO $ runPlotter chan []
-
-  let runAFew 0 = return ()
-      runAFew k = do
-        _ <- solveCollNlp pendOcp (Just (callback writeMe))
-             :: IO (CollTraj PendX PendZ PendU PendP NCollStages CollDeg Double)
-        CC.threadDelay 1000000
-        runAFew (k-1 :: Int)
-  runAFew 10
+  (Right nlpOut) <- solveNlpSnopt (makeCollNlp pendOcp) Nothing guess None Nothing -- :: IO (Either String (NlpOut (CollTraj PendX PendZ PendU PendP NCollStages CollDeg Double) CollOcpConstraints)
+--  (Right xopt) <- solveCollNlp pendOcp Nothing :: IO (CollTraj PendX PendZ PendU PendP NCollStages CollDeg Double)
+  _ <- solveSqp (makeCollNlp pendOcp) armilloSearch (Nlp.xOpt nlpOut) None
+  return ()
