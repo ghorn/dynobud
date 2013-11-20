@@ -5,7 +5,7 @@
 {-# Language ScopedTypeVariables #-}
 {-# Language PolyKinds #-}
 
-module Hascm.Snopt where
+module Hascm.Snopt ( solveNlpSnopt ) where
 
 import qualified Data.Vector as V
 import Data.Maybe ( fromMaybe )
@@ -23,6 +23,8 @@ import Hascm.Casadi.SXMatrix
 import Hascm.Casadi.SXFunction
 import Hascm.Nlp
 
+import Casadi.Wrappers.Tools ( vertcat'' )
+
 import Snopt.SnoptA
 --import Snopt.Bindings ( U_fp )
 
@@ -32,28 +34,11 @@ inf = read "1e50"
 toBnds :: (Maybe Double, Maybe Double) -> (Double, Double)
 toBnds (lb,ub) = (fromMaybe (-inf) lb, fromMaybe inf ub)
 
---makeFG :: [Expr Double] -> [Expr Double] -> IO
---          (V.Vector Double -> IO (VS.Vector Double),
---           V.Vector Double -> IO (VS.Vector Double),
---           V.Vector (Int,Int),
---           SXMatrix, SXMatrix)
---makeFG inputs outputs = do
---  alg <- constructAlgorithm (V.fromList inputs) (V.fromList outputs)
---  (sxIns, sxOuts) <- toSXMats alg
---  putStrLn "makeFG: inputs:"
---  repr sxIns
-----  desc sxIns
---  putStrLn "makeFG: f outputs:"
---  repr sxOuts
-----  desc sxOuts
---
---
-data SnoptIn a = SnoptIn { snoptInX :: a
-                         , snoptInP :: a
-                         } deriving (Functor, Generic1, Show)
-data SnoptOut a = SnoptOut { snoptOutFG :: a
-                           , snoptOutFGJacob :: a
-                           } deriving (Functor, Generic1, Show)
+data SnoptIn a = SnoptIn a a
+               deriving (Functor, Generic1, Show)
+data SnoptOut a = SnoptOut a a
+                deriving (Functor, Generic1, Show)
+data SnoptG a = SnoptG a deriving (Functor, Generic1, Show)
 instance Vectorize SnoptIn
 instance Vectorize SnoptOut
 
@@ -61,28 +46,28 @@ toSnoptSymbolics :: (Vectorize x, Vectorize p, Vectorize g) => Nlp x p g ->
                     IO (SnoptIn (V.Vector Double) -> IO (SnoptOut (V.Vector Double)), V.Vector (Int,Int,SX))
 toSnoptSymbolics nlp = do
   -- run the function to make SX
-  (NlpInputs x' p', NlpFun f' g') <- funToSX (nlpFG nlp)
-  let fg' = V.singleton f' V.++ vectorize g'
+  (NlpInputs x' p', NlpFun obj' constraints') <- funToSX (nlpFG nlp)
 
   -- create SXMatrices
   x <- svector (vectorize x')
   p <- svector (vectorize p')
-  fg <- svector fg'
+  obj <- svector (V.singleton obj')
+  constraints <- svector (vectorize constraints')
+  f <- svector $ V.singleton obj' V.++ vectorize constraints'
 
-  -- jacobian
-  fgJacob <- sjacobian fg x
-
-  fgSparse <- ssparse fgJacob
+  objGrad <- sgradient obj x >>= strans
+  constraintJacobian <- sjacobian constraints x
+  g <- vertcat'' (V.fromList [objGrad, constraintJacobian])
+  gSparse <- ssparse g
 
   -- create an SXFunction
   let snoptIn = SnoptIn x p
-      snoptOut  = SnoptOut fg fgJacob
-  snoptFun <- toSXFunction snoptIn snoptOut
+  fgFun <- toSXFunction snoptIn (SnoptOut f g)
 
-  let callFun :: SnoptIn (V.Vector Double) -> IO (SnoptOut (V.Vector Double))
-      callFun xp = fmap (fmap ddata) $ evalSXFun snoptFun (fmap dvector xp)
+  let callFG :: SnoptIn (V.Vector Double) -> IO (SnoptOut (V.Vector Double))
+      callFG xp = fmap (fmap ddata) $ evalSXFun fgFun (fmap dvector xp)
 
-  return (callFun, fgSparse)
+  return (callFG, gSparse)
 
 
 solveNlpSnopt :: forall x p g . (Vectorize x, Vectorize p, Vectorize g) =>
@@ -92,16 +77,16 @@ solveNlpSnopt :: forall x p g . (Vectorize x, Vectorize p, Vectorize g) =>
 solveNlpSnopt nlp callback x0 p lambda0 = do
   (snoptFun, jacobSparsity) <- toSnoptSymbolics nlp
 
-  let fgbnds = V.map toBnds $ V.singleton (Nothing, Nothing) V.++ (vectorize $ nlpBG nlp)
+  let fbnds = V.map toBnds $ V.singleton (Nothing, Nothing) V.++ (vectorize $ nlpBG nlp)
       xbnds = V.map toBnds $ vectorize $ nlpBX nlp
-      (flow, fupp) = V.unzip fgbnds
+      (flow, fupp) = V.unzip fbnds
 
       nx = V.length (vectorize x0)
       (xlow, xupp) = V.unzip xbnds
       xInit = vectorize x0
 
       f0init = replicate nf 0
-      nf = V.length fgbnds
+      nf = V.length fbnds
 
   let ijxA :: [((Int,Int),Double)]
       ijxA = []
@@ -133,15 +118,17 @@ solveNlpSnopt nlp callback x0 p lambda0 = do
         --statuss <- peek status
         --putStrLn $ "status: " ++ show statuss
 
-        when (n /= V.length (vectorize x0)) $ error "x length mismatch lol"
-        when (nF /= V.length fgbnds) $ error "f length mismatch lol"
-        when (lenG /= ng) $ error "lenG mismatch lol"
+        when (n /= V.length (vectorize x0)) $
+          error $ "x0 length mismatch lol" ++ show (n , V.length (vectorize x0))
+        when (nF /= V.length fbnds) $
+          error $ "fbnds length mismatch lol" ++ show (nF, V.length fbnds)
+        when (ng /= lenG) $ error $ "lenG mismatch lol" ++ show (ng, lenG)
 
         let xvec = V.fromList $ VS.toList $ VS.unsafeFromForeignPtr0 xp nx
-        SnoptOut fg jacob <- snoptFun (SnoptIn xvec (vectorize p))
+        SnoptOut f jacob <- snoptFun (SnoptIn xvec (vectorize p))
 
-        when (nF /= V.length fg) $ error "fg length mismatch lol"
-        when (lenG /= V.length jacob) $ error "jacob mismatch lol"
+        when (nF /= V.length f) $ error $ "f length mismatch lol" ++ show (nF, V.length f)
+        when (ng /= V.length jacob) $ error $ "jacob length mismatch lol" ++ show (ng, V.length jacob)
 
         case callback of
           Nothing -> return ()
@@ -156,7 +143,7 @@ solveNlpSnopt nlp callback x0 p lambda0 = do
         unless (needG' `elem` [0,1]) $ error "needG isn't 1 or 0"
         when (needF' `elem` [0,1]) $ do
 --          putStrLn $ "callF: " ++ show fvec'
-          VS.copy fvec (VS.fromList $ V.toList fg)
+          VS.copy fvec (VS.fromList $ V.toList f)
         when (needG' `elem` [0,1]) $ do
 --          putStrLn $ "callG: " ++ show gvec'
           VS.copy gvec (VS.fromList $ V.toList jacob)
