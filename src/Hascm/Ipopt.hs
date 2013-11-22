@@ -34,7 +34,7 @@ toBnds vs = (V.map (fromMaybe (-inf)) lb, V.map (fromMaybe inf) ub)
 
 solveNlpIpopt ::
   forall x p g . (Vectorize x, Vectorize p, Vectorize g) =>
-  Nlp x p g -> Maybe (x Double) -> p Double -> Maybe (x Double -> IO Bool)
+  Nlp x p g -> x Double -> p Double -> Maybe (x Double -> IO Bool)
   -> IO (Either String (NlpOut x g Double))
 solveNlpIpopt nlp x0 p0 callback' = do
   (NlpInputs inputsX' inputsP', NlpFun obj g') <- funToSX (nlpFG nlp)
@@ -84,8 +84,7 @@ solveNlpIpopt nlp x0 p0 callback' = do
 
   let (lbx,ubx) = toBnds (vectorize $ nlpBX nlp)
       (lbg,ubg) = toBnds (vectorize $ nlpBG nlp)
-  case x0 of Nothing -> return ()
-             Just x0' -> ioInterfaceFX_setInput''''' ipopt (vectorize x0') "x0"
+  ioInterfaceFX_setInput''''' ipopt (vectorize x0) "x0"
   ioInterfaceFX_setInput''''' ipopt (vectorize p0) "p"
   ioInterfaceFX_setInput''''' ipopt lbx "lbx"
   ioInterfaceFX_setInput''''' ipopt ubx "ubx"
