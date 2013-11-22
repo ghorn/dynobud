@@ -12,13 +12,11 @@ module Main where
 
 --import qualified Data.Vector as V
 
-import qualified Control.Concurrent as CC
-import Plotter ( runPlotter, newChannel )
+import Plotter
 
 import Hascm.Vectorize
 import Hascm.TypeVecs
 import Hascm.TypeNats
-import Hascm.Accessors
 --import Hascm.Ipopt
 import Hascm.Snopt
 import Hascm.Sqp.Sqp

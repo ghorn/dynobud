@@ -25,13 +25,14 @@ import qualified Data.Vector as V
 import qualified Data.Foldable as F
 import qualified Data.Traversable as T
 import qualified Data.Packed.Matrix as Mat
+import GHC.Generics
 import qualified Numeric.LinearAlgebra.Algorithms as LA
 import Linear.Vector
 import Linear.Matrix
 
+import Plotter ( AccessorTree(..), Lookup(..), accessors )
 import JacobiRoots
 
-import Hascm.Accessors
 import Hascm.Vectorize
 import Hascm.TypeVecs
 import Hascm.TypeNats

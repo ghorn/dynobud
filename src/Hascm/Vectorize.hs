@@ -28,6 +28,8 @@ import qualified Data.Vector as V
 import Data.Foldable ( Foldable )
 import Data.Traversable ( Traversable )
 
+import Plotter
+
 -- | a length-0 vectorizable type
 data None a = None
             deriving (Generic, Generic1, Functor, Foldable, Traversable, Show)
@@ -47,6 +49,14 @@ instance (Vectorize f, Vectorize g) => Vectorize (Tuple f g)
 data Triple f g h a = Triple (f a) (g a) (h a)
                     deriving (Generic, Generic1, Functor, Foldable, Traversable, Show)
 instance (Vectorize f, Vectorize g, Vectorize h) => Vectorize (Triple f g h)
+
+instance Lookup (None a)
+instance (Lookup a, Generic a) => Lookup (Id a)
+instance (Lookup (f a), Generic (f a),
+          Lookup (g a), Generic (g a)) => Lookup (Tuple f g a)
+instance (Lookup (f a), Generic (f a),
+          Lookup (g a), Generic (g a),
+          Lookup (h a), Generic (h a)) => Lookup (Triple f g h a)
 
 fill :: Vectorize f => a -> f a
 fill x = fmap (const x) empty

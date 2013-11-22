@@ -5,11 +5,13 @@
 
 module Hascm.Models.AeroCoeffs where
 
-import Linear
 import Data.Foldable ( Foldable )
+import GHC.Generics
+import Linear
+
+import Plotter ( Lookup(..) )
 
 import Hascm.Vectorize
-import Hascm.Accessors
 
 atan2' :: Floating a => a -> a -> a
 atan2' y x = 2 * atan (y / (sqrt(x*x + y*y + 1e-15) + x) )

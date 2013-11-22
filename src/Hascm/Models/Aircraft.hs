@@ -7,11 +7,23 @@
 
 module Hascm.Models.Aircraft ( AcX(..), AcU(..), aircraftDae ) where
 
+import GHC.Generics
 import Linear
 
 import Hascm.Vectorize
-import Hascm.Accessors
+import Plotter ( Lookup(..), AccessorTree(..) )
 import Hascm.Models.AeroCoeffs
+
+instance (Lookup a, Generic a) => Lookup (V3 a) where
+  toAccessorTree xyz f =
+    Data ("V3", "V3") [ ("x", toAccessorTree (getX xyz) (getX . f))
+                      , ("y", toAccessorTree (getY xyz) (getY . f))
+                      , ("z", toAccessorTree (getZ xyz) (getZ . f))
+                      ]
+    where
+      getX (V3 x _ _) = x
+      getY (V3 _ y _) = y
+      getZ (V3 _ _ z) = z
 
 data AcX a = AcX { ac_r_n2b_n :: V3 a
                  , ac_v_bn_b :: V3 a
