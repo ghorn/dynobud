@@ -26,13 +26,13 @@ import Hascm.Vectorize
 --import Hascm.TypeVecs
 import Hascm.TypeNats
 import Hascm.Ipopt
-import Hascm.Snopt
+--import Hascm.Snopt
 --import Hascm.Sqp.Sqp
 --import Hascm.Sqp.LineSearch
+--import qualified Hascm.Nlp as Nlp
 
 import Hascm.Ocp
 import Hascm.DirectCollocation
-import qualified Hascm.Nlp as Nlp
 
 import Hascm.Models.Aircraft
 import Hascm.Models.AeroCoeffs
@@ -137,12 +137,12 @@ main = do
 
           cb = callback publisher gliderChannelName
 
-      opt' <- solveNlpIpopt (makeCollNlp ocp) (Just guess) None (Just cb)
+      opt' <- solveNlpIpopt (makeCollNlp ocp) guess None (Just cb)
       opt <- case opt' of Left msg -> error msg
                           Right opt'' -> return opt''
-      let xopt = Nlp.xOpt opt
-          lambda = Nlp.lambdaOpt opt
-      _ <- solveNlpSnopt (makeCollNlp ocp) (Just cb) xopt None (Just lambda)
+      --let xopt = Nlp.xOpt opt
+      --    lambda = Nlp.lambdaOpt opt
+      --_ <- solveNlpSnopt (makeCollNlp ocp) (Just cb) xopt None (Just lambda)
       --_ <- solveSqp (makeCollNlp ocp) fullStep xopt None
       --_ <- solveSqp (makeCollNlp ocp) armilloSearch xopt None
       

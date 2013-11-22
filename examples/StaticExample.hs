@@ -7,9 +7,10 @@ import Hascm.TypeNats
 import Hascm.TypeVecs ( Vec(..), mkVec' )
 import Hascm.Nlp
 import Hascm.StaticNlp
-import Hascm.Sqp.Sqp
-import Hascm.Sqp.LineSearch
-import Hascm.Snopt
+import Hascm.Ipopt
+--import Hascm.Sqp.Sqp
+--import Hascm.Sqp.LineSearch
+--import Hascm.Snopt
 
 buildRosen :: IO (Nlp (Vec D2) None (Vec D0))
 buildRosen = fmap fst $ buildNlp $ do
@@ -26,11 +27,12 @@ main :: IO ()
 main = do
   rosen <- buildRosen
 
-  let x0 = [-8,8]
-      x0' = mkVec' x0 :: Vec D2 Double
+  let x0' = [-8,8]
+      x0 = mkVec' x0' :: Vec D2 Double
 
-  ret <- solveNlpSnopt rosen Nothing x0' None Nothing
+  ret <- solveNlpIpopt rosen x0 None Nothing
+  --ret <- solveNlpSnopt rosen Nothing x0 None Nothing
   print ret
-  (xopt , kktInf) <- solveSqp rosen armilloSearch x0' None
-  print xopt
-  print kktInf
+  --(xopt , kktInf) <- solveSqp rosen armilloSearch x0 None
+  --print xopt
+  --print kktInf

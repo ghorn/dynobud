@@ -13,8 +13,10 @@ import Hascm.Vectorize
 import Hascm.TypeNats
 import Hascm.TypeVecs ( Vec(..), mkVec' )
 import Hascm.Nlp
-import Hascm.Sqp.Sqp
-import Hascm.Sqp.LineSearch
+import Hascm.Ipopt
+--import Hascm.Snopt
+--import Hascm.Sqp.Sqp
+--import Hascm.Sqp.LineSearch
 
 myNlp :: Nlp (Vec D2) None (Vec D1)
 myNlp = Nlp fg bx bg
@@ -54,6 +56,11 @@ myNlp = Nlp fg bx bg
 
 main :: IO ()
 main = do
-  (x0, kktInf) <- solveSqp myNlp armilloSearch (mkVec' [-8,-8] :: Vec D2 Double) None
-  print x0
-  print kktInf
+  let guess = mkVec' [-8,-8] :: Vec D2 Double
+  opt <- solveNlpIpopt myNlp guess None Nothing
+  print opt
+--  opt2 <- solveNlpSnopt myNlp Nothing guess None Nothing
+--  print opt2
+--  (x0, kktInf) <- solveSqp myNlp armilloSearch guess None
+--  print x0
+--  print kktInf
