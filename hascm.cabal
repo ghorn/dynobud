@@ -38,7 +38,6 @@ library
                        Hascm.Casadi.SX
                        Hascm.Casadi.SXMatrix
                        Hascm.Casadi.DMatrix
-                       Hascm.Casadi.QP
 
   -- other-modules:
   build-depends:       base >=4.6 && <4.7,

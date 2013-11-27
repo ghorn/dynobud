@@ -57,4 +57,3 @@ mkSchemeSXMatrix = mkScheme sxMatrix
 
 mkSchemeCRSSparsity :: InputOutputScheme -> [(String,CRSSparsity)] -> IO (V.Vector CRSSparsity)
 mkSchemeCRSSparsity = mkScheme crsSparsity'
-

@@ -8,11 +8,12 @@ import Data.Maybe ( fromMaybe )
 
 import Casadi.Wrappers.Enums ( InputOutputScheme(..) )
 import Casadi.Callback
-import Casadi.Wrappers.Tools ( sp_dense )
 import Casadi.Wrappers.Classes.FX
+import Casadi.Wrappers.Classes.OptionsFunctionality
 import Casadi.Wrappers.Classes.PrintableObject
 import Casadi.Wrappers.Classes.DMatrix
 import Casadi.Wrappers.Classes.SXMatrix
+import Casadi.Wrappers.Classes.GenericType
 import Casadi.Wrappers.Classes.SXFunction ( sxFunction''' )
 import Casadi.Wrappers.Classes.SharedObject
 import Casadi.Wrappers.Classes.IpoptSolver
@@ -55,32 +56,14 @@ solveNlpIpopt nlp x0 p0 callback' = do
   case callback' of
     Nothing -> return ()
     Just callback -> do
-      spX  <- sp_dense (V.length inputsX) 1
-      spLX <- sp_dense (V.length inputsX) 1
-      spF  <- sp_dense 1 1
-      spG  <- sp_dense (V.length g) 1
-      spLG <- sp_dense (V.length g) 1
-      spLP <- sp_dense (V.length inputsP) 1
-      cfunInput <- mkSchemeCRSSparsity SCHEME_NLPSolverOutput
-                   [ ("x",spX)
-                   , ("f",spF)
-                   , ("lam_x",spLX)
-                   , ("lam_g",spLG)
-                   , ("lam_p",spLP)
-                   , ("g",spG)
-                   ]
-      spOut <- sp_dense 1 1
-      let cfunOutput = V.singleton spOut
-          cb fx' _ _ = do
-            xval <- ioInterfaceFX_input fx' 0 >>= dmatrix_data
+      let cb fx' = do
+            xval <- ioInterfaceFX_output fx' 0 >>= dmatrix_data
             callbackRet <- callback (devectorize xval)
-            -- terminate execution if user requests
-            if callbackRet
-              then ioInterfaceFX_setOutput' fx' 0
-              else ioInterfaceFX_setOutput' fx' 1
-      addCallback ipopt cb cfunInput cfunOutput
+            return $ if callbackRet then 0 else 1
+      casadiCallback <- makeCallback cb >>= genericTypeCallback
+      optionsFunctionality_setOption ipopt "iteration_callback" casadiCallback
 
-  sharedObject_init' ipopt
+  sharedObject_init ipopt
 
   let (lbx,ubx) = toBnds (vectorize $ nlpBX nlp)
       (lbg,ubg) = toBnds (vectorize $ nlpBG nlp)
@@ -92,7 +75,6 @@ solveNlpIpopt nlp x0 p0 callback' = do
   ioInterfaceFX_setInput''''' ipopt ubg "ubg"
 
   fxSolveSafe ipopt
-  --fx_solve ipopt
 
   solveStatus <- fx_getStat ipopt "return_status"  >>= printableObject_getDescription
 

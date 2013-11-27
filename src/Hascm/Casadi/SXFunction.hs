@@ -21,7 +21,7 @@ newtype SXFunction f g = SXFunction C.SXFunction
 toSXFunction :: (Vectorize f, Vectorize g) => f SXMatrix -> g SXMatrix -> IO (SXFunction f g)
 toSXFunction inputs outputs = do
   sxf <- C.sxFunction''' (vectorize inputs) (vectorize outputs)
-  sharedObject_init' sxf
+  sharedObject_init sxf
   return (SXFunction sxf)
 
 evalSXFun :: (Vectorize f, Vectorize g) => SXFunction f g -> f DMatrix -> IO (g DMatrix)
@@ -29,7 +29,7 @@ evalSXFun (SXFunction sxf) inputs = do
   -- set inputs
   zipWithM_ (ioInterfaceFX_setInput'''''' sxf) (V.toList (vectorize inputs)) [0..]
   -- eval
-  fx_evaluate'' sxf
+  fx_evaluate sxf
   -- get outputs
   numOut <- ioInterfaceFX_getNumOutputs sxf
   outputs <- mapM (ioInterfaceFX_output sxf) (take numOut [0..])
