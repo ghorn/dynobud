@@ -9,7 +9,7 @@ module GliderTypes ( GliderDesignVars
 import Data.Tree ( Tree(..) )
 
 import Hascm.Vectorize
-import Hascm.TypeNats
+import Hascm.Nats
 import Hascm.DirectCollocation
 import Hascm.Models.Aircraft
 

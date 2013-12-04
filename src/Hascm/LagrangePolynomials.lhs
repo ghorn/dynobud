@@ -232,7 +232,7 @@ C_{j,k} =
 \end{equation}
 
 \begin{code}
-lagrangeDerivCoeffs :: Fractional a => Vec deg a -> Vec deg (Vec deg a)
+lagrangeDerivCoeffs :: (Dim deg, Fractional a) => Vec deg a -> Vec deg (Vec deg a)
 lagrangeDerivCoeffs taus' = mkVec' [mkVec' [cjk j k | k <- [0..deg]] | j <- [0..deg]]
   where
     taus = unVec taus'
@@ -281,7 +281,9 @@ runComparison = do
   putStrLn "numeric difference:"
   let cmp :: V.Vector Double -> V.Vector Double -> IO ()
       cmp v1s v2s = print $ V.zipWith (-) v1s v2s
-  V.zipWithM_ cmp vals $ fmap unVec $ unVec $ lagrangeDerivCoeffs (mkVec' sampleTaus)
+      f :: Dim n => Vec n Double -> IO ()
+      f st = V.zipWithM_ cmp vals $ fmap unVec $ unVec $ lagrangeDerivCoeffs st
+  reifyVector (V.fromList sampleTaus) f
   return ()
 
 \end{code}

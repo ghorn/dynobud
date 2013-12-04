@@ -10,7 +10,7 @@ module Main where
 import qualified Data.Vector as V
 
 import Hascm.Vectorize
-import Hascm.TypeNats
+import Hascm.Nats
 import Hascm.TypeVecs ( Vec(..), mkVec' )
 import Hascm.Nlp
 import Hascm.Ipopt

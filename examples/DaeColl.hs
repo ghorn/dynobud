@@ -16,7 +16,7 @@ import Plotter
 
 import Hascm.Vectorize
 import Hascm.TypeVecs
-import Hascm.TypeNats
+import Hascm.Nats
 import Hascm.Ipopt
 --import Hascm.Snopt
 --import Hascm.Sqp.Sqp

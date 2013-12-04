@@ -29,13 +29,15 @@ import GHC.Generics
 import qualified Numeric.LinearAlgebra.Algorithms as LA
 import Linear.Vector
 import Linear.Matrix
+import Linear.V
+import Data.Proxy
 
 import Plotter ( AccessorTree(..), Lookup(..), accessors )
 import JacobiRoots
 
 import Hascm.Vectorize
-import Hascm.TypeVecs
-import Hascm.TypeNats
+import qualified Hascm.TypeVecs as TV
+import Hascm.TypeVecs ( Vec, Succ )
 import Hascm.LagrangePolynomials
 
 import Hascm.Nlp
@@ -48,26 +50,26 @@ data CollStage x z u deg a = CollStage (x a) (Vec deg (CollPoint x z u a)) deriv
 data CollTraj x z u p n deg a = CollTraj a (p a) (Vec n (CollStage x z u deg a)) (x a) deriving (Functor, Generic1) -- endtime, params, coll stages, xf
 
 instance (Vectorize x, Vectorize z, Vectorize u) => Vectorize (CollPoint x z u)
-instance (Vectorize x, Vectorize z, Vectorize u, NaturalT deg) => Vectorize (CollStage x z u deg)
-instance (Vectorize x, Vectorize z, Vectorize u, Vectorize p, NaturalT n, NaturalT deg) =>
+instance (Vectorize x, Vectorize z, Vectorize u, Dim deg) => Vectorize (CollStage x z u deg)
+instance (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Dim n, Dim deg) =>
          Vectorize (CollTraj x z u p n deg)
 
 data CollDynConstraint deg r a =
   CollDynConstraint (Vec deg (r a))
   deriving (Functor, Generic1)
-instance (Vectorize r, NaturalT deg) =>
+instance (Vectorize r, Dim deg) =>
          Vectorize (CollDynConstraint deg r)
 
 data CollStageConstraints x deg r a =
   CollStageConstraints (CollDynConstraint deg r a) (x a)
   deriving (Functor, Generic1)
-instance (Vectorize x, Vectorize r, NaturalT deg) =>
+instance (Vectorize x, Vectorize r, Dim deg) =>
          Vectorize (CollStageConstraints x deg r)
 
 data CollTrajConstraints n x deg r a =
   CollTrajConstraints (Vec n (CollStageConstraints x deg r a))
   deriving (Functor, Generic1)
-instance (Vectorize x, Vectorize r, NaturalT n, NaturalT deg) =>
+instance (Vectorize x, Vectorize r, Dim n, Dim deg) =>
          Vectorize (CollTrajConstraints n x deg r)
 
 data CollOcpConstraints n deg x r c h a =
@@ -76,29 +78,22 @@ data CollOcpConstraints n deg x r c h a =
   , coPathC :: Vec n (Vec deg (h a))
   , coBc :: c a
   } deriving (Functor, Generic1)
-instance (Vectorize x, Vectorize r, NaturalT n, NaturalT deg, Vectorize c, Vectorize h) =>
+instance (Vectorize x, Vectorize r, Dim n, Dim deg, Vectorize c, Vectorize h) =>
          Vectorize (CollOcpConstraints n deg x r c h)
 
-ctDegT :: CollTraj x z u p n deg a -> deg
-ctDegT _ = undefined
+ctN :: forall x z u p n deg a . Dim n => CollTraj x z u p n deg a -> Int
+ctN _ = reflectDim (Proxy :: Proxy n)
 
-ctNT :: CollTraj x z u p n deg a -> n
-ctNT _ = undefined
-
-ctN :: IntegerT n => CollTraj x z u p n deg a -> Int
-ctN = fromIntegerT . ctNT
-
-ctDeg :: IntegerT deg => CollTraj x z u p n deg a -> Int
-ctDeg = fromIntegerT . ctDegT
+ctDeg :: forall x z u p n deg a . Dim deg => CollTraj x z u p n deg a -> Int
+ctDeg _ = reflectDim (Proxy :: Proxy deg)
 
 mkTaus :: Fractional a => Int -> Vec deg a
 mkTaus deg = case shiftedLegendreRoots deg of
-  Just taus -> mkVec $ V.map (fromRational . toRational) taus
+  Just taus -> TV.mkVec $ V.map (fromRational . toRational) taus
   Nothing -> error "makeTaus: too high degree"
 
 getFg :: forall z x u p r c h a n deg .
-         (PositiveT n, NaturalT deg, NaturalT (Succ deg), deg ~ Pred (Succ deg),
-          Vectorize x, Fractional a, NaturalT n, Num a) =>
+         (Dim deg, Vectorize x, Fractional a, Dim n, Num a) =>
          OcpPhase x z u p r c h a -> NlpInputs (CollTraj x z u p n deg) None a ->
          NlpFun (CollOcpConstraints n deg x r c h) a
 getFg ocp (NlpInputs collTraj@(CollTraj tf p stages xf) _) = NlpFun obj g
@@ -114,7 +109,7 @@ getFg ocp (NlpInputs collTraj@(CollTraj tf p stages xf) _) = NlpFun obj g
 
     -- initial time at each collocation stage
     t0s :: Vec n a
-    t0s = mkVec' $ take n [h*(fromIntegral k) | k <- [(0::Int)..]]
+    t0s = TV.mkVec' $ take n [h*(fromIntegral k) | k <- [(0::Int)..]]
 
     -- times at each collocation point
     times :: Vec n (Vec deg a)
@@ -128,7 +123,7 @@ getFg ocp (NlpInputs collTraj@(CollTraj tf p stages xf) _) = NlpFun obj g
 
     -- coefficients for getting xdot by lagrange interpolating polynomials
     cijs :: Vec (Succ deg) (Vec (Succ deg) a)
-    cijs = lagrangeDerivCoeffs (0 <| taus)
+    cijs = lagrangeDerivCoeffs (0 TV.<| taus)
 
     -- initial point at each stage
     x0s :: Vec n (x a)
@@ -136,34 +131,33 @@ getFg ocp (NlpInputs collTraj@(CollTraj tf p stages xf) _) = NlpFun obj g
 
     -- final point at each stage (for matching constraint)
     xfs :: Vec n (x a)
-    xfs = mkSeq $ unSeq $ tvtail x0s |> xf
+    xfs = TV.mkSeq $ TV.unSeq $ TV.tvshiftl x0s xf
 
-    x0 = (\(CollStage x0' _) -> x0') (tvhead stages)
+    x0 = (\(CollStage x0' _) -> x0') (TV.tvhead stages)
     g = CollOcpConstraints
         { coDynamics =
              CollTrajConstraints $
-             tvzipWith3 (dynConstraints cijs (ocpDae ocp) taus h p) times stages xfs
-        , coPathC = tvzipWith mkPathConstraints stages times
+             TV.tvzipWith3 (dynConstraints cijs (ocpDae ocp) taus h p) times stages xfs
+        , coPathC = TV.tvzipWith mkPathConstraints stages times
         , coBc = (ocpBc ocp) x0 xf
         }
 
     mkPathConstraints :: CollStage x z u deg a -> Vec deg a -> Vec deg (h a)
     mkPathConstraints (CollStage _ collPoints) stageTimes =
-      tvzipWith mkPathC collPoints stageTimes
+      TV.tvzipWith mkPathC collPoints stageTimes
 
     mkPathC :: CollPoint x z u a -> a -> h a
     mkPathC (CollPoint x z u) t = ocpPathC ocp x z u p t
 
 
 makeCollNlp ::
-  (PositiveT n, NaturalT deg, NaturalT n, NaturalT (Succ deg), deg ~ Pred (Succ deg),
-   Vectorize x, Vectorize r, Vectorize c) =>
+  (Dim deg, Dim n, Vectorize x, Vectorize r, Vectorize c) =>
   (forall a. Floating a => OcpPhase x z u p r c h a) ->
   Nlp (CollTraj x z u p n deg) None (CollOcpConstraints n deg x r c h)
 makeCollNlp ocp = Nlp (getFg ocp) (getBx ocp) (getBg ocp)
 
 getBx ::
-  (NaturalT n, NaturalT deg)
+  (Dim n, Dim deg)
   => OcpPhase x z u p r c h Double -> CollTraj x z u p n deg (Maybe Double, Maybe Double)
 getBx ocp = ct
   where
@@ -183,7 +177,7 @@ getBx ocp = ct
     tb = ocpTbnd ocp
 
 getBg ::
-  (NaturalT n, NaturalT deg, Vectorize x, Vectorize r, Vectorize c)
+  (Dim n, Dim deg, Vectorize x, Vectorize r, Vectorize c)
   => OcpPhase x z u p r c h Double ->
   CollOcpConstraints n deg x r c h (Maybe Double, Maybe Double)
 getBg ocp =
@@ -196,35 +190,35 @@ getBg ocp =
 add :: (Vectorize x, Num a) => x a -> x a -> x a
 add x y = devectorize $ V.zipWith (+) (vectorize x) (vectorize y)
 
-dot :: forall x deg a. (NaturalT deg, Vectorize x, Num a) => Vec deg a -> Vec deg (x a) -> x a
-dot cks xs = F.foldl' add (fill 0) $ unSeq elemwise
+dot :: forall x deg a. (Dim deg, Vectorize x, Num a) => Vec deg a -> Vec deg (x a) -> x a
+dot cks xs = F.foldl' add (fill 0) $ TV.unSeq elemwise
   where
     elemwise :: Vec deg (x a)
-    elemwise = tvzipWith (\(Id c) x -> c *^ x) (fmap Id cks) xs
+    elemwise = TV.tvzipWith (\(Id c) x -> c *^ x) (fmap Id cks) xs
 
 evaluateQuadratures ::
   forall x z u p n deg a .
-  (NaturalT deg, NaturalT (Succ deg), NaturalT n, deg ~ Pred (Succ deg), Fractional a) =>
+  (Dim deg, Dim n, Fractional a) =>
   (x a -> z a -> u a -> p a -> a -> a) ->
   CollTraj x z u p n deg a -> a -> (forall b. Fractional b => Vec deg b) -> Vec n (Vec deg a) -> a
 evaluateQuadratures f (CollTraj _ p stages _) h taus times =
-  (h *) $ V.sum $ unVec $ tvzipWith oneStage stages times
+  (h *) $ V.sum $ TV.unVec $ TV.tvzipWith oneStage stages times
   where
     oneStage :: CollStage x z u deg a -> Vec deg a -> a
     oneStage (CollStage _ stage) stageTimes = qnext
       where
         qdots :: Vec deg a
-        qdots = tvzipWith (\(CollPoint x z u) t -> f x z u p t) stage stageTimes
+        qdots = TV.tvzipWith (\(CollPoint x z u) t -> f x z u p t) stage stageTimes
 
         qs = cijInvFr !* qdots
 
         Id qnext = interpolate taus (Id 0) (fmap Id qs)
 
     cijs' :: Vec (Succ deg) (Vec (Succ deg) Double)
-    cijs' = lagrangeDerivCoeffs (0 <| taus)
+    cijs' = lagrangeDerivCoeffs (0 TV.<| taus)
 
     cijs :: Vec deg (Vec deg Double)
-    cijs = tvtail $ fmap tvtail cijs'
+    cijs = TV.tvtail $ fmap TV.tvtail cijs'
 
     cijMat :: Mat.Matrix Double
     cijMat = Mat.fromLists $ F.toList $ fmap F.toList cijs
@@ -233,16 +227,23 @@ evaluateQuadratures f (CollTraj _ p stages _) h taus times =
     cijInv' = LA.inv cijMat
 
     cijInv :: Vec deg (Vec deg Double)
-    cijInv = mkVec' (map mkVec' (Mat.toLists cijInv'))
+    cijInv = TV.mkVec' (map TV.mkVec' (Mat.toLists cijInv'))
 
     cijInvFr :: Vec deg (Vec deg a)
     cijInvFr = fmap (fmap realToFrac) cijInv
 
-interpolateXDots :: (NaturalT deg, Vectorize x, Num a) => Vec deg (Vec deg a) -> Vec deg (x a) -> Vec deg (x a)
-interpolateXDots cjks xs = fmap (`dot` xs) cjks
+interpolateXDots' :: (Dim deg, Vectorize x, Num a) => Vec deg (Vec deg a) -> Vec deg (x a) -> Vec deg (x a)
+interpolateXDots' cjks xs = fmap (`dot` xs) cjks
+
+interpolateXDots ::
+  (Dim deg, Vectorize x, Num a) =>
+  Vec (Succ deg) (Vec (Succ deg) a)
+  -> Vec (Succ deg) (x a)
+  -> Vec deg (x a)
+interpolateXDots cjks xs = TV.tvtail $ interpolateXDots' cjks xs
 
 dynConstraints ::
-  forall x z u p r a deg . (NaturalT deg, NaturalT (Succ deg), Fractional a, Vectorize x)
+  forall x z u p r a deg . (Dim deg, Fractional a, Vectorize x)
   => Vec (Succ deg) (Vec (Succ deg) a) -> Dae x z u p r a -> Vec deg a -> a -> p a -> Vec deg a ->
   CollStage x z u deg a -> x a -> CollStageConstraints x deg r a
 dynConstraints cijs dae taus h p stageTimes (CollStage x0 cps) xnext =
@@ -257,16 +258,13 @@ dynConstraints cijs dae taus h p stageTimes (CollStage x0 cps) xnext =
 
     -- dae constraints (dynamics)
     dynConstrs :: Vec deg (r a)
-    dynConstrs = tvzipWith3 applyDae xdots cps stageTimes
+    dynConstrs = TV.tvzipWith3 applyDae xdots cps stageTimes
 
     applyDae :: x a -> CollPoint x z u a -> a -> r a
     applyDae x' (CollPoint x z u) t = dae x' x z u p t
 
     xdots :: Vec deg (x a)
-    xdots = mkSeq $ unSeq $ tvtail xdots'
-
-    xdots' :: Vec (Succ deg) (x a)
-    xdots' = fmap (fmap (/h)) $ interpolateXDots cijs (x0 <| xs)
+    xdots = fmap (fmap (/h)) $ interpolateXDots cijs (x0 TV.<| xs)
 
     xs :: Vec deg (x a)
     xs = fmap getX cps
@@ -274,13 +272,11 @@ dynConstraints cijs dae taus h p stageTimes (CollStage x0 cps) xnext =
 getX :: CollPoint x z u a -> x a
 getX (CollPoint x _ _) = x
 
-
-interpolate :: (NaturalT deg, NaturalT (Succ deg), Fractional a, Vectorize x)
-               => Vec deg a -> x a -> Vec deg (x a) -> x a
-interpolate taus x0 xs = dot (mkVec' xis) (x0 <| xs)
+interpolate :: (Dim deg, Fractional a, Vectorize x) => Vec deg a -> x a -> Vec deg (x a) -> x a
+interpolate taus x0 xs = dot (TV.mkVec' xis) (x0 TV.<| xs)
   where
     xis = map (lagrangeXis (0 : (F.toList taus)) 1) [0..deg]
-    deg = tvlength taus
+    deg = TV.tvlength taus
 
 data PlotPoints n deg x z u a =
   PlotPoints (Vec n ((a, x a), Vec deg (a, x a, z a, u a), (a, x a))) (a, x a)
@@ -290,13 +286,13 @@ data PlotPointsL x z u a =
 
 plotPoints ::
   forall x z u p n deg a .
-  (NaturalT n, NaturalT deg, NaturalT (Succ deg), Fractional a, Vectorize x)
+  (Dim n, Dim deg, Fractional a, Vectorize x)
   => CollTraj x z u p n deg a ->
   PlotPoints n deg x z u a
 plotPoints ct@(CollTraj tf _ stages xf) = PlotPoints ret (tf', xf)
   where
     (tf', ret) = T.mapAccumL f 0 stages
-    nStages = tvlength stages
+    nStages = TV.tvlength stages
     h = tf / (fromIntegral nStages)
     taus = mkTaus (ctDeg ct)
 
@@ -305,7 +301,7 @@ plotPoints ct@(CollTraj tf _ stages xf) = PlotPoints ret (tf', xf)
       where
         tnext = t0 + h
         stage = ( (t0, x0)
-                , tvzipWith (\(CollPoint x z u) tau -> (t0 + h*tau, x, z, u)) xs taus
+                , TV.tvzipWith (\(CollPoint x z u) tau -> (t0 + h*tau, x, z, u)) xs taus
                 , (tnext, interpolate taus x0 (fmap getX xs))
                 )
 

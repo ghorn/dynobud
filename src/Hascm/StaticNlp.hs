@@ -25,9 +25,9 @@ import qualified Data.HashSet as HS
 import qualified Data.Sequence as S
 import Data.Sequence ( (|>) )
 import qualified Data.Vector as V
+import Linear.V ( Dim )
 
 import Hascm.Vectorize
-import Hascm.TypeNats
 import Hascm.Nlp
 import Hascm.TypeVecs ( Vec )
 import qualified Hascm.TypeVecs as TV
@@ -125,7 +125,7 @@ constr (Eq2 lhs rhs) = (lhs - rhs, (Just 0, Just 0))
 constr (Ineq2 lhs rhs) = (lhs - rhs, (Nothing, Just 0))
 
 
-toG :: (Eq a, Num a, NaturalT ng) => S.Seq (Constraint (Expr a)) -> Vec ng (Expr a, (Maybe Double, Maybe Double))
+toG :: (Eq a, Num a, Dim ng) => S.Seq (Constraint (Expr a)) -> Vec ng (Expr a, (Maybe Double, Maybe Double))
 toG nlpConstraints' = TV.mkSeq $ fmap constr (nlpConstraints')
 
 convertAlgorithm :: Floating a => Algorithm Double -> Algorithm a
@@ -146,7 +146,7 @@ convertAlgorithm alg = alg { algOps = newAlgOps }
     convertG (GFloating x) = GFloating x
 
 buildNlp :: forall nx ng .
-            (NaturalT nx, NaturalT ng) =>
+            (Dim nx, Dim ng) =>
             NlpMonad () -> IO (Nlp (Vec nx) None (Vec ng), [LogMessage])
 buildNlp nlp = do
   let (_,logs,state) = build nlp
