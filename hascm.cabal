@@ -13,31 +13,31 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     Hascm.LagrangePolynomials,
-                       Hascm.AlgorithmV,
-                       Hascm.TypeVecs,
-                       Hascm.Nats,
---                       Hascm.MultipleShooting,
-                       Hascm.Dae,
---                       Hascm.Sqp.Sqp,
---                       Hascm.Sqp.LineSearch,
-                       Hascm.Models.Aircraft,
-                       Hascm.Models.AeroCoeffs,
-                       Hascm.Models.Betty,
-                       Hascm.Ocp,
-                       Hascm.DirectCollocation,
-                       Hascm.Vectorize,
-                       Hascm.Nlp,
-                       Hascm.StaticNlp,
-                       Hascm.StaticNlp.LogsAndErrors,
-                       Hascm.StaticNlp.StaticNlpTypes,
+  exposed-modules:     Hascm.LagrangePolynomials
+                       Hascm.AlgorithmV
+                       Hascm.TypeVecs
+                       Hascm.Nats
+--                       Hascm.MultipleShooting
+                       Hascm.Dae
+                       Hascm.Models.Aircraft
+                       Hascm.Models.AeroCoeffs
+                       Hascm.Models.Betty
+                       Hascm.Ocp
+                       Hascm.DirectCollocation
+                       Hascm.Vectorize
+                       Hascm.Nlp
+                       Hascm.StaticNlp
+                       Hascm.StaticNlp.LogsAndErrors
+                       Hascm.StaticNlp.StaticNlpTypes
                        Hascm.Ipopt
---                       Hascm.Snopt
-                       Hascm.Casadi.IOSchemes,
+                       Hascm.Casadi.IOSchemes
                        Hascm.Casadi.SXFunction
                        Hascm.Casadi.SX
                        Hascm.Casadi.SXMatrix
                        Hascm.Casadi.DMatrix
+--                       Hascm.Sqp.Sqp
+--                       Hascm.Sqp.LineSearch
+--                       Hascm.Snopt
 
   -- other-modules:
   build-depends:       base >=4.6 && <4.7,
