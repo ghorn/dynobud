@@ -27,4 +27,6 @@ data Nlp x p g =
   Nlp { nlpFG :: Floating a => NlpInputs x p a -> NlpFun g a
       , nlpBX :: x (Maybe Double, Maybe Double)
       , nlpBG :: g (Maybe Double, Maybe Double)
+      , nlpX0 :: x Double
+      , nlpP :: p Double
       }

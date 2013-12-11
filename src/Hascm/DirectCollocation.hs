@@ -151,10 +151,17 @@ getFg ocp (NlpInputs collTraj@(CollTraj tf p stages xf) _) = NlpFun obj g
 
 
 makeCollNlp ::
-  (Dim deg, Dim n, Vectorize x, Vectorize r, Vectorize c) =>
+  (Dim deg, Dim n, Vectorize x, Vectorize p, Vectorize u, Vectorize z, Vectorize r, Vectorize c) =>
   (forall a. Floating a => OcpPhase x z u p r c h a) ->
   Nlp (CollTraj x z u p n deg) None (CollOcpConstraints n deg x r c h)
-makeCollNlp ocp = Nlp (getFg ocp) (getBx ocp) (getBg ocp)
+makeCollNlp ocp = Nlp { nlpFG = getFg ocp
+                      , nlpBX = bx
+                      , nlpBG = getBg ocp
+                      , nlpX0 = fmap (const 0) bx
+                      , nlpP = None
+                      }
+  where
+    bx = getBx ocp
 
 getBx ::
   (Dim n, Dim deg)

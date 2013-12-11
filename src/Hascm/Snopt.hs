@@ -71,19 +71,20 @@ toSnoptSymbolics nlp = do
 
 
 solveNlpSnopt :: forall x p g . (Vectorize x, Vectorize p, Vectorize g) =>
-            Nlp x p g -> Maybe (x Double -> IO Bool) -> x Double -> p Double ->
+            Nlp x p g -> Maybe (x Double -> IO Bool) ->
             Maybe (Multipliers x g Double) ->
             IO (Either String (NlpOut x g Double))
-solveNlpSnopt nlp callback x0 p lambda0 = do
+solveNlpSnopt nlp callback lambda0 = do
   (snoptFun, jacobSparsity) <- toSnoptSymbolics nlp
 
   let fbnds = V.map toBnds $ V.singleton (Nothing, Nothing) V.++ (vectorize $ nlpBG nlp)
       xbnds = V.map toBnds $ vectorize $ nlpBX nlp
       (flow, fupp) = V.unzip fbnds
 
-      nx = V.length (vectorize x0)
+      x0 = vectorize $ nlpX0 nlp
+      p = nlpP nlp
+      nx = V.length x0
       (xlow, xupp) = V.unzip xbnds
-      xInit = vectorize x0
 
       f0init = replicate nf 0
       nf = V.length fbnds
@@ -118,8 +119,8 @@ solveNlpSnopt nlp callback x0 p lambda0 = do
         --statuss <- peek status
         --putStrLn $ "status: " ++ show statuss
 
-        when (n /= V.length (vectorize x0)) $
-          error $ "x0 length mismatch lol" ++ show (n , V.length (vectorize x0))
+        when (n /= nx) $
+          error $ "x0 length mismatch lol" ++ show (n , nx)
         when (nF /= V.length fbnds) $
           error $ "fbnds length mismatch lol" ++ show (nF, V.length fbnds)
         when (ng /= lenG) $ error $ "lenG mismatch lol" ++ show (ng, lenG)
@@ -159,7 +160,7 @@ solveNlpSnopt nlp callback x0 p lambda0 = do
         setIAfun $ VS.fromList $ map fromIntegral iAfun
         setXlow $ VS.fromList $ V.toList xlow
         setXupp $ VS.fromList $ V.toList xupp
-        setX $ VS.fromList $ V.toList xInit
+        setX $ VS.fromList $ V.toList x0
 
         setFlow $ VS.fromList $ V.toList flow
         setFupp $ VS.fromList $ V.toList fupp

@@ -123,12 +123,14 @@ toDeltaXBnd0 x0' (Just lb, Just ub) = (Just (lb - x0'), Just (ub - x0'))
 toDeltaXBnd0 _ (Nothing, Nothing) = (Nothing, Nothing)
 
 solveSqp :: (Vectorize x, Vectorize p, Vectorize g) =>
-            Nlp x p g -> LineSearch IO Double -> x Double -> p Double -> IO (x Double, Kkt Double)
-solveSqp nlp lineSearch x0_ p0_ = do
+            Nlp x p g -> LineSearch IO Double -> IO (x Double, Kkt Double)
+solveSqp nlp lineSearch = do
   (sqp, sqp') <- toSqpSymbolics nlp
 
-  let x0 = dvector (vectorize x0_)
-      p0 = dvector (vectorize p0_)
+  let x0' = vectorize (nlpX0 nlp)
+      p0' = vectorize (nlpP nlp)
+      x0 = dvector x0'
+      p0 = dvector p0'
       lambdaX0 = vectorize $ fmap (const 0) (nlpBX nlp)
       lambdaG0 = vectorize $ fmap (const 0) (nlpBG nlp)
 
@@ -145,7 +147,7 @@ solveSqp nlp lineSearch x0_ p0_ = do
         qmat = toRc $ V.toList $ dsparse hessL0
         rhs = toSense $ vectorize (nlpBG nlp)
         xbnds = vectorize (nlpBX nlp)
-        deltaXBnds = V.zipWith toDeltaXBnd0 (vectorize x0_) xbnds
+        deltaXBnds = V.zipWith toDeltaXBnd0 x0' xbnds
 
     debug "=========================== COPY LP ================================"
     debug $ "objsen: " ++ show objsen
@@ -170,7 +172,7 @@ solveSqp nlp lineSearch x0_ p0_ = do
     (SqpIn xopt _ _ _, _, kkts) <-
       runSqpIter 0 lineSearch
       (vectorize (nlpBX nlp)) (vectorize (nlpBG nlp))
-      env lp sqp sqp' (vectorize p0_) (vectorize x0_) lambdaX0 lambdaG0  Nothing
+      env lp sqp sqp' p0' x0' lambdaX0 lambdaG0  Nothing
     return (devectorize (ddata xopt), kkts)
 
 

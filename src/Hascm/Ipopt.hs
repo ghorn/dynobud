@@ -183,9 +183,9 @@ makeIpoptSolver (NlpInputs inputsX inputsP) (NlpFun obj g) callback' = do
 
 solveNlpIpopt ::
   (Vectorize x, Vectorize p, Vectorize g) =>
-  Nlp x p g -> x Double -> p Double -> Maybe (x Double -> IO Bool)
+  Nlp x p g -> Maybe (x Double -> IO Bool)
   -> IO (Either String (NlpOut x g Double))
-solveNlpIpopt nlp x0 p0 callback' = do
+solveNlpIpopt nlp callback' = do
   (NlpInputs inputsX' inputsP', NlpFun obj g') <- funToSX (nlpFG nlp)
   let inputsX = vectorize inputsX' :: V.Vector SX
       inputsP = vectorize inputsP' :: V.Vector SX
@@ -197,8 +197,8 @@ solveNlpIpopt nlp x0 p0 callback' = do
   let (lbx,ubx) = toBnds (vectorize $ nlpBX nlp)
       (lbg,ubg) = toBnds (vectorize $ nlpBG nlp)
       runMe = do
-        setX0 (vectorize x0)
-        setP (vectorize p0)
+        setX0 (vectorize (nlpX0 nlp))
+        setP (vectorize (nlpP nlp))
         setLbx lbx
         setUbx ubx
         setLbg lbg

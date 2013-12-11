@@ -21,7 +21,7 @@ import Hascm.Ipopt
 --import Hascm.Snopt
 --import Hascm.Sqp.Sqp
 --import Hascm.Sqp.LineSearch
---import qualified Hascm.Nlp as Nlp
+import Hascm.Nlp
 
 import Hascm.Ocp
 import Hascm.DirectCollocation
@@ -116,7 +116,8 @@ guess = fill 1
 
 main :: IO ()
 main = do
-  _ <- solveNlpIpopt (makeCollNlp pendOcp) guess None Nothing
+  let nlp = (makeCollNlp pendOcp) { nlpX0 = guess }
+  _ <- solveNlpIpopt nlp Nothing
   --(Right nlpOut) <- solveNlpSnopt (makeCollNlp pendOcp) Nothing guess None Nothing
   --_ <- solveSqp (makeCollNlp pendOcp) armilloSearch (Nlp.xOpt nlpOut) None
   return ()

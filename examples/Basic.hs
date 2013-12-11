@@ -19,8 +19,15 @@ import Hascm.Ipopt
 --import Hascm.Sqp.LineSearch
 
 myNlp :: Nlp (Vec D2) None (Vec D1)
-myNlp = Nlp fg bx bg
+myNlp = Nlp { nlpFG = fg
+            , nlpBX = bx
+            , nlpBG = bg
+            , nlpX0 = x0
+            , nlpP = None
+            }
   where
+    x0 = mkVec' [-8,-8] :: Vec D2 Double
+
     bx = mkVec' [ (Just (-21), Just 0.5)
                 , (Just (-2), Just 2)
                 --, (Nothing, Nothing)
@@ -56,8 +63,7 @@ myNlp = Nlp fg bx bg
 
 main :: IO ()
 main = do
-  let guess = mkVec' [-8,-8] :: Vec D2 Double
-  opt <- solveNlpIpopt myNlp guess None Nothing
+  opt <- solveNlpIpopt myNlp Nothing
   print opt
 --  opt2 <- solveNlpSnopt myNlp Nothing guess None Nothing
 --  print opt2

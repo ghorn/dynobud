@@ -29,6 +29,7 @@ import Hascm.Ipopt
 --import Hascm.Snopt
 --import Hascm.Sqp.Sqp
 --import Hascm.Sqp.LineSearch
+import Hascm.Nlp
 --import qualified Hascm.Nlp as Nlp
 
 import Hascm.Ocp
@@ -137,15 +138,13 @@ main = do
 
           cb = callback publisher gliderChannelName
 
-      opt' <- solveNlpIpopt (makeCollNlp ocp) guess None (Just cb)
+      opt' <- solveNlpIpopt ((makeCollNlp ocp) {nlpX0 = guess}) (Just cb)
       opt <- case opt' of Left msg -> error msg
                           Right opt'' -> return opt''
       --let xopt = Nlp.xOpt opt
       --    lambda = Nlp.lambdaOpt opt
-      --_ <- solveNlpSnopt (makeCollNlp ocp) (Just cb) xopt None (Just lambda)
-      --_ <- solveSqp (makeCollNlp ocp) fullStep xopt None
-      --_ <- solveSqp (makeCollNlp ocp) armilloSearch xopt None
+      --_ <- solveNlpSnopt ((makeCollNlp ocp) {nlpX0 = xopt}) (Just cb) (Just lambda)
+      --_ <- solveSqp ((makeCollNlp ocp) {nlpX0 = xopt}) fullStep
+      --_ <- solveSqp ((makeCollNlp ocp) {nlpX0 = xopt}) armilloSearch
       
       return ()
-
---  (Right xopt) <- solveCollNlp pendOcp Nothing :: IO (CollTraj AcX AcZ AcU AcP NCollStages CollDeg Double)
