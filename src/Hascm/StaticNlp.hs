@@ -1,9 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language GADTs #-}
 {-# Language GeneralizedNewtypeDeriving #-}
 {-# Language RankNTypes #-}
-{-# Language DeriveFunctor #-}
-{-# Language DeriveGeneric #-}
 {-# Language ScopedTypeVariables #-}
 
 module Hascm.StaticNlp
@@ -14,6 +11,8 @@ module Hascm.StaticNlp
        , minimize
        , designVar
        , buildNlp
+       , buildNlp'
+       , reifyNlp
        ) where
 
 import Control.Monad ( when )
@@ -25,7 +24,8 @@ import qualified Data.HashSet as HS
 import qualified Data.Sequence as S
 import Data.Sequence ( (|>) )
 import qualified Data.Vector as V
-import Linear.V ( Dim )
+import Linear.V ( Dim(..) )
+import Data.Proxy
 
 import Hascm.Vectorize
 import Hascm.Nlp
@@ -137,7 +137,7 @@ convertAlgorithm alg = alg { algOps = newAlgOps }
     convert (InputOp k x) = InputOp k x
     convert (OutputOp k x) = OutputOp k x
     convert (NormalOp k x) = NormalOp k (convertG x)
-    
+
     convertG :: Floating a => GExpr Double Node -> GExpr a Node
     convertG (GSym x) = GSym x
     convertG (GConst c) = GConst (fromRational (toRational c))
@@ -153,14 +153,14 @@ buildNlp nlp = do
   obj <- case nlpObj state of
     Objective obj' -> return obj'
     ObjectiveUnset -> error "solveNlp: objective unset"
-    
+
   let inputs :: [Expr Double]
       inputs = map ESym (F.toList (nlpX state))
 
       g :: Vec ng (Expr Double)
       gbnd :: Vec ng (Maybe Double, Maybe Double)
       (g, gbnd) = TV.tvunzip $ toG (nlpConstraints state)
-      
+
       xbnd :: Vec nx (Maybe Double, Maybe Double)
       xbnd = fill (Nothing, Nothing)
       nlpFun = NlpFun obj g
@@ -171,4 +171,94 @@ buildNlp nlp = do
       fg (NlpInputs x _) = devectorize $ runAlgorithm alg (vectorize x)
   --mapM_ print (algOps alg)
   --print inputs
-  return (Nlp fg xbnd gbnd, logs)
+
+      nlp' = Nlp { nlpFG = fg
+                 , nlpBX = xbnd
+                 , nlpBG = gbnd
+                 , nlpX0 = fmap (const 0) xbnd
+                 , nlpP = None
+                 }
+  return (nlp', logs)
+
+
+
+toG' :: (Eq a, Num a) => S.Seq (Constraint (Expr a)) -> V.Vector (Expr a, (Maybe Double, Maybe Double))
+toG' nlpConstraints' = V.fromList $ F.toList $ fmap constr (nlpConstraints')
+
+
+buildNlp' :: NlpMonad a -> IO (Nlp V.Vector V.Vector V.Vector, [LogMessage])
+buildNlp' nlp = do
+  let (_,logs,state) = build nlp
+  obj <- case nlpObj state of
+    Objective obj' -> return obj'
+    ObjectiveUnset -> error "solveNlp: objective unset"
+
+  let inputs :: [Expr Double]
+      inputs = map ESym (F.toList (nlpX state))
+      nx = length inputs
+
+      parameters :: [Expr Double]
+      parameters = []
+      np = 0
+
+      g :: V.Vector (Expr Double)
+      gbnd :: V.Vector (Maybe Double, Maybe Double)
+      (g, gbnd) = V.unzip $ toG' (nlpConstraints state)
+      ng = V.length g
+
+      xbnd :: V.Vector (Maybe Double, Maybe Double)
+      xbnd = V.replicate nx (Nothing, Nothing)
+  alg' <- constructAlgorithm (V.fromList inputs V.++ V.fromList parameters) (V.singleton obj V.++ g)
+  let alg :: forall b . Floating b => Algorithm b
+      alg = convertAlgorithm alg'
+      fg :: forall b . Floating b => NlpInputs V.Vector V.Vector b -> NlpFun V.Vector b
+      fg (NlpInputs x p)
+        | V.length x /= nx = error $ "static nlp: V.length x /= nx " ++ show (V.length x, nx)
+        | V.length p /= np = error $ "static nlp: V.length p /= np " ++ show (V.length p, np)
+        | V.length g' /= ng = error $ "static nlp: V.length g /= ng " ++ show (V.length g', ng)
+        | otherwise = NlpFun (V.head vout) g'
+        where
+          g' = V.tail vout
+          vout = runAlgorithm alg (x V.++ p)
+      nlp' = Nlp { nlpFG = fg
+                 , nlpBX = xbnd
+                 , nlpBG = gbnd
+                 , nlpX0 = fmap (const 0) xbnd
+                 , nlpP = V.empty
+                 }
+  return (nlp', logs)
+
+
+
+reifyNlp ::
+  forall r .
+  Nlp V.Vector V.Vector V.Vector ->
+  (forall nx np ng . (Dim nx, Dim np, Dim ng) => Nlp (Vec nx) (Vec np) (Vec ng) -> r) ->
+  r
+reifyNlp nlp0 f =
+  TV.reifyDim nx $ \(Proxy :: Proxy nx) ->
+  TV.reifyDim np $ \(Proxy :: Proxy np) ->
+  TV.reifyDim ng $ \(Proxy :: Proxy ng) ->
+  f (Nlp
+     ((\(NlpInputs x' p') ->
+        fout devectorize (fg (NlpInputs (vectorize x') (vectorize p')))) :: forall a . Floating a => NlpInputs (Vec nx) (Vec np) a -> NlpFun (Vec ng) a)
+     (TV.mkVec bx :: Vec nx (Maybe Double, Maybe Double))
+     (TV.mkVec bg :: Vec ng (Maybe Double, Maybe Double))
+     (TV.mkVec x0 :: Vec nx Double)
+     (TV.mkVec p :: Vec np Double)
+    )
+  where
+    fout :: (f a -> g a) -> NlpFun f a -> NlpFun g a
+    fout f' (NlpFun obj g) = NlpFun obj (f' g)
+
+    nx = V.length bx
+    ng = V.length bg
+    np = V.length p
+
+    bx = nlpBX nlp0
+    bg = nlpBG nlp0
+    x0 = nlpX0 nlp0
+    p = nlpP nlp0
+
+    fg :: forall a . Floating a => NlpInputs V.Vector V.Vector a -> NlpFun V.Vector a
+    fg = nlpFG nlp0

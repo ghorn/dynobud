@@ -2,6 +2,7 @@
 {-# Language GeneralizedNewtypeDeriving #-}
 
 module Hascm.Ipopt ( solveNlpIpopt
+                   , solveStaticNlpIpopt
                    , solve
                    , setX0
                    , setP
@@ -40,6 +41,7 @@ import Hascm.Casadi.SX
 import Hascm.Casadi.IOSchemes
 
 import Hascm.Nlp
+import Hascm.StaticNlp
 
 inf :: Double
 inf = read "Infinity"
@@ -220,3 +222,25 @@ solveNlpIpopt nlp callback' = do
                      , lambdaOpt = Multipliers { lambdaX = devectorize lambdax
                                                , lambdaG = devectorize lambdag
                                                }}
+
+
+solveStaticNlpIpopt ::
+  Nlp V.Vector V.Vector V.Vector -> IO (Either String (NlpOut V.Vector V.Vector Double))
+solveStaticNlpIpopt nlp = reifyNlp nlp foo
+  where
+    foo nlp' = do
+      ret <- solveNlpIpopt nlp' Nothing
+      return $ case ret of
+        Left x -> Left x
+        Right (NlpOut { fOpt = fopt
+                      , xOpt = xopt
+                      , gOpt = gopt
+                      , lambdaOpt = Multipliers { lambdaX = lambdax
+                                                , lambdaG = lambdag
+                                                }}) ->
+          Right $ NlpOut { fOpt = fopt
+                         , xOpt = vectorize xopt
+                         , gOpt = vectorize gopt
+                         , lambdaOpt = Multipliers { lambdaX = vectorize lambdax
+                                                   , lambdaG = vectorize lambdag
+                                                   }}

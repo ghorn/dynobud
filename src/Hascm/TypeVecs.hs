@@ -30,6 +30,7 @@ module Hascm.TypeVecs
        , tvtail
        , tvshiftl
        , reifyVector
+       , reifyDim
        , Dim
        )
        where
