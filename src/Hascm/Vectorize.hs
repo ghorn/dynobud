@@ -103,9 +103,11 @@ instance (GVectorize f, GVectorize g) => GVectorize (f :*: g) where
   gvectorize (f :*: g) = gvectorize f V.++ gvectorize g
   gdevectorize v0s
     | V.length v0s < n0 =
-      error $ "gdevectorize (f :*: g): V.length v0s < vlength f0"
+      error $ "gdevectorize (f :*: g): V.length v0s < vlength f0  (" ++
+              show (V.length v0s) ++ " < " ++ show n0 ++ ")"
     | V.length v1 /= n1 =
-      error $ "gdevectorize (f :*: g): V.length v1 /= vlength f1"
+      error $ "gdevectorize (f :*: g): V.length v1 /= vlength f1  (" ++
+               show (V.length v1) ++ " /= " ++ show n1 ++ ")"
     | otherwise = f0 :*: f1
     where
       f0 = gdevectorize v0
