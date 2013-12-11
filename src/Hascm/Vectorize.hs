@@ -32,22 +32,22 @@ import Plotter
 
 -- | a length-0 vectorizable type
 data None a = None
-            deriving (Generic, Generic1, Functor, Foldable, Traversable, Show)
+            deriving (Eq, Generic, Generic1, Functor, Foldable, Traversable, Show)
 instance Vectorize None
 
 -- | a length-1 vectorizable type
 newtype Id a = Id a
-             deriving (Generic, Generic1, Functor, Foldable, Traversable, Show)
+             deriving (Eq, Generic, Generic1, Functor, Foldable, Traversable, Show)
 instance Vectorize Id
 
 -- | a length-2 vectorizable type
 data Tuple f g a = Tuple (f a) (g a)
-                 deriving (Generic, Generic1, Functor, Foldable, Traversable, Show)
+                 deriving (Eq, Generic, Generic1, Functor, Foldable, Traversable, Show)
 instance (Vectorize f, Vectorize g) => Vectorize (Tuple f g)
 
 -- | a length-3 vectorizable type
 data Triple f g h a = Triple (f a) (g a) (h a)
-                    deriving (Generic, Generic1, Functor, Foldable, Traversable, Show)
+                    deriving (Eq, Generic, Generic1, Functor, Foldable, Traversable, Show)
 instance (Vectorize f, Vectorize g, Vectorize h) => Vectorize (Triple f g h)
 
 instance Lookup (None a)

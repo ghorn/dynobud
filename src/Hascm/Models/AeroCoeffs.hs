@@ -21,7 +21,7 @@ data ControlSurfaces a =
                   , csRudder :: a
                   , csAil :: a
                   , csFlaps :: a
-                  } deriving (Functor, Foldable, Generic, Generic1, Show)
+                  } deriving (Eq, Functor, Foldable, Generic, Generic1, Show)
 instance Vectorize ControlSurfaces
 instance (Lookup a, Generic a) => Lookup (ControlSurfaces a)
 

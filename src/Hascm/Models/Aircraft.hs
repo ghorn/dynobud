@@ -30,12 +30,12 @@ data AcX a = AcX { ac_r_n2b_n :: V3 a
                  , ac_R_n2b :: M33 a
                  , ac_w_bn_b :: V3 a
                  , ac_u :: AcU a
-                 } deriving (Functor, Generic, Generic1, Show)
+                 } deriving (Eq, Functor, Generic, Generic1, Show)
 data AcU a = AcU { acSurfaces :: ControlSurfaces a
-                 } deriving (Functor, Generic, Generic1, Show)
-newtype AcZ a = AcZ (None a) deriving (Functor, Generic, Generic1, Show)
-newtype AcR a = AcR (AcX a) deriving (Functor, Generic, Generic1, Show)
-newtype AcP a = AcP (None a) deriving (Functor, Generic, Generic1, Show)
+                 } deriving (Eq, Functor, Generic, Generic1, Show)
+newtype AcZ a = AcZ (None a) deriving (Eq, Functor, Generic, Generic1, Show)
+newtype AcR a = AcR (AcX a) deriving (Eq, Functor, Generic, Generic1, Show)
+newtype AcP a = AcP (None a) deriving (Eq, Functor, Generic, Generic1, Show)
 
 deriving instance Generic (V3 a)
 deriving instance Generic1 V3

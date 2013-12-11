@@ -11,16 +11,16 @@ data NlpOut x g a = NlpOut { fOpt :: a
                            , xOpt :: x a
                            , gOpt :: g a
                            , lambdaOpt :: Multipliers x g a
-                           } deriving (Show, Functor, Generic1)
+                           } deriving (Eq, Show, Functor, Generic1)
 
 data Multipliers x g a = Multipliers { lambdaX :: x a
                                      , lambdaG :: g a
-                                     } deriving (Show, Functor, Generic1)
+                                     } deriving (Eq, Show, Functor, Generic1)
 
-data NlpFun g a = NlpFun a (g a) deriving (Show, Functor, Generic1)
+data NlpFun g a = NlpFun a (g a) deriving (Eq, Show, Functor, Generic1)
 instance Vectorize g => Vectorize (NlpFun g)
 
-data NlpInputs x p a = NlpInputs (x a) (p a) deriving (Show, Functor, Generic1)
+data NlpInputs x p a = NlpInputs (x a) (p a) deriving (Eq, Show, Functor, Generic1)
 instance (Vectorize x, Vectorize p) => Vectorize (NlpInputs x p)
 
 data Nlp x p g =
