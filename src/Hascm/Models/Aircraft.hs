@@ -1,8 +1,6 @@
 {-# OPTIONS_GHC -Wall -fno-warn-orphans #-}
 {-# Language ScopedTypeVariables #-}
-{-# Language StandaloneDeriving #-}
 {-# Language DeriveFunctor #-}
-{-# Language DeriveFoldable #-}
 {-# Language DeriveGeneric #-}
 
 module Hascm.Models.Aircraft ( AcX(..), AcU(..), aircraftDae ) where
@@ -37,8 +35,6 @@ newtype AcZ a = AcZ (None a) deriving (Eq, Functor, Generic, Generic1, Show)
 newtype AcR a = AcR (AcX a) deriving (Eq, Functor, Generic, Generic1, Show)
 newtype AcP a = AcP (None a) deriving (Eq, Functor, Generic, Generic1, Show)
 
-deriving instance Generic (V3 a)
-deriving instance Generic1 V3
 instance Vectorize V3
 
 instance Vectorize AcX
