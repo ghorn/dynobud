@@ -14,11 +14,11 @@ foo k = do
     ]
 
 foos :: Int -> Q String
-foos k = fmap (unlines . concat) $ mapM foo [0..k]
+foos k = fmap (unlines . concat) $ mapM foo ([0..k] ++ [500,1000,1500,2000])
 
 main :: IO ()
 main = do
-  defs <- runQ (foos 1000)
+  defs <- runQ (foos 200)
   let file =
         unlines
         [ "{-# OPTIONS_GHC -Wall #-}"
