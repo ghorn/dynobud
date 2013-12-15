@@ -1,14 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language DeriveFunctor #-}
-{-# Language DeriveGeneric #-}
-{-# Language TypeSynonymInstances #-}
-{-# Language FlexibleInstances #-}
-{-# Language MultiParamTypeClasses #-}
-{-# Language RankNTypes #-}
-{-# Language FlexibleContexts #-}
-{-# Language GADTs #-}
 
-module Main where
+module Main ( main ) where
 
 import qualified Data.Vector as V
 import Data.Serialize
@@ -23,14 +15,11 @@ import Linear
 import Data.ByteString.Char8 ( pack )
 
 import Hascm.Vectorize
---import Hascm.TypeVecs
-import Hascm.Nats
 import Hascm.Ipopt
 --import Hascm.Snopt
 --import Hascm.Sqp.Sqp
 --import Hascm.Sqp.LineSearch
 import Hascm.Nlp
---import qualified Hascm.Nlp as Nlp
 
 import Hascm.Ocp
 import Hascm.DirectCollocation
@@ -113,10 +102,6 @@ ubnd =
 bc :: Floating a => AcX a -> AcX a -> AcX a
 bc (AcX x0 v0 dcm0 w0 cs) _ = AcX x0 (v0 - V3 30 0 0) (dcm0 - eye3) w0 cs
 
-
-type NCollStages = D10
-type CollDeg = D3
-
 callback :: ZMQ.Socket ZMQ.Pub -> String -> GliderDesignVars Double -> IO Bool
 callback publisher chanName traj = do
   let bs = encode $ V.toList $ vectorize $ traj
@@ -137,14 +122,22 @@ main = do
           guess = fill 1
 
           cb = callback publisher gliderChannelName
+          nlp = (makeCollNlp ocp) { nlpX0 = guess }
 
-      opt' <- solveNlpIpopt ((makeCollNlp ocp) {nlpX0 = guess}) (Just cb)
+      opt' <- solveNlpIpopt nlp (Just cb)
       opt <- case opt' of Left msg -> error msg
                           Right opt'' -> return opt''
-      --let xopt = Nlp.xOpt opt
-      --    lambda = Nlp.lambdaOpt opt
-      --_ <- solveNlpSnopt ((makeCollNlp ocp) {nlpX0 = xopt}) (Just cb) (Just lambda)
-      --_ <- solveSqp ((makeCollNlp ocp) {nlpX0 = xopt}) fullStep
-      --_ <- solveSqp ((makeCollNlp ocp) {nlpX0 = xopt}) armilloSearch
+--      let xopt = xOpt opt
+--          lambda = lambdaOpt opt
+--
+--      snoptOpt' <- solveNlpSnopt (nlp {nlpX0 = xopt}) (Just cb) (Just lambda)
+--      snoptOpt <- case snoptOpt' of Left msg -> error msg
+--                                    Right opt'' -> return opt''
+--      let xopt' = xOpt snoptOpt
+--          lambda' = lambdaOpt opt
+--          lambdax' = vectorize $ lambdaX lambda'
+--          lambdag' = vectorize $ lambdaG lambda'
+--      _ <- solveSqp (nlp {nlpX0 = xopt}) fullStep
+--      _ <- solveSqp (nlp {nlpX0 = xopt}) armilloSearch
       
       return ()

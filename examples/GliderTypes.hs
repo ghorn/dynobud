@@ -13,8 +13,8 @@ import Hascm.Nats
 import Hascm.DirectCollocation
 import Hascm.Models.Aircraft
 
-type NCollStages = D60
-type CollDeg = D3
+type NCollStages = D100
+type CollDeg = D2
 
 type GliderDesignVars a = CollTraj AcX None AcU None NCollStages CollDeg a
 
