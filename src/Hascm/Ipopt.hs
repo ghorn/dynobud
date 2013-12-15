@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language GeneralizedNewtypeDeriving #-}
+{-# Language FlexibleInstances #-}
 
 module Hascm.Ipopt ( solveNlpIpopt
                    , solveStaticNlpIpopt
@@ -16,6 +17,8 @@ module Hascm.Ipopt ( solveNlpIpopt
                    , getUbx
                    , getLbg
                    , getUbg
+                   , IpoptOption
+                   , setOption
                    ) where
 
 import Control.Monad ( when )
@@ -82,6 +85,35 @@ setUbg = setInput isNg "ubg"
 
 setP :: V.Vector Double -> Ipopt ()
 setP = setInput isNp "p"
+
+class IpoptOption a where
+  mkGeneric :: a -> IO GenericType
+
+instance IpoptOption (V.Vector Double) where
+  mkGeneric = genericTypeDoubleVec
+instance IpoptOption (V.Vector Int) where
+  mkGeneric = genericTypeIntVec
+instance IpoptOption Double where
+  mkGeneric = genericTypeDouble
+instance IpoptOption String where
+  mkGeneric = genericTypeString
+instance IpoptOption Int where
+  mkGeneric = genericTypeInt
+
+setOption :: IpoptOption a => String -> a -> Ipopt ()
+setOption name val = do
+  ipoptState <- ask
+  let ipopt = isSolver ipoptState
+  liftIO $ do
+    gt <- mkGeneric val
+    optionsFunctionality_setOption ipopt name gt
+  reinit
+
+reinit :: Ipopt ()
+reinit = do
+  ipoptState <- ask
+  let ipopt = isSolver ipoptState
+  liftIO $ sharedObject_init ipopt
 
 solve :: Ipopt (Either String (NlpOut V.Vector V.Vector Double))
 solve = do
@@ -199,6 +231,10 @@ solveNlpIpopt nlp callback' = do
   let (lbx,ubx) = toBnds (vectorize $ nlpBX nlp)
       (lbg,ubg) = toBnds (vectorize $ nlpBG nlp)
       runMe = do
+        setOption "max_iter" (3000 :: Int)
+        setOption "tol" (1e-9 :: Double)
+        --setOption "fixed_variable_treatment" "make_constraint" -- causes segfaults?
+        --setOption "fixed_variable_treatment" "make_parameter"
         setX0 (vectorize (nlpX0 nlp))
         setP (vectorize (nlpP nlp))
         setLbx lbx
