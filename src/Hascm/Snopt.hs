@@ -12,6 +12,7 @@ import Data.Maybe ( fromMaybe )
 
 import Control.Monad ( unless, when )
 import qualified Data.HashSet as HS
+import Foreign.C.Types ( CInt )
 import Foreign.ForeignPtr ( newForeignPtr_ )
 import Foreign.Storable ( peek )
 import qualified Data.Vector.Storable as VS
@@ -77,8 +78,10 @@ solveNlpSnopt :: forall x p g . (Vectorize x, Vectorize p, Vectorize g) =>
 solveNlpSnopt nlp callback lambda0 = do
   (snoptFun, jacobSparsity) <- toSnoptSymbolics nlp
 
-  let fbnds = V.map toBnds $ V.singleton (Nothing, Nothing) V.++ (vectorize $ nlpBG nlp)
-      xbnds = V.map toBnds $ vectorize $ nlpBX nlp
+  let fbnds = V.map toBnds $ V.singleton (Nothing, Nothing) V.++ bg
+      bx = vectorize (nlpBX nlp)
+      bg = vectorize $ nlpBG nlp
+      xbnds = V.map toBnds bx
       (flow, fupp) = V.unzip fbnds
 
       x0 = vectorize $ nlpX0 nlp
@@ -86,8 +89,8 @@ solveNlpSnopt nlp callback lambda0 = do
       nx = V.length x0
       (xlow, xupp) = V.unzip xbnds
 
-      f0init = replicate nf 0
       nf = V.length fbnds
+  SnoptOut f0init _ <- snoptFun (SnoptIn x0 (vectorize p))
 
   let ijxA :: [((Int,Int),Double)]
       ijxA = []
@@ -152,6 +155,8 @@ solveNlpSnopt nlp callback lambda0 = do
   let --runSnopt :: IO (Either String SnInteger)
       --runSnopt = runSnoptA 500 10000 20000 nx nf na ng userfg $ do
       runSnopt = runSnoptA 500 10000000 20000000 nx nf na ng userfg $ do
+        setIsummary 6
+        setIprint 9 -- 0
         sninit
 
         --snseti "Verify level" 3
@@ -164,7 +169,7 @@ solveNlpSnopt nlp callback lambda0 = do
 
         setFlow $ VS.fromList $ V.toList flow
         setFupp $ VS.fromList $ V.toList fupp
-        setF $ VS.fromList f0init
+        setF $ VS.fromList $ V.toList f0init
 
         setObjRow 1
         setObjAdd 0
@@ -177,11 +182,33 @@ solveNlpSnopt nlp callback lambda0 = do
         setJGvar $ VS.fromList $ map fromIntegral jGvar
 
         -- if lagrange multipliers are available, use them
+        -- the snopt manual specifies that when constraints are initially active,
+        -- x should == xlb or xub, so the initial state here might be tweaked by 1e-9
+        -- to set that exactly
         case lambda0 of
           Nothing -> return ()
           Just (Multipliers lamX lamG) -> do
-            setXmul $ VS.fromList $ V.toList (vectorize lamX)
-            setFmul $ VS.fromList $ 0 : V.toList (vectorize lamG)
+            let lamX' = vectorize lamX
+                lamG' = vectorize lamG
+            setXmul $ VS.fromList $ V.toList lamX'
+            setFmul $ VS.fromList $ 0 : V.toList lamG'
+            let variableState :: Double -> (Maybe Double, Maybe Double) -> Double -> (CInt, Double)
+                variableState x (Nothing, Nothing) _ = (0, x)
+                variableState x (Just lbx, _) lambdax
+                  | lambdax < -1e-9 && (lbx - x >  -1e-9) = (4, lbx)
+                variableState x (_, Just ubx) lambdax
+                  | lambdax > 1e-9 && (x - ubx >  -1e-9) = (5, ubx)
+                variableState x _ _ = (0, x)
+
+                (xstate, x0') = V.unzip $ V.zipWith3 variableState x0 bx lamX'
+                (fstate, f0') = V.unzip $ V.zipWith3 variableState
+                                (f0init)
+                                (V.singleton (Nothing, Nothing) V.++ bg)
+                                (V.singleton 0 V.++ lamG')
+            setX $ VS.fromList $ V.toList x0'
+            setF $ VS.fromList $ V.toList f0'
+            setXstate $ VS.fromList $ V.toList xstate
+            setFstate $ VS.fromList $ V.toList fstate
 
         snopta ""-- "toy1"
 
