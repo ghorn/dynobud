@@ -1,12 +1,9 @@
-{-# OPTIONS_GHC -Wall #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
-{-# Language Rank2Types #-}
-{-# Language FlexibleContexts #-}
+{-# OPTIONS_GHC -Wall -fno-cse -fno-warn-orphans #-}
 
-module Hascm.Casadi.SXMatrix ( SXMatrix(), ssym, ssymV, ssymM, mm, smul, sadd, ssub, strans
+module Hascm.Casadi.SXMatrix ( SXMatrix(), ssym, ssymV, ssymM, smm, strans
                              , sgradient, sjacobian, shessian, svector
                              , sdata, ssparse, sdensify
-                             , scrs ) where
+                             , scrs, svertcat ) where
 
 import Control.Monad ( when )
 import qualified Data.Vector as V
@@ -26,88 +23,113 @@ ssymV = C.ssym'
 ssymM :: String -> Int -> Int -> IO SXMatrix
 ssymM = C.ssym
 
+-- | @jacobian exp x@ is the jacobian of exp w.r.t. x
+sgradient :: SXMatrix -> SXMatrix -> SXMatrix
+sgradient x y = unsafePerformIO (C.gradient x y)
+{-# NOINLINE sgradient #-}
+
+-- | @jacobian exp x@ is the jacobian of exp w.r.t. x
+sjacobian :: SXMatrix -> SXMatrix -> SXMatrix
+sjacobian x y = unsafePerformIO (C.jacobian x y)
+{-# NOINLINE sjacobian #-}
+
+-- | @jacobian exp x@ is the jacobian of exp w.r.t. x
+shessian :: SXMatrix -> SXMatrix -> SXMatrix
+shessian x y = unsafePerformIO (C.hessian x y)
+{-# NOINLINE shessian #-}
+
 -- | matrix matrix product
-mm :: SXMatrix -> SXMatrix -> IO SXMatrix
-mm = sxMatrix_mul'
-
--- | elementwise multiplication
-smul :: SXMatrix -> SXMatrix -> IO SXMatrix
-smul = sxMatrix___mul__
-
--- | elementwise addition
-sadd :: SXMatrix -> SXMatrix -> IO SXMatrix
-sadd = sxMatrix___add__
-
--- | elementwise addition
-ssub :: SXMatrix -> SXMatrix -> IO SXMatrix
-ssub = sxMatrix___sub__
-
--- | @jacobian exp x@ is the jacobian of exp w.r.t. x
-sgradient :: SXMatrix -> SXMatrix -> IO SXMatrix
-sgradient = C.gradient
-
--- | @jacobian exp x@ is the jacobian of exp w.r.t. x
-sjacobian :: SXMatrix -> SXMatrix -> IO SXMatrix
-sjacobian = C.jacobian
-
--- | @jacobian exp x@ is the jacobian of exp w.r.t. x
-shessian :: SXMatrix -> SXMatrix -> IO SXMatrix
-shessian = C.hessian
+smm :: SXMatrix -> SXMatrix -> SXMatrix
+smm x y = unsafePerformIO (sxMatrix_mul' x y)
+{-# NOINLINE smm #-}
 
 -- | transpose
-strans :: SXMatrix -> IO SXMatrix
-strans = sxMatrix_trans
+strans :: SXMatrix -> SXMatrix
+strans x = unsafePerformIO (sxMatrix_trans x)
+{-# NOINLINE strans #-}
 
--- absolute value
-sabs :: SXMatrix -> IO SXMatrix
-sabs = sxMatrix_fabs
+sdensify :: SXMatrix -> SXMatrix
+sdensify x = unsafePerformIO (C.densify'' x)
+{-# NOINLINE sdensify #-}
 
--- signum
-ssignum :: SXMatrix -> IO SXMatrix
-ssignum = sxMatrix_sign
-
-sdensify :: SXMatrix -> IO SXMatrix
-sdensify = C.densify''
-
-scrs :: SXMatrix -> IO CRSSparsity
-scrs = sxMatrix_sparsityRef
-
-sscalar :: Double -> IO SXMatrix
-sscalar = sxMatrix''''''''''
+scrs :: SXMatrix -> CRSSparsity
+scrs x = unsafePerformIO (sxMatrix_sparsityRef x)
+{-# NOINLINE scrs #-}
 
 -- | from SX vector
-svector :: V.Vector SX -> IO SXMatrix
-svector = sxMatrix'''''''''''
+svector :: V.Vector SX -> SXMatrix
+svector x = unsafePerformIO (sxMatrix''''''''''' x)
+{-# NOINLINE svector #-}
 
-sdata :: SXMatrix -> IO (V.Vector SX)
-sdata = sxMatrix_data
+sdata :: SXMatrix -> V.Vector SX
+sdata x = unsafePerformIO (sxMatrix_data x)
+{-# NOINLINE sdata #-}
 
-ssparse :: SXMatrix -> IO (V.Vector (Int,Int,SX))
-ssparse sxm = do
-  crs <- scrs sxm
+svertcat :: V.Vector SXMatrix -> SXMatrix
+svertcat x = unsafePerformIO (C.vertcat'' x)
+{-# NOINLINE svertcat #-}
+
+ssparse :: SXMatrix -> V.Vector (Int,Int,SX)
+ssparse sxm = unsafePerformIO $ do
+  let crs = scrs sxm
   row <- crsSparsity_getRow crs
   col <- crsSparsity_colRef crs
-  sxs <- sdata sxm
+  let sxs = sdata sxm
   when (V.length row /= V.length col) $ error "ssparse: row/col dimension mismatch"
   when (V.length row /= V.length sxs) $ error "ssparse: row/sxs dimension mismatch"
   return $ V.zip3 row col sxs
+{-# NOINLINE ssparse #-}
 
 instance Num SXMatrix where
-  (+) x y = unsafePerformIO (sadd x y)
+  (+) x y = unsafePerformIO (sxMatrix___add__ x y)
   {-# NOINLINE (+) #-}
-  (-) x y = unsafePerformIO (ssub x y)
+  (-) x y = unsafePerformIO (sxMatrix___sub__ x y)
   {-# NOINLINE (-) #-}
-  (*) x y = unsafePerformIO (smul x y)
+  (*) x y = unsafePerformIO (sxMatrix___mul__ x y)
   {-# NOINLINE (*) #-}
-  fromInteger = unsafePerformIO . sscalar . fromInteger
+  fromInteger x = unsafePerformIO (sxMatrix'''''''''' (fromInteger x))
   {-# NOINLINE fromInteger #-}
-  abs = unsafePerformIO . sabs
+  abs x = unsafePerformIO (sxMatrix_fabs x)
   {-# NOINLINE abs #-}
-  signum = unsafePerformIO . ssignum
+  signum x = unsafePerformIO (sxMatrix_sign x)
   {-# NOINLINE signum #-}
 
 instance Fractional SXMatrix where
   (/) x y = unsafePerformIO (sxMatrix___truediv__ x y)
   {-# NOINLINE (/) #-}
-  fromRational = unsafePerformIO . sscalar . fromRational
+  fromRational x = unsafePerformIO (sxMatrix'''''''''' (fromRational x))
   {-# NOINLINE fromRational #-}
+
+instance Floating SXMatrix where
+  pi = unsafePerformIO (sxMatrix' pi)
+  {-# NOINLINE pi #-}
+  (**) x y = unsafePerformIO (sxMatrix___pow__ x y)
+  {-# NOINLINE (**) #-}
+  exp x   = unsafePerformIO (sxMatrix_exp x)
+  {-# NOINLINE exp #-}
+  log x   = unsafePerformIO (sxMatrix_log x)
+  {-# NOINLINE log #-}
+  sin x   = unsafePerformIO (sxMatrix_sin x)
+  {-# NOINLINE sin #-}
+  cos x   = unsafePerformIO (sxMatrix_cos x)
+  {-# NOINLINE cos #-}
+  tan x   = unsafePerformIO (sxMatrix_tan x)
+  {-# NOINLINE tan #-}
+  asin x  = unsafePerformIO (sxMatrix_arcsin x)
+  {-# NOINLINE asin #-}
+  atan x  = unsafePerformIO (sxMatrix_arctan x)
+  {-# NOINLINE atan #-}
+  acos x  = unsafePerformIO (sxMatrix_arccos x)
+  {-# NOINLINE acos #-}
+  sinh x  = unsafePerformIO (sxMatrix_sinh x)
+  {-# NOINLINE sinh #-}
+  cosh x  = unsafePerformIO (sxMatrix_cosh x)
+  {-# NOINLINE cosh #-}
+  tanh x  = unsafePerformIO (sxMatrix_tanh x)
+  {-# NOINLINE tanh #-}
+  asinh x = unsafePerformIO (sxMatrix_arcsinh x)
+  {-# NOINLINE asinh #-}
+  atanh x = unsafePerformIO (sxMatrix_arctanh x)
+  {-# NOINLINE atanh #-}
+  acosh x = unsafePerformIO (sxMatrix_arccosh x)
+  {-# NOINLINE acosh #-}

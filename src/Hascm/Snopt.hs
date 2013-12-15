@@ -24,8 +24,6 @@ import Hascm.Casadi.SXMatrix
 import Hascm.Casadi.SXFunction
 import Hascm.Nlp
 
-import Casadi.Wrappers.Tools ( vertcat'' )
-
 import Snopt.SnoptA
 --import Snopt.Bindings ( U_fp )
 
@@ -50,16 +48,16 @@ toSnoptSymbolics nlp = do
   (NlpInputs x' p', NlpFun obj' constraints') <- funToSX (nlpFG nlp)
 
   -- create SXMatrices
-  x <- svector (vectorize x')
-  p <- svector (vectorize p')
-  obj <- svector (V.singleton obj')
-  constraints <- svector (vectorize constraints')
-  f <- svector $ V.singleton obj' V.++ vectorize constraints'
+  let x = svector (vectorize x')
+      p = svector (vectorize p')
+      obj = svector (V.singleton obj')
+      constraints = svector (vectorize constraints')
+      f = svector $ V.singleton obj' V.++ vectorize constraints'
 
-  objGrad <- sgradient obj x >>= strans
-  constraintJacobian <- sjacobian constraints x
-  g <- vertcat'' (V.fromList [objGrad, constraintJacobian])
-  gSparse <- ssparse g
+      objGrad = strans (sgradient obj x)
+      constraintJacobian = sjacobian constraints x
+      g = svertcat (V.fromList [objGrad, constraintJacobian])
+      gSparse = ssparse g
 
   -- create an SXFunction
   let snoptIn = SnoptIn x p

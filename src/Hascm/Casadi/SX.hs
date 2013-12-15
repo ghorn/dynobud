@@ -1,8 +1,8 @@
-{-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Wall -fno-cse -fno-warn-orphans #-}
 {-# Language Rank2Types #-}
 {-# Language FlexibleContexts #-}
 
-module Hascm.Casadi.SX ( toSX, funToSX, SX ) where
+module Hascm.Casadi.SX ( funToSX, algToSX, funToSX', SX ) where
 
 import Data.Vector.Generic ( (!) )
 import qualified Data.Vector as V
@@ -11,6 +11,7 @@ import qualified Data.Vector.Generic as G
 import qualified Data.Vector.Generic.Mutable as GM
 import Control.Monad.Primitive ( PrimState, PrimMonad )
 import GHC.Prim ( RealWorld )
+import System.IO.Unsafe ( unsafePerformIO )
 
 import Casadi.Wrappers.Classes.SX
 
@@ -21,19 +22,28 @@ import Dvda.Expr
 import Hascm.Vectorize
 import Hascm.AlgorithmV
 
-
 casadiSsyms :: String -> Int -> IO (V.Vector SX)
 casadiSsyms name k = fmap V.fromList $ mapM (sx'' . (name ++) . show) (take k [(0::Int)..])
 
+-- call function directly using SX's unsafePerformIO Floating instances
+funToSX' :: (Vectorize f, Vectorize g) =>
+            (forall a . Floating a => f a -> g a) -> IO (f SX, g SX)
+funToSX' f = do
+  let asFunOf :: (f Double -> g Double) -> f Double
+      asFunOf _ = undefined
+      len = vlength (asFunOf f)
+  inputsVec <- casadiSsyms "x" len
+  let inputs = devectorize inputsVec
+      outputs = f inputs
+  return (inputs, outputs)
 
+-- call function by using Dvda to generate an Algorithm, then use SX's safe IO functions
 funToSX :: (Vectorize f, Vectorize g) =>
            (forall a . Floating a => f a -> g a) -> IO (f SX, g SX)
-funToSX f = do
-  alg <- constructAlgorithmV' f
-  toSX alg
+funToSX f = constructAlgorithmV' f >>= algToSX
 
-toSX :: (Vectorize f, Vectorize g) => AlgorithmV f g Double -> IO (f SX, g SX)
-toSX (AlgorithmV alg) = do
+algToSX :: (Vectorize f, Vectorize g) => AlgorithmV f g Double -> IO (f SX, g SX)
+algToSX (AlgorithmV alg) = do
   -- work vector
   workVec <- VM.new (algWorkSize alg)
 
@@ -103,3 +113,57 @@ bin work (Node k) (Node kx) (Node ky) f = do
 
 un :: (PrimMonad m, GM.MVector v a) => v (PrimState m) a -> Node -> Node -> (a -> m a) -> m ()
 un work (Node k) (Node kx) f = GM.read work kx >>= f >>= GM.write work k
+
+instance Num SX where
+  (+) x y = unsafePerformIO (sx___add__ x y)
+  {-# NOINLINE (+) #-}
+  (-) x y = unsafePerformIO (sx___sub__ x y)
+  {-# NOINLINE (-) #-}
+  (*) x y = unsafePerformIO (sx___mul__ x y)
+  {-# NOINLINE (*) #-}
+  abs x = unsafePerformIO (sx_fabs x)
+  {-# NOINLINE abs #-}
+  signum x = unsafePerformIO (sx_sign x)
+  {-# NOINLINE signum #-}
+  fromInteger x = unsafePerformIO (sx' (fromInteger x))
+  {-# NOINLINE fromInteger #-}
+
+instance Fractional SX where
+  (/) x y = unsafePerformIO (sx___truediv__ x y)
+  {-# NOINLINE (/) #-}
+  fromRational x = unsafePerformIO (sx' (fromRational x))
+  {-# NOINLINE fromRational #-}
+
+instance Floating SX where
+  pi = unsafePerformIO (sx' pi)
+  {-# NOINLINE pi #-}
+  (**) x y = unsafePerformIO (sx___pow__ x y)
+  {-# NOINLINE (**) #-}
+  exp x   = unsafePerformIO (sx_exp x)
+  {-# NOINLINE exp #-}
+  log x   = unsafePerformIO (sx_log x)
+  {-# NOINLINE log #-}
+  sin x   = unsafePerformIO (sx_sin x)
+  {-# NOINLINE sin #-}
+  cos x   = unsafePerformIO (sx_cos x)
+  {-# NOINLINE cos #-}
+  tan x   = unsafePerformIO (sx_tan x)
+  {-# NOINLINE tan #-}
+  asin x  = unsafePerformIO (sx_arcsin x)
+  {-# NOINLINE asin #-}
+  atan x  = unsafePerformIO (sx_arctan x)
+  {-# NOINLINE atan #-}
+  acos x  = unsafePerformIO (sx_arccos x)
+  {-# NOINLINE acos #-}
+  sinh x  = unsafePerformIO (sx_sinh x)
+  {-# NOINLINE sinh #-}
+  cosh x  = unsafePerformIO (sx_cosh x)
+  {-# NOINLINE cosh #-}
+  tanh x  = unsafePerformIO (sx_tanh x)
+  {-# NOINLINE tanh #-}
+  asinh x = unsafePerformIO (sx_arcsinh x)
+  {-# NOINLINE asinh #-}
+  atanh x = unsafePerformIO (sx_arctanh x)
+  {-# NOINLINE atanh #-}
+  acosh x = unsafePerformIO (sx_arccosh x)
+  {-# NOINLINE acosh #-}

@@ -31,8 +31,6 @@ import Casadi.Callback
 import Casadi.Wrappers.Classes.FX
 import Casadi.Wrappers.Classes.OptionsFunctionality
 import Casadi.Wrappers.Classes.PrintableObject
-import Casadi.Wrappers.Classes.DMatrix
-import Casadi.Wrappers.Classes.SXMatrix
 import Casadi.Wrappers.Classes.GenericType
 import Casadi.Wrappers.Classes.SXFunction ( sxFunction''' )
 import Casadi.Wrappers.Classes.SharedObject
@@ -41,6 +39,8 @@ import Casadi.Wrappers.Classes.IOInterfaceFX
 
 import Hascm.Vectorize
 import Hascm.Casadi.SX
+import Hascm.Casadi.DMatrix
+import Hascm.Casadi.SXMatrix
 import Hascm.Casadi.IOSchemes
 
 import Hascm.Nlp
@@ -66,7 +66,7 @@ setInput getLen name x = do
 getInput :: String -> Ipopt (V.Vector Double)
 getInput name = do
   ipoptState <- ask
-  liftIO $ ioInterfaceFX_input'' (isSolver ipoptState) name >>= dmatrix_data
+  liftIO $ fmap ddata $ ioInterfaceFX_input'' (isSolver ipoptState) name
 
 setX0 :: V.Vector Double -> Ipopt ()
 setX0 = setInput isNx "x0"
@@ -124,11 +124,11 @@ solve = do
 
     solveStatus <- fx_getStat ipopt "return_status"  >>= printableObject_getDescription
 
-    fopt <- fmap V.head $ ioInterfaceFX_output'' ipopt "f" >>= dmatrix_data
-    xopt <- ioInterfaceFX_output'' ipopt "x" >>= dmatrix_data
-    gopt <- ioInterfaceFX_output'' ipopt "g" >>= dmatrix_data
-    lamXOpt <- ioInterfaceFX_output'' ipopt "lam_x" >>= dmatrix_data
-    lamGOpt <- ioInterfaceFX_output'' ipopt "lam_g" >>= dmatrix_data
+    fopt <- fmap (V.head . ddata) $ ioInterfaceFX_output'' ipopt "f"
+    xopt <- fmap ddata $ ioInterfaceFX_output'' ipopt "x"
+    gopt <- fmap ddata $ ioInterfaceFX_output'' ipopt "g"
+    lamXOpt <- fmap ddata $ ioInterfaceFX_output'' ipopt "lam_x"
+    lamGOpt <- fmap ddata $ ioInterfaceFX_output'' ipopt "lam_g"
     let lambdaOut = Multipliers { lambdaX = lamXOpt
                                 , lambdaG = lamGOpt
                                 }
@@ -189,10 +189,10 @@ makeIpoptSolver ::
   -> Maybe (V.Vector Double -> IO Bool)
   -> IO IpoptSolver
 makeIpoptSolver (NlpInputs inputsX inputsP) (NlpFun obj g) callback' = do
-  inputsXMat <- sxMatrix''''''''''' inputsX
-  inputsPMat <- sxMatrix''''''''''' inputsP
-  objMat    <- sxMatrix''''''''''' (V.singleton obj)
-  gMat      <- sxMatrix''''''''''' g
+  let inputsXMat = svector inputsX
+      inputsPMat = svector inputsP
+      objMat     = svector (V.singleton obj)
+      gMat       = svector g
 
   inputScheme <- mkSchemeSXMatrix SCHEME_NLPInput [("x", inputsXMat), ("p", inputsPMat)]
   outputScheme <- mkSchemeSXMatrix SCHEME_NLPOutput [("f", objMat), ("g", gMat)]
@@ -204,7 +204,7 @@ makeIpoptSolver (NlpInputs inputsX inputsP) (NlpFun obj g) callback' = do
     Nothing -> return ()
     Just callback -> do
       let cb fx' = do
-            xval <- ioInterfaceFX_output fx' 0 >>= dmatrix_data
+            xval <- fmap ddata $ ioInterfaceFX_output fx' 0
             callbackRet <- callback xval
             return $ if callbackRet then 0 else 1
       casadiCallback <- makeCallback cb >>= genericTypeCallback
@@ -232,7 +232,7 @@ solveNlpIpopt nlp callback' = do
       (lbg,ubg) = toBnds (vectorize $ nlpBG nlp)
       runMe = do
         setOption "max_iter" (3000 :: Int)
-        setOption "tol" (1e-9 :: Double)
+        --setOption "tol" (1e-9 :: Double)
         --setOption "fixed_variable_treatment" "make_constraint" -- causes segfaults?
         --setOption "fixed_variable_treatment" "make_parameter"
         setX0 (vectorize (nlpX0 nlp))

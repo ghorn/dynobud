@@ -66,28 +66,28 @@ toSqpSymbolics sqp = do
       nX = V.length (vectorize x')
 
   -- create SXMatrices
-  x <- svector (vectorize x')
-  p <- svector (vectorize p')
+  let x = svector (vectorize x')
+      p = svector (vectorize p')
   lambdaX <- ssymV "lambdaX" nX
   lambdaG <- ssymV "lambdaG" nG
-  f <- svector (V.singleton f')
-  g <- svector (vectorize g')
+  let f = svector (V.singleton f')
+      g = svector (vectorize g')
 
-  -- gradient f
-  gradF <- sgradient f x
+  let -- gradient f
+      gradF = sgradient f x
 
-  -- lagrangian of hessian
-  lambdaGg <- strans lambdaG >>= (`mm` g)
-  lambdaXx <- strans lambdaX >>= (`mm` x)
-  lagrangian <- f `ssub` lambdaGg >>= (`ssub` lambdaXx)
+      -- lagrangian of hessian
+      lambdaGg = (strans lambdaG) `smm` g
+      lambdaXx = (strans lambdaX) `smm` x
+      lagrangian = f - lambdaGg - lambdaXx
 
-  -- jacobians / hessian
-  jacobG <- sjacobian g x
-  gradL <- sgradient lagrangian x
-  hessL <- shessian lagrangian x
+      -- jacobians / hessian
+      jacobG = sjacobian g x
+      gradL = sgradient lagrangian x
+      hessL = shessian lagrangian x
 
-  -- create an SXFunction
-  let sqpIn  = SqpIn  x p lambdaX lambdaG
+      -- create an SXFunction
+      sqpIn  = SqpIn  x p lambdaX lambdaG
       sqpIn' = SqpIn' x p
       sqpOut  = SqpOut  f g gradF gradL jacobG hessL
       sqpOut' = SqpOut' f g
