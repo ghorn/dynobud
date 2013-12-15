@@ -232,7 +232,7 @@ buildNlp' nlp = do
 reifyNlp ::
   forall r .
   Nlp V.Vector V.Vector V.Vector ->
-  (forall nx np ng . (Dim nx, Dim np, Dim ng) => Nlp (Vec nx) (Vec np) (Vec ng) -> r) ->
+  (forall x p g . (Vectorize x, Vectorize p, Vectorize g) => Nlp x p g -> r) ->
   r
 reifyNlp nlp f =
   TV.reifyDim nx $ \(Proxy :: Proxy nx) ->
