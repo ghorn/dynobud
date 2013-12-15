@@ -26,9 +26,9 @@ casadiSsyms :: String -> Int -> IO (V.Vector SX)
 casadiSsyms name k = fmap V.fromList $ mapM (sx'' . (name ++) . show) (take k [(0::Int)..])
 
 -- call function directly using SX's unsafePerformIO Floating instances
-funToSX' :: (Vectorize f, Vectorize g) =>
-            (forall a . Floating a => f a -> g a) -> IO (f SX, g SX)
-funToSX' f = do
+funToSX :: (Vectorize f, Vectorize g) =>
+           (forall a . Floating a => f a -> g a) -> IO (f SX, g SX)
+funToSX f = do
   let asFunOf :: (f Double -> g Double) -> f Double
       asFunOf _ = undefined
       len = vlength (asFunOf f)
@@ -38,9 +38,9 @@ funToSX' f = do
   return (inputs, outputs)
 
 -- call function by using Dvda to generate an Algorithm, then use SX's safe IO functions
-funToSX :: (Vectorize f, Vectorize g) =>
-           (forall a . Floating a => f a -> g a) -> IO (f SX, g SX)
-funToSX f = constructAlgorithmV' f >>= algToSX
+funToSX' :: (Vectorize f, Vectorize g) =>
+            (forall a . Floating a => f a -> g a) -> IO (f SX, g SX)
+funToSX' f = constructAlgorithmV' f >>= algToSX
 
 algToSX :: (Vectorize f, Vectorize g) => AlgorithmV f g Double -> IO (f SX, g SX)
 algToSX (AlgorithmV alg) = do
