@@ -1,7 +1,7 @@
-{-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Wall -ddump-splices #-}
 {-# Language GeneralizedNewtypeDeriving #-}
 
-module Hascm.StaticNlp.StaticNlpTypes
+module Hascm.Interface.Types
        ( Constraint(..)
        , Objective(..)
        , HomotopyParam(..)

@@ -5,7 +5,7 @@ module Main where
 import qualified Data.Vector as V
 
 import Hascm.Nlp
-import Hascm.StaticNlp
+import Hascm.NlpMonad
 import Hascm.Ipopt
 --import Hascm.Sqp.Sqp
 --import Hascm.Sqp.LineSearch

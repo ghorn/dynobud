@@ -3,7 +3,7 @@
 {-# Language RankNTypes #-}
 {-# Language ScopedTypeVariables #-}
 
-module Hascm.StaticNlp
+module Hascm.NlpMonad
        ( NlpMonad
        , (===)
        , (<==)
@@ -32,9 +32,8 @@ import Hascm.Nlp
 import Hascm.TypeVecs ( Vec )
 import qualified Hascm.TypeVecs as TV
 
-import Hascm.StaticNlp.LogsAndErrors
-import Hascm.StaticNlp.StaticNlpTypes
-
+import Hascm.Interface.LogsAndErrors
+import Hascm.Interface.Types
 
 --import Hascm.AlgorithmV
 import Dvda.Expr
@@ -235,7 +234,7 @@ reifyNlp ::
   Nlp V.Vector V.Vector V.Vector ->
   (forall nx np ng . (Dim nx, Dim np, Dim ng) => Nlp (Vec nx) (Vec np) (Vec ng) -> r) ->
   r
-reifyNlp nlp0 f =
+reifyNlp nlp f =
   TV.reifyDim nx $ \(Proxy :: Proxy nx) ->
   TV.reifyDim np $ \(Proxy :: Proxy np) ->
   TV.reifyDim ng $ \(Proxy :: Proxy ng) ->
@@ -255,10 +254,10 @@ reifyNlp nlp0 f =
     ng = V.length bg
     np = V.length p
 
-    bx = nlpBX nlp0
-    bg = nlpBG nlp0
-    x0 = nlpX0 nlp0
-    p = nlpP nlp0
+    bx = nlpBX nlp
+    bg = nlpBG nlp
+    x0 = nlpX0 nlp
+    p = nlpP nlp
 
     fg :: forall a . Floating a => NlpInputs V.Vector V.Vector a -> NlpFun V.Vector a
-    fg = nlpFG nlp0
+    fg = nlpFG nlp

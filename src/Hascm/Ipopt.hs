@@ -44,7 +44,7 @@ import Hascm.Casadi.SXMatrix
 import Hascm.Casadi.IOSchemes
 
 import Hascm.Nlp
-import Hascm.StaticNlp
+import Hascm.NlpMonad
 
 inf :: Double
 inf = read "Infinity"

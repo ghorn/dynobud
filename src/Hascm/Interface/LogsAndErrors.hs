@@ -2,7 +2,7 @@
 {-# Language GeneralizedNewtypeDeriving #-}
 {-# Language FlexibleContexts #-}
 
-module Hascm.StaticNlp.LogsAndErrors
+module Hascm.Interface.LogsAndErrors
        ( ErrorMessage (..)
        , LogMessage (..)
        , countLogs

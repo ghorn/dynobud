@@ -26,9 +26,9 @@ library
                        Hascm.DirectCollocation
                        Hascm.Vectorize
                        Hascm.Nlp
-                       Hascm.StaticNlp
-                       Hascm.StaticNlp.LogsAndErrors
-                       Hascm.StaticNlp.StaticNlpTypes
+                       Hascm.NlpMonad
+                       Hascm.Interface.LogsAndErrors
+                       Hascm.Interface.Types
                        Hascm.Ipopt
                        Hascm.Casadi.IOSchemes
                        Hascm.Casadi.SXFunction
