@@ -1,9 +1,11 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language GeneralizedNewtypeDeriving #-}
 {-# Language FlexibleInstances #-}
+{-# Language ScopedTypeVariables #-}
 
 module Hascm.Ipopt ( solveNlpIpopt
                    , solveStaticNlpIpopt
+                   , solveStaticOcpIpopt
                    , solve
                    , setX0
                    , setP
@@ -25,6 +27,8 @@ import Control.Monad ( when )
 import Control.Monad.Reader ( MonadIO(..), MonadReader(..), ReaderT(..) )
 import Data.Maybe ( fromMaybe )
 import qualified Data.Vector as V
+--import Linear.V ( Dim )
+import Data.Proxy
 
 import Casadi.Wrappers.Enums ( InputOutputScheme(..) )
 import Casadi.Callback
@@ -44,7 +48,11 @@ import Hascm.Casadi.SXMatrix
 import Hascm.Casadi.IOSchemes
 
 import Hascm.Nlp
-import Hascm.NlpMonad
+import Hascm.NlpMonad ( reifyNlp )
+import Hascm.Ocp ( OcpPhase )
+import Hascm.OcpMonad ( reifyOcp )
+import Hascm.DirectCollocation ( CollTraj, makeCollNlp )
+import qualified Hascm.TypeVecs as TV
 
 inf :: Double
 inf = read "Infinity"
@@ -280,3 +288,31 @@ solveStaticNlpIpopt nlp = reifyNlp nlp foo
                          , lambdaOpt = Multipliers { lambdaX = vectorize lambdax
                                                    , lambdaG = vectorize lambdag
                                                    }}
+
+
+--solveOcpIpopt ::
+--  forall x z u p r c h n deg .
+--  (Dim deg, Dim n, Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize r, Vectorize c, Vectorize h)
+--  => OcpPhase x z u p r c h -> Maybe (CollTraj x z u p n deg Double) -> IO ()
+--solveOcpIpopt ocp guess' = do
+--    let guess :: CollTraj x z u p n deg Double
+--        guess = case guess' of Nothing -> fill 1
+--                               Just g -> g
+--    _ <- solveNlpIpopt ((makeCollNlp ocp) {nlpX0 = guess}) Nothing
+--    return ()
+
+solveOcpIpopt' ::
+  forall x z u p r c h .
+  (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize r, Vectorize c, Vectorize h)
+  => Int -> Int -> OcpPhase x z u p r c h -> IO ()
+solveOcpIpopt' n deg ocp =
+  TV.reifyDim n $ \(Proxy :: Proxy n) ->
+  TV.reifyDim deg $ \(Proxy :: Proxy deg) -> do
+    let guess :: CollTraj x z u p n deg Double
+        guess = fill 1
+    _ <- solveNlpIpopt ((makeCollNlp ocp) {nlpX0 = guess}) Nothing
+    return ()
+
+solveStaticOcpIpopt ::
+  Int -> Int -> OcpPhase V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector -> IO ()
+solveStaticOcpIpopt n deg ocp = reifyOcp ocp (solveOcpIpopt' n deg)

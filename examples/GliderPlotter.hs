@@ -1,16 +1,21 @@
 {-# OPTIONS_GHC -Wall #-}
+{-# Language CPP #-}
 
 module Main ( main ) where
 
 import qualified Control.Concurrent as CC
 import Control.Monad ( forever )
 import qualified Data.Vector as V
+#if OSX
+import Data.ByteString ( ByteString )
+#endif
+import Data.ByteString.Char8 ( pack )
 import Data.Serialize
--- #if OSX
--- import qualified System.ZMQ3 as ZMQ
--- #else
+#if OSX
+import qualified System.ZMQ3 as ZMQ
+#else
 import qualified System.ZMQ as ZMQ
--- #endif
+#endif
 
 import Plotter ( runPlotter, newChannel )
 
@@ -22,22 +27,30 @@ import GliderTypes
 
 
 withContext :: (ZMQ.Context -> IO a) -> IO a
--- #if OSX
--- withContext = ZMQ.withContext
--- #else
+#if OSX
+withContext = ZMQ.withContext
+#else
 withContext = ZMQ.withContext 1
--- #endif
+#endif
+
+#if OSX
+pack' :: String -> ByteString
+pack' = pack
+#else
+pack' :: String -> String
+pack' = id
+#endif
 
 sub :: String -> (PlotPointsL AcX None AcU Double -> IO ()) -> String -> IO ()
 sub ip writeChan name = withContext $ \context -> do
--- #if OSX
---   let receive = ZMQ.receive
--- #else
+#if OSX
+  let receive = ZMQ.receive
+#else
   let receive = flip ZMQ.receive []
--- #endif
+#endif
   ZMQ.withSocket context ZMQ.Sub $ \subscriber -> do
     ZMQ.connect subscriber ip
-    ZMQ.subscribe subscriber name
+    ZMQ.subscribe subscriber (pack' name)
     forever $ do
       _ <- receive subscriber
       mre <- ZMQ.moreToReceive subscriber

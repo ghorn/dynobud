@@ -7,13 +7,6 @@ module Hascm.Interface.Types
        , HomotopyParam(..)
        , NlpState(..)
        , OcpState(..)
-       , PCState(..)
-       , BCState(..)
-       , ocpXDot
-       , ocpX
-       , ocpZ
-       , ocpU
-       , ocpP
        , DaeState(..)
        , daeX
        , daeXDot
@@ -43,14 +36,8 @@ data NlpState = NlpState { nlpX :: S.Seq Sym
                          , nlpHomoParam :: HomotopyParam (Expr Double)
                          }
 
-data OcpState = OcpState { _ocpXDot :: S.Seq Sym
-                         , _ocpX :: S.Seq Sym
-                         , _ocpZ :: S.Seq Sym
-                         , _ocpU :: S.Seq Sym
-                         , _ocpP :: S.Seq Sym
-                         , ocpSymSet :: HS.HashSet Sym
-                         , ocpConstraints :: S.Seq (Constraint (Expr Double))
-                         , ocpObj :: Objective (Expr Double)
+data OcpState = OcpState { ocpPathConstraints :: S.Seq (Constraint (Expr Double))
+                         , ocpLagrangeObj :: Objective (Expr Double)
                          , ocpHomoParam :: HomotopyParam (Expr Double)
                          }
 
@@ -63,40 +50,6 @@ data DaeState = DaeState { _daeXDot :: S.Seq Sym
                          , daeNameSet :: HS.HashSet String
                          , daeConstraints :: S.Seq (Expr Double, Expr Double)
                          }
-
-data PCState = PCState { pcDae :: DaeState
-                       , pcConstraints :: S.Seq (Constraint (Expr Double))
-                       }
-
-data BCState = BCState { bcDae :: DaeState
-                       , bcConstraints :: S.Seq (Constraint (Expr Double))
-                       }
-
---makeLenses ''OcpState
-ocpXDot :: Lens' OcpState (S.Seq Sym)
-ocpXDot f (OcpState xdot' x z u p ss c obj hp) =
-  (\xdot -> OcpState xdot x z u p ss c obj hp) <$> (f xdot')
-{-# INLINE ocpXDot #-}
-
-ocpX :: Lens' OcpState (S.Seq Sym)
-ocpX f (OcpState xdot x' z u p ss c obj hp) =
-  (\x -> OcpState xdot x z u p ss c obj hp) <$> (f x')
-{-# INLINE ocpX #-}
-
-ocpZ :: Lens' OcpState (S.Seq Sym)
-ocpZ f (OcpState xdot x z' u p ss c obj hp) =
-  (\z -> OcpState xdot x z u p ss c obj hp) <$> (f z')
-{-# INLINE ocpZ #-}
-
-ocpU :: Lens' OcpState (S.Seq Sym)
-ocpU f (OcpState xdot x z u' p ss c obj hp) =
-  (\u -> OcpState xdot x z u p ss c obj hp) <$> (f u')
-{-# INLINE ocpU #-}
-
-ocpP :: Lens' OcpState (S.Seq Sym)
-ocpP f (OcpState xdot x z u p' ss c obj hp) =
-  (\p -> OcpState xdot x z u p ss c obj hp) <$> (f p')
-{-# INLINE ocpP #-}
 
 --makeLenses ''DaeState
 daeXDot :: Lens' DaeState (S.Seq Sym)

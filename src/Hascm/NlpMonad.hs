@@ -27,20 +27,16 @@ import qualified Data.Vector as V
 import Linear.V ( Dim(..) )
 import Data.Proxy
 
+import Dvda.Expr
+import Dvda.Algorithm
+
 import Hascm.Vectorize
+import Hascm.AlgorithmV( convertAlgorithm )
 import Hascm.Nlp
 import Hascm.TypeVecs ( Vec )
 import qualified Hascm.TypeVecs as TV
-
 import Hascm.Interface.LogsAndErrors
 import Hascm.Interface.Types
-
---import Hascm.AlgorithmV
-import Dvda.Expr
-import Dvda.Algorithm.Construct ( Algorithm(..), AlgOp(..) )
-import Dvda.Algorithm.FunGraph ( Node(..) )
-
-import Dvda.Algorithm
 
 withEllipse :: Int -> String -> String
 withEllipse n blah
@@ -127,23 +123,6 @@ constr (Ineq2 lhs rhs) = (lhs - rhs, (Nothing, Just 0))
 toG :: (Eq a, Num a, Dim ng) => S.Seq (Constraint (Expr a)) -> Vec ng (Expr a, (Maybe Double, Maybe Double))
 toG nlpConstraints' = TV.mkSeq $ fmap constr (nlpConstraints')
 
-convertAlgorithm :: Floating a => Algorithm Double -> Algorithm a
-convertAlgorithm alg = alg { algOps = newAlgOps }
-  where
-    newAlgOps = map convert (algOps alg)
-
-    convert :: Floating a => AlgOp Double -> AlgOp a
-    convert (InputOp k x) = InputOp k x
-    convert (OutputOp k x) = OutputOp k x
-    convert (NormalOp k x) = NormalOp k (convertG x)
-
-    convertG :: Floating a => GExpr Double Node -> GExpr a Node
-    convertG (GSym x) = GSym x
-    convertG (GConst c) = GConst (fromRational (toRational c))
-    convertG (GNum x) = GNum x
-    convertG (GFractional x) = GFractional x
-    convertG (GFloating x) = GFloating x
-
 buildNlp :: forall nx ng .
             (Dim nx, Dim ng) =>
             NlpMonad () -> IO (Nlp (Vec nx) None (Vec ng), [LogMessage])
@@ -167,7 +146,9 @@ buildNlp nlp = do
   let alg :: forall b . Floating b => Algorithm b
       alg = convertAlgorithm alg'
       fg :: forall b . Floating b => NlpInputs (Vec nx) None b -> NlpFun (Vec ng) b
-      fg (NlpInputs x _) = devectorize $ runAlgorithm alg (vectorize x)
+      fg (NlpInputs x _) = case runAlgorithm alg (vectorize x) of
+        Right ret -> devectorize ret
+        Left errmsg -> error $ "buildNlp: algorithm: " ++ errmsg
   --mapM_ print (algOps alg)
   --print inputs
 
@@ -218,7 +199,10 @@ buildNlp' nlp = do
         | otherwise = NlpFun (V.head vout) g'
         where
           g' = V.tail vout
-          vout = runAlgorithm alg (x V.++ p)
+          vout = case runAlgorithm alg (x V.++ p) of
+            Right ret -> ret
+            Left errmsg -> error $ "buildNlp': algorithm: " ++ errmsg
+
       nlp' = Nlp { nlpFG = fg
                  , nlpBX = xbnd
                  , nlpBG = gbnd

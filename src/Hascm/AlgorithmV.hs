@@ -9,12 +9,14 @@ module Hascm.AlgorithmV
        , toSymbolicAlgV
        , constructAlgorithmV
        , constructAlgorithmV'
+       , convertAlgorithm
        ) where
 
 import qualified Data.Vector as V
 
-import Dvda.Algorithm.Construct ( Algorithm(..), constructAlgorithm )
+import Dvda.Algorithm.Construct ( Algorithm(..), AlgOp(..), constructAlgorithm )
 import Dvda.Algorithm.Eval ( runAlgorithm )
+import Dvda.Algorithm.FunGraph ( Node(..) )
 import Dvda.Algorithm ( toSymbolicAlg )
 import Dvda.Expr
 
@@ -54,7 +56,9 @@ ssyms k name = V.fromList $ take k allSyms
     allSyms = map (sym . ((name ++ "_") ++) . show) [(0::Int)..]
 
 runAlgorithmV :: (Vectorize f, Vectorize g) => AlgorithmV f g a -> f a -> g a
-runAlgorithmV (AlgorithmV alg) inputs = devectorize outputVec
+runAlgorithmV (AlgorithmV alg) inputs = case outputVec of
+  Right ret -> devectorize ret
+  Left err -> error $ "runAlgorithmV: " ++ err
   where
     inputVec = vectorize inputs
     outputVec = runAlgorithm alg inputVec
@@ -63,3 +67,20 @@ toCallAlgorithmV :: (Vectorize f, Vectorize g) => (f (Expr a) -> g (Expr a)) -> 
 toCallAlgorithmV f = do
   alg <- constructAlgorithmV f
   return (runAlgorithmV alg)
+
+convertAlgorithm :: Floating a => Algorithm Double -> Algorithm a
+convertAlgorithm alg = alg { algOps = newAlgOps }
+  where
+    newAlgOps = map convert (algOps alg)
+
+    convert :: Floating a => AlgOp Double -> AlgOp a
+    convert (InputOp k x) = InputOp k x
+    convert (OutputOp k x) = OutputOp k x
+    convert (NormalOp k x) = NormalOp k (convertG x)
+
+    convertG :: Floating a => GExpr Double Node -> GExpr a Node
+    convertG (GSym x) = GSym x
+    convertG (GConst c) = GConst (fromRational (toRational c))
+    convertG (GNum x) = GNum x
+    convertG (GFractional x) = GFractional x
+    convertG (GFloating x) = GFloating x

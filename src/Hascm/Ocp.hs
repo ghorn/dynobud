@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
+{-# Language RankNTypes #-}
 
 module Hascm.Ocp ( Dae, OcpPhase(..) ) where
 
@@ -37,17 +38,17 @@ type Dae x z u p r a = x a -> x a -> z a -> u a -> p a -> a -> r a
 --
 -- > c(x(0), 0, x(T), T) == 0
 
-data OcpPhase x z u p r c h a =
+data OcpPhase x z u p r c h =
   OcpPhase { -- | the Mayer term @Jm(x(T),T)@
-             ocpMayer :: x a -> a -> a
+             ocpMayer :: forall a. Floating a => x a -> a -> a
              -- | the Lagrange term @Jl(x(t),z(t),u(t),p,t)@
-           , ocpLagrange :: x a -> z a -> u a -> p a -> a -> a
+           , ocpLagrange :: forall a. Floating a => x a -> z a -> u a -> p a -> a -> a
              -- | the system dynamics of the stage: @f(x'(t), x(t), z(t), u(t), p(t), t)@
-           , ocpDae :: Dae x z u p r a
+           , ocpDae :: forall a. Floating a => Dae x z u p r a
              -- | the boundary conditions @c(x(0), x(T))@
-           , ocpBc :: x a -> x a -> c a
+           , ocpBc :: forall a. Floating a => x a -> x a -> c a
              -- | the path constraints @h(x(t), z(t), u(t), p(t), t)@
-           , ocpPathC :: x a -> z a -> u a -> p a -> a -> h a
+           , ocpPathC :: forall a. Floating a => x a -> z a -> u a -> p a -> a -> h a
              -- | the path constraint bounds @(hlb, hub)@
            , ocpPathCBnds :: h (Maybe Double, Maybe Double)
              -- | differential state bounds @(xlb, xub)@

@@ -36,7 +36,9 @@ countLogs' (a,b,c,d) (Impossible _:xs) = countLogs' (  a,   b,   c, d+1) xs
 countLogs :: [LogMessage] -> (Int,Int,Int,Int)
 countLogs = countLogs' (0,0,0,0)
 
-newtype ErrorMessage = ErrorMessage String deriving (Error, Show)
+newtype ErrorMessage = ErrorMessage String deriving Error
+instance Show ErrorMessage where
+  show (ErrorMessage msg) = msg
 
 logMessage :: MonadWriter [t] m => t -> m ()
 logMessage x = tell [x]

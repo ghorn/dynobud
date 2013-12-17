@@ -1,18 +1,20 @@
 {-# OPTIONS_GHC -Wall #-}
+{-# Language CPP #-}
 
 module Main ( main ) where
 
 import qualified Data.Vector as V
 import Data.Serialize
 
--- #if OSX
--- import qualified System.ZMQ3 as ZMQ
--- #else
+#if OSX
+import qualified System.ZMQ3 as ZMQ
+#else
 import qualified System.ZMQ as ZMQ
--- #endif
+#endif
 
 import Linear
 import Data.ByteString.Char8 ( pack )
+import Data.ByteString ( ByteString )
 
 import Hascm.Vectorize
 import Hascm.Ipopt
@@ -57,7 +59,7 @@ dae x' x _ u _ _ = aircraftDae (mass, inertia) fcs mcs refs x' x u
     mcs = bettyMc
     refs = bettyRefs
 
-ocp :: Floating a => OcpPhase AcX None AcU None AcX AcX None a
+ocp :: OcpPhase AcX None AcU None AcX AcX None
 ocp = OcpPhase { ocpMayer = mayer
                , ocpLagrange = lagrange
                , ocpDae = dae
@@ -102,19 +104,33 @@ ubnd =
 bc :: Floating a => AcX a -> AcX a -> AcX a
 bc (AcX x0 v0 dcm0 w0 cs) _ = AcX x0 (v0 - V3 30 0 0) (dcm0 - eye3) w0 cs
 
+send :: ZMQ.Sender a => ZMQ.Socket a -> ByteString -> [ZMQ.Flag] -> IO ()
+#if OSX
+send publisher = flip (ZMQ.send publisher)
+#else
+send publisher = ZMQ.send publisher
+#endif
+
 callback :: ZMQ.Socket ZMQ.Pub -> String -> GliderDesignVars Double -> IO Bool
 callback publisher chanName traj = do
   let bs = encode $ V.toList $ vectorize $ traj
-  ZMQ.send publisher (pack chanName) [ZMQ.SndMore]
-  ZMQ.send publisher bs []
+  send publisher (pack chanName) [ZMQ.SendMore]
+  send publisher bs []
   return True
+
+withContext :: (ZMQ.Context -> IO a) -> IO a
+#if OSX
+withContext = ZMQ.withContext
+#else
+withContext = ZMQ.withContext 1
+#endif
 
 main :: IO ()
 main = do
   putStrLn $ "using ip \""++gliderUrl++"\""
   putStrLn $ "using channel \""++gliderChannelName++"\""
   
-  ZMQ.withContext 1 $ \context -> do
+  withContext $ \context -> do
     ZMQ.withSocket context ZMQ.Pub $ \publisher -> do
       ZMQ.bind publisher gliderUrl
 

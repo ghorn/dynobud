@@ -270,12 +270,14 @@ runComparison = do
   --mapM_ print zdot
   zdotAlg <- constructAlgorithm (V.fromList inputs) (V.fromList zdot)
   let zdotAlgSym = toSymbolicAlg zdotAlg
+      fromEither (Right x) = x
+      fromEither (Left x) = error $ "lagrangePolynomials: " ++ x
 
   putStrLn "symbolic:"
-  mapM_ (print . V.toList) [runAlgorithm zdotAlgSym (V.fromList (tau_i : taus)) | tau_i <- taus]
+  mapM_ (print . V.toList) [fromEither $ runAlgorithm zdotAlgSym (V.fromList (tau_i : taus)) | tau_i <- taus]
   
   putStrLn "numeric:"
-  let vals = V.fromList [runAlgorithm zdotAlg (V.fromList (tau_i : sampleTaus)) | tau_i <- sampleTaus]
+  let vals = V.fromList [fromEither $ runAlgorithm zdotAlg (V.fromList (tau_i : sampleTaus)) | tau_i <- sampleTaus]
   V.mapM_ print vals
   
   putStrLn "numeric difference:"

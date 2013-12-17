@@ -69,7 +69,7 @@ pendDae (PendX x' y' vx' vy') (PendX x y vx vy) (PendZ tau) (PendU torque) (Pend
 --    dae['cdot'] = dae['dx']*dae['x'] + dae['dz']*dae['z']
 
 
-pendOcp :: Floating a => OcpPhase PendX PendZ PendU PendP PendR (Vec D8) None a
+pendOcp :: OcpPhase PendX PendZ PendU PendP PendR (Vec D8) None
 pendOcp = OcpPhase { ocpMayer = mayer
                    , ocpLagrange = lagrange
                    , ocpDae = pendDae

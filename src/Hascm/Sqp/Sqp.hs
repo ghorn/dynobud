@@ -6,7 +6,8 @@
 --{-# LANGUAGE FlexibleContexts #-}
 --{-# LANGUAGE FlexibleInstances #-}
 
-module Hascm.Sqp.Sqp ( solveSqp, SqpIn(..), SqpOut(..), SqpIn'(..), SqpOut'(..), Kkt(..) ) where
+module Hascm.Sqp.Sqp ( solveSqp, solveStaticSqp,
+                       SqpIn(..), SqpOut(..), SqpIn'(..), SqpOut'(..), Kkt(..) ) where
 
 import Control.Monad ( when )
 import Foreign.C.Types ( CInt )
@@ -27,7 +28,7 @@ import Hascm.Casadi.SXFunction
 import Hascm.Casadi.SX
 
 import Hascm.Nlp ( Nlp(..), NlpInputs(..), NlpFun(..) )
---import qualified Hascm.Nlp as Nlp
+import Hascm.NlpMonad ( reifyNlp )
 
 debug :: String -> IO ()
 --debug = putStrLn
@@ -121,6 +122,14 @@ toDeltaXBnd0 x0' (Just lb, Nothing) = (Just (lb - x0'), Nothing)
 toDeltaXBnd0 x0' (Nothing, Just ub) = (Nothing, Just (ub - x0'))
 toDeltaXBnd0 x0' (Just lb, Just ub) = (Just (lb - x0'), Just (ub - x0'))
 toDeltaXBnd0 _ (Nothing, Nothing) = (Nothing, Nothing)
+
+solveStaticSqp ::
+  Nlp V.Vector V.Vector V.Vector -> LineSearch IO Double -> IO (V.Vector Double, Kkt Double)
+solveStaticSqp nlp linesearch = reifyNlp nlp foo
+  where
+    foo nlp' = do
+      (xopt, kkt) <- solveSqp nlp' linesearch
+      return (vectorize xopt, kkt)
 
 solveSqp :: (Vectorize x, Vectorize p, Vectorize g) =>
             Nlp x p g -> LineSearch IO Double -> IO (x Double, Kkt Double)
