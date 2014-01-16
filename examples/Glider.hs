@@ -5,12 +5,7 @@ module Main ( main ) where
 
 import qualified Data.Vector as V
 import Data.Serialize
-
-#if OSX
 import qualified System.ZMQ3 as ZMQ
-#else
-import qualified System.ZMQ as ZMQ
-#endif
 
 import Linear
 import Data.ByteString.Char8 ( pack )
@@ -104,33 +99,19 @@ ubnd =
 bc :: Floating a => AcX a -> AcX a -> AcX a
 bc (AcX x0 v0 dcm0 w0 cs) _ = AcX x0 (v0 - V3 30 0 0) (dcm0 - eye3) w0 cs
 
-send :: ZMQ.Sender a => ZMQ.Socket a -> ByteString -> [ZMQ.Flag] -> IO ()
-#if OSX
-send publisher = flip (ZMQ.send publisher)
-#else
-send publisher = ZMQ.send publisher
-#endif
-
 callback :: ZMQ.Socket ZMQ.Pub -> String -> GliderDesignVars Double -> IO Bool
 callback publisher chanName traj = do
   let bs = encode $ V.toList $ vectorize $ traj
-  send publisher (pack chanName) [ZMQ.SendMore]
-  send publisher bs []
+  ZMQ.send publisher [ZMQ.SendMore] (pack chanName)
+  ZMQ.send publisher [] bs
   return True
-
-withContext :: (ZMQ.Context -> IO a) -> IO a
-#if OSX
-withContext = ZMQ.withContext
-#else
-withContext = ZMQ.withContext 1
-#endif
 
 main :: IO ()
 main = do
   putStrLn $ "using ip \""++gliderUrl++"\""
   putStrLn $ "using channel \""++gliderChannelName++"\""
   
-  withContext $ \context -> do
+  ZMQ.withContext $ \context -> do
     ZMQ.withSocket context ZMQ.Pub $ \publisher -> do
       ZMQ.bind publisher gliderUrl
 

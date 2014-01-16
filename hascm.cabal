@@ -113,12 +113,8 @@ executable glider
                        linear,
                        bytestring,
                        cereal,
-                       vector
-  if os(OSX)
-    cpp-options:     -DOSX
-    build-depends:   zeromq3-haskell
-  else
-    build-depends:   zeromq-haskell
+                       vector,
+                       zeromq3-haskell
   ghc-options:         -threaded -O2
 
 executable gliderPlot
@@ -131,10 +127,6 @@ executable gliderPlot
                        vector,
                        cereal,
                        bytestring,
-                       Plot-ho-matic >= 0.3.0.0
-  if os(OSX)
-    cpp-options:     -DOSX
-    build-depends:   zeromq3-haskell
-  else
-    build-depends:   zeromq-haskell
+                       Plot-ho-matic >= 0.3.0.0,
+                       zeromq3-haskell
   ghc-options:         -threaded -O2
