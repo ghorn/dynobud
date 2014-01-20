@@ -18,6 +18,7 @@ module Hascm.OcpMonad
        , algVar
        , control
        , parameter
+       , output
        , lagrangeTerm
        , toOcpPhase
        , reifyOcp
@@ -86,7 +87,7 @@ newtype DaeMonad a =
              )
 
 emptySymbolicDae :: DaeState
-emptySymbolicDae = DaeState S.empty S.empty S.empty S.empty S.empty HS.empty S.empty
+emptySymbolicDae = DaeState S.empty S.empty S.empty S.empty S.empty M.empty HS.empty S.empty
 
 buildDae' :: DaeState -> DaeMonad a -> (Either ErrorMessage a, [LogMessage], DaeState)
 buildDae' nlp0 builder = (result, logs, state)
@@ -128,6 +129,18 @@ control = newDaeVariable "control" daeU
 parameter :: String -> DaeMonad (Expr Double)
 parameter = newDaeVariable "parameter" daeP
 
+output :: String -> Expr Double -> DaeMonad ()
+output name expr = do
+  debug $ "adding output \""++name++"\": " ++ withEllipse 30 (show expr)
+  state0 <- State.get
+  let nameSet0 = daeNameSet state0
+      outputs0 = _daeO state0
+  when (HS.member name nameSet0) $ err $ name ++ " already in name set"
+  when (M.member name outputs0) $ impossible $ name ++ " already in output map"
+  let state1 = state0 { daeNameSet =  HS.insert name nameSet0
+                      , _daeO = M.insert name expr outputs0
+                      }
+  State.put state1
 
 infix 4 ===
 class EqMonad m a | m -> a where
@@ -306,7 +319,7 @@ toOcpPhase ::
   -> (forall a . Floating a => (String -> BCMonad a a) -> (String -> BCMonad a a) -> BCMonad a ())
   -> ((String -> OcpMonad (Expr Double)) -> OcpMonad ())
   -> (Maybe Double, Maybe Double)
-  -> OcpPhase V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector
+  -> OcpPhase V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector
 toOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds =
   OcpPhase { ocpMayer = mayerFun
            , ocpLagrange = lagrangeFun
@@ -335,22 +348,29 @@ toOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds =
     daeResidual :: [Expr Double]
     daeResidual = map (\(x, y) -> x - y) (F.toList (daeConstraints dae))
 
+    outputNames :: [String]
+    outputExprs :: [Expr Double]
+    (outputNames, outputExprs) = unzip $ M.toList $ _daeO dae
+
+    onames = map Sym outputNames
+
     lagrangeFun :: forall a. Floating a =>
-                   V.Vector a -> V.Vector a -> V.Vector a -> V.Vector a -> a -> a
-    lagrangeFun x z u p _ = case runAlgorithm alg (V.concat [x,z,u,p]) of
+                   V.Vector a -> V.Vector a -> V.Vector a -> V.Vector a -> V.Vector a -> a -> a
+    lagrangeFun x z u p o _ = case runAlgorithm alg (V.concat [x,z,u,p,o]) of
       Right ret -> V.head ret
       Left errmsg -> error $ "toOcpPhase: lagrangeFun: " ++ errmsg ++
-        "\ninputs: " ++ show (xnames ++ znames ++ unames ++ pnames) ++
+        "\ninputs: " ++ show (xnames ++ znames ++ unames ++ pnames) ++ show onames ++
         "\nnumeric inputs x: " ++ show (V.length x) ++
         "\nnumeric inputs z: " ++ show (V.length z) ++
         "\nnumeric inputs u: " ++ show (V.length u) ++
-        "\nnumeric inputs p: " ++ show (V.length p)
+        "\nnumeric inputs p: " ++ show (V.length p) ++
+        "\nnumeric inputs o: " ++ show (V.length o)
       where
         obj = case ocpLagrangeObj ocp of
           ObjectiveUnset -> 0
           Objective obj' -> obj'
 
-        algInputs = map ESym $ xnames ++ znames ++ unames ++ pnames
+        algInputs = map ESym (xnames ++ znames ++ unames ++ pnames ++ onames)
         alg :: Algorithm a
         alg =
           convertAlgorithm $ unsafePerformIO $
@@ -360,13 +380,14 @@ toOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds =
     pathConstraintBnds :: [(Maybe Double, Maybe Double)]
     (pathConstraints, pathConstraintBnds) = unzip $ map constr (F.toList (ocpPathConstraints ocp))
 
-    pathConstraintFun :: forall a . Floating a =>
-                         V.Vector a -> V.Vector a -> V.Vector a -> V.Vector a -> a -> V.Vector a
-    pathConstraintFun x z u p _ = case runAlgorithm alg (V.concat [x,z,u,p]) of
+    pathConstraintFun ::
+      forall a . Floating a =>
+      V.Vector a -> V.Vector a -> V.Vector a -> V.Vector a -> V.Vector a -> a -> V.Vector a
+    pathConstraintFun x z u p o _ = case runAlgorithm alg (V.concat [x,z,u,p,o]) of
       Right ret -> ret
       Left errmsg -> error $ "toOcpPhase: pathConstraintFun: " ++ errmsg
       where
-        algInputs = map ESym $ xnames ++ znames ++ unames ++ pnames
+        algInputs = map ESym (xnames ++ znames ++ unames ++ pnames ++ onames)
         alg :: Algorithm a
         alg =
           convertAlgorithm $ unsafePerformIO $
@@ -387,6 +408,7 @@ toOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds =
                  , znames
                  , unames
                  , pnames
+                 , onames
                  ]
 
         lookupThingy :: String -> OcpMonad (Expr Double)
@@ -395,17 +417,19 @@ toOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds =
           case M.lookup (Sym name) varmap of
             Nothing -> err $ "ocp monad: nothing named \"" ++ name ++ "\""
             Just expr -> do
-              debug $ "ocp monad: found \"" ++ name ++ "\""
+              debug $ "ocp monad: found \"" ++ name ++ "\": " ++ show expr
               return expr
 
-    daeFun :: forall a . Floating a =>
-              V.Vector a -> V.Vector a -> V.Vector a -> V.Vector a -> V.Vector a -> a -> V.Vector a
+    daeFun ::
+      forall a . Floating a =>
+      V.Vector a -> V.Vector a -> V.Vector a -> V.Vector a -> V.Vector a -> a ->
+      (V.Vector a, V.Vector a)
     daeFun x' x z u p _ = case runAlgorithm alg (V.concat [x',x,z,u,p]) of
-      Right ret -> ret
+      Right ret -> V.splitAt (length daeResidual) ret
       Left errmsg -> error $ "toOcpPhase: daeFun: " ++ errmsg
       where
-        algInputs = map ESym $ xdotnames ++ xnames ++ znames ++ unames ++ pnames
-        algOutputs = daeResidual
+        algInputs = map ESym (xdotnames ++ xnames ++ znames ++ unames ++ pnames)
+        algOutputs = daeResidual ++ outputExprs
         alg :: Algorithm a
         alg =
           convertAlgorithm $ unsafePerformIO $
@@ -471,9 +495,9 @@ toOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds =
 -- so lazy divide-by-zero is totally fine.
 reifyOcp ::
   forall ret .
-  OcpPhase V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector
-  -> (forall x z u p r c h . (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize r, Vectorize c, Vectorize h)
-      => OcpPhase x z u p r c h -> ret)
+  OcpPhase V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector
+  -> (forall x z u p r o c h . (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize r, Vectorize o, Vectorize c, Vectorize h)
+      => OcpPhase x z u p r o c h -> ret)
   -> ret
 reifyOcp ocp f =
   TV.reifyDim nx $ \(Proxy :: Proxy nx) ->
@@ -481,14 +505,15 @@ reifyOcp ocp f =
   TV.reifyDim nu $ \(Proxy :: Proxy nu) ->
   TV.reifyDim np $ \(Proxy :: Proxy np) ->
   TV.reifyDim nr $ \(Proxy :: Proxy nr) ->
+  TV.reifyDim no $ \(Proxy :: Proxy no) ->
   TV.reifyDim nc $ \(Proxy :: Proxy nc) ->
   TV.reifyDim nh $ \(Proxy :: Proxy nh) ->
   f (OcpPhase
      { ocpMayer = (\x t -> ocpMayer ocp (vectorize x) t) :: forall a . Floating a => Vec nx a -> a -> a
-     , ocpLagrange = (\x z u p t -> ocpLagrange ocp (vectorize x) (vectorize z) (vectorize u) (vectorize p) t) :: forall a . Floating a => Vec nx a -> Vec nz a -> Vec nu a -> Vec np a -> a -> a
-     , ocpDae = (\x' x z u p t -> devectorize (ocpDae ocp (vectorize x') (vectorize x) (vectorize z) (vectorize u) (vectorize p) t)) :: forall a . Floating a => Dae (Vec nx) (Vec nz) (Vec nu) (Vec np) (Vec nr) a
+     , ocpLagrange = (\x z u p o t -> ocpLagrange ocp (vectorize x) (vectorize z) (vectorize u) (vectorize p) (vectorize o) t) :: forall a . Floating a => Vec nx a -> Vec nz a -> Vec nu a -> Vec np a -> Vec no a -> a -> a
+     , ocpDae = (\x' x z u p t -> (\(d,o) -> (devectorize d, devectorize o)) (ocpDae ocp (vectorize x') (vectorize x) (vectorize z) (vectorize u) (vectorize p) t)) :: forall a . Floating a => Dae (Vec nx) (Vec nz) (Vec nu) (Vec np) (Vec nr) (Vec no) a
      , ocpBc = (\x0 xf -> devectorize (ocpBc ocp (vectorize x0) (vectorize xf))) :: forall a . Floating a => Vec nx a -> Vec nx a -> Vec nc a
-     , ocpPathC = (\x z u p t -> devectorize (ocpPathC ocp (vectorize x) (vectorize z) (vectorize u) (vectorize p) t)) :: forall a . Floating a => Vec nx a -> Vec nz a -> Vec nu a -> Vec np a -> a -> Vec nh a
+     , ocpPathC = (\x z u p o t -> devectorize (ocpPathC ocp (vectorize x) (vectorize z) (vectorize u) (vectorize p) (vectorize o) t)) :: forall a . Floating a => Vec nx a -> Vec nz a -> Vec nu a -> Vec np a -> Vec no a -> a -> Vec nh a
      , ocpPathCBnds = devectorize (ocpPathCBnds ocp) :: Vec nh (Maybe Double, Maybe Double)
      , ocpXbnd = TV.mkVec (ocpXbnd ocp) :: Vec nx (Maybe Double, Maybe Double)
      , ocpZbnd = TV.mkVec (ocpZbnd ocp) :: Vec nz (Maybe Double, Maybe Double)
@@ -503,9 +528,10 @@ reifyOcp ocp f =
     nu = V.length (ocpUbnd ocp)
     np = V.length (ocpPbnd ocp)
     nh = V.length (ocpPathCBnds ocp)
-    (nr, nc) = ( V.length (ocpDae ocp x' x z u p t)
-               , V.length (ocpBc ocp x x)
-               )
+
+    nr = V.length daeRes
+    no = V.length daeOut
+    ((daeRes, daeOut), nc) = (ocpDae ocp x' x z u p t, V.length (ocpBc ocp x x))
       where
         x' = V.replicate nx 0
         x = x'

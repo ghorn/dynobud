@@ -13,10 +13,12 @@ module Hascm.Interface.Types
        , daeZ
        , daeU
        , daeP
+       , daeO
        ) where
 
 import qualified Data.HashSet as HS
 import qualified Data.Sequence as S
+import qualified Data.Map as M
 import Control.Lens
 import Data.Functor ( (<$>) )
 
@@ -46,33 +48,38 @@ data DaeState = DaeState { _daeXDot :: S.Seq Sym
                          , _daeZ :: S.Seq Sym
                          , _daeU :: S.Seq Sym
                          , _daeP :: S.Seq Sym
-                         --, daeOutputs :: HS.HashMap String (Expr Double)
+                         , _daeO :: M.Map String (Expr Double)
                          , daeNameSet :: HS.HashSet String
                          , daeConstraints :: S.Seq (Expr Double, Expr Double)
                          }
 
 --makeLenses ''DaeState
 daeXDot :: Lens' DaeState (S.Seq Sym)
-daeXDot f (DaeState xdot' x z u p ss c) =
-  (\xdot -> DaeState xdot x z u p ss c) <$> (f xdot')
+daeXDot f (DaeState xdot' x z u p o ss c) =
+  (\xdot -> DaeState xdot x z u p o ss c) <$> (f xdot')
 {-# INLINE daeXDot #-}
 
 daeX :: Lens' DaeState (S.Seq Sym)
-daeX f (DaeState xdot x' z u p ss c) =
-  (\x -> DaeState xdot x z u p ss c) <$> (f x')
+daeX f (DaeState xdot x' z u p o ss c) =
+  (\x -> DaeState xdot x z u p o ss c) <$> (f x')
 {-# INLINE daeX #-}
 
 daeZ :: Lens' DaeState (S.Seq Sym)
-daeZ f (DaeState xdot x z' u p ss c) =
-  (\z -> DaeState xdot x z u p ss c) <$> (f z')
+daeZ f (DaeState xdot x z' u p o ss c) =
+  (\z -> DaeState xdot x z u p o ss c) <$> (f z')
 {-# INLINE daeZ #-}
 
 daeU :: Lens' DaeState (S.Seq Sym)
-daeU f (DaeState xdot x z u' p ss c) =
-  (\u -> DaeState xdot x z u p ss c) <$> (f u')
+daeU f (DaeState xdot x z u' p o ss c) =
+  (\u -> DaeState xdot x z u p o ss c) <$> (f u')
 {-# INLINE daeU #-}
 
 daeP :: Lens' DaeState (S.Seq Sym)
-daeP f (DaeState xdot x z u p' ss c) =
-  (\p -> DaeState xdot x z u p ss c) <$> (f p')
+daeP f (DaeState xdot x z u p' o ss c) =
+  (\p -> DaeState xdot x z u p o ss c) <$> (f p')
 {-# INLINE daeP #-}
+
+daeO :: Lens' DaeState (M.Map String (Expr Double))
+daeO f (DaeState xdot x z u p o' ss c) =
+  (\o -> DaeState xdot x z u p o ss c) <$> (f o')
+{-# INLINE daeO #-}

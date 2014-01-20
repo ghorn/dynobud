@@ -29,8 +29,8 @@ import GliderTypes
 mayer :: Num a => AcX a -> a -> a
 mayer _ _ = 0
 
-lagrange :: Floating a => AcX a -> None a -> AcU a -> None a -> a -> a
-lagrange (AcX _ _ _ _ (AcU surfs)) _ (AcU surfs') _ _ =
+lagrange :: Floating a => AcX a -> None a -> AcU a -> None a -> None a -> a -> a
+lagrange (AcX _ _ _ _ (AcU surfs)) _ (AcU surfs') _ _ _ =
   elev**2 + rudd**2 + ail**2 + flaps**2 +
   100*(elev'**2 + rudd'**2 + ail'**2 + flaps'**2)
   where
@@ -44,8 +44,8 @@ lagrange (AcX _ _ _ _ (AcU surfs)) _ (AcU surfs') _ _ =
     ail' = csElev surfs'
     flaps' = csFlaps surfs'
 
-dae :: Floating a => Dae AcX None AcU None AcX a
-dae x' x _ u _ _ = aircraftDae (mass, inertia) fcs mcs refs x' x u
+dae :: Floating a => Dae AcX None AcU None AcX None a
+dae x' x _ u _ _ = (aircraftDae (mass, inertia) fcs mcs refs x' x u, None)
   where
     mass = bettyMass
     inertia = bettyInertia
@@ -53,7 +53,7 @@ dae x' x _ u _ _ = aircraftDae (mass, inertia) fcs mcs refs x' x u
     mcs = bettyMc
     refs = bettyRefs
 
-ocp :: OcpPhase AcX None AcU None AcX AcX None
+ocp :: OcpPhase AcX None AcU None AcX None AcX None
 ocp = OcpPhase { ocpMayer = mayer
                , ocpLagrange = lagrange
                , ocpDae = dae
@@ -68,8 +68,8 @@ ocp = OcpPhase { ocpMayer = mayer
 --               , ocpTbnd = (Just 4, Just 4)
                }
 
-pathc :: x a -> z a -> u a -> p a -> a -> None a
-pathc _ _ _ _ _ = None
+pathc :: x a -> z a -> u a -> p a -> None a -> a -> None a
+pathc _ _ _ _ _ _ = None
 
 ------pathcb :: None a
 ------pathcb = None
@@ -109,7 +109,7 @@ main :: IO ()
 main = do
   putStrLn $ "using ip \""++gliderUrl++"\""
   putStrLn $ "using channel \""++gliderChannelName++"\""
-  
+
   ZMQ.withContext $ \context -> do
     ZMQ.withSocket context ZMQ.Pub $ \publisher -> do
       ZMQ.bind publisher gliderUrl
@@ -135,5 +135,5 @@ main = do
 --          lambdag' = vectorize $ lambdaG lambda'
 --      _ <- solveSqp (nlp {nlpX0 = xopt}) fullStep
 --      _ <- solveSqp (nlp {nlpX0 = xopt}) armilloSearch
-      
+
       return ()

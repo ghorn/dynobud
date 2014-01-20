@@ -302,9 +302,9 @@ solveStaticNlpIpopt nlp = reifyNlp nlp foo
 --    return ()
 
 solveOcpIpopt' ::
-  forall x z u p r c h .
-  (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize r, Vectorize c, Vectorize h)
-  => Int -> Int -> OcpPhase x z u p r c h -> IO ()
+  forall x z u p r o c h .
+  (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize r, Vectorize o, Vectorize c, Vectorize h)
+  => Int -> Int -> OcpPhase x z u p r o c h -> IO ()
 solveOcpIpopt' n deg ocp =
   TV.reifyDim n $ \(Proxy :: Proxy n) ->
   TV.reifyDim deg $ \(Proxy :: Proxy deg) -> do
@@ -314,5 +314,5 @@ solveOcpIpopt' n deg ocp =
     return ()
 
 solveStaticOcpIpopt ::
-  Int -> Int -> OcpPhase V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector -> IO ()
+  Int -> Int -> OcpPhase V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector -> IO ()
 solveStaticOcpIpopt n deg ocp = reifyOcp ocp (solveOcpIpopt' n deg)

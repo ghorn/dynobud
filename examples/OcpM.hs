@@ -15,8 +15,13 @@ myDae = do
   let k = 4
       b = 0.3
 
+      force = u - k * p - b * v
+      obj = (p**2 + v**2 + u**2)
+  output "force" force
+  output "obj" obj
+
   p' === v
-  v' === u - k * p - b * v
+  v' === force
 
 boundaryConditions :: Floating a => (String -> BCMonad a a) -> (String -> BCMonad a a) -> BCMonad a ()
 boundaryConditions get0 getF = do
@@ -30,7 +35,9 @@ boundaryConditions get0 getF = do
   v0 === 0
 
 --  p0 + 4 <== pF -- inequalities missing for now
-  v0 === vF
+--  v0 === vF
+  pF === 1
+  vF === 0
 
 mayer :: (Floating a, Monad m) => (String -> m a) -> a -> m a
 mayer get endTime = do
@@ -44,10 +51,12 @@ myOcp get = do
   p <- get "p"
   v <- get "v"
   u <- get "u"
-  
+  force <- get "force"
+  obj <- get "obj"
+
   v**2 + u**2 <== 4
 
-  lagrangeTerm (p**2 + v**2 + u**2)
+  lagrangeTerm obj
 
 main :: IO ()
 main = solveStaticOcpIpopt n deg (toOcpPhase myDae mayer boundaryConditions myOcp tbnds)
