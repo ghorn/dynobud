@@ -17,7 +17,7 @@ library
                        Hascm.AlgorithmV
                        Hascm.TypeVecs
                        Hascm.Nats
---                       Hascm.MultipleShooting
+                       Hascm.MultipleShooting
                        Hascm.Dae
                        Hascm.Models.Aircraft
                        Hascm.Models.AeroCoeffs
