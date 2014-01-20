@@ -208,7 +208,7 @@ getFg ocp (NlpInputs collTraj@(CollTraj tf p stages xf) _) = NlpFun obj g
 
     -- final point at each stage (for matching constraint)
     xfs :: Vec n (x a)
-    xfs = TV.mkSeq $ TV.unSeq $ TV.tvshiftl x0s xf
+    xfs = TV.tvshiftl x0s xf
 
     x0 = (\(CollStage x0' _) -> x0') (TV.tvhead stages)
     g = CollOcpConstraints
