@@ -9,7 +9,6 @@ import qualified System.ZMQ3 as ZMQ
 
 import Linear
 import Data.ByteString.Char8 ( pack )
-import Data.ByteString ( ByteString )
 
 import Hascm.Vectorize
 import Hascm.Ipopt
