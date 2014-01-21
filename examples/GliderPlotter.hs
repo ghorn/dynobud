@@ -13,7 +13,7 @@ import qualified System.ZMQ3 as ZMQ
 import Plotter ( runPlotter, newChannel )
 
 import Hascm.Vectorize
-import Hascm.DirectCollocation
+import Hascm.DirectCollocation.Dynamic
 import Hascm.Models.Aircraft
 
 import GliderTypes

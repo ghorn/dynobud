@@ -11,6 +11,7 @@ import Data.Tree ( Tree(..) )
 import Hascm.Vectorize
 import Hascm.Nats
 import Hascm.DirectCollocation
+import Hascm.DirectCollocation.Dynamic
 import Hascm.Models.Aircraft
 
 type NCollStages = D100

@@ -24,6 +24,10 @@ library
                        Hascm.Models.Betty
                        Hascm.Ocp
                        Hascm.DirectCollocation
+                       Hascm.DirectCollocation.Types
+                       Hascm.DirectCollocation.Formulate
+                       Hascm.DirectCollocation.Reify
+                       Hascm.DirectCollocation.Dynamic
                        Hascm.Vectorize
                        Hascm.Nlp
                        Hascm.NlpMonad
