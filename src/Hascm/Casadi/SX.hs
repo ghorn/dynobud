@@ -14,6 +14,7 @@ import GHC.Prim ( RealWorld )
 import System.IO.Unsafe ( unsafePerformIO )
 
 import Casadi.Wrappers.Classes.SX
+import Hascm.Casadi.SXMatrix ( svector )
 
 import Dvda.Algorithm.Construct (
   Node(..), AlgOp(..), Algorithm(..), InputIdx(..), OutputIdx(..)
@@ -21,6 +22,9 @@ import Dvda.Algorithm.Construct (
 import Dvda.Expr
 import Hascm.Vectorize
 import Hascm.AlgorithmV
+
+instance Show SX where
+  show = show . svector . V.singleton
 
 casadiSsyms :: String -> Int -> IO (V.Vector SX)
 casadiSsyms name k = fmap V.fromList $ mapM (sx'' . (name ++) . show) (take k [(0::Int)..])
