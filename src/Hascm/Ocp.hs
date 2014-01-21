@@ -5,7 +5,7 @@ module Hascm.Ocp ( Dae, OcpPhase(..) ) where
 
 -- | fully implicit differential-algebraic equation of the form:
 --
--- > f(x'(t), x(t), z(t), u(t), p(t), t) == 0
+-- > f(x'(t), x(t), z(t), u(t), p, t) == 0
 type Dae x z u p r o a = x a -> x a -> z a -> u a -> p a -> a -> (r a, o a)
 
 -- | One stage of an optimal control problem, solvable as a stand-alone optimal control problem.
@@ -24,11 +24,11 @@ type Dae x z u p r o a = x a -> x a -> z a -> u a -> p a -> a -> (r a, o a)
 --
 -- nonlinear path constraints
 --
--- > hlb <= h(x(t), z(t), u(t), p(t), t) <= hub
+-- > hlb <= h(x(t), z(t), u(t), p, t) <= hub
 --
 -- dynamics constraints:
 --
--- > f(x'(t), x(t), z(t), u(t), p(t), t) == 0
+-- > f(x'(t), x(t), z(t), u(t), p, t) == 0
 --
 -- boundary conditions:
 --
@@ -43,11 +43,11 @@ data OcpPhase x z u p r o c h =
              ocpMayer :: forall a. Floating a => x a -> a -> a
              -- | the Lagrange term @Jl(x(t),z(t),u(t),p,t)@
            , ocpLagrange :: forall a. Floating a => x a -> z a -> u a -> p a -> o a -> a -> a
-             -- | the system dynamics of the stage: @f(x'(t), x(t), z(t), u(t), p(t), t)@
+             -- | the system dynamics of the stage: @f(x'(t), x(t), z(t), u(t), p, t)@
            , ocpDae :: forall a. Floating a => Dae x z u p r o a
              -- | the boundary conditions @c(x(0), x(T))@
            , ocpBc :: forall a. Floating a => x a -> x a -> c a
-             -- | the path constraints @h(x(t), z(t), u(t), p(t), t)@
+             -- | the path constraints @h(x(t), z(t), u(t), p), t)@
            , ocpPathC :: forall a. Floating a => x a -> z a -> u a -> p a -> o a -> a -> h a
              -- | the path constraint bounds @(hlb, hub)@
            , ocpPathCBnds :: h (Maybe Double, Maybe Double)
