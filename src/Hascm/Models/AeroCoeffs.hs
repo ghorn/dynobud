@@ -9,7 +9,7 @@ import Data.Foldable ( Foldable )
 import GHC.Generics
 import Linear
 
-import Plotter ( Lookup(..) )
+import Hascm.Server.Server ( Lookup(..) )
 
 import Hascm.Vectorize
 

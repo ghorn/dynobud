@@ -10,7 +10,7 @@ import Data.ByteString.Char8 ( pack )
 import Data.Serialize
 import qualified System.ZMQ3 as ZMQ
 
-import Plotter ( runPlotter, newChannel )
+import Hascm.Server.Server ( runPlotter, newChannel )
 
 import Hascm.Vectorize
 import Hascm.DirectCollocation.Dynamic

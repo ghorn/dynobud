@@ -12,7 +12,6 @@ module Main where
 
 --import qualified Data.Vector as V
 
-import Plotter
 
 import Hascm.Vectorize
 import Hascm.TypeVecs
@@ -22,6 +21,7 @@ import Hascm.Ipopt
 --import Hascm.Sqp.Sqp
 --import Hascm.Sqp.LineSearch
 import Hascm.Nlp
+import Hascm.Server.Server
 
 import Hascm.Ocp
 import Hascm.DirectCollocation

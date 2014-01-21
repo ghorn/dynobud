@@ -15,7 +15,7 @@ import qualified Data.Foldable as F
 import qualified Data.Traversable as T
 import Linear.V
 
-import Plotter ( AccessorTree(..), Lookup(..), accessors )
+import Hascm.Server.Server ( AccessorTree(..), Lookup(..), accessors )
 import Hascm.Vectorize
 import qualified Hascm.TypeVecs as TV
 import Hascm.TypeVecs ( Vec )

@@ -28,7 +28,7 @@ import qualified Data.Vector as V
 import Data.Foldable ( Foldable )
 import Data.Traversable ( Traversable )
 
-import Plotter
+import Hascm.Server.Server
 
 -- | a length-0 vectorizable type
 data None a = None

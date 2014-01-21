@@ -9,7 +9,7 @@ import GHC.Generics
 import Linear
 
 import Hascm.Vectorize
-import Plotter ( Lookup(..), AccessorTree(..) )
+import Hascm.Server.Server ( Lookup(..), AccessorTree(..) )
 import Hascm.Models.AeroCoeffs
 
 instance (Lookup a, Generic a) => Lookup (V3 a) where
