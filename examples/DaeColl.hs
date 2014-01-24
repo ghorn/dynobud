@@ -21,7 +21,7 @@ import Hascm.Ipopt
 --import Hascm.Sqp.Sqp
 --import Hascm.Sqp.LineSearch
 import Hascm.Nlp
-import Hascm.Server.Server
+import Hascm.Server.Accessors
 
 import Hascm.Ocp
 import Hascm.DirectCollocation

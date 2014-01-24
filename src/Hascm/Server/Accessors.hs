@@ -66,6 +66,8 @@ instance Lookup Double where
   toAccessorTree _ f = Getter $ realToFrac . f
 instance Lookup Int where
   toAccessorTree _ f = Getter $ fromIntegral . f
+instance Lookup () where -- hack to get dummy tree
+  toAccessorTree _ _ = Getter $ const 0
 
 instance (Lookup f, Generic f) => GLookup (Rec0 f) where
   gtoAccessorTree x f = toAccessorTree (unK1 x) (unK1 . f)

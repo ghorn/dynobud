@@ -30,7 +30,7 @@ reifyCollPoint (CollPoint x z u) f =
 
 reifyCollStage
   :: forall a r .
-     CollStage V.Vector V.Vector V.Vector Int a ->
+     CollStage V.Vector V.Vector V.Vector () a ->
      (forall x z u deg . (Vectorize x, Vectorize z, Vectorize u, Dim deg) => CollStage x z u deg a -> r) ->
      r
 reifyCollStage (CollStage x0 points') f =
@@ -49,7 +49,7 @@ reifyCollStage (CollStage x0 points') f =
 
 reifyCollTraj
   :: forall a r.
-     CollTraj V.Vector V.Vector V.Vector V.Vector Int Int a
+     CollTraj V.Vector V.Vector V.Vector V.Vector () () a
   -> (forall x z u p n deg . (Vectorize x,Vectorize z,Vectorize u,Vectorize p, Dim n, Dim deg) =>
       CollTraj x z u p n deg a -> r)
   -> r
@@ -86,8 +86,8 @@ reifyCollTraj (CollTraj endTime params stages' xf) f =
     n = V.length stages
     deg = V.length points
 
-    stages = TV.unVec stages' :: V.Vector (CollStage V.Vector V.Vector V.Vector Int a)
+    stages = TV.unVec stages' :: V.Vector (CollStage V.Vector V.Vector V.Vector () a)
     points = TV.unVec points' :: V.Vector (CollPoint V.Vector V.Vector V.Vector a)
 
-    CollStage _ points' = V.head stages :: CollStage V.Vector V.Vector V.Vector Int a
+    CollStage _ points' = V.head stages :: CollStage V.Vector V.Vector V.Vector () a
     CollPoint x1 z1 u1 = V.head points :: CollPoint V.Vector V.Vector V.Vector a

@@ -4,41 +4,36 @@
 
 module Hascm.Server.PlotTypes
        ( Channel(..)
-       , PlotReal
---       , PbPrim(..)
---       , PbTree(..)
---       , PbTree'(..)
+       , GraphInfo(..)
+       , AxisScaling(..)
 --       , XAxisType(..)
---       , toGetterTree
---       , pbTreeToTree
-                 ) where
+       ) where
 
 import Control.Concurrent ( MVar, ThreadId )
---import Data.Sequence ( Seq )
 import Data.Time ( NominalDiffTime )
-import Data.Tree ( Tree(..) )
 
---import GAccessors
-
-type PlotReal = Double
-
---toGetterTree :: AccessorTree a -> Tree (String, String, Maybe (a -> [(PlotReal,PlotReal)]))
---toGetterTree = toGetterTree' "" ""
---
---toGetterTree' :: String -> String -> AccessorTree a ->
---                 Tree (String, String, Maybe (a -> [(PlotReal,PlotReal)]))
---toGetterTree' msg name (Getter f) = Node (name, msg,Just f) []
---toGetterTree' msg name (Data (_,name') children) =
---  Node (msg, name, Nothing) $ map (\(n,t) -> toGetterTree' (msg ++ name) n t) children
+import Hascm.DirectCollocation.Dynamic ( DynPlotPoints, CollTrajMeta(..) )
 
 --data XAxisType a = XAxisTime
 --                 | XAxisCounter
 --                 | XAxisStaticCounter
---                 | XAxisFun (String, a -> PlotReal)
+--                 | XAxisFun (String, a -> Double)
 
-data Channel a =
+data AxisScaling = LogScaling
+                 | LinearScaling
+
+-- what the graph should draw
+data GraphInfo =
+  GraphInfo { giData :: MVar (Maybe (DynPlotPoints Double, CollTrajMeta, Int,NominalDiffTime))
+            , giXScaling :: AxisScaling
+            , giYScaling :: AxisScaling
+            , giXRange :: Maybe (Double,Double)
+            , giYRange :: Maybe (Double,Double)
+            , giGetters :: [(String, DynPlotPoints Double -> [[(Double,Double)]])]
+            }
+
+data Channel =
   Channel { chanName :: String
-          , chanTraj :: MVar (a, Int, NominalDiffTime)
+          , chanTraj :: MVar (Maybe (DynPlotPoints Double, CollTrajMeta, Int, NominalDiffTime))
           , chanServerThreadId :: ThreadId
-          , chanGetters :: Tree (String, String, Maybe (a -> [[(PlotReal,PlotReal)]]))
           }

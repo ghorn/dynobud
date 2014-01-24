@@ -4,7 +4,6 @@ module Hascm.Server.PlotChart
        ( AxisScaling(..)
        , GraphInfo(..)
        , newChartCanvas
-       , updateCanvas
        ) where
 
 import qualified Control.Concurrent as CC
@@ -12,50 +11,37 @@ import Control.Lens
 import Data.Default.Class ( def )
 --import qualified Data.Foldable as F
 --import qualified Data.Sequence as S
-import Data.Time ( NominalDiffTime )
 import qualified Graphics.UI.Gtk as Gtk
 import qualified Graphics.Rendering.Chart as Chart
 import qualified Graphics.Rendering.Chart.Gtk as ChartGtk
 
-import Hascm.Server.PlotTypes ( PlotReal )
-
-data AxisScaling = LogScaling
-                 | LinearScaling
-
--- what the graph should draw
-data GraphInfo a = GraphInfo { giData :: CC.MVar (a,Int,NominalDiffTime)
-                             , giXScaling :: AxisScaling
-                             , giYScaling :: AxisScaling
-                             , giXRange :: Maybe (Double,Double)
-                             , giYRange :: Maybe (Double,Double)
-                             , giGetters :: [(String, a -> [[(PlotReal,PlotReal)]])]
-                             }
+import Hascm.Server.PlotTypes ( GraphInfo(..), AxisScaling(..) )
 
 -- milliseconds for draw time
 animationWaitTime :: Int
 animationWaitTime = 33
 
-newChartCanvas :: CC.MVar (GraphInfo a) -> IO Gtk.DrawingArea
+newChartCanvas :: CC.MVar GraphInfo -> IO Gtk.DrawingArea
 newChartCanvas graphInfoMVar = do
   -- chart drawing area
   chartCanvas <- Gtk.drawingAreaNew
   _ <- Gtk.widgetSetSizeRequest chartCanvas 250 250
   _ <- Gtk.onExpose chartCanvas $ const (updateCanvas graphInfoMVar chartCanvas)
-  _ <- Gtk.timeoutAddFull (do
-      Gtk.widgetQueueDraw chartCanvas
-      return True)
-    Gtk.priorityDefaultIdle animationWaitTime
+  _ <- Gtk.timeoutAddFull
+       (Gtk.widgetQueueDraw chartCanvas >> return True)
+       Gtk.priorityDefaultIdle animationWaitTime
   return chartCanvas
 
-updateCanvas :: CC.MVar (GraphInfo a) -> Gtk.DrawingArea -> IO Bool
+updateCanvas :: CC.MVar GraphInfo -> Gtk.DrawingArea -> IO Bool
 updateCanvas graphInfoMVar canvas = do
   gi <- CC.readMVar graphInfoMVar
-  (datalog,_,_) <- CC.readMVar (giData gi)
-  let f (name,getter) = (name, getter datalog :: [[(PlotReal,PlotReal)]])
-
-      -- convert to list of (name,S.Seq PbPrim)
-      namePcs :: [(String, [[(PlotReal,PlotReal)]])]
-      namePcs = map f (giGetters gi)
+  maybeData <- CC.readMVar (giData gi)
+  let namePcs = case maybeData of
+        Nothing -> []
+        -- convert to list of (name,S.Seq PbPrim)
+        Just (datalog,_,_,_) -> map f (giGetters gi) :: [(String, [[(Double,Double)]])]
+          where
+            f (name,getter) = (name, getter datalog :: [[(Double,Double)]])
 
   let myGraph = displayChart (giXScaling gi, giYScaling gi) (giXRange gi, giYRange gi) namePcs
   ChartGtk.updateCanvas myGraph canvas

@@ -4,12 +4,9 @@ module Hascm.Server.Server
        ( newChannel
        , runPlotter
        , Channel
-       , module Hascm.Server.Accessors
        ) where
 
 import qualified Control.Concurrent as CC
---import qualified Data.Foldable as F
-import Data.Tree ( Tree(..) )
 import Data.Time ( getCurrentTime, diffUTCTime )
 import Graphics.UI.Gtk ( AttrOp( (:=) ) )
 import qualified Graphics.UI.Gtk as Gtk
@@ -19,54 +16,40 @@ import System.Glib.Signals ( on )
 
 import qualified GHC.Stats
 
-import Hascm.Server.Accessors
-import Hascm.Server.PlotTypes ( Channel(..), PlotReal )
+import Hascm.Server.PlotTypes ( Channel(..) )
 import Hascm.Server.GraphWidget ( newGraph )
+import Hascm.DirectCollocation.Dynamic ( DynCollTraj, CollTrajMeta, dynPlotPointsL )
 
 newChannel ::
-  String ->
-  Tree (String, String, Maybe (a -> [[(PlotReal, PlotReal)]])) ->
-  IO (Channel a, a -> IO ())
-newChannel name getters = do
+  String -> IO (Channel, (DynCollTraj Double, CollTrajMeta) -> IO ())
+newChannel name = do
   time0 <- getCurrentTime
-  
+
   seqChan <- CC.newChan
-  seqMv <- CC.newEmptyMVar
+  seqMv <- CC.newMVar Nothing
 
   -- this is the loop that reads new messages and stores them
   let serverLoop :: Int -> IO ()
       serverLoop k = do
         -- wait until a new message is written to the Chan
-        newMsg <- CC.readChan seqChan
+        (newMsg0,newMsg1) <- CC.readChan seqChan
+
         -- grab the timestamp
         time <- getCurrentTime
         -- write to the mvar
-        _ <- CC.swapMVar seqMv (newMsg, k, diffUTCTime time time0)
+        _ <- CC.swapMVar seqMv (Just (dynPlotPointsL newMsg0, newMsg1, k, diffUTCTime time time0))
         -- loop forever
         serverLoop (k+1)
 
-      -- first time only, use putMVar instead of swapMVar
-      serverLoop0 :: IO ()
-      serverLoop0 = do
-        -- wait until a new message is written to the Chan
-        newMsg <- CC.readChan seqChan
-        -- grab the timestamp
-        time <- getCurrentTime
-        -- write to the mvar
-        CC.putMVar seqMv (newMsg, 0, diffUTCTime time time0)
-        -- loop forever
-        serverLoop 1
-  
-  serverTid <- CC.forkIO $ serverLoop0
+  serverTid <- CC.forkIO $ serverLoop 0
   let retChan = Channel { chanName = name
-                        , chanGetters = getters
                         , chanTraj = seqMv
                         , chanServerThreadId = serverTid
                         }
 
   return (retChan, CC.writeChan seqChan)
 
-runPlotter :: Channel a -> [CC.ThreadId] -> IO ()
+runPlotter :: Channel -> [CC.ThreadId] -> IO ()
 runPlotter channel backgroundThreadsToKill = do
   statsEnabled <- GHC.Stats.getGCStatsEnabled
   if statsEnabled
@@ -117,7 +100,7 @@ runPlotter channel backgroundThreadsToKill = do
 
 
 -- the list of channels
-newChannelWidget :: Channel a -> CC.MVar [Gtk.Window] -> IO Gtk.TreeView
+newChannelWidget :: Channel -> CC.MVar [Gtk.Window] -> IO Gtk.TreeView
 newChannelWidget channel graphWindowsToBeKilled = do
   -- create a new tree model
   model <- Gtk.listStoreNew [channel]
@@ -149,7 +132,7 @@ newChannelWidget channel graphWindowsToBeKilled = do
   Gtk.cellLayoutSetAttributes col2 renderer2 model $ const [ Gtk.cellToggleActive := False]
   Gtk.cellLayoutSetAttributes col3 renderer3 model $ const [ Gtk.cellToggleActive := False]
 
-  
+
   _ <- Gtk.treeViewAppendColumn treeview col0
   _ <- Gtk.treeViewAppendColumn treeview col1
   _ <- Gtk.treeViewAppendColumn treeview col2
@@ -159,8 +142,8 @@ newChannelWidget channel graphWindowsToBeKilled = do
   _ <- on renderer2 Gtk.cellToggled $ \pathStr -> do
     let (i:_) = Gtk.stringToTreePath pathStr
     lv <- Gtk.listStoreGetValue model i
-    graphWin <- newGraph (chanName lv) (chanGetters lv) (chanTraj lv)
-    
+    graphWin <- newGraph (chanName lv) (chanTraj lv)
+
     -- add this window to the list to be killed on exit
     CC.modifyMVar_ graphWindowsToBeKilled (return . (graphWin:))
 

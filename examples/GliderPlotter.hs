@@ -14,12 +14,11 @@ import Hascm.Server.Server ( runPlotter, newChannel )
 
 import Hascm.Vectorize
 import Hascm.DirectCollocation.Dynamic
-import Hascm.Models.Aircraft
 
 import GliderTypes
 
 
-sub :: String -> (PlotPointsL AcX None AcU Double -> IO ()) -> String -> IO ()
+sub :: String -> ((DynCollTraj Double, CollTrajMeta) -> IO ()) -> String -> IO ()
 sub ip writeChan name = ZMQ.withContext $ \context -> do
   ZMQ.withSocket context ZMQ.Sub $ \subscriber -> do
     ZMQ.connect subscriber ip
@@ -34,16 +33,15 @@ sub ip writeChan name = ZMQ.withContext $ \context -> do
             traj = case fmap (devectorize . V.fromList) (decode msg) of
               Left err -> error err
               Right t -> t
-        writeChan (plotPointLists $ plotPoints traj)
+        writeChan (ctToDynamic traj, toMeta traj)
       else return ()
-
 
 main :: IO ()
 main = do
   putStrLn $ "using ip \""++gliderUrl++"\""
   putStrLn $ "using channel \""++gliderChannelName++"\""
   
-  (c0, writeMe) <- newChannel gliderChannelName gliderPlotTree
+  (c0, writeMe) <- newChannel gliderChannelName
 
   listenerTid0 <- CC.forkIO (sub gliderUrl writeMe gliderChannelName)
   runPlotter c0 [listenerTid0]
