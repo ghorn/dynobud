@@ -5,7 +5,9 @@ module Hascm.Server.GraphWidget
        ) where
 
 import qualified Control.Concurrent as CC
+import Control.Concurrent.STM.TChan
 import Control.Monad ( unless )
+import Control.Monad.STM ( atomically )
 import Data.Maybe ( isJust, fromJust )
 import qualified Data.Tree as Tree
 import Graphics.UI.Gtk ( AttrOp( (:=) ) )
@@ -29,8 +31,10 @@ data ListViewInfo a = ListViewInfo { lviName :: String
 newGraph ::
   String ->
   CC.MVar (Maybe (DynPlotPoints Double, CollTrajMeta, Int, NominalDiffTime)) ->
+  TChan CollTrajMeta ->
   IO Gtk.Window
-newGraph channame chanseq = do
+newGraph channame chanseq chanmeta' = do
+  chanmeta <- atomically (dupTChan chanmeta')
   win <- Gtk.windowNew
 
   _ <- Gtk.set win [ Gtk.containerBorderWidth := 8
@@ -61,26 +65,34 @@ newGraph channame chanseq = do
                    , Gtk.expanderExpanded := True
                    ]
 
-  -- the treeview rebuilder button
-  buttonRebuild <- Gtk.buttonNewWithLabel "rebuild tree"
-  _ <- Gtk.onClicked buttonRebuild $ do
-    maybeGI <- CC.readMVar chanseq
-    case maybeGI of
-      Nothing -> putStrLn "no signal tree to build here"
-      Just (_,meta,_,_) -> do
+  -- rebuild the signal tree
+  let rebuildSignalTree meta = do
+        putStrLn "rebuilding signal tree"
         Gtk.treeStoreClear treeViewModel
         let mkTreeNode (name,typeName,maybeget) = ListViewInfo name typeName maybeget False
         let newTrees :: [Tree.Tree (ListViewInfo (DynPlotPoints Double))]
             newTrees = map (fmap mkTreeNode) (forestFromMeta meta)
         Gtk.treeStoreInsertForest treeViewModel [] 0 newTrees
 
+  let rebuildSignalTreeFromChan = do
+        maybeGI <- atomically (tryReadTChan chanmeta)
+        case maybeGI of
+          Nothing -> return ()
+          Just meta -> do
+            rebuildSignalTree meta
+
+  _ <- Gtk.timeoutAddFull (rebuildSignalTreeFromChan >> return True)
+       Gtk.priorityDefaultIdle 50
+
+  gi <- CC.readMVar chanseq
+  case gi of Nothing -> return ()
+             Just (_,meta,_,_) -> rebuildSignalTree meta
+
   -- options and signal selector packed in vbox
   vboxOptionsAndSignals <- Gtk.vBoxNew False 4
   Gtk.set vboxOptionsAndSignals
     [ Gtk.containerChild := options
     , Gtk.boxChildPacking options := Gtk.PackNatural
-    , Gtk.containerChild := buttonRebuild
-    , Gtk.boxChildPacking buttonRebuild := Gtk.PackNatural
     , Gtk.containerChild := treeview
     , Gtk.boxChildPacking treeview := Gtk.PackGrow
     ]

@@ -7,6 +7,9 @@ module Hascm.Server.Server
        ) where
 
 import qualified Control.Concurrent as CC
+import Control.Concurrent.STM.TChan
+import Control.Monad.STM ( atomically )
+import Control.Monad ( when )
 import Data.Time ( getCurrentTime, diffUTCTime )
 import Graphics.UI.Gtk ( AttrOp( (:=) ) )
 import qualified Graphics.UI.Gtk as Gtk
@@ -25,29 +28,36 @@ newChannel ::
 newChannel name = do
   time0 <- getCurrentTime
 
-  seqChan <- CC.newChan
-  seqMv <- CC.newMVar Nothing
+  trajChan <- CC.newChan
+  trajMv <- CC.newMVar Nothing
+  metaChan <- atomically newBroadcastTChan :: IO (TChan CollTrajMeta)
 
   -- this is the loop that reads new messages and stores them
-  let serverLoop :: Int -> IO ()
-      serverLoop k = do
+  let serverLoop :: Maybe CollTrajMeta -> Int -> IO ()
+      serverLoop oldMeta k = do
         -- wait until a new message is written to the Chan
-        (newMsg0,newMsg1) <- CC.readChan seqChan
+        (newTraj,newMeta) <- CC.readChan trajChan
 
         -- grab the timestamp
         time <- getCurrentTime
-        -- write to the mvar
-        _ <- CC.swapMVar seqMv (Just (dynPlotPointsL newMsg0, newMsg1, k, diffUTCTime time time0))
-        -- loop forever
-        serverLoop (k+1)
 
-  serverTid <- CC.forkIO $ serverLoop 0
+        -- if new meta is different
+        when (Just newMeta /= oldMeta) $
+          atomically (writeTChan metaChan newMeta)
+
+        -- write to the mvar
+        _ <- CC.swapMVar trajMv (Just (dynPlotPointsL newTraj, newMeta, k, diffUTCTime time time0))
+        -- loop forever
+        serverLoop (Just newMeta) (k+1)
+
+  serverTid <- CC.forkIO $ serverLoop Nothing 0
   let retChan = Channel { chanName = name
-                        , chanTraj = seqMv
+                        , chanTraj = trajMv
+                        , chanMeta = metaChan
                         , chanServerThreadId = serverTid
                         }
 
-  return (retChan, CC.writeChan seqChan)
+  return (retChan, CC.writeChan trajChan)
 
 runPlotter :: Channel -> [CC.ThreadId] -> IO ()
 runPlotter channel backgroundThreadsToKill = do
@@ -142,7 +152,7 @@ newChannelWidget channel graphWindowsToBeKilled = do
   _ <- on renderer2 Gtk.cellToggled $ \pathStr -> do
     let (i:_) = Gtk.stringToTreePath pathStr
     lv <- Gtk.listStoreGetValue model i
-    graphWin <- newGraph (chanName lv) (chanTraj lv)
+    graphWin <- newGraph (chanName lv) (chanTraj lv) (chanMeta lv)
 
     -- add this window to the list to be killed on exit
     CC.modifyMVar_ graphWindowsToBeKilled (return . (graphWin:))

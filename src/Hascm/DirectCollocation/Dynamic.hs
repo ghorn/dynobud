@@ -111,7 +111,7 @@ toPlotTree = Node ("trajectory", "trajectory", Nothing) [xtree, ztree, utree]
 
 data NameTree = NameTreeNode (String,String) [(String,NameTree)]
               | NameTreeLeaf Int
-              deriving Show
+              deriving (Show, Eq)
 
 data CollTrajMeta = CollTrajMeta { ctmX :: NameTree
                                  , ctmZ :: NameTree
@@ -119,7 +119,7 @@ data CollTrajMeta = CollTrajMeta { ctmX :: NameTree
                                  , ctmP :: NameTree
                                  , ctmN :: Int
                                  , ctmDeg :: Int
-                                 }
+                                 } deriving Eq
 
 namesFromAccTree :: AccessorTree a -> NameTree
 namesFromAccTree x = (\(_,(_,y)) -> y) $ namesFromAccTree' 0 ("",x)

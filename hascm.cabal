@@ -71,6 +71,7 @@ library
                        gtk,
                        Chart-gtk,
                        Chart,
+                       stm,
                        data-default-class
 --                       cplex,
 --                       snopt

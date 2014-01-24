@@ -10,6 +10,7 @@ module Hascm.Server.PlotTypes
        ) where
 
 import Control.Concurrent ( MVar, ThreadId )
+import Control.Concurrent.STM.TChan
 import Data.Time ( NominalDiffTime )
 
 import Hascm.DirectCollocation.Dynamic ( DynPlotPoints, CollTrajMeta(..) )
@@ -35,5 +36,6 @@ data GraphInfo =
 data Channel =
   Channel { chanName :: String
           , chanTraj :: MVar (Maybe (DynPlotPoints Double, CollTrajMeta, Int, NominalDiffTime))
+          , chanMeta :: TChan CollTrajMeta
           , chanServerThreadId :: ThreadId
           }
