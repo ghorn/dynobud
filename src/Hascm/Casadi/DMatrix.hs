@@ -2,6 +2,7 @@
 
 module Hascm.Casadi.DMatrix ( DMatrix(), dcrs, dsparse, dmm, dvector, ddata
                             , ddensify, dtrans
+                            , dsize, dsize1, dsize2, dnumel, dvertcat, dhorzcat
                             ) where
 
 import Control.Monad ( when )
@@ -49,6 +50,31 @@ dsparse sxm = unsafePerformIO $ do
   when (V.length row /= V.length sxs) $ error "ssparse: row/sxs dimension mismatch"
   return $ V.zip3 row col sxs
 {-# NOINLINE dsparse #-}
+
+dsize :: DMatrix -> Int
+dsize x = unsafePerformIO (dmatrix_size x)
+{-# NOINLINE dsize #-}
+
+dsize1 :: DMatrix -> Int
+dsize1 x = unsafePerformIO (dmatrix_size1 x)
+{-# NOINLINE dsize1 #-}
+
+dsize2 :: DMatrix -> Int
+dsize2 x = unsafePerformIO (dmatrix_size2 x)
+{-# NOINLINE dsize2 #-}
+
+dnumel :: DMatrix -> Int
+dnumel x = unsafePerformIO (dmatrix_numel x)
+{-# NOINLINE dnumel #-}
+
+dvertcat :: V.Vector DMatrix -> DMatrix
+dvertcat x = unsafePerformIO (C.vertcat' x)
+{-# NOINLINE dvertcat #-}
+
+dhorzcat :: V.Vector DMatrix -> DMatrix
+dhorzcat x = unsafePerformIO (C.horzcat' x)
+{-# NOINLINE dhorzcat #-}
+
 
 instance Num DMatrix where
   (+) x y = unsafePerformIO (dmatrix___add__ x y)

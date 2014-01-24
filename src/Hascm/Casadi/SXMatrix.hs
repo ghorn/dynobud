@@ -3,7 +3,8 @@
 module Hascm.Casadi.SXMatrix ( SXMatrix(), ssym, ssymV, ssymM, smm, strans
                              , sgradient, sjacobian, shessian, svector
                              , sdata, ssparse, sdensify
-                             , scrs, svertcat ) where
+                             , ssize, ssize1, ssize2, snumel
+                             , scrs, svertcat, shorzcat ) where
 
 import Control.Monad ( when )
 import qualified Data.Vector as V
@@ -65,9 +66,29 @@ sdata :: SXMatrix -> V.Vector SX
 sdata x = unsafePerformIO (sxMatrix_data x)
 {-# NOINLINE sdata #-}
 
+ssize :: SXMatrix -> Int
+ssize x = unsafePerformIO (sxMatrix_size x)
+{-# NOINLINE ssize #-}
+
+ssize1 :: SXMatrix -> Int
+ssize1 x = unsafePerformIO (sxMatrix_size1 x)
+{-# NOINLINE ssize1 #-}
+
+ssize2 :: SXMatrix -> Int
+ssize2 x = unsafePerformIO (sxMatrix_size2 x)
+{-# NOINLINE ssize2 #-}
+
+snumel :: SXMatrix -> Int
+snumel x = unsafePerformIO (sxMatrix_numel x)
+{-# NOINLINE snumel #-}
+
 svertcat :: V.Vector SXMatrix -> SXMatrix
 svertcat x = unsafePerformIO (C.vertcat'' x)
 {-# NOINLINE svertcat #-}
+
+shorzcat :: V.Vector SXMatrix -> SXMatrix
+shorzcat x = unsafePerformIO (C.horzcat'' x)
+{-# NOINLINE shorzcat #-}
 
 ssparse :: SXMatrix -> V.Vector (Int,Int,SX)
 ssparse sxm = unsafePerformIO $ do
