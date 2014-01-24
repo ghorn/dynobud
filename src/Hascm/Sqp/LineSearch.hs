@@ -1,5 +1,4 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language MultiWayIf #-}
 
 module Hascm.Sqp.LineSearch ( LineSearch, armilloSearch, ArmilloParams(..), fullStep ) where
 
@@ -38,8 +37,9 @@ armilloSearch' params f xk projGrad pk = do
       armilloSearch'' n t = do
         let x = V.zipWith (+) xk (V.map (t*) pk)
         fx <- f x
-        if | fx <= f0 + gamma * t * projGrad -> return $ Right (x, t)
-           | otherwise -> armilloSearch'' (n - 1) (beta * t)
+        if fx <= f0 + gamma * t * projGrad
+          then return $ Right (x, t)
+          else armilloSearch'' (n - 1) (beta * t)
 
   armilloSearch'' (apMaxIters params) 1
       

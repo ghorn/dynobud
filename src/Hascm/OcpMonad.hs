@@ -25,6 +25,7 @@ module Hascm.OcpMonad
        )
        where
 
+import Control.Arrow( (***) )
 import Control.Lens ( Lens', over )
 import Control.Monad ( when )
 import Control.Monad.Error ( ErrorT, MonadError, runErrorT )
@@ -158,7 +159,7 @@ instance EqMonad OcpMonad (Expr Double) where
     debug $ "adding equality constraint: " ++
       withEllipse 30 (show lhs) ++ " == " ++ withEllipse 30 (show rhs)
     state0 <- State.get
-    State.put $ state0 { ocpPathConstraints = ocpPathConstraints state0 |> (Eq2 lhs rhs) }
+    State.put $ state0 { ocpPathConstraints = ocpPathConstraints state0 |> Eq2 lhs rhs }
 
 
 infix 4 <==
@@ -170,11 +171,11 @@ instance LeqMonad OcpMonad where
     debug $ "adding inequality constraint: " ++
       withEllipse 30 (show lhs) ++ " <= " ++ withEllipse 30 (show rhs)
     state0 <- State.get
-    State.put $ state0 { ocpPathConstraints = ocpPathConstraints state0 |> (Ineq2 lhs rhs) }
+    State.put $ state0 { ocpPathConstraints = ocpPathConstraints state0 |> Ineq2 lhs rhs }
 
 instance EqMonad (BCMonad a) a where
   (===) lhs rhs = do
-    debug $ "adding inequality constraint: "
+    debug "adding inequality constraint: "
       -- ++ withEllipse 30 (show lhs) ++ " <= " ++ withEllipse 30 (show rhs)
     (state0 :: S.Seq (a,a)) <- State.get
     State.put $ state0  |> (lhs, rhs)
@@ -346,7 +347,7 @@ toOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds =
     unames = F.toList $ _daeU dae
     pnames = F.toList $ _daeP dae
     daeResidual :: [Expr Double]
-    daeResidual = map (\(x, y) -> x - y) (F.toList (daeConstraints dae))
+    daeResidual = map (uncurry (-)) (F.toList (daeConstraints dae))
 
     outputNames :: [String]
     outputExprs :: [Expr Double]
@@ -403,7 +404,7 @@ toOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds =
         ((Right _, _), ocpState) -> ocpState
       where
         varmap :: M.Map Sym (Expr Double)
-        varmap = M.fromList $ concatMap (\names -> (zip names (map ESym names)))
+        varmap = M.fromList $ concatMap (\names -> zip names (map ESym names))
                  [ xnames
                  , znames
                  , unames
@@ -462,7 +463,7 @@ toOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds =
       case flip runState S.empty $ runWriterT (runErrorT (runBc $ bcMonad lookupState0 lookupStateF)) of
         ((Left errmsg, logs),_) ->
           error $ unlines $ ("" : map show logs) ++ ["","boundary condition monad failure: " ++ show errmsg]
-        ((Right _,_), ret) -> V.fromList $ map (\(x,y) -> x - y) $ F.toList ret
+        ((Right _,_), ret) -> V.fromList $ map (uncurry (-)) $ F.toList ret
       where
         x0map :: M.Map Sym a
         x0map = M.fromList $ zip xnames (V.toList x0)
@@ -508,10 +509,10 @@ reifyOcp ocp f =
   TV.reifyDim no $ \(Proxy :: Proxy no) ->
   TV.reifyDim nc $ \(Proxy :: Proxy nc) ->
   TV.reifyDim nh $ \(Proxy :: Proxy nh) ->
-  f (OcpPhase
+  f OcpPhase
      { ocpMayer = (\x t -> ocpMayer ocp (vectorize x) t) :: forall a . Floating a => Vec nx a -> a -> a
      , ocpLagrange = (\x z u p o t -> ocpLagrange ocp (vectorize x) (vectorize z) (vectorize u) (vectorize p) (vectorize o) t) :: forall a . Floating a => Vec nx a -> Vec nz a -> Vec nu a -> Vec np a -> Vec no a -> a -> a
-     , ocpDae = (\x' x z u p t -> (\(d,o) -> (devectorize d, devectorize o)) (ocpDae ocp (vectorize x') (vectorize x) (vectorize z) (vectorize u) (vectorize p) t)) :: forall a . Floating a => Dae (Vec nx) (Vec nz) (Vec nu) (Vec np) (Vec nr) (Vec no) a
+     , ocpDae = (\x' x z u p t -> (devectorize *** devectorize) (ocpDae ocp (vectorize x') (vectorize x) (vectorize z) (vectorize u) (vectorize p) t)) :: forall a . Floating a => Dae (Vec nx) (Vec nz) (Vec nu) (Vec np) (Vec nr) (Vec no) a
      , ocpBc = (\x0 xf -> devectorize (ocpBc ocp (vectorize x0) (vectorize xf))) :: forall a . Floating a => Vec nx a -> Vec nx a -> Vec nc a
      , ocpPathC = (\x z u p o t -> devectorize (ocpPathC ocp (vectorize x) (vectorize z) (vectorize u) (vectorize p) (vectorize o) t)) :: forall a . Floating a => Vec nx a -> Vec nz a -> Vec nu a -> Vec np a -> Vec no a -> a -> Vec nh a
      , ocpPathCBnds = devectorize (ocpPathCBnds ocp) :: Vec nh (Maybe Double, Maybe Double)
@@ -521,7 +522,6 @@ reifyOcp ocp f =
      , ocpPbnd = TV.mkVec (ocpPbnd ocp) :: Vec np (Maybe Double, Maybe Double)
      , ocpTbnd = ocpTbnd ocp
      }
-    )
   where
     nx = V.length (ocpXbnd ocp)
     nz = V.length (ocpZbnd ocp)

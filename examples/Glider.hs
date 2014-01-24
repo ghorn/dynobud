@@ -88,7 +88,7 @@ d2r d = d*pi/180
 
 ubnd :: AcU (Maybe Double, Maybe Double)
 ubnd =
-  AcU $
+  AcU
   ControlSurfaces { csElev = (Just (d2r (-10)), Just (d2r 10))
                   , csRudder = (Just (d2r (-10)), Just (d2r 10))
                   , csAil = (Just (d2r (-10)), Just (d2r 10))
@@ -100,7 +100,7 @@ bc (AcX x0 v0 dcm0 w0 cs) _ = AcX x0 (v0 - V3 30 0 0) (dcm0 - eye3) w0 cs
 
 callback :: ZMQ.Socket ZMQ.Pub -> String -> GliderDesignVars Double -> IO Bool
 callback publisher chanName traj = do
-  let bs = encode $ V.toList $ vectorize $ traj
+  let bs = encode $ V.toList $ vectorize traj
   ZMQ.send publisher [ZMQ.SendMore] (pack chanName)
   ZMQ.send publisher [] bs
   return True
@@ -110,7 +110,7 @@ main = do
   putStrLn $ "using ip \""++gliderUrl++"\""
   putStrLn $ "using channel \""++gliderChannelName++"\""
 
-  ZMQ.withContext $ \context -> do
+  ZMQ.withContext $ \context ->
     ZMQ.withSocket context ZMQ.Pub $ \publisher -> do
       ZMQ.bind publisher gliderUrl
 

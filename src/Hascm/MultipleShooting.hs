@@ -83,19 +83,19 @@ getFg ocp integrator (NlpInputs (MsTraj xus xf) _) = NlpFun objective constraint
 --    ts = tf / (fromIntegral n)
     constraints =
       MsConstraints
-      { mscBc = (msBc ocp) (TV.tvhead xs) xf
-      , mscPathc = TV.tvzipWith (\x u -> msPathC ocp x u) xs us
+      { mscBc = msBc ocp (TV.tvhead xs) xf
+      , mscPathc = TV.tvzipWith (msPathC ocp) xs us
       , mscDynamics = vzipWith3 integrator' xs us x1s
       }
       where
-        integrator' x0 u0 x1 = vzipWith (-) x1' x1
+        integrator' x0 u0 = vzipWith (-) x1'
           where
             x1' = integrator x0 u0
         x1s :: Vec n (x a)
         x1s = TV.tvshiftl xs xf
 
     objective = objective' `dot` objective'
-    objective' = (msMayer ocp) xf
+    objective' = msMayer ocp xf
 
 --    objectiveL = V.foldl' f 0 (vectorize xus)
 --      where

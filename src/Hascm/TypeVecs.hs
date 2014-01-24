@@ -3,9 +3,6 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -89,10 +86,10 @@ unVec = V.fromList . F.toList . unSeq
 infixr 5 <|
 infixl 5 |>
 (<|) :: a -> Vec n a -> Vec (Succ n) a
-(<|) x xs = MkVec $ x S.<| (unSeq xs)
+(<|) x xs = MkVec $ x S.<| unSeq xs
 
 (|>) :: Vec n a -> a -> Vec (Succ n) a
-(|>) xs x = MkVec $ (unSeq xs) S.|> x
+(|>) xs x = MkVec $ unSeq xs S.|> x
 
 -- create a Vec with a runtime check
 unsafeVec :: Dim n => V.Vector a -> Vec n a

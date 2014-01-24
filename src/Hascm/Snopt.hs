@@ -10,7 +10,7 @@ module Hascm.Snopt ( solveNlpSnopt ) where
 import qualified Data.Vector as V
 import Data.Maybe ( fromMaybe )
 
-import Control.Monad ( unless, when )
+import Control.Monad ( unless, when, void )
 import qualified Data.HashSet as HS
 import Foreign.C.Types ( CInt )
 import Foreign.ForeignPtr ( newForeignPtr_ )
@@ -134,7 +134,7 @@ solveNlpSnopt nlp callback lambda0 = do
 
         case callback of
           Nothing -> return ()
-          Just cb -> cb (devectorize xvec) >> return () -- should halt of callback returns False
+          Just cb -> void (cb (devectorize xvec)) -- should halt of callback returns False
 
         fvec <- VS.unsafeThaw $ VS.unsafeFromForeignPtr0 fp nf
         gvec <- VS.unsafeThaw $ VS.unsafeFromForeignPtr0 gp ng
@@ -143,11 +143,9 @@ solveNlpSnopt nlp callback lambda0 = do
 
         unless (needF' `elem` [0,1]) $ error "needF isn't 1 or 0"
         unless (needG' `elem` [0,1]) $ error "needG isn't 1 or 0"
-        when (needF' `elem` [0,1]) $ do
---          putStrLn $ "callF: " ++ show fvec'
+        when (needF' `elem` [0,1]) $
           VS.copy fvec (VS.fromList $ V.toList f)
-        when (needG' `elem` [0,1]) $ do
---          putStrLn $ "callG: " ++ show gvec'
+        when (needG' `elem` [0,1]) $
           VS.copy gvec (VS.fromList $ V.toList jacob)
 
   let --runSnopt :: IO (Either String SnInteger)
@@ -200,7 +198,7 @@ solveNlpSnopt nlp callback lambda0 = do
 
                 (xstate, x0') = V.unzip $ V.zipWith3 variableState x0 bx lamX'
                 (fstate, f0') = V.unzip $ V.zipWith3 variableState
-                                (f0init)
+                                f0init
                                 (V.singleton (Nothing, Nothing) V.++ bg)
                                 (V.singleton 0 V.++ lamG')
             setX $ VS.fromList $ V.toList x0'

@@ -14,6 +14,7 @@ module Hascm.DirectCollocation.Dynamic
        , toPlotTree
        ) where
 
+import Control.Arrow ( second )
 import Data.List ( mapAccumL )
 import Data.Tree ( Tree(..) )
 import qualified Data.Vector as V
@@ -46,7 +47,7 @@ plotPoints ct@(CollTraj tf _ stages xf) = PlotPoints ret (tf', xf)
   where
     (tf', ret) = T.mapAccumL f 0 stages
     nStages = TV.tvlength stages
-    h = tf / (fromIntegral nStages)
+    h = tf / fromIntegral nStages
     taus = mkTaus (ctDeg ct)
 
     f :: a -> CollStage x z u deg a -> (a, ((a, x a), Vec deg (a, x a, z a, u a), (a, x a)))
@@ -77,7 +78,7 @@ plotPointLists' :: forall n deg x z u a .
                   PlotPoints n deg x z u a ->
                   PlotPointsL V.Vector V.Vector V.Vector a
 plotPointLists' (PlotPoints vec txf) =
-  PlotPointsL (xs' ++ [[(\(t,xf) -> (t, vectorize xf)) txf]]) zs' us'
+  PlotPointsL (xs' ++ [[second vectorize txf]]) zs' us'
   where
     (xs', zs', us') = unzip3 $ map f (F.toList vec)
 
@@ -103,9 +104,9 @@ toPlotTree = Node ("trajectory", "trajectory", Nothing) [xtree, ztree, utree]
 
     toGetterTree toXs name (Getter f) = Node (name, name, Just g) []
       where
-        g = map (map (\(t,x) -> (t,f x))) . toXs
+        g = map (map (second f)) . toXs
     toGetterTree toXs name (Data (_,name') children) =
-      Node (name, name', Nothing) $ map (\(n,t) -> toGetterTree toXs n t) children
+      Node (name, name', Nothing) $ map (uncurry (toGetterTree toXs)) children
 
 
 data NameTree = NameTreeNode (String,String) [(String,NameTree)]
@@ -124,8 +125,8 @@ namesFromAccTree :: AccessorTree a -> NameTree
 namesFromAccTree x = (\(_,(_,y)) -> y) $ namesFromAccTree' 0 ("",x)
 
 namesFromAccTree' :: Int -> (String, AccessorTree a) -> (Int, (String, NameTree))
-namesFromAccTree' k (nm, (Getter _)) = (k+1, (nm, NameTreeLeaf k))
-namesFromAccTree' k0 (nm, (Data names ats)) = (k, (nm, NameTreeNode names children))
+namesFromAccTree' k (nm, Getter _) = (k+1, (nm, NameTreeLeaf k))
+namesFromAccTree' k0 (nm, Data names ats) = (k, (nm, NameTreeNode names children))
   where
     (k, children) = mapAccumL namesFromAccTree' k0 ats
 
@@ -147,10 +148,10 @@ forestFromMeta meta = [xTree,zTree,uTree]
     blah :: (c -> [[(t, V.Vector t1)]]) -> String -> NameTree ->
             Tree (String, String, Maybe (c -> [[(t, t1)]]))
     blah f myname (NameTreeNode (nm1,_) children) =
-      Tree.Node (myname,nm1,Nothing) $ map (\(nmc,c) -> blah f nmc c) children
+      Tree.Node (myname,nm1,Nothing) $ map (uncurry (blah f)) children
     blah f myname (NameTreeLeaf k) = Tree.Node (myname,"fuckyou",Just (woo . f)) []
       where
-        woo pps = map (map (\(t,x) -> (t, x V.! k))) pps
+        woo = map (map (\(t,x) -> (t, x V.! k)))
 
 
 toMeta :: forall x z u p n deg a .

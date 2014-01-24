@@ -1,6 +1,4 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language DeriveFunctor #-}
-{-# Language DeriveGeneric #-}
 
 module Hascm.Models.Betty
        ( bettyFc

@@ -1,12 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language DeriveFunctor #-}
 {-# Language DeriveGeneric #-}
-{-# Language TypeSynonymInstances #-}
-{-# Language FlexibleInstances #-}
-{-# Language MultiParamTypeClasses #-}
-{-# Language RankNTypes #-}
-{-# Language FlexibleContexts #-}
-{-# Language GADTs #-}
 
 module Main where
 
@@ -91,14 +85,14 @@ pathc :: x a -> z a -> u a -> p a -> o a -> a -> None a
 pathc _ _ _ _ _ _ = None
 
 xbnd :: PendX (Maybe Double, Maybe Double)
-xbnd = PendX { pX = (Just (-10), Just (10))
-             , pY = (Just (-10), Just (10))
-             , pVx = (Just (-10), Just (10))
-             , pVy = (Just (-10), Just (10))
+xbnd = PendX { pX =  (Just (-10), Just 10)
+             , pY =  (Just (-10), Just 10)
+             , pVx = (Just (-10), Just 10)
+             , pVy = (Just (-10), Just 10)
              }
 
 ubnd :: PendU (Maybe Double, Maybe Double)
-ubnd = PendU (Just (-40), Just (40))
+ubnd = PendU (Just (-40), Just 40)
 
 bc :: Floating a => PendX a -> PendX a -> Vec D8 a
 bc (PendX x0 y0 vx0 vy0) (PendX xf yf vxf vyf) =

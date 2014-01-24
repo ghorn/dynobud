@@ -83,7 +83,7 @@ infix 4 ===
   debug $ "adding equality constraint: " ++
     withEllipse 30 (show lhs) ++ " == " ++ withEllipse 30 (show rhs)
   state0 <- get
-  put $ state0 { nlpConstraints = nlpConstraints state0 |> (Eq2 lhs rhs) }
+  put $ state0 { nlpConstraints = nlpConstraints state0 |> Eq2 lhs rhs }
 
 infix 4 <==
 (<==) :: Expr Double -> Expr Double -> NlpMonad ()
@@ -91,7 +91,7 @@ infix 4 <==
   debug $ "adding inequality constraint: " ++
      withEllipse 30 (show lhs) ++ " <= " ++ withEllipse 30 (show rhs)
   state0 <- get
-  put $ state0 { nlpConstraints = nlpConstraints state0 |> (Ineq2 lhs rhs) }
+  put $ state0 { nlpConstraints = nlpConstraints state0 |> Ineq2 lhs rhs }
 
 --leq3 :: Expr Double -> Expr Double -> Expr Double -> NlpMonad ()
 --leq3 lhs mid rhs = do
@@ -121,7 +121,7 @@ constr (Ineq2 lhs rhs) = (lhs - rhs, (Nothing, Just 0))
 
 
 toG :: (Eq a, Num a, Dim ng) => S.Seq (Constraint (Expr a)) -> Vec ng (Expr a, (Maybe Double, Maybe Double))
-toG nlpConstraints' = TV.mkSeq $ fmap constr (nlpConstraints')
+toG nlpConstraints' = TV.mkSeq $ fmap constr nlpConstraints'
 
 buildNlp :: forall nx ng .
             (Dim nx, Dim ng) =>
@@ -163,7 +163,7 @@ buildNlp nlp = do
 
 
 toG' :: (Eq a, Num a) => S.Seq (Constraint (Expr a)) -> V.Vector (Expr a, (Maybe Double, Maybe Double))
-toG' nlpConstraints' = V.fromList $ F.toList $ fmap constr (nlpConstraints')
+toG' nlpConstraints' = V.fromList $ F.toList $ fmap constr nlpConstraints'
 
 
 buildNlp' :: NlpMonad a -> IO (Nlp V.Vector V.Vector V.Vector, [LogMessage])

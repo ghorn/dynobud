@@ -53,7 +53,7 @@ runPlotter :: Channel -> [CC.ThreadId] -> IO ()
 runPlotter channel backgroundThreadsToKill = do
   statsEnabled <- GHC.Stats.getGCStatsEnabled
   if statsEnabled
-    then do putStrLn $ "stats enabled"
+    then do putStrLn "stats enabled"
             stats <- GHC.Stats.getGCStats
             print stats
     else putStrLn "stats not enabled"

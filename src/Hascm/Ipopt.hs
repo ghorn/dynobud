@@ -145,9 +145,9 @@ solve = do
                         , gOpt = gopt
                         , lambdaOpt = lambdaOut
                         }
-    if solveStatus `elem` ["Solve_Succeeded", "Solved_To_Acceptable_Level"]
-      then return (Right nlpOut)
-      else return (Left solveStatus)
+    return $ if solveStatus `elem` ["Solve_Succeeded", "Solved_To_Acceptable_Level"]
+      then Right nlpOut
+      else Left solveStatus
 
 
 getX0 :: Ipopt (V.Vector Double)
@@ -260,12 +260,12 @@ solveNlpIpopt nlp callback' = do
                   , lambdaOpt = Multipliers { lambdaX = lambdax
                                             , lambdaG = lambdag
                                             }}) ->
-      Right $ NlpOut { fOpt = fopt
-                     , xOpt = devectorize xopt
-                     , gOpt = devectorize gopt
-                     , lambdaOpt = Multipliers { lambdaX = devectorize lambdax
-                                               , lambdaG = devectorize lambdag
-                                               }}
+      Right NlpOut { fOpt = fopt
+                   , xOpt = devectorize xopt
+                   , gOpt = devectorize gopt
+                   , lambdaOpt = Multipliers { lambdaX = devectorize lambdax
+                                             , lambdaG = devectorize lambdag
+                                             }}
 
 
 solveStaticNlpIpopt ::
@@ -282,12 +282,12 @@ solveStaticNlpIpopt nlp = reifyNlp nlp foo
                       , lambdaOpt = Multipliers { lambdaX = lambdax
                                                 , lambdaG = lambdag
                                                 }}) ->
-          Right $ NlpOut { fOpt = fopt
-                         , xOpt = vectorize xopt
-                         , gOpt = vectorize gopt
-                         , lambdaOpt = Multipliers { lambdaX = vectorize lambdax
-                                                   , lambdaG = vectorize lambdag
-                                                   }}
+          Right NlpOut { fOpt = fopt
+                       , xOpt = vectorize xopt
+                       , gOpt = vectorize gopt
+                       , lambdaOpt = Multipliers { lambdaX = vectorize lambdax
+                                                 , lambdaG = vectorize lambdag
+                                                 }}
 
 
 --solveOcpIpopt ::

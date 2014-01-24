@@ -9,7 +9,7 @@ import Data.Proxy
 
 data D0
 instance Dim D0 where
-  reflectDim _ = reflect (Proxy :: Proxy (Data.Reflection.Z))
+  reflectDim _ = reflect (Proxy :: Proxy Data.Reflection.Z)
 data D1
 instance Dim D1 where
   reflectDim _ = reflect (Proxy :: Proxy (Data.Reflection.SD Data.Reflection.Z))

@@ -16,7 +16,7 @@ myDae = do
       b = 0.3
 
       force = u - k * p - b * v
-      obj = (p**2 + v**2 + u**2)
+      obj = p**2 + v**2 + u**2
   output "force" force
   output "obj" obj
 

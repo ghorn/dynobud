@@ -46,12 +46,12 @@ getFg ocp (NlpInputs collTraj@(CollTraj tf p stages xf) _) = NlpFun obj g
     objLagrange = evaluateQuadratures (ocpLagrange ocp) collTraj outputs h taus times
 
     -- timestep
-    h = tf / (fromIntegral n)
+    h = tf / fromIntegral n
     n = ctN collTraj
 
     -- initial time at each collocation stage
     t0s :: Vec n a
-    t0s = TV.mkVec' $ take n [h*(fromIntegral k) | k <- [(0::Int)..]]
+    t0s = TV.mkVec' $ take n [h * fromIntegral k | k <- [(0::Int)..]]
 
     -- times at each collocation point
     times :: Vec n (Vec deg a)
@@ -79,7 +79,7 @@ getFg ocp (NlpInputs collTraj@(CollTraj tf p stages xf) _) = NlpFun obj g
     g = CollOcpConstraints
         { coDynamics = CollTrajConstraints dcs
         , coPathC = TV.tvzipWith3 mkPathConstraints stages outputs times
-        , coBc = (ocpBc ocp) x0 xf
+        , coBc = ocpBc ocp x0 xf
         }
     dcs :: Vec n (CollStageConstraints x deg r a)
     outputs :: Vec n (Vec deg (o a))
@@ -88,11 +88,11 @@ getFg ocp (NlpInputs collTraj@(CollTraj tf p stages xf) _) = NlpFun obj g
       TV.tvzipWith3 (dynConstraints cijs (ocpDae ocp) taus h p) times stages xfs
 
     mkPathConstraints :: CollStage x z u deg a -> Vec deg (o a) -> Vec deg a -> Vec deg (h a)
-    mkPathConstraints (CollStage _ collPoints) outputs' stageTimes =
-      TV.tvzipWith3 mkPathC collPoints outputs' stageTimes
+    mkPathConstraints (CollStage _ collPoints) =
+      TV.tvzipWith3 mkPathC collPoints
 
     mkPathC :: CollPoint x z u a -> o a -> a -> h a
-    mkPathC (CollPoint x z u) o t = ocpPathC ocp x z u p o t
+    mkPathC (CollPoint x z u) = ocpPathC ocp x z u p
 
 
 makeCollNlp ::
@@ -218,7 +218,7 @@ dynConstraints cijs dae taus h p stageTimes (CollStage x0 cps) xnext =
     (dynConstrs, outputs) = TV.tvunzip $ TV.tvzipWith3 applyDae xdots cps stageTimes
 
     applyDae :: x a -> CollPoint x z u a -> a -> (r a, o a)
-    applyDae x' (CollPoint x z u) t = dae x' x z u p t
+    applyDae x' (CollPoint x z u) = dae x' x z u p
 
     xdots :: Vec deg (x a)
     xdots = fmap (fmap (/h)) $ interpolateXDots cijs (x0 TV.<| xs)
@@ -229,6 +229,6 @@ dynConstraints cijs dae taus h p stageTimes (CollStage x0 cps) xnext =
 interpolate :: (Dim deg, Fractional a, Vectorize x) => Vec deg a -> x a -> Vec deg (x a) -> x a
 interpolate taus x0 xs = dot (TV.mkVec' xis) (x0 TV.<| xs)
   where
-    xis = map (lagrangeXis (0 : (F.toList taus)) 1) [0..deg]
+    xis = map (lagrangeXis (0 : F.toList taus) 1) [0..deg]
     deg = TV.tvlength taus
 

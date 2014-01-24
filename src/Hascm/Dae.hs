@@ -31,11 +31,11 @@ forwardEuler f ts x0 u p = vzipWith (+) x0 deltaX
 rk4 :: (Vectorize x, Fractional a) => Integrator x None u p x a
 rk4 f h x0 u p = vzipWith (+) x0 deltaX
   where
-    deltaX = mul (h/6) (k1  `add` (mul 2 k2) `add` (mul 2 k3) `add` k4)
+    deltaX = mul (h/6) (k1  `add` mul 2 k2 `add` mul 2 k3 `add` k4)
     k1 = f x0 None u p
     k2 = f (x0 `add` mul (h/2) k1) None u p
     k3 = f (x0 `add` mul (h/2) k2) None u p
     k4 = f (x0 `add` mul h     k3) None u p
 
-    mul y v = fmap (y*) v
+    mul y = fmap (y*)
     add = vzipWith (+)

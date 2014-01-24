@@ -153,7 +153,7 @@ instance (Vectorize f, GVectorize g) => GVectorize (f :.: g) where
     where
       ret = devectorize $ V.replicate k gempty
       k = vlength ret
-  gvectorize = V.concatMap gvectorize . (vectorize . unComp1)
+  gvectorize = V.concatMap gvectorize . vectorize . unComp1
   gdevectorize v = Comp1 ret
     where
       -- ret :: f (g a)

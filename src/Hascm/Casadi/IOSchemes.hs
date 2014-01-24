@@ -40,7 +40,6 @@ mkScheme newEmpty schemeEnum userVals = do
   let getElem str = case M.lookup str userMap of
         Nothing -> newEmpty -- new empty
         Just x -> return x
-  vec <- fmap V.fromList $ mapM getElem entries
 
 --  name <- ioScheme_name sch
 --  print size
@@ -50,7 +49,7 @@ mkScheme newEmpty schemeEnum userVals = do
 --  mapM (ioScheme_entryEnum sch) ks >>= print
 --  mapM (ioScheme_entryLabel sch) ks >>= print
 
-  return vec
+  fmap V.fromList $ mapM getElem entries
 
 mkSchemeSXMatrix :: InputOutputScheme -> [(String,SXMatrix)] -> IO (V.Vector SXMatrix)
 mkSchemeSXMatrix = mkScheme sxMatrix

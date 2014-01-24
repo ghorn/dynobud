@@ -20,12 +20,12 @@ import GHC.Generics
 showAccTree :: String -> AccessorTree a -> [String]
 showAccTree spaces (Getter _) = [spaces ++ "Getter {}"]
 showAccTree spaces (Data name trees) =
-  [spaces ++ "Data " ++ show name] ++
+  (spaces ++ "Data " ++ show name) :
   concatMap (showChild (spaces ++ "    ")) trees
 
 showChild :: String -> (String, AccessorTree a) -> [String]
 showChild spaces (name, tree) =
-  [spaces ++ name] ++ (showAccTree (spaces ++ "    ") tree)
+  (spaces ++ name) : showAccTree (spaces ++ "    ") tree
 
 instance Show (AccessorTree a) where
   show = unlines . showAccTree ""

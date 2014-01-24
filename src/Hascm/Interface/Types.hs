@@ -1,5 +1,4 @@
 {-# OPTIONS_GHC -Wall -ddump-splices #-}
-{-# Language GeneralizedNewtypeDeriving #-}
 
 module Hascm.Interface.Types
        ( Constraint(..)
@@ -56,30 +55,30 @@ data DaeState = DaeState { _daeXDot :: S.Seq Sym
 --makeLenses ''DaeState
 daeXDot :: Lens' DaeState (S.Seq Sym)
 daeXDot f (DaeState xdot' x z u p o ss c) =
-  (\xdot -> DaeState xdot x z u p o ss c) <$> (f xdot')
+  (\xdot -> DaeState xdot x z u p o ss c) <$> f xdot'
 {-# INLINE daeXDot #-}
 
 daeX :: Lens' DaeState (S.Seq Sym)
 daeX f (DaeState xdot x' z u p o ss c) =
-  (\x -> DaeState xdot x z u p o ss c) <$> (f x')
+  (\x -> DaeState xdot x z u p o ss c) <$> f x'
 {-# INLINE daeX #-}
 
 daeZ :: Lens' DaeState (S.Seq Sym)
 daeZ f (DaeState xdot x z' u p o ss c) =
-  (\z -> DaeState xdot x z u p o ss c) <$> (f z')
+  (\z -> DaeState xdot x z u p o ss c) <$> f z'
 {-# INLINE daeZ #-}
 
 daeU :: Lens' DaeState (S.Seq Sym)
 daeU f (DaeState xdot x z u' p o ss c) =
-  (\u -> DaeState xdot x z u p o ss c) <$> (f u')
+  (\u -> DaeState xdot x z u p o ss c) <$> f u'
 {-# INLINE daeU #-}
 
 daeP :: Lens' DaeState (S.Seq Sym)
 daeP f (DaeState xdot x z u p' o ss c) =
-  (\p -> DaeState xdot x z u p o ss c) <$> (f p')
+  (\p -> DaeState xdot x z u p o ss c) <$> f p'
 {-# INLINE daeP #-}
 
 daeO :: Lens' DaeState (M.Map String (Expr Double))
 daeO f (DaeState xdot x z u p o' ss c) =
-  (\o -> DaeState xdot x z u p o ss c) <$> (f o')
+  (\o -> DaeState xdot x z u p o ss c) <$> f o'
 {-# INLINE daeO #-}
