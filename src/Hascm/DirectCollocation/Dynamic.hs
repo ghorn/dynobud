@@ -149,7 +149,7 @@ forestFromMeta meta = [xTree,zTree,uTree]
             Tree (String, String, Maybe (c -> [[(t, t1)]]))
     blah f myname (NameTreeNode (nm1,_) children) =
       Tree.Node (myname,nm1,Nothing) $ map (uncurry (blah f)) children
-    blah f myname (NameTreeLeaf k) = Tree.Node (myname,"fuckyou",Just (woo . f)) []
+    blah f myname (NameTreeLeaf k) = Tree.Node (myname,"",Just (woo . f)) []
       where
         woo = map (map (\(t,x) -> (t, x V.! k)))
 
