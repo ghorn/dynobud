@@ -34,7 +34,8 @@ library
                        Hascm.OcpMonad
                        Hascm.Interface.LogsAndErrors
                        Hascm.Interface.Types
-                       Hascm.Ipopt
+                       Hascm.Ipopt.Monad
+                       Hascm.Ipopt.Ipopt
                        Hascm.Casadi.IOSchemes
                        Hascm.Casadi.SXFunction
                        Hascm.Casadi.SX

@@ -6,7 +6,7 @@ module Main ( main ) where
 import Linear
 
 import Hascm.Vectorize
-import Hascm.Ipopt
+import Hascm.Ipopt.Ipopt
 --import Hascm.Snopt
 --import Hascm.Sqp.Sqp
 --import Hascm.Sqp.LineSearch

@@ -10,7 +10,7 @@ module Main where
 import Hascm.Vectorize
 import Hascm.TypeVecs
 import Hascm.Nats
-import Hascm.Ipopt
+import Hascm.Ipopt.Ipopt
 --import Hascm.Snopt
 --import Hascm.Sqp.Sqp
 --import Hascm.Sqp.LineSearch

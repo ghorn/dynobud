@@ -13,7 +13,7 @@ import Hascm.Vectorize
 import Hascm.Nats
 import Hascm.TypeVecs ( Vec(..), mkVec' )
 import Hascm.Nlp
-import Hascm.Ipopt
+import Hascm.Ipopt.Ipopt
 --import Hascm.Snopt
 --import Hascm.Sqp.Sqp
 --import Hascm.Sqp.LineSearch

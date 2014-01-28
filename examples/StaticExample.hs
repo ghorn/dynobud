@@ -6,7 +6,7 @@ import qualified Data.Vector as V
 
 import Hascm.Nlp
 import Hascm.NlpMonad
-import Hascm.Ipopt
+import Hascm.Ipopt.Ipopt
 --import Hascm.Sqp.Sqp
 --import Hascm.Sqp.LineSearch
 --import Hascm.Snopt

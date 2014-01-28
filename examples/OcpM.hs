@@ -3,7 +3,7 @@
 module Main ( main ) where
 
 import Hascm.OcpMonad
-import Hascm.Ipopt
+import Hascm.Ipopt.Ipopt
 import Dvda.Expr
 
 myDae :: DaeMonad ()
