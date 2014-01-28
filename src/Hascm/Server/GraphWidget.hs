@@ -68,10 +68,10 @@ newGraph channame chanseq chanmeta' = do
   -- rebuild the signal tree
   let rebuildSignalTree meta = do
         putStrLn "rebuilding signal tree"
-        Gtk.treeStoreClear treeViewModel
         let mkTreeNode (name,typeName,maybeget) = ListViewInfo name typeName maybeget False
-        let newTrees :: [Tree.Tree (ListViewInfo (DynPlotPoints Double))]
+            newTrees :: [Tree.Tree (ListViewInfo (DynPlotPoints Double))]
             newTrees = map (fmap mkTreeNode) (forestFromMeta meta)
+        Gtk.treeStoreClear treeViewModel
         Gtk.treeStoreInsertForest treeViewModel [] 0 newTrees
 
   let rebuildSignalTreeFromChan = do
@@ -147,19 +147,27 @@ newSignalSelectorArea graphInfoMVar = do
 
   let -- update the graph information
       updateGraphInfo = do
-        lvis <- Gtk.treeStoreGetTree model [0]
-        let newGetters = [(lviName lvi, fromJust $ lviGetter lvi) | lvi <- Tree.flatten lvis, lviMarked lvi, isJust (lviGetter lvi)]
-
+        -- first get all trees
+        let getTrees k = do
+              tree' <- Gtk.treeStoreLookup model [k]
+              case tree' of Nothing -> return []
+                            Just tree -> fmap (tree:) (getTrees (k+1))
+        theTrees <- getTrees 0
+        let newGetters = [ (lviName lvi, fromJust $ lviGetter lvi)
+                         | lvi <- concatMap Tree.flatten theTrees
+                         , lviMarked lvi
+                         , isJust (lviGetter lvi)
+                         ]
         _ <- CC.modifyMVar_ graphInfoMVar (\gi0 -> return $ gi0 { giGetters = newGetters })
         return ()
 
   -- update which y axes are visible
   _ <- on renderer2 Gtk.cellToggled $ \pathStr -> do
-    -- toggle the check mark
     let treePath = Gtk.stringToTreePath pathStr
-        g lvi@(ListViewInfo _ _ Nothing _) = putStrLn "yeah, that's not gonna work" >> return lvi
-        g lvi = return $ lvi {lviMarked = not (lviMarked lvi)}
-    ret <- Gtk.treeStoreChangeM model treePath g
+    -- toggle the check mark
+    let g lvi@(ListViewInfo _ _ Nothing _) = lvi
+        g lvi = lvi {lviMarked = not (lviMarked lvi)}
+    ret <- Gtk.treeStoreChange model treePath g
     unless ret $ putStrLn "treeStoreChange fail"
     updateGraphInfo
 
