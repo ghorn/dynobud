@@ -5,18 +5,15 @@ module Main ( main ) where
 
 import qualified Control.Concurrent as CC
 import Control.Monad ( when, forever )
-import qualified Data.Vector as V
 import Data.ByteString.Char8 ( pack )
 import Data.Serialize
 import qualified System.ZMQ3 as ZMQ
 
 import Hascm.Server.Server ( runPlotter, newChannel )
 
-import Hascm.Vectorize
 import Hascm.DirectCollocation.Dynamic
 
-import GliderTypes
-
+import GliderShared ( gliderUrl, gliderChannelName )
 
 sub :: String -> ((DynCollTraj Double, CollTrajMeta) -> IO ()) -> String -> IO ()
 sub ip writeChan name = ZMQ.withContext $ \context ->
@@ -28,11 +25,11 @@ sub ip writeChan name = ZMQ.withContext $ \context ->
       mre <- ZMQ.moreToReceive subscriber
       when mre $ do
         msg <- ZMQ.receive subscriber
-        let traj :: GliderDesignVars Double
-            traj = case fmap (devectorize . V.fromList) (decode msg) of
+        let decoded :: (DynCollTraj Double, CollTrajMeta)
+            decoded = case decode msg of
               Left err -> error err
               Right t -> t
-        writeChan (ctToDynamic traj, toMeta traj)
+        writeChan decoded
 
 main :: IO ()
 main = do

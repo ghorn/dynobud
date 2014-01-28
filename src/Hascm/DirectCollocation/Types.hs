@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language RankNTypes #-}
 {-# Language ScopedTypeVariables #-}
+{-# Language FlexibleContexts #-}
 {-# Language DeriveFunctor #-}
 {-# Language DeriveGeneric #-}
 
@@ -18,6 +19,8 @@ module Hascm.DirectCollocation.Types
        ) where
 
 import Data.Proxy ( Proxy(..) )
+import Data.Serialize ( Serialize )
+import GHC.Generics ( Generic )
 import Linear.V
 
 import Hascm.Vectorize
@@ -27,9 +30,13 @@ import Hascm.TypeVecs ( Vec )
 --data RorL = Radau | Legendre deriving (Eq, Show)
 
 
-data CollTraj x z u p n deg a = CollTraj a (p a) (Vec n (CollStage x z u deg a)) (x a) deriving (Eq, Functor, Generic1) -- endtime, params, coll stages, xf
-data CollStage x z u deg a = CollStage (x a) (Vec deg (CollPoint x z u a)) deriving (Eq, Functor, Generic1)
-data CollPoint x z u a = CollPoint (x a) (z a) (u a) deriving (Eq, Functor, Generic1)
+data CollTraj x z u p n deg a = CollTraj a (p a) (Vec n (CollStage x z u deg a)) (x a) deriving (Eq, Functor, Generic, Generic1) -- endtime, params, coll stages, xf
+data CollStage x z u deg a = CollStage (x a) (Vec deg (CollPoint x z u a)) deriving (Eq, Functor, Generic, Generic1)
+data CollPoint x z u a = CollPoint (x a) (z a) (u a) deriving (Eq, Functor, Generic, Generic1)
+
+instance (Serialize (x a), Serialize (z a), Serialize (u a), Serialize (p a), Serialize a) => Serialize (CollTraj x z u p n deg a)
+instance (Serialize (x a), Serialize (z a), Serialize (u a)) => Serialize (CollStage x z u deg a)
+instance (Serialize (x a), Serialize (z a), Serialize (u a)) => Serialize (CollPoint x z u a)
 
 getX :: CollPoint x z u a -> x a
 getX (CollPoint x _ _) = x

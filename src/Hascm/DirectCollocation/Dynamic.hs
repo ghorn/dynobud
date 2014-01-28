@@ -1,5 +1,6 @@
-{-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Wall -fno-warn-orphans #-}
 {-# Language ScopedTypeVariables #-}
+{-# Language DeriveGeneric #-}
 
 module Hascm.DirectCollocation.Dynamic
        ( DynCollTraj(..)
@@ -20,8 +21,10 @@ import Data.Tree ( Tree(..) )
 import qualified Data.Vector as V
 import qualified Data.Foldable as F
 import qualified Data.Traversable as T
-import Linear.V
 import qualified Data.Tree as Tree
+import Data.Serialize ( Serialize(..) )
+import GHC.Generics ( Generic )
+import Linear.V
 
 import Hascm.Server.Accessors ( AccessorTree(..), Lookup(..), accessors )
 import Hascm.Vectorize
@@ -31,6 +34,7 @@ import Hascm.TypeVecs ( Vec )
 import Hascm.DirectCollocation.Types
 import Hascm.DirectCollocation.Formulate ( mkTaus, interpolate )
 import Hascm.DirectCollocation.Reify
+
 
 data PlotPoints n deg x z u a =
   PlotPoints (Vec n ((a, x a), Vec deg (a, x a, z a, u a), (a, x a))) (a, x a)
@@ -111,7 +115,8 @@ toPlotTree = Node ("trajectory", "trajectory", Nothing) [xtree, ztree, utree]
 
 data NameTree = NameTreeNode (String,String) [(String,NameTree)]
               | NameTreeLeaf Int
-              deriving (Show, Eq)
+              deriving (Show, Eq, Generic)
+instance Serialize NameTree
 
 data CollTrajMeta = CollTrajMeta { ctmX :: NameTree
                                  , ctmZ :: NameTree
@@ -119,7 +124,8 @@ data CollTrajMeta = CollTrajMeta { ctmX :: NameTree
                                  , ctmP :: NameTree
                                  , ctmN :: Int
                                  , ctmDeg :: Int
-                                 } deriving Eq
+                                 } deriving (Eq, Generic)
+instance Serialize CollTrajMeta
 
 namesFromAccTree :: AccessorTree a -> NameTree
 namesFromAccTree x = (\(_,(_,y)) -> y) $ namesFromAccTree' 0 ("",x)
@@ -168,7 +174,11 @@ toMeta ct =
                , ctmDeg = ctDeg ct
                }
 
-newtype DynCollTraj a = DynCollTraj (CollTraj V.Vector V.Vector V.Vector V.Vector () () a)
+newtype DynCollTraj a = DynCollTraj (CollTraj V.Vector V.Vector V.Vector V.Vector () () a) deriving Generic
+instance Serialize a => Serialize (DynCollTraj a)
+instance Serialize a => Serialize (V.Vector a) where
+  put = put . V.toList
+  get = fmap V.fromList get
 
 ctToDynamic ::
   (Vectorize x, Vectorize z, Vectorize u, Vectorize p) =>

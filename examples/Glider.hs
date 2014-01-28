@@ -3,12 +3,7 @@
 
 module Main ( main ) where
 
-import qualified Data.Vector as V
-import Data.Serialize
-import qualified System.ZMQ3 as ZMQ
-
 import Linear
-import Data.ByteString.Char8 ( pack )
 
 import Hascm.Vectorize
 import Hascm.Ipopt
@@ -19,12 +14,20 @@ import Hascm.Nlp
 
 import Hascm.Ocp
 import Hascm.DirectCollocation
+import Hascm.DirectCollocation.Dynamic ( toMeta, ctToDynamic )
 
 import Hascm.Models.Aircraft
 import Hascm.Models.AeroCoeffs
 import Hascm.Models.Betty
+import Hascm.Nats
 
-import GliderTypes
+import GliderShared
+import ServerSender
+
+type NCollStages = D100
+type CollDeg = D2
+
+type GliderDesignVars a = CollTraj AcX None AcU None NCollStages CollDeg a
 
 mayer :: Num a => AcX a -> a -> a
 mayer _ _ = 0
@@ -98,42 +101,32 @@ ubnd =
 bc :: Floating a => AcX a -> AcX a -> AcX a
 bc (AcX x0 v0 dcm0 w0 cs) _ = AcX x0 (v0 - V3 30 0 0) (dcm0 - eye3) w0 cs
 
-callback :: ZMQ.Socket ZMQ.Pub -> String -> GliderDesignVars Double -> IO Bool
-callback publisher chanName traj = do
-  let bs = encode $ V.toList $ vectorize traj
-  ZMQ.send publisher [ZMQ.SendMore] (pack chanName)
-  ZMQ.send publisher [] bs
-  return True
-
 main :: IO ()
 main = do
   putStrLn $ "using ip \""++gliderUrl++"\""
   putStrLn $ "using channel \""++gliderChannelName++"\""
 
-  ZMQ.withContext $ \context ->
-    ZMQ.withSocket context ZMQ.Pub $ \publisher -> do
-      ZMQ.bind publisher gliderUrl
+  withCallback gliderUrl gliderChannelName $ \cb -> do
+    let guess :: GliderDesignVars Double
+        guess = fill 1
 
-      let guess :: GliderDesignVars Double
-          guess = fill 1
+        cb' traj = cb (ctToDynamic traj, toMeta traj)
+        nlp = (makeCollNlp ocp) { nlpX0 = guess }
 
-          cb = callback publisher gliderChannelName
-          nlp = (makeCollNlp ocp) { nlpX0 = guess }
-
-      opt' <- solveNlpIpopt nlp (Just cb)
-      opt <- case opt' of Left msg -> error msg
-                          Right opt'' -> return opt''
---      let xopt = xOpt opt
---          lambda = lambdaOpt opt
+    opt' <- solveNlpIpopt nlp (Just cb')
+    opt <- case opt' of Left msg -> error msg
+                        Right opt'' -> return opt''
+--    let xopt = xOpt opt
+--        lambda = lambdaOpt opt
 --
---      snoptOpt' <- solveNlpSnopt (nlp {nlpX0 = xopt}) (Just cb) (Just lambda)
---      snoptOpt <- case snoptOpt' of Left msg -> error msg
---                                    Right opt'' -> return opt''
---      let xopt' = xOpt snoptOpt
---          lambda' = lambdaOpt opt
---          lambdax' = vectorize $ lambdaX lambda'
---          lambdag' = vectorize $ lambdaG lambda'
---      _ <- solveSqp (nlp {nlpX0 = xopt}) fullStep
---      _ <- solveSqp (nlp {nlpX0 = xopt}) armilloSearch
+--    snoptOpt' <- solveNlpSnopt (nlp {nlpX0 = xopt}) (Just cb) (Just lambda)
+--    snoptOpt <- case snoptOpt' of Left msg -> error msg
+--                                  Right opt'' -> return opt''
+--    let xopt' = xOpt snoptOpt
+--        lambda' = lambdaOpt opt
+--        lambdax' = vectorize $ lambdaX lambda'
+--        lambdag' = vectorize $ lambdaG lambda'
+--    _ <- solveSqp (nlp {nlpX0 = xopt}) fullStep
+--    _ <- solveSqp (nlp {nlpX0 = xopt}) armilloSearch
 
-      return ()
+    return ()

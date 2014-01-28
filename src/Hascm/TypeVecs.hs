@@ -39,15 +39,18 @@ import qualified Data.Traversable as T
 import qualified Data.Foldable as F
 import qualified Data.Sequence as S
 import qualified Data.Vector as V
+import Data.Serialize ( Serialize )
 import Linear.Vector
 import Linear.V ( Dim(..) )
 import Data.Proxy
 import Data.Reflection as R
+import GHC.Generics ( Generic )
 
 import Hascm.Vectorize
 
 -- length-indexed vectors using phantom types
-newtype Vec n a = MkVec {unSeq :: S.Seq a} deriving (Eq, Ord, Functor, Foldable, Traversable, Generic1, Monad)
+newtype Vec n a = MkVec {unSeq :: S.Seq a} deriving (Eq, Ord, Functor, Foldable, Traversable, Generic, Generic1, Monad)
+instance Serialize a => Serialize (Vec n a)
 
 data Succ n
 instance Dim n => Dim (Succ n) where
