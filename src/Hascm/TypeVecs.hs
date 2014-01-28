@@ -12,6 +12,7 @@ module Hascm.TypeVecs
        , Succ
        , unSeq
        , mkSeq
+       , mkUnit
        , unVec
        , mkVec
        , mkVec'
@@ -106,6 +107,9 @@ unsafeSeq xs = case MkVec xs of
             then ret
             else error $ "unsafeVec: static/dynamic length mismatch: " ++
                  "static: " ++ show staticLen ++ ", dynamic: " ++ show  dynLen
+
+mkUnit :: Vec n a -> Vec () a
+mkUnit (MkVec v) = MkVec v
 
 mkVec :: V.Vector a -> Vec n a
 mkVec = MkVec . S.fromList . V.toList
