@@ -6,7 +6,7 @@
 --{-# LANGUAGE FlexibleContexts #-}
 --{-# LANGUAGE FlexibleInstances #-}
 
-module Hascm.Sqp.Sqp ( solveSqp, solveStaticSqp,
+module Hascm.Sqp.Sqp ( solveSqp, solveStaticSqp, toDeltaXBnds,
                        SqpIn(..), SqpOut(..), SqpIn'(..), SqpOut'(..), Kkt(..) ) where
 
 import Control.Monad ( when )
@@ -16,7 +16,12 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Storable as VS
 import Text.Printf
 
-import CPLEX
+import CPLEX ( Row(..), Col(..), CpxSolution(..), CpxEnv, CpxLp, ObjSense(..), Bound(..)
+             , Sense(..)
+             , withEnv
+             , setIntParam, withLp, copyLp, qpopt, getSolution
+             , copyQuad, changeObj, changeRhs, changeBds, changeCoefList, changeQpCoef
+             )
 import CPLEX.Param
 
 import Hascm.Sqp.LineSearch
