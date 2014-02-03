@@ -23,7 +23,7 @@ import Hascm.DirectCollocation.Dynamic ( DynPlotPoints, CollTrajMeta(..), forest
 newGraph ::
   String ->
   Gtk.ListStore CollTrajMeta ->
-  CC.MVar (Maybe (DynPlotPoints Double, CollTrajMeta, Int, NominalDiffTime)) ->
+  CC.MVar (Maybe (DynPlotPoints Double, Int, NominalDiffTime)) ->
   IO Gtk.Window
 newGraph channame metaStore chanseq = do
   win <- Gtk.windowNew
@@ -50,35 +50,11 @@ newGraph channame metaStore chanseq = do
 
 
   -- the signal selector
-  (treeview', treeViewModel) <- newSignalSelectorArea graphInfoMVar
+  treeview' <- newSignalSelectorArea graphInfoMVar metaStore
   treeview <- Gtk.expanderNew "signals"
   Gtk.set treeview [ Gtk.containerChild := treeview'
                    , Gtk.expanderExpanded := True
                    ]
-
-  -- rebuild the signal tree
-  let rebuildSignalTree :: CollTrajMeta -> IO ()
-      rebuildSignalTree meta = do
-        let mkTreeNode (name,typeName,maybeget) = ListViewInfo name typeName maybeget False
-            newTrees :: [Tree.Tree (ListViewInfo (DynPlotPoints Double))]
-            newTrees = map (fmap mkTreeNode) (forestFromMeta meta)
-        Gtk.treeStoreClear treeViewModel
-        Gtk.treeStoreInsertForest treeViewModel [] 0 newTrees
-
-  -- on insert or change, rebuild the signal tree
-  _ <- on metaStore Gtk.rowChanged $ \_ changedPath -> do
-    newMeta <- Gtk.listStoreGetValue metaStore (Gtk.listStoreIterToIndex changedPath)
-    rebuildSignalTree newMeta
-  _ <- on metaStore Gtk.rowInserted $ \_ changedPath -> do
-    newMeta <- Gtk.listStoreGetValue metaStore (Gtk.listStoreIterToIndex changedPath)
-    rebuildSignalTree newMeta
-
-  -- rebuild the signal tree right now if it exists
-  size <- Gtk.listStoreGetSize metaStore
-  when (size > 0) $ do
-    newMeta <- Gtk.listStoreGetValue metaStore 0
-    rebuildSignalTree newMeta
-
 
   -- options and signal selector packed in vbox
   vboxOptionsAndSignals <- Gtk.vBoxNew False 4
@@ -107,8 +83,8 @@ newGraph channame metaStore chanseq = do
 
 
 newSignalSelectorArea ::
-  CC.MVar GraphInfo -> IO (Gtk.ScrolledWindow,  Gtk.TreeStore (ListViewInfo (DynPlotPoints Double)))
-newSignalSelectorArea graphInfoMVar = do
+  CC.MVar GraphInfo -> Gtk.ListStore CollTrajMeta -> IO Gtk.ScrolledWindow
+newSignalSelectorArea graphInfoMVar metaStore = do
   treeStore <- Gtk.treeStoreNew []
   treeview <- Gtk.treeViewNewWithModel treeStore
 
@@ -165,12 +141,38 @@ newSignalSelectorArea graphInfoMVar = do
     unless ret $ putStrLn "treeStoreChange fail"
     updateGraphInfo
 
+
+  -- rebuild the signal tree
+  let rebuildSignalTree :: CollTrajMeta -> IO ()
+      rebuildSignalTree meta = do
+        let mkTreeNode (name,typeName,maybeget) = ListViewInfo name typeName maybeget False
+            newTrees :: [Tree.Tree (ListViewInfo (DynPlotPoints Double))]
+            newTrees = map (fmap mkTreeNode) (forestFromMeta meta)
+        Gtk.treeStoreClear treeStore
+        Gtk.treeStoreInsertForest treeStore [] 0 newTrees
+        updateGraphInfo
+
+  -- on insert or change, rebuild the signal tree
+  _ <- on metaStore Gtk.rowChanged $ \_ changedPath -> do
+    newMeta <- Gtk.listStoreGetValue metaStore (Gtk.listStoreIterToIndex changedPath)
+    rebuildSignalTree newMeta
+  _ <- on metaStore Gtk.rowInserted $ \_ changedPath -> do
+    newMeta <- Gtk.listStoreGetValue metaStore (Gtk.listStoreIterToIndex changedPath)
+    rebuildSignalTree newMeta
+
+  -- rebuild the signal tree right now if it exists
+  size <- Gtk.listStoreGetSize metaStore
+  when (size > 0) $ do
+    newMeta <- Gtk.listStoreGetValue metaStore 0
+    rebuildSignalTree newMeta
+
+
   scroll <- Gtk.scrolledWindowNew Nothing Nothing
   Gtk.containerAdd scroll treeview
   Gtk.set scroll [ Gtk.scrolledWindowHscrollbarPolicy := Gtk.PolicyNever
                  , Gtk.scrolledWindowVscrollbarPolicy := Gtk.PolicyAutomatic
                  ]
-  return (scroll, treeStore)
+  return scroll
 
 
 

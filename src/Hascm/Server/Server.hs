@@ -7,9 +7,8 @@ module Hascm.Server.Server
        ) where
 
 import qualified Control.Concurrent as CC
-import Control.Monad ( when, unless )
+import Control.Monad ( when )
 import Data.Time ( getCurrentTime, diffUTCTime )
-import qualified Data.Tree as Tree
 import Graphics.UI.Gtk ( AttrOp( (:=) ) )
 import qualified Graphics.UI.Gtk as Gtk
 import System.Glib.Signals ( on )
@@ -18,9 +17,9 @@ import System.Glib.Signals ( on )
 
 import qualified GHC.Stats
 
-import Hascm.Server.PlotTypes ( Channel(..), ListViewInfo(..) )
+import Hascm.Server.PlotTypes ( Channel(..) )
 import Hascm.Server.GraphWidget ( newGraph )
-import Hascm.DirectCollocation.Dynamic ( DynCollTraj, DynPlotPoints, CollTrajMeta, dynPlotPointsL, forestFromMeta )
+import Hascm.DirectCollocation.Dynamic ( DynCollTraj, CollTrajMeta, dynPlotPointsL )
 
 newChannel ::
   String -> IO (Channel, (DynCollTraj Double, CollTrajMeta) -> IO ())
@@ -44,14 +43,14 @@ newChannel name = do
         Gtk.postGUISync $ do
           -- if new meta is different, rebuild the tree store
           when (Just newMeta /= oldMeta) $ do
-            putStrLn "trajector meta-information changed"
+            putStrLn $ "meta-information changed on message " ++ show k
             size <- Gtk.listStoreGetSize metaStore
             if size == 0
               then Gtk.listStorePrepend metaStore newMeta
               else Gtk.listStoreSetValue metaStore 0 newMeta
             
           -- write to the mvar
-          _ <- CC.swapMVar trajMv (Just (dynPlotPointsL newTraj, newMeta, k, diffUTCTime time time0))
+          _ <- CC.swapMVar trajMv (Just (dynPlotPointsL newTraj, k, diffUTCTime time time0))
           return ()
 
         -- loop forever

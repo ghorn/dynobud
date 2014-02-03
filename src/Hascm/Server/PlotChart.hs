@@ -38,7 +38,7 @@ updateCanvas graphInfoMVar canvas = do
   let namePcs = case maybeData of
         Nothing -> []
         -- convert to list of (name,S.Seq PbPrim)
-        Just (datalog,_,_,_) -> map f (giGetters gi) :: [(String, [[(Double,Double)]])]
+        Just (datalog,_,_) -> map f (giGetters gi) :: [(String, [[(Double,Double)]])]
           where
             f (name,getter) = (name, getter datalog :: [[(Double,Double)]])
 

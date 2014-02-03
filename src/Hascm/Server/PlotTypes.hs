@@ -32,7 +32,7 @@ data AxisScaling = LogScaling
 
 -- what the graph should draw
 data GraphInfo =
-  GraphInfo { giData :: MVar (Maybe (DynPlotPoints Double, CollTrajMeta, Int,NominalDiffTime))
+  GraphInfo { giData :: MVar (Maybe (DynPlotPoints Double, Int, NominalDiffTime))
             , giXScaling :: AxisScaling
             , giYScaling :: AxisScaling
             , giXRange :: Maybe (Double,Double)
@@ -42,7 +42,7 @@ data GraphInfo =
 
 data Channel =
   Channel { chanName :: String
-          , chanTraj :: MVar (Maybe (DynPlotPoints Double, CollTrajMeta, Int, NominalDiffTime))
+          , chanTraj :: MVar (Maybe (DynPlotPoints Double, Int, NominalDiffTime))
           , chanMetaStore :: Gtk.ListStore CollTrajMeta
           , chanServerThreadId :: ThreadId
           }
