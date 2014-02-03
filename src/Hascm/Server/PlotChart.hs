@@ -2,12 +2,11 @@
 
 module Hascm.Server.PlotChart
        ( AxisScaling(..)
-       , GraphInfo(..)
        , newChartCanvas
        ) where
 
 import qualified Control.Concurrent as CC
-import Control.Lens
+import Control.Lens ( (.~) )
 import Data.Default.Class ( def )
 --import qualified Data.Foldable as F
 --import qualified Data.Sequence as S

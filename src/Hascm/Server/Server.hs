@@ -7,10 +7,9 @@ module Hascm.Server.Server
        ) where
 
 import qualified Control.Concurrent as CC
-import Control.Concurrent.STM.TChan
-import Control.Monad.STM ( atomically )
-import Control.Monad ( when )
+import Control.Monad ( when, unless )
 import Data.Time ( getCurrentTime, diffUTCTime )
+import qualified Data.Tree as Tree
 import Graphics.UI.Gtk ( AttrOp( (:=) ) )
 import qualified Graphics.UI.Gtk as Gtk
 import System.Glib.Signals ( on )
@@ -19,9 +18,9 @@ import System.Glib.Signals ( on )
 
 import qualified GHC.Stats
 
-import Hascm.Server.PlotTypes ( Channel(..) )
+import Hascm.Server.PlotTypes ( Channel(..), ListViewInfo(..) )
 import Hascm.Server.GraphWidget ( newGraph )
-import Hascm.DirectCollocation.Dynamic ( DynCollTraj, CollTrajMeta, dynPlotPointsL )
+import Hascm.DirectCollocation.Dynamic ( DynCollTraj, DynPlotPoints, CollTrajMeta, dynPlotPointsL, forestFromMeta )
 
 newChannel ::
   String -> IO (Channel, (DynCollTraj Double, CollTrajMeta) -> IO ())
@@ -30,7 +29,8 @@ newChannel name = do
 
   trajChan <- CC.newChan
   trajMv <- CC.newMVar Nothing
-  metaChan <- atomically newBroadcastTChan :: IO (TChan CollTrajMeta)
+
+  metaStore <- Gtk.listStoreNew []
 
   -- this is the loop that reads new messages and stores them
   let serverLoop :: Maybe CollTrajMeta -> Int -> IO ()
@@ -41,19 +41,26 @@ newChannel name = do
         -- grab the timestamp
         time <- getCurrentTime
 
-        -- if new meta is different
-        when (Just newMeta /= oldMeta) $
-          atomically (writeTChan metaChan newMeta)
+        Gtk.postGUISync $ do
+          -- if new meta is different, rebuild the tree store
+          when (Just newMeta /= oldMeta) $ do
+            putStrLn "trajector meta-information changed"
+            size <- Gtk.listStoreGetSize metaStore
+            if size == 0
+              then Gtk.listStorePrepend metaStore newMeta
+              else Gtk.listStoreSetValue metaStore 0 newMeta
+            
+          -- write to the mvar
+          _ <- CC.swapMVar trajMv (Just (dynPlotPointsL newTraj, newMeta, k, diffUTCTime time time0))
+          return ()
 
-        -- write to the mvar
-        _ <- CC.swapMVar trajMv (Just (dynPlotPointsL newTraj, newMeta, k, diffUTCTime time time0))
         -- loop forever
         serverLoop (Just newMeta) (k+1)
 
   serverTid <- CC.forkIO $ serverLoop Nothing 0
   let retChan = Channel { chanName = name
                         , chanTraj = trajMv
-                        , chanMeta = metaChan
+                        , chanMetaStore = metaStore
                         , chanServerThreadId = serverTid
                         }
 
@@ -152,7 +159,7 @@ newChannelWidget channel graphWindowsToBeKilled = do
   _ <- on renderer2 Gtk.cellToggled $ \pathStr -> do
     let (i:_) = Gtk.stringToTreePath pathStr
     lv <- Gtk.listStoreGetValue model i
-    graphWin <- newGraph (chanName lv) (chanTraj lv) (chanMeta lv)
+    graphWin <- newGraph (chanName lv) (chanMetaStore lv) (chanTraj lv)
 
     -- add this window to the list to be killed on exit
     CC.modifyMVar_ graphWindowsToBeKilled (return . (graphWin:))

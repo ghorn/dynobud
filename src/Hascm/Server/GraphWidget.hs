@@ -5,36 +5,27 @@ module Hascm.Server.GraphWidget
        ) where
 
 import qualified Control.Concurrent as CC
-import Control.Concurrent.STM.TChan
-import Control.Monad ( unless )
-import Control.Monad.STM ( atomically )
+import Control.Monad ( when, unless )
 import Data.Maybe ( isJust, fromJust )
 import qualified Data.Tree as Tree
 import Graphics.UI.Gtk ( AttrOp( (:=) ) )
 import qualified Graphics.UI.Gtk as Gtk
---import Data.Sequence ( Seq )
 import Data.Time ( NominalDiffTime )
 import System.Glib.Signals ( on )
 import Text.Read ( readMaybe )
 
-import Hascm.Server.PlotChart ( GraphInfo(..), AxisScaling(..), newChartCanvas )
+import Hascm.Server.PlotChart ( AxisScaling(..), newChartCanvas )
+import Hascm.Server.PlotTypes ( GraphInfo(..), ListViewInfo(..) )
 import Hascm.DirectCollocation.Dynamic ( DynPlotPoints, CollTrajMeta(..), forestFromMeta )
 
-
-data ListViewInfo a = ListViewInfo { lviName :: String
-                                   , lviType :: String
-                                   , lviGetter :: Maybe (a -> [[(Double,Double)]])
-                                   , lviMarked :: Bool
-                                   }
 
 -- make a new graph window
 newGraph ::
   String ->
+  Gtk.ListStore CollTrajMeta ->
   CC.MVar (Maybe (DynPlotPoints Double, CollTrajMeta, Int, NominalDiffTime)) ->
-  TChan CollTrajMeta ->
   IO Gtk.Window
-newGraph channame chanseq chanmeta' = do
-  chanmeta <- atomically (dupTChan chanmeta')
+newGraph channame metaStore chanseq = do
   win <- Gtk.windowNew
 
   _ <- Gtk.set win [ Gtk.containerBorderWidth := 8
@@ -66,27 +57,28 @@ newGraph channame chanseq chanmeta' = do
                    ]
 
   -- rebuild the signal tree
-  let rebuildSignalTree meta = do
-        putStrLn "rebuilding signal tree"
+  let rebuildSignalTree :: CollTrajMeta -> IO ()
+      rebuildSignalTree meta = do
         let mkTreeNode (name,typeName,maybeget) = ListViewInfo name typeName maybeget False
             newTrees :: [Tree.Tree (ListViewInfo (DynPlotPoints Double))]
             newTrees = map (fmap mkTreeNode) (forestFromMeta meta)
         Gtk.treeStoreClear treeViewModel
         Gtk.treeStoreInsertForest treeViewModel [] 0 newTrees
 
-  let rebuildSignalTreeFromChan = do
-        maybeGI <- atomically (tryReadTChan chanmeta)
-        case maybeGI of
-          Nothing -> return ()
-          Just meta -> do
-            rebuildSignalTree meta
+  -- on insert or change, rebuild the signal tree
+  _ <- on metaStore Gtk.rowChanged $ \_ changedPath -> do
+    newMeta <- Gtk.listStoreGetValue metaStore (Gtk.listStoreIterToIndex changedPath)
+    rebuildSignalTree newMeta
+  _ <- on metaStore Gtk.rowInserted $ \_ changedPath -> do
+    newMeta <- Gtk.listStoreGetValue metaStore (Gtk.listStoreIterToIndex changedPath)
+    rebuildSignalTree newMeta
 
-  _ <- Gtk.timeoutAddFull (rebuildSignalTreeFromChan >> return True)
-       Gtk.priorityDefaultIdle 50
+  -- rebuild the signal tree right now if it exists
+  size <- Gtk.listStoreGetSize metaStore
+  when (size > 0) $ do
+    newMeta <- Gtk.listStoreGetValue metaStore 0
+    rebuildSignalTree newMeta
 
-  gi <- CC.readMVar chanseq
-  case gi of Nothing -> return ()
-             Just (_,meta,_,_) -> rebuildSignalTree meta
 
   -- options and signal selector packed in vbox
   vboxOptionsAndSignals <- Gtk.vBoxNew False 4
@@ -115,11 +107,10 @@ newGraph channame chanseq chanmeta' = do
 
 
 newSignalSelectorArea ::
-  CC.MVar GraphInfo ->
-  IO (Gtk.ScrolledWindow, Gtk.TreeStore (ListViewInfo (DynPlotPoints Double)))
+  CC.MVar GraphInfo -> IO (Gtk.ScrolledWindow,  Gtk.TreeStore (ListViewInfo (DynPlotPoints Double)))
 newSignalSelectorArea graphInfoMVar = do
-  model <- Gtk.treeStoreNew []
-  treeview <- Gtk.treeViewNewWithModel model
+  treeStore <- Gtk.treeStoreNew []
+  treeview <- Gtk.treeViewNewWithModel treeStore
 
   Gtk.treeViewSetHeadersVisible treeview True
 
@@ -139,10 +130,10 @@ newSignalSelectorArea graphInfoMVar = do
   let showName (Just _) name _ = name
       showName Nothing name "" = name
       showName Nothing name typeName = name ++ " (" ++ typeName ++ ")"
-  Gtk.cellLayoutSetAttributes col1 renderer1 model $
+  Gtk.cellLayoutSetAttributes col1 renderer1 treeStore $
     \(ListViewInfo {lviName = name, lviType = typeName, lviGetter = getter}) ->
       [ Gtk.cellText := showName getter name typeName]
-  Gtk.cellLayoutSetAttributes col2 renderer2 model $ \lvi -> [ Gtk.cellToggleActive := lviMarked lvi]
+  Gtk.cellLayoutSetAttributes col2 renderer2 treeStore $ \lvi -> [ Gtk.cellToggleActive := lviMarked lvi]
 
   _ <- Gtk.treeViewAppendColumn treeview col1
   _ <- Gtk.treeViewAppendColumn treeview col2
@@ -152,7 +143,7 @@ newSignalSelectorArea graphInfoMVar = do
       updateGraphInfo = do
         -- first get all trees
         let getTrees k = do
-              tree' <- Gtk.treeStoreLookup model [k]
+              tree' <- Gtk.treeStoreLookup treeStore [k]
               case tree' of Nothing -> return []
                             Just tree -> fmap (tree:) (getTrees (k+1))
         theTrees <- getTrees 0
@@ -170,7 +161,7 @@ newSignalSelectorArea graphInfoMVar = do
     -- toggle the check mark
     let g lvi@(ListViewInfo _ _ Nothing _) = lvi
         g lvi = lvi {lviMarked = not (lviMarked lvi)}
-    ret <- Gtk.treeStoreChange model treePath g
+    ret <- Gtk.treeStoreChange treeStore treePath g
     unless ret $ putStrLn "treeStoreChange fail"
     updateGraphInfo
 
@@ -179,7 +170,7 @@ newSignalSelectorArea graphInfoMVar = do
   Gtk.set scroll [ Gtk.scrolledWindowHscrollbarPolicy := Gtk.PolicyNever
                  , Gtk.scrolledWindowVscrollbarPolicy := Gtk.PolicyAutomatic
                  ]
-  return (scroll, model)
+  return (scroll, treeStore)
 
 
 
