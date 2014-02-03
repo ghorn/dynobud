@@ -215,10 +215,11 @@ buildNlp' nlp = do
 
 reifyNlp ::
   forall r .
-  Nlp V.Vector V.Vector V.Vector ->
-  (forall x p g . (Vectorize x, Vectorize p, Vectorize g) => Nlp x p g -> r) ->
+  Nlp V.Vector V.Vector V.Vector -> Maybe (V.Vector Double -> IO Bool) ->
+  (forall x p g . (Vectorize x, Vectorize p, Vectorize g) =>
+   Nlp x p g -> Maybe (x Double -> IO Bool) -> r) ->
   r
-reifyNlp nlp f =
+reifyNlp nlp cb f =
   TV.reifyDim nx $ \(Proxy :: Proxy nx) ->
   TV.reifyDim np $ \(Proxy :: Proxy np) ->
   TV.reifyDim ng $ \(Proxy :: Proxy ng) ->
@@ -229,7 +230,7 @@ reifyNlp nlp f =
      (TV.mkVec bg :: Vec ng (Maybe Double, Maybe Double))
      (TV.mkVec x0 :: Vec nx Double)
      (TV.mkVec p :: Vec np Double)
-    )
+    ) (fmap (. vectorize) cb)
   where
     fout :: (f a -> g a) -> NlpFun f a -> NlpFun g a
     fout f' (NlpFun obj g) = NlpFun obj (f' g)

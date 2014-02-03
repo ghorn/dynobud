@@ -130,9 +130,9 @@ toDeltaXBnd0 _ (Nothing, Nothing) = (Nothing, Nothing)
 
 solveStaticSqp ::
   Nlp V.Vector V.Vector V.Vector -> LineSearch IO Double -> IO (V.Vector Double, Kkt Double)
-solveStaticSqp nlp linesearch = reifyNlp nlp foo
+solveStaticSqp nlp linesearch = reifyNlp nlp Nothing foo
   where
-    foo nlp' = do
+    foo nlp' _ = do
       (xopt, kkt) <- solveSqp nlp' linesearch
       return (vectorize xopt, kkt)
 

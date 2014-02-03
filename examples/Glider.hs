@@ -22,7 +22,7 @@ import Hascm.Models.Betty
 import Hascm.Nats
 
 import GliderShared
-import ServerSender
+import ServerSender ( withCallback )
 
 type NCollStages = D100
 type CollDeg = D2

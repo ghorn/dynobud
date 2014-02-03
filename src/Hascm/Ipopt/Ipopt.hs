@@ -55,11 +55,15 @@ solveNlpIpopt nlp callback = do
     solve'
 
 solveStaticNlpIpopt ::
-  Nlp V.Vector V.Vector V.Vector -> IO (Either String (NlpOut V.Vector V.Vector Double))
-solveStaticNlpIpopt nlp = reifyNlp nlp foo
+  Nlp V.Vector V.Vector V.Vector -> Maybe (V.Vector Double -> IO Bool) -> IO (Either String (NlpOut V.Vector V.Vector Double))
+solveStaticNlpIpopt nlp callback = reifyNlp nlp callback foo
   where
-    foo nlp' = do
-      ret <- solveNlpIpopt nlp' Nothing
+    foo ::
+      (Vectorize x, Vectorize p, Vectorize g) =>
+      Nlp x p g -> Maybe (x Double -> IO Bool) ->
+      IO (Either String (NlpOut V.Vector V.Vector Double))
+    foo nlp' cb' = do
+      ret <- solveNlpIpopt nlp' cb'
       return $ case ret of
         Left x -> Left x
         Right (NlpOut { fOpt = fopt

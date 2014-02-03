@@ -29,7 +29,7 @@ main = do
 
   let rosen = rosen0 {nlpX0 = V.fromList [-8,8]}
 
-  ret <- solveStaticNlpIpopt rosen
+  ret <- solveStaticNlpIpopt rosen Nothing
   print ret
 --  ret' <- solveNlpSnopt rosen Nothing Nothing
 --  print ret'
