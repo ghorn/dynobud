@@ -20,7 +20,7 @@ module Hascm.OcpMonad
        , parameter
        , output
        , lagrangeTerm
-       , toOcpPhase
+       , buildOcpPhase
        , reifyOcp
        )
        where
@@ -49,6 +49,7 @@ import Hascm.AlgorithmV ( convertAlgorithm )
 import Hascm.Vectorize
 import Hascm.TypeVecs ( Vec )
 import qualified Hascm.TypeVecs as TV
+import Hascm.DirectCollocation.Dynamic ( CollTrajMeta(..), NameTree(..) )
 
 import Hascm.Interface.LogsAndErrors
 import Hascm.Interface.Types hiding ( NlpState(..) )
@@ -314,26 +315,34 @@ constr :: (Eq a, Num a) => Constraint (Expr a) -> (Expr a, (Maybe Double, Maybe 
 constr (Eq2 lhs rhs) = (lhs - rhs, (Just 0, Just 0))
 constr (Ineq2 lhs rhs) = (lhs - rhs, (Nothing, Just 0))
 
-toOcpPhase ::
+buildOcpPhase ::
   DaeMonad ()
   -> (forall a m . (Floating a, Monad m) => (String -> m a) -> a -> m a)
   -> (forall a . Floating a => (String -> BCMonad a a) -> (String -> BCMonad a a) -> BCMonad a ())
   -> ((String -> OcpMonad (Expr Double)) -> OcpMonad ())
   -> (Maybe Double, Maybe Double)
-  -> OcpPhase V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector
-toOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds =
-  OcpPhase { ocpMayer = mayerFun
-           , ocpLagrange = lagrangeFun
-           , ocpDae = daeFun
-           , ocpBc = bcFun
-           , ocpPathC = pathConstraintFun
-           , ocpPathCBnds = V.fromList pathConstraintBnds
-           , ocpXbnd = V.replicate (length xnames) (Nothing, Nothing)
-           , ocpZbnd = V.replicate (length znames) (Nothing, Nothing)
-           , ocpUbnd = V.replicate (length unames) (Nothing, Nothing)
-           , ocpPbnd = V.replicate (length pnames) (Nothing, Nothing)
-           , ocpTbnd = tbnds
-           }
+  -> (OcpPhase V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector, Int -> Int -> CollTrajMeta)
+buildOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds =
+  (OcpPhase { ocpMayer = mayerFun
+            , ocpLagrange = lagrangeFun
+            , ocpDae = daeFun
+            , ocpBc = bcFun
+            , ocpPathC = pathConstraintFun
+            , ocpPathCBnds = V.fromList pathConstraintBnds
+            , ocpXbnd = V.replicate (length xnames) (Nothing, Nothing)
+            , ocpZbnd = V.replicate (length znames) (Nothing, Nothing)
+            , ocpUbnd = V.replicate (length unames) (Nothing, Nothing)
+            , ocpPbnd = V.replicate (length pnames) (Nothing, Nothing)
+            , ocpTbnd = tbnds
+            },
+   \n deg -> CollTrajMeta { ctmX = NameTreeNode ("", "") (zip (map show xnames) (map NameTreeLeaf [0..]))
+                          , ctmZ = NameTreeNode ("", "") (zip (map show znames) (map NameTreeLeaf [0..]))
+                          , ctmU = NameTreeNode ("", "") (zip (map show unames) (map NameTreeLeaf [0..]))
+                          , ctmP = NameTreeNode ("", "") (zip (map show pnames) (map NameTreeLeaf [0..]))
+                          , ctmN = n
+                          , ctmDeg = deg
+                          }
+  )
   where
     dae :: DaeState
     dae = case buildDae daeMonad of

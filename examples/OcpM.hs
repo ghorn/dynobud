@@ -5,6 +5,8 @@ module Main ( main ) where
 import Hascm.OcpMonad
 import Hascm.Ipopt.Ipopt
 import Dvda.Expr
+import ServerSender
+import GliderShared
 
 myDae :: DaeMonad ()
 myDae = do
@@ -59,8 +61,12 @@ myOcp get = do
   lagrangeTerm obj
 
 main :: IO ()
-main = solveStaticOcpIpopt n deg (toOcpPhase myDae mayer boundaryConditions myOcp tbnds)
+main = withCallback gliderUrl gliderChannelName go
   where
     n = 60
     deg = 3
     tbnds = (Just 4, Just 4)
+    (ocpPhase, meta) = buildOcpPhase myDae mayer boundaryConditions myOcp tbnds
+    go cb = solveStaticOcpIpopt n deg (Just cb') ocpPhase
+      where
+        cb' x = cb (x, meta n deg)

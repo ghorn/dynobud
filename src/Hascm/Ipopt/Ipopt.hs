@@ -19,6 +19,7 @@ import Hascm.NlpMonad ( reifyNlp )
 import Hascm.Ocp ( OcpPhase )
 import Hascm.OcpMonad ( reifyOcp )
 import Hascm.DirectCollocation ( CollTraj, makeCollNlp )
+import Hascm.DirectCollocation.Dynamic ( DynCollTraj, ctToDynamic )
 import qualified Hascm.TypeVecs as TV
 import Hascm.Ipopt.Monad
 
@@ -94,15 +95,15 @@ solveStaticNlpIpopt nlp callback = reifyNlp nlp callback foo
 solveOcpIpopt' ::
   forall x z u p r o c h .
   (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize r, Vectorize o, Vectorize c, Vectorize h)
-  => Int -> Int -> OcpPhase x z u p r o c h -> IO ()
-solveOcpIpopt' n deg ocp =
+  => Int -> Int -> Maybe (DynCollTraj Double -> IO Bool) -> OcpPhase x z u p r o c h -> IO ()
+solveOcpIpopt' n deg cb ocp =
   TV.reifyDim n $ \(Proxy :: Proxy n) ->
   TV.reifyDim deg $ \(Proxy :: Proxy deg) -> do
     let guess :: CollTraj x z u p n deg Double
         guess = fill 1
-    _ <- solveNlpIpopt ((makeCollNlp ocp) {nlpX0 = guess}) Nothing
+    _ <- solveNlpIpopt ((makeCollNlp ocp) {nlpX0 = guess}) (fmap (. ctToDynamic) cb)
     return ()
 
 solveStaticOcpIpopt ::
-  Int -> Int -> OcpPhase V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector -> IO ()
-solveStaticOcpIpopt n deg ocp = reifyOcp ocp (solveOcpIpopt' n deg)
+  Int -> Int -> Maybe (DynCollTraj Double -> IO Bool) -> OcpPhase V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector -> IO ()
+solveStaticOcpIpopt n deg cb ocp = reifyOcp ocp (solveOcpIpopt' n deg cb)

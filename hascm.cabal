@@ -90,7 +90,11 @@ executable ocpMonad
   build-depends:       hascm,
                        vector >=0.10 && <0.11,
                        base >=4.6 && <4.7,
-                       dvda
+                       dvda,
+                       zeromq3-haskell,
+                       cereal,
+                       bytestring
+
   ghc-options:         -threaded -O2
 
 executable staticExample

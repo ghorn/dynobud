@@ -13,6 +13,7 @@ module Hascm.DirectCollocation.Dynamic
        , PlotPoints(..)
        , PlotPointsL(..)
        , toPlotTree
+       , NameTree(..)
        ) where
 
 import Control.Arrow ( second )

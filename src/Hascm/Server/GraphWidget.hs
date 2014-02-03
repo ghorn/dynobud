@@ -136,9 +136,12 @@ newSignalSelectorArea graphInfoMVar = do
   Gtk.cellLayoutPackStart col1 renderer1 True
   Gtk.cellLayoutPackStart col2 renderer2 True
 
+  let showName (Just _) name _ = name
+      showName Nothing name "" = name
+      showName Nothing name typeName = name ++ " (" ++ typeName ++ ")"
   Gtk.cellLayoutSetAttributes col1 renderer1 model $
     \(ListViewInfo {lviName = name, lviType = typeName, lviGetter = getter}) ->
-      [ Gtk.cellText := if isJust getter then name else name ++ " (" ++ typeName ++ ")"]
+      [ Gtk.cellText := showName getter name typeName]
   Gtk.cellLayoutSetAttributes col2 renderer2 model $ \lvi -> [ Gtk.cellToggleActive := lviMarked lvi]
 
   _ <- Gtk.treeViewAppendColumn treeview col1
