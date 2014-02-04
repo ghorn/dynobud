@@ -212,60 +212,59 @@ runSqpIter iter lineSearch bx bg env lp sqp sqp' p0 xk lambdaXk lambdaGk lastSte
 
   -- check for convergence
   if | sqpConverged kktInf -> do
-     putStrLn "============================= sqp converged ====================================="
-     return (sqpIn, sqpOut, kktInf)
-
+       putStrLn "============================= sqp converged ====================================="
+       return (sqpIn, sqpOut, kktInf)
      | iter == 500 -> do
-     putStrLn "=========================== out of iterations =================================="
-     return (sqpIn, sqpOut, kktInf)
+       putStrLn "=========================== out of iterations =================================="
+       return (sqpIn, sqpOut, kktInf)
 
 --     | xk == xkp1 -> do
---     putStrLn "========================= not converged, but x unchanged ======================="
---     return (sqpIn, sqpOut, kktInf)
+--       putStrLn "========================= not converged, but x unchanged ======================="
+--       return (sqpIn, sqpOut, kktInf)
 
      | otherwise -> do
-      debug "\n\n------------------------ STARTING A NEW ITERATION ------------------------------"
-      debug $ "xk: " ++ show xk
-      debug $ "sqpIn: " ++ show sqpIn
-      debug $ "sqpOut: " ++ show sqpOut
+        debug "\n\n------------------------ STARTING A NEW ITERATION ------------------------------"
+        debug $ "xk: " ++ show xk
+        debug $ "sqpIn: " ++ show sqpIn
+        debug $ "sqpOut: " ++ show sqpOut
 
-      let deltaxBnds = toDeltaXBnds bx xk
-      updateQp env lp gradFk jacGk hessLk gk deltaxBnds bg
+        let deltaxBnds = toDeltaXBnds bx xk
+        updateQp env lp gradFk jacGk hessLk gk deltaxBnds bg
 
-      statusOpt <- qpopt env lp
-      case statusOpt of
-        Nothing -> return ()
-        Just msg -> error $ "CPXqpopt error: " ++ msg
+        statusOpt <- qpopt env lp
+        case statusOpt of
+          Nothing -> return ()
+          Just msg -> error $ "CPXqpopt error: " ++ msg
 
-      statusSol <- getSolution env lp
-      sol <- case statusSol of
-        Left msg -> error $ "CPXsolution error: " ++ msg
-        Right sol' -> return sol'
-      debug $ summarizeQp sol
+        statusSol <- getSolution env lp
+        sol <- case statusSol of
+          Left msg -> error $ "CPXsolution error: " ++ msg
+          Right sol' -> return sol'
+        debug $ summarizeQp sol
 
-      let pk = V.fromList $ VS.toList (solX sol)
-          lambdaGkp1Hat = V.fromList $ VS.toList (solPi sol)
-          lambdaXkp1Hat = V.fromList $ VS.toList (solDj sol)
-          sigma = 100
-          projGrad = V.sum (V.zipWith (*) (ddata (ddensify gradFk)) pk) - sigma*(norm1 (kktXPrimal kkt) + norm1 (kktGPrimal kkt))
-          meritFun x = do
-            SqpOut' f0' g0 <- fmap (fmap (ddata . ddensify)) $ evalSXFun sqp' (fmap dvector (SqpIn' x p0))
-            let f0 = V.head f0'
-                xViol = V.sum $ V.map abs $ fst $ V.unzip $ feasibility  x  x bx
-                gViol = V.sum $ V.map abs $ fst $ V.unzip $ feasibility g0 g0 bg
+        let pk = V.fromList $ VS.toList (solX sol)
+            lambdaGkp1Hat = V.fromList $ VS.toList (solPi sol)
+            lambdaXkp1Hat = V.fromList $ VS.toList (solDj sol)
+            sigma = 100
+            projGrad = V.sum (V.zipWith (*) (ddata (ddensify gradFk)) pk) - sigma*(norm1 (kktXPrimal kkt) + norm1 (kktGPrimal kkt))
+            meritFun x = do
+              SqpOut' f0' g0 <- fmap (fmap (ddata . ddensify)) $ evalSXFun sqp' (fmap dvector (SqpIn' x p0))
+              let f0 = V.head f0'
+                  xViol = V.sum $ V.map abs $ fst $ V.unzip $ feasibility  x  x bx
+                  gViol = V.sum $ V.map abs $ fst $ V.unzip $ feasibility g0 g0 bg
 
-            return $ f0 + sigma*(xViol + gViol)
+              return $ f0 + sigma*(xViol + gViol)
 
-      lineSearchRet <- lineSearch meritFun xk projGrad pk
-      case lineSearchRet of
-        Left err -> error $ "line search fail: " ++ err
-        Right (xkp1, t) -> do
-          let lambdaXkp1 = V.zipWith (+) lambdaXk $ V.map (*t) (V.zipWith (-) lambdaXkp1Hat lambdaXk)
-              lambdaGkp1 = V.zipWith (+) lambdaGk $ V.map (*t) (V.zipWith (-) lambdaGkp1Hat lambdaGk)
+        lineSearchRet <- lineSearch meritFun xk projGrad pk
+        case lineSearchRet of
+          Left err -> error $ "line search fail: " ++ err
+          Right (xkp1, t) -> do
+            let lambdaXkp1 = V.zipWith (+) lambdaXk $ V.map (*t) (V.zipWith (-) lambdaXkp1Hat lambdaXk)
+                lambdaGkp1 = V.zipWith (+) lambdaGk $ V.map (*t) (V.zipWith (-) lambdaGkp1Hat lambdaGk)
 
-              deltaX = V.zipWith (-) xkp1 xk
+                deltaX = V.zipWith (-) xkp1 xk
 
-          runSqpIter (iter + 1) lineSearch bx bg env lp sqp sqp' p0 xkp1 lambdaXkp1 lambdaGkp1 (Just (deltaX, t))
+            runSqpIter (iter + 1) lineSearch bx bg env lp sqp sqp' p0 xkp1 lambdaXkp1 lambdaGkp1 (Just (deltaX, t))
 
 updateQp
   :: CpxEnv -> CpxLp -> DMatrix -> DMatrix -> DMatrix -> DMatrix -> V.Vector (Col, Bound)
