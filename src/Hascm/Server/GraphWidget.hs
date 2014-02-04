@@ -16,13 +16,13 @@ import Text.Read ( readMaybe )
 
 import Hascm.Server.PlotChart ( AxisScaling(..), newChartCanvas )
 import Hascm.Server.PlotTypes ( GraphInfo(..), ListViewInfo(..) )
-import Hascm.DirectCollocation.Dynamic ( DynPlotPoints, CollTrajMeta(..), forestFromMeta )
+import Hascm.DirectCollocation.Dynamic ( DynPlotPoints, MetaTree )
 
 
 -- make a new graph window
 newGraph ::
   String ->
-  Gtk.ListStore CollTrajMeta ->
+  Gtk.ListStore (MetaTree Double) ->
   CC.MVar (Maybe (DynPlotPoints Double, Int, NominalDiffTime)) ->
   IO Gtk.Window
 newGraph channame metaStore chanseq = do
@@ -83,7 +83,7 @@ newGraph channame metaStore chanseq = do
 
 
 newSignalSelectorArea ::
-  CC.MVar GraphInfo -> Gtk.ListStore CollTrajMeta -> IO Gtk.ScrolledWindow
+  CC.MVar GraphInfo -> Gtk.ListStore (MetaTree Double) -> IO Gtk.ScrolledWindow
 newSignalSelectorArea graphInfoMVar metaStore = do
   treeStore <- Gtk.treeStoreNew []
   treeview <- Gtk.treeViewNewWithModel treeStore
@@ -143,11 +143,11 @@ newSignalSelectorArea graphInfoMVar metaStore = do
 
 
   -- rebuild the signal tree
-  let rebuildSignalTree :: CollTrajMeta -> IO ()
+  let rebuildSignalTree :: MetaTree Double -> IO ()
       rebuildSignalTree meta = do
         let mkTreeNode (name,typeName,maybeget) = ListViewInfo name typeName maybeget False
             newTrees :: [Tree.Tree (ListViewInfo (DynPlotPoints Double))]
-            newTrees = map (fmap mkTreeNode) (forestFromMeta meta)
+            newTrees = map (fmap mkTreeNode) meta
         Gtk.treeStoreClear treeStore
         Gtk.treeStoreInsertForest treeStore [] 0 newTrees
         updateGraphInfo

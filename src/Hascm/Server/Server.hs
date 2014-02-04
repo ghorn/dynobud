@@ -19,7 +19,7 @@ import qualified GHC.Stats
 
 import Hascm.Server.PlotTypes ( Channel(..) )
 import Hascm.Server.GraphWidget ( newGraph )
-import Hascm.DirectCollocation.Dynamic ( DynCollTraj, CollTrajMeta, dynPlotPointsL )
+import Hascm.DirectCollocation.Dynamic ( DynCollTraj, CollTrajMeta, dynPlotPointsL, forestFromMeta )
 
 newChannel ::
   String -> IO (Channel, (DynCollTraj Double, CollTrajMeta) -> IO ())
@@ -46,8 +46,8 @@ newChannel name = do
             putStrLn $ "meta-information changed on message " ++ show k
             size <- Gtk.listStoreGetSize metaStore
             if size == 0
-              then Gtk.listStorePrepend metaStore newMeta
-              else Gtk.listStoreSetValue metaStore 0 newMeta
+              then Gtk.listStorePrepend metaStore (forestFromMeta newMeta)
+              else Gtk.listStoreSetValue metaStore 0 (forestFromMeta newMeta)
             
           -- write to the mvar
           _ <- CC.swapMVar trajMv (Just (dynPlotPointsL newTraj, k, diffUTCTime time time0))

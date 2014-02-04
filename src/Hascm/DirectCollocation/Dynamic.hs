@@ -6,6 +6,7 @@ module Hascm.DirectCollocation.Dynamic
        ( DynCollTraj(..)
        , DynPlotPoints
        , CollTrajMeta(..)
+       , MetaTree
        , forestFromMeta
        , toMeta
        , ctToDynamic
@@ -144,8 +145,9 @@ dynPlotPointsL ::
 dynPlotPointsL (DynCollTraj x) = reifyCollTraj x (plotPointLists' . plotPoints)
 
 type DynPlotPoints a = PlotPointsL V.Vector V.Vector V.Vector a
-forestFromMeta :: CollTrajMeta ->
-                  Tree.Forest (String, String, Maybe (DynPlotPoints a -> [[(a,a)]]))
+type MetaTree a = Tree.Forest (String, String, Maybe (DynPlotPoints a -> [[(a,a)]]))
+
+forestFromMeta :: CollTrajMeta -> MetaTree Double
 forestFromMeta meta = [xTree,zTree,uTree]
   where
     xTree = blah (\(PlotPointsL x _ _) -> x) "differential states" (ctmX meta)

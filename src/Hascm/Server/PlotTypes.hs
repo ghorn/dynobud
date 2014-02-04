@@ -7,6 +7,7 @@ module Hascm.Server.PlotTypes
        , GraphInfo(..)
        , ListViewInfo(..)
        , AxisScaling(..)
+       , MetaTree
 --       , XAxisType(..)
        ) where
 
@@ -14,7 +15,7 @@ import Control.Concurrent ( MVar, ThreadId )
 import Data.Time ( NominalDiffTime )
 import qualified Graphics.UI.Gtk as Gtk
 
-import Hascm.DirectCollocation.Dynamic ( DynPlotPoints, CollTrajMeta(..) )
+import Hascm.DirectCollocation.Dynamic ( DynPlotPoints, MetaTree )
 
 data ListViewInfo a = ListViewInfo { lviName :: String
                                    , lviType :: String
@@ -43,6 +44,6 @@ data GraphInfo =
 data Channel =
   Channel { chanName :: String
           , chanTraj :: MVar (Maybe (DynPlotPoints Double, Int, NominalDiffTime))
-          , chanMetaStore :: Gtk.ListStore CollTrajMeta
+          , chanMetaStore :: Gtk.ListStore (MetaTree Double)
           , chanServerThreadId :: ThreadId
           }
