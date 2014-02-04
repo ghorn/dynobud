@@ -7,7 +7,7 @@ module Hascm.Server.Server
        ) where
 
 import qualified Control.Concurrent as CC
-import Control.Monad ( when )
+import Control.Monad ( unless )
 import Data.Time ( getCurrentTime, diffUTCTime )
 import Graphics.UI.Gtk ( AttrOp( (:=) ) )
 import qualified Graphics.UI.Gtk as Gtk
@@ -19,7 +19,17 @@ import qualified GHC.Stats
 
 import Hascm.Server.PlotTypes ( Channel(..) )
 import Hascm.Server.GraphWidget ( newGraph )
-import Hascm.DirectCollocation.Dynamic ( DynCollTraj, CollTrajMeta, dynPlotPointsL, forestFromMeta )
+import Hascm.DirectCollocation.Dynamic ( DynCollTraj, CollTrajMeta(..), dynPlotPointsL, forestFromMeta )
+
+sameMeta :: Maybe CollTrajMeta -> Maybe CollTrajMeta -> Bool
+sameMeta Nothing Nothing = True
+sameMeta (Just (CollTrajMeta x0 z0 u0 p0 _ _)) (Just (CollTrajMeta x1 z1 u1 p1 _ _)) =
+  and [ x0 == x1
+      , z0 == z1
+      , u0 == u1
+      , p0 == p1
+      ]
+sameMeta _ _ = False
 
 newChannel ::
   String -> IO (Channel, (DynCollTraj Double, CollTrajMeta) -> IO ())
@@ -42,7 +52,7 @@ newChannel name = do
 
         Gtk.postGUISync $ do
           -- if new meta is different, rebuild the tree store
-          when (Just newMeta /= oldMeta) $ do
+          unless (sameMeta (Just newMeta) oldMeta) $ do
             putStrLn $ "meta-information changed on message " ++ show k
             size <- Gtk.listStoreGetSize metaStore
             if size == 0
