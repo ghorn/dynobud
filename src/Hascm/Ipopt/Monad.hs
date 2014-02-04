@@ -34,6 +34,7 @@ module Hascm.Ipopt.Monad
        , setOption
        ) where
 
+import Control.Applicative ( Applicative )
 import Control.Monad ( liftM, when )
 import Control.Monad.Reader ( MonadIO(..), MonadReader(..), ReaderT(..) )
 import qualified Data.Vector as V
@@ -200,7 +201,9 @@ data IpoptState = IpoptState { isNx :: Int
                              }
 newtype Ipopt x p g a =
   Ipopt (ReaderT IpoptState IO a)
-  deriving ( Monad
+  deriving ( Functor
+           , Applicative
+           , Monad
            , MonadReader IpoptState
            , MonadIO
            )

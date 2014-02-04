@@ -15,6 +15,7 @@ module Hascm.NlpMonad
        , reifyNlp
        ) where
 
+import Control.Applicative ( Applicative )
 import Control.Monad ( when )
 import Control.Monad.Error ( ErrorT, MonadError, runErrorT )
 import Control.Monad.State ( State, MonadState, runState, get, put )
@@ -46,7 +47,9 @@ withEllipse n blah
 newtype NlpMonad a =
   NlpMonad
   { runNlp :: ErrorT ErrorMessage (WriterT [LogMessage] (State NlpState)) a
-  } deriving ( Monad
+  } deriving ( Functor
+             , Applicative
+             , Monad
              , MonadError ErrorMessage
              , MonadState NlpState
              , MonadWriter [LogMessage]

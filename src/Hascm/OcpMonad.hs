@@ -25,6 +25,7 @@ module Hascm.OcpMonad
        )
        where
 
+import Control.Applicative ( Applicative )
 import Control.Arrow( (***) )
 import Control.Lens ( Lens', over )
 import Control.Monad ( when )
@@ -62,7 +63,9 @@ withEllipse n blah
 newtype OcpMonad a =
   OcpMonad
   { runOcp :: ErrorT ErrorMessage (WriterT [LogMessage] (State OcpState)) a
-  } deriving ( Monad
+  } deriving ( Functor
+             , Applicative
+             , Monad
              , MonadError ErrorMessage
              , MonadState OcpState
              , MonadWriter [LogMessage]
@@ -72,7 +75,9 @@ newtype BCMonad b a =
   BCMonad
 --  { runBc :: ErrorT ErrorMessage (WriterT [LogMessage] (State (S.Seq (Constraint (Expr Double))))) a
   { runBc :: ErrorT ErrorMessage (WriterT [LogMessage] (State (S.Seq (b,b)))) a
-  } deriving ( Monad
+  } deriving ( Functor
+             , Applicative
+             , Monad
              , MonadError ErrorMessage
              , MonadState (S.Seq (b,b))
 --             , MonadState (S.Seq (Constraint (Expr Double)))
@@ -82,7 +87,9 @@ newtype BCMonad b a =
 newtype DaeMonad a =
   DaeMonad
   { runDae :: ErrorT ErrorMessage (WriterT [LogMessage] (State DaeState)) a
-  } deriving ( Monad
+  } deriving ( Functor
+             , Applicative
+             , Monad
              , MonadError ErrorMessage
              , MonadState DaeState
              , MonadWriter [LogMessage]
