@@ -34,16 +34,19 @@ module Hascm.Ipopt.Monad
        , setOption
        ) where
 
+import Control.Exception ( AsyncException( UserInterrupt ), try )
+import Control.Concurrent ( forkIO, newEmptyMVar, takeMVar, putMVar )
 import Control.Applicative ( Applicative )
 import Control.Monad ( liftM, when )
 import Control.Monad.Reader ( MonadIO(..), MonadReader(..), ReaderT(..) )
 import qualified Data.Vector as V
+import Data.IORef ( newIORef, readIORef, writeIORef )
 
 import Casadi.Wrappers.Enums ( InputOutputScheme(..) )
 import Casadi.Callback
-import Casadi.Wrappers.Classes.FX
-import Casadi.Wrappers.Classes.OptionsFunctionality
-import Casadi.Wrappers.Classes.PrintableObject
+import Casadi.Wrappers.Classes.FX ( fx_getStat, castFX )
+import Casadi.Wrappers.Classes.OptionsFunctionality ( optionsFunctionality_setOption )
+import Casadi.Wrappers.Classes.PrintableObject ( printableObject_getDescription )
 import Casadi.Wrappers.Classes.GenericType
 import Casadi.Wrappers.Classes.SXFunction ( sxFunction''' )
 import Casadi.Wrappers.Classes.SharedObject
@@ -165,8 +168,19 @@ solve = do
   ipoptState <- ask
   let ipopt = isSolver ipoptState
   solveStatus <- liftIO $ do
-    fxSolveSafe ipopt
+
+    stop <- newEmptyMVar -- mvar that will be filled when ipopt finishes
+    _ <- forkIO (fxSolveSafe ipopt >> putMVar stop ())
+    -- wait until ipopt finishes
+    ret <- try (takeMVar stop)
+    case ret of Right () -> return () -- no exceptions
+                Left UserInterrupt -> do -- got ctrl-C
+                  isInterrupt ipoptState -- tell ipopt to stop iterations
+                  _ <- takeMVar stop -- wait for ipopt to return
+                  return ()
+                Left _ -> takeMVar stop >> return () -- don't handle this one
     fx_getStat ipopt "return_status"  >>= printableObject_getDescription
+
   return $ if solveStatus `elem` ["Solve_Succeeded", "Solved_To_Acceptable_Level"]
     then Right solveStatus
     else Left solveStatus
@@ -198,6 +212,7 @@ data IpoptState = IpoptState { isNx :: Int
                              , isNg :: Int
                              , isNp :: Int
                              , isSolver :: IpoptSolver
+                             , isInterrupt :: IO ()
                              }
 newtype Ipopt x p g a =
   Ipopt (ReaderT IpoptState IO a)
@@ -215,7 +230,7 @@ runIpopt :: (Vectorize x, Vectorize p, Vectorize g) =>
   -> IO a
 runIpopt nlpFun callback' (Ipopt ipoptMonad) = do
   (NlpInputs inputsX' inputsP', NlpFun obj g') <- funToSX nlpFun
-  
+
   let inputsX = vectorize inputsX'
       inputsP = vectorize inputsP'
       g = vectorize g'
@@ -230,15 +245,17 @@ runIpopt nlpFun callback' (Ipopt ipoptMonad) = do
   ipopt <- ipoptSolver'' (castFX f)
 
   -- add callback if user provides it
-  case callback' of
-    Nothing -> return ()
-    Just callback -> do
-      let cb fx' = do
+  intref <- newIORef False
+  let cb fx' = do
+        callbackRet <- case callback' of
+          Nothing -> return True
+          Just callback -> do
             xval <- fmap ddata $ ioInterfaceFX_output fx' 0
-            callbackRet <- callback (devectorize xval)
-            return $ if callbackRet then 0 else 1
-      casadiCallback <- makeCallback cb >>= genericTypeCallback
-      optionsFunctionality_setOption ipopt "iteration_callback" casadiCallback
+            callback (devectorize xval)
+        interrupt <- readIORef intref
+        return $ if callbackRet && not interrupt then 0 else 1
+  casadiCallback <- makeCallback cb >>= genericTypeCallback
+  optionsFunctionality_setOption ipopt "iteration_callback" casadiCallback
 
   sharedObject_init ipopt
 
@@ -246,5 +263,6 @@ runIpopt nlpFun callback' (Ipopt ipoptMonad) = do
                               , isNp = V.length inputsP
                               , isNg = V.length g
                               , isSolver = ipopt
+                              , isInterrupt = writeIORef intref True
                               }
   liftIO $ runReaderT ipoptMonad ipoptState
