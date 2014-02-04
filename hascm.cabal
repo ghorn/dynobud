@@ -97,6 +97,20 @@ executable ocpMonad
 
   ghc-options:         -threaded -O2
 
+executable rocket
+  hs-source-dirs:      examples
+  main-is:             Rocket.hs
+  default-language:    Haskell2010
+  build-depends:       hascm,
+                       vector >=0.10 && <0.11,
+                       base >=4.6 && <4.8,
+                       dvda,
+                       zeromq3-haskell,
+                       cereal,
+                       bytestring
+
+  ghc-options:         -threaded -O2
+
 executable staticExample
   hs-source-dirs:      examples
   main-is:             StaticExample.hs
