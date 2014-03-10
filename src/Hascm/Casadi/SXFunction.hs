@@ -8,7 +8,7 @@ import qualified Data.Vector as V
 
 import Control.Monad ( zipWithM_ )
 import Casadi.Wrappers.Classes.DMatrix
-import Casadi.Wrappers.Classes.SXMatrix
+import Casadi.Wrappers.Classes.SX
 import qualified Casadi.Wrappers.Classes.SXFunction as C
 import Casadi.Wrappers.Classes.SharedObject
 import Casadi.Wrappers.Classes.IOInterfaceFX
@@ -18,10 +18,10 @@ import Hascm.Vectorize
 
 newtype SXFunction f g = SXFunction C.SXFunction
 
-toSXFunction :: (Vectorize f, Vectorize g) => f SXMatrix -> g SXMatrix -> IO (SXFunction f g)
+toSXFunction :: (Vectorize f, Vectorize g) => f SX -> g SX -> IO (SXFunction f g)
 toSXFunction inputs outputs = do
   sxf <- C.sxFunction''' (vectorize inputs) (vectorize outputs)
-  sharedObject_init sxf
+  sharedObject_init' sxf
   return (SXFunction sxf)
 
 evalSXFun :: (Vectorize f, Vectorize g) => SXFunction f g -> f DMatrix -> IO (g DMatrix)

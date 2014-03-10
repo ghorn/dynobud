@@ -11,8 +11,8 @@ import qualified Data.Set as S
 import qualified Data.Foldable as F
 import qualified Data.Vector as V
 
-import Casadi.Wrappers.Classes.CRSSparsity ( CRSSparsity, crsSparsity' )
-import Casadi.Wrappers.Classes.SXMatrix ( SXMatrix, sxMatrix )
+import Casadi.Wrappers.Classes.Sparsity ( Sparsity, sparsity' )
+import Casadi.Wrappers.Classes.SX ( SX, sx )
 import Casadi.Wrappers.Classes.IOScheme ( ioScheme', ioScheme_size, ioScheme_entry )
 import Casadi.Wrappers.Enums ( InputOutputScheme(..) )
 
@@ -51,8 +51,8 @@ mkScheme newEmpty schemeEnum userVals = do
 
   fmap V.fromList $ mapM getElem entries
 
-mkSchemeSXMatrix :: InputOutputScheme -> [(String,SXMatrix)] -> IO (V.Vector SXMatrix)
-mkSchemeSXMatrix = mkScheme sxMatrix
+mkSchemeSXMatrix :: InputOutputScheme -> [(String,SX)] -> IO (V.Vector SX)
+mkSchemeSXMatrix = mkScheme sx
 
-mkSchemeCRSSparsity :: InputOutputScheme -> [(String,CRSSparsity)] -> IO (V.Vector CRSSparsity)
-mkSchemeCRSSparsity = mkScheme crsSparsity'
+mkSchemeCRSSparsity :: InputOutputScheme -> [(String,Sparsity)] -> IO (V.Vector Sparsity)
+mkSchemeCRSSparsity = mkScheme sparsity'

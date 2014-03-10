@@ -39,7 +39,7 @@ library
                        Hascm.Casadi.IOSchemes
                        Hascm.Casadi.SXFunction
                        Hascm.Casadi.SX
-                       Hascm.Casadi.SXMatrix
+                       Hascm.Casadi.SXElement
                        Hascm.Casadi.DMatrix
 --                       Hascm.Sqp.Sqp
 --                       Hascm.Sqp.LineSearch

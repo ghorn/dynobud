@@ -1,15 +1,16 @@
 {-# OPTIONS_GHC -Wall -fno-cse -fno-warn-orphans #-}
 
-module Hascm.Casadi.DMatrix ( DMatrix(), dcrs, dsparse, dmm, dvector, ddata
-                            , ddensify, dtrans
-                            , dsize, dsize1, dsize2, dnumel, dvertcat, dhorzcat
-                            ) where
+module Hascm.Casadi.DMatrix
+       ( DMatrix(), dcrs, dmm, dvector, ddata
+       , ddensify, dtrans
+       , dsize, dsize1, dsize2, dnumel
+       , dvertcat, dhorzcat
+       ) where
 
-import Control.Monad ( when )
 import qualified Data.Vector as V
 import System.IO.Unsafe ( unsafePerformIO )
 
-import Casadi.Wrappers.Classes.CRSSparsity
+import Casadi.Wrappers.Classes.Sparsity
 import Casadi.Wrappers.Classes.DMatrix
 import qualified Casadi.Wrappers.Tools as C
 
@@ -27,7 +28,7 @@ ddensify :: DMatrix -> DMatrix
 ddensify x = unsafePerformIO (C.densify' x)
 {-# NOINLINE ddensify #-}
 
-dcrs :: DMatrix -> CRSSparsity
+dcrs :: DMatrix -> Sparsity
 dcrs x = unsafePerformIO (dmatrix_sparsityRef x)
 {-# NOINLINE dcrs #-}
 
@@ -39,17 +40,6 @@ dvector x = unsafePerformIO (dmatrix''''''''''' x)
 ddata :: DMatrix -> V.Vector Double
 ddata x = unsafePerformIO (dmatrix_data x)
 {-# NOINLINE ddata #-}
-
-dsparse :: DMatrix -> V.Vector (Int,Int,Double)
-dsparse sxm = unsafePerformIO $ do
-  let crs = dcrs sxm
-  row <- crsSparsity_getRow crs
-  col <- crsSparsity_colRef crs
-  let sxs = ddata sxm
-  when (V.length row /= V.length col) $ error "ssparse: row/col dimension mismatch"
-  when (V.length row /= V.length sxs) $ error "ssparse: row/sxs dimension mismatch"
-  return $ V.zip3 row col sxs
-{-# NOINLINE dsparse #-}
 
 dsize :: DMatrix -> Int
 dsize x = unsafePerformIO (dmatrix_size x)
