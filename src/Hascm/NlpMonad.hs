@@ -7,6 +7,7 @@ module Hascm.NlpMonad
        ( NlpMonad
        , (===)
        , (<==)
+       , (>==)
 --       , leq3
        , minimize
        , designVar
@@ -95,6 +96,14 @@ infix 4 <==
      withEllipse 30 (show lhs) ++ " <= " ++ withEllipse 30 (show rhs)
   state0 <- get
   put $ state0 { nlpConstraints = nlpConstraints state0 |> Ineq2 lhs rhs }
+
+infix 4 >==
+(>==) :: Expr Double -> Expr Double -> NlpMonad ()
+(>==) lhs rhs = do
+  debug $ "adding inequality constraint: " ++
+     withEllipse 30 (show lhs) ++ " >= " ++ withEllipse 30 (show rhs)
+  state0 <- get
+  put $ state0 { nlpConstraints = nlpConstraints state0 |> Ineq2 rhs lhs }
 
 --leq3 :: Expr Double -> Expr Double -> Expr Double -> NlpMonad ()
 --leq3 lhs mid rhs = do
