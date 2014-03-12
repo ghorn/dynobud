@@ -7,6 +7,7 @@ module Hascm.Server.Server
        ) where
 
 import qualified Control.Concurrent as CC
+import qualified Control.Concurrent.STM as STM
 import Control.Monad ( unless )
 import Data.Time ( getCurrentTime, diffUTCTime )
 import Graphics.UI.Gtk ( AttrOp( (:=) ) )
@@ -36,16 +37,22 @@ newChannel ::
 newChannel name = do
   time0 <- getCurrentTime
 
-  trajChan <- CC.newChan
+  trajChan <- STM.atomically STM.newTQueue
   trajMv <- CC.newMVar Nothing
 
   metaStore <- Gtk.listStoreNew []
+
+  let getLastValue = do
+        val <- STM.atomically (STM.readTQueue trajChan)
+        empty <- STM.atomically (STM.isEmptyTQueue trajChan)
+        if empty then return val else getLastValue
+
 
   -- this is the loop that reads new messages and stores them
   let serverLoop :: Maybe CollTrajMeta -> Int -> IO ()
       serverLoop oldMeta k = do
         -- wait until a new message is written to the Chan
-        (newTraj,newMeta) <- CC.readChan trajChan
+        (newTraj,newMeta) <- getLastValue -- STM.atomically (STM.readTQueue trajChan)
 
         -- grab the timestamp
         time <- getCurrentTime
@@ -58,7 +65,7 @@ newChannel name = do
             if size == 0
               then Gtk.listStorePrepend metaStore (forestFromMeta newMeta)
               else Gtk.listStoreSetValue metaStore 0 (forestFromMeta newMeta)
-            
+
           -- write to the mvar
           _ <- CC.swapMVar trajMv (Just (dynPlotPointsL newTraj, k, diffUTCTime time time0))
           return ()
@@ -73,7 +80,7 @@ newChannel name = do
                         , chanServerThreadId = serverTid
                         }
 
-  return (retChan, CC.writeChan trajChan)
+  return (retChan, STM.atomically . (STM.writeTQueue trajChan))
 
 runPlotter :: Channel -> [CC.ThreadId] -> IO ()
 runPlotter channel backgroundThreadsToKill = do
