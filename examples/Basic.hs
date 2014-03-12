@@ -13,7 +13,8 @@ import Hascm.Vectorize
 import Hascm.Nats
 import Hascm.TypeVecs ( Vec(..), mkVec' )
 import Hascm.Nlp
-import Hascm.Ipopt.Ipopt
+import Hascm.NlpSolver
+import Hascm.Ipopt
 --import Hascm.Snopt
 --import Hascm.Sqp.Sqp
 --import Hascm.Sqp.LineSearch
@@ -63,7 +64,7 @@ myNlp = Nlp { nlpFG = fg
 
 main :: IO ()
 main = do
-  opt <- solveNlpIpopt myNlp Nothing
+  opt <- solveNlp ipoptSolver myNlp Nothing
   print opt
 --  opt2 <- solveNlpSnopt myNlp Nothing guess None Nothing
 --  print opt2

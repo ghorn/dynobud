@@ -10,11 +10,12 @@ module Main where
 import Hascm.Vectorize
 import Hascm.TypeVecs
 import Hascm.Nats
-import Hascm.Ipopt.Ipopt
+import Hascm.Ipopt
 --import Hascm.Snopt
 --import Hascm.Sqp.Sqp
 --import Hascm.Sqp.LineSearch
 import Hascm.Nlp
+import Hascm.NlpSolver
 import Hascm.Server.Accessors
 
 import Hascm.Ocp
@@ -115,7 +116,7 @@ guess = fill 1
 main :: IO ()
 main = do
   let nlp = (makeCollNlp pendOcp) { nlpX0 = guess }
-  _ <- solveNlpIpopt nlp Nothing
-  --(Right nlpOut) <- solveNlpSnopt (makeCollNlp pendOcp) Nothing guess None Nothing
+  _ <- solveNlp ipoptSolver nlp Nothing
+  --(Right nlpOut) <- solveNlp snoptSolver (makeCollNlp pendOcp) Nothing guess None Nothing
   --_ <- solveSqp (makeCollNlp pendOcp) armilloSearch (Nlp.xOpt nlpOut) None
   return ()

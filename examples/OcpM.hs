@@ -3,7 +3,9 @@
 module Main ( main ) where
 
 import Hascm.OcpMonad
-import Hascm.Ipopt.Ipopt
+import Hascm.Ipopt
+--import Hascm.Snopt
+import Hascm.NlpSolver
 import Dvda.Expr
 import ServerSender
 import GliderShared
@@ -63,10 +65,12 @@ myOcp get = do
 main :: IO ()
 main = withCallback gliderUrl gliderChannelName go
   where
-    n = 60
+    n = 100
+    --n = 2
     deg = 3
     tbnds = (Just 4, Just 4)
     (ocpPhase, meta) = buildOcpPhase myDae mayer boundaryConditions myOcp tbnds
-    go cb = solveStaticOcpIpopt n deg (Just cb') ocpPhase
+    go cb = solveStaticOcp ipoptSolver n deg (Just cb') ocpPhase
+    --go cb = solveStaticOcp snoptSolver n deg (Just cb') ocpPhase
       where
         cb' x = cb (x, meta n deg)

@@ -6,11 +6,12 @@ module Main ( main ) where
 import Linear
 
 import Hascm.Vectorize
-import Hascm.Ipopt.Ipopt
+import Hascm.Ipopt
 --import Hascm.Snopt
 --import Hascm.Sqp.Sqp
 --import Hascm.Sqp.LineSearch
 import Hascm.Nlp
+import Hascm.NlpSolver
 
 import Hascm.Ocp
 import Hascm.DirectCollocation
@@ -113,13 +114,13 @@ main = do
         cb' traj = cb (ctToDynamic traj, toMeta traj)
         nlp = (makeCollNlp ocp) { nlpX0 = guess }
 
-    opt' <- solveNlpIpopt nlp (Just cb')
+    opt' <- solveNlp ipoptSolver nlp (Just cb')
     opt <- case opt' of Left msg -> error msg
                         Right opt'' -> return opt''
 --    let xopt = xOpt opt
 --        lambda = lambdaOpt opt
 --
---    snoptOpt' <- solveNlpSnopt (nlp {nlpX0 = xopt}) (Just cb) (Just lambda)
+--    snoptOpt' <- solveNlp snoptSolver (nlp {nlpX0 = xopt}) (Just cb) (Just lambda)
 --    snoptOpt <- case snoptOpt' of Left msg -> error msg
 --                                  Right opt'' -> return opt''
 --    let xopt' = xOpt snoptOpt
