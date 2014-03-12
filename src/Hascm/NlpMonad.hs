@@ -2,6 +2,7 @@
 {-# Language GeneralizedNewtypeDeriving #-}
 {-# Language RankNTypes #-}
 {-# Language ScopedTypeVariables #-}
+{-# Language PackageImports #-}
 
 module Hascm.NlpMonad
        ( NlpMonad
@@ -18,9 +19,9 @@ module Hascm.NlpMonad
 
 import Control.Applicative ( Applicative )
 import Control.Monad ( when )
-import Control.Monad.Error ( ErrorT, MonadError, runErrorT )
-import Control.Monad.State ( State, MonadState, runState, get, put )
-import Control.Monad.Writer ( WriterT, MonadWriter, runWriterT )
+import "mtl" Control.Monad.Error ( ErrorT, MonadError, runErrorT )
+import "mtl" Control.Monad.State ( State, MonadState, runState, get, put )
+import "mtl" Control.Monad.Writer ( WriterT, MonadWriter, runWriterT )
 import qualified Data.Foldable as F
 import qualified Data.HashSet as HS
 import qualified Data.Sequence as S

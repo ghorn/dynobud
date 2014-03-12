@@ -4,6 +4,7 @@
 {-# Language GeneralizedNewtypeDeriving #-}
 {-# Language PolyKinds #-}
 {-# Language ScopedTypeVariables #-}
+{-# Language PackageImports #-}
 {-# Language GADTs #-}
 
 module Hascm.NlpSolver
@@ -46,7 +47,7 @@ import Control.Exception ( AsyncException( UserInterrupt ), try )
 import Control.Concurrent ( forkIO, newEmptyMVar, takeMVar, putMVar )
 import Control.Applicative ( Applicative )
 import Control.Monad ( liftM, when )
-import Control.Monad.Reader ( MonadIO(..), MonadReader(..), ReaderT(..) )
+import "mtl" Control.Monad.Reader ( MonadIO(..), MonadReader(..), ReaderT(..) )
 import Data.Maybe ( fromMaybe )
 import Data.IORef ( newIORef, readIORef, writeIORef )
 import qualified Data.Vector as V

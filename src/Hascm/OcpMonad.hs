@@ -6,7 +6,7 @@
 {-# Language MultiParamTypeClasses #-}
 {-# Language FunctionalDependencies #-}
 {-# Language FlexibleInstances #-}
-
+{-# Language PackageImports #-}
 
 module Hascm.OcpMonad
        ( OcpMonad
@@ -29,10 +29,10 @@ import Control.Applicative ( Applicative )
 import Control.Arrow( (***) )
 import Control.Lens ( Lens', over )
 import Control.Monad ( when )
-import Control.Monad.Error ( ErrorT, MonadError, runErrorT )
-import Control.Monad.State ( State, MonadState, runState )
-import qualified Control.Monad.State as State
-import Control.Monad.Writer ( WriterT, Writer, MonadWriter, runWriterT, runWriter )
+import "mtl" Control.Monad.Error ( ErrorT, MonadError, runErrorT )
+import "mtl" Control.Monad.State ( State, MonadState, runState )
+import qualified "mtl" Control.Monad.State as State
+import "mtl" Control.Monad.Writer ( WriterT, Writer, MonadWriter, runWriterT, runWriter )
 import qualified Data.Foldable as F
 import qualified Data.HashSet as HS
 import qualified Data.Sequence as S

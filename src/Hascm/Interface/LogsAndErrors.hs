@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language GeneralizedNewtypeDeriving #-}
 {-# Language FlexibleContexts #-}
+{-# Language PackageImports #-}
 
 module Hascm.Interface.LogsAndErrors
        ( ErrorMessage (..)
@@ -12,8 +13,8 @@ module Hascm.Interface.LogsAndErrors
        , impossible
        ) where
 
-import Control.Monad.Error ( Error, MonadError, throwError )
-import Control.Monad.Writer ( MonadWriter, tell )
+import "mtl" Control.Monad.Error ( Error, MonadError, throwError )
+import "mtl" Control.Monad.Writer ( MonadWriter, tell )
 
 data LogMessage = Debug String
                 | Warning String
