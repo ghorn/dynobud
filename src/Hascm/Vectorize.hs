@@ -99,6 +99,7 @@ gvlength = V.length . gvectorize . (gempty `asFunctorOf`)
     asFunctorOf :: f a -> f b -> f a
     asFunctorOf x _ = x
 
+-- product type (concatination)
 instance (GVectorize f, GVectorize g) => GVectorize (f :*: g) where
   gvectorize (f :*: g) = gvectorize f V.++ gvectorize g
   gdevectorize v0s
@@ -126,6 +127,7 @@ instance GVectorize f => GVectorize (M1 i c f) where
   gdevectorize = M1 . gdevectorize
   gempty = M1 gempty
 
+-- singleton
 instance GVectorize Par1 where
   gvectorize = V.singleton . unPar1
   gdevectorize v = case V.toList v of
@@ -148,6 +150,7 @@ instance Vectorize f => GVectorize (Rec1 f) where
   gdevectorize = Rec1 . devectorize
   gempty = Rec1 empty
 
+-- composition
 instance (Vectorize f, GVectorize g) => GVectorize (f :.: g) where
   gempty = Comp1 ret
     where
