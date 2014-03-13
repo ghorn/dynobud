@@ -41,6 +41,7 @@ module Hascm.NlpSolver
        , Opt(..)
        , NlpOption
        , setOption
+       , reinit
        ) where
 
 import Control.Exception ( AsyncException( UserInterrupt ), try )
@@ -188,7 +189,6 @@ setOption name val = do
   liftIO $ do
     gt <- mkGeneric val
     optionsFunctionality_setOption nlp name gt
-  reinit
 
 reinit :: NlpSolver x p g ()
 reinit = do
@@ -294,6 +294,8 @@ runNlpSolver solverStuff nlpFun callback' (NlpSolver nlpMonad) = do
   casadiCallback <- makeCallback cb >>= genericType''''''''''''
   optionsFunctionality_setOption nlp "iteration_callback" casadiCallback
 
+  -- set all the user options
+  mapM_ (\(l,Opt r) -> mkGeneric r >>= optionsFunctionality_setOption nlp l) (defaultOptions solverStuff)
   sharedObject_init' nlp
 
   let nlpState = NlpState { isNx = V.length inputsX
@@ -316,8 +318,6 @@ solveNlp solverStuff nlp callback = do
 
     let (lbx,ubx) = toBnds (nlpBX nlp)
         (lbg,ubg) = toBnds (nlpBG nlp)
-
-    mapM_ (\(l,Opt r) -> setOption l r) (defaultOptions solverStuff)
 
     setX0 (nlpX0 nlp)
     setP (nlpP nlp)
