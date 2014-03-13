@@ -33,6 +33,7 @@ import Data.Proxy
 import Dvda.Expr
 import Dvda.Algorithm
 
+import Hascm.Casadi.SXElement ( SXElement )
 import Hascm.Vectorize
 import Hascm.AlgorithmV( convertAlgorithm )
 import Hascm.Nlp
@@ -238,7 +239,7 @@ reifyNlp nlp cb f =
   TV.reifyDim ng $ \(Proxy :: Proxy ng) ->
   f (Nlp
      ((\(NlpInputs x' p') ->
-        fout devectorize (fg (NlpInputs (vectorize x') (vectorize p')))) :: forall a . Floating a => NlpInputs (Vec nx) (Vec np) a -> NlpFun (Vec ng) a)
+        fout devectorize (fg (NlpInputs (vectorize x') (vectorize p')))) :: NlpInputs (Vec nx) (Vec np) SXElement -> NlpFun (Vec ng) SXElement)
      (TV.mkVec bx :: Vec nx (Maybe Double, Maybe Double))
      (TV.mkVec bg :: Vec ng (Maybe Double, Maybe Double))
      (TV.mkVec x0 :: Vec nx Double)
@@ -257,5 +258,5 @@ reifyNlp nlp cb f =
     x0 = nlpX0 nlp
     p = nlpP nlp
 
-    fg :: forall a . Floating a => NlpInputs V.Vector V.Vector a -> NlpFun V.Vector a
+    fg :: NlpInputs V.Vector V.Vector SXElement -> NlpFun V.Vector SXElement
     fg = nlpFG nlp

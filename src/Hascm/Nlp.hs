@@ -6,6 +6,7 @@
 module Hascm.Nlp ( Nlp(..), NlpInputs(..), NlpFun(..), NlpOut(..), Multipliers(..) ) where
 
 import Hascm.Vectorize
+import Hascm.Casadi.SXElement ( SXElement )
 
 data NlpOut x g a = NlpOut { fOpt :: a
                            , xOpt :: x a
@@ -24,7 +25,7 @@ data NlpInputs x p a = NlpInputs (x a) (p a) deriving (Eq, Show, Functor, Generi
 instance (Vectorize x, Vectorize p) => Vectorize (NlpInputs x p)
 
 data Nlp x p g =
-  Nlp { nlpFG :: Floating a => NlpInputs x p a -> NlpFun g a
+  Nlp { nlpFG :: NlpInputs x p SXElement -> NlpFun g SXElement
       , nlpBX :: x (Maybe Double, Maybe Double)
       , nlpBG :: g (Maybe Double, Maybe Double)
       , nlpX0 :: x Double

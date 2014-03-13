@@ -45,6 +45,7 @@ import System.IO.Unsafe
 import Dvda.Algorithm
 import Dvda.Expr
 
+import Hascm.Casadi.SXElement ( SXElement )
 import Hascm.Ocp
 import Hascm.AlgorithmV ( convertAlgorithm )
 import Hascm.Vectorize
@@ -526,11 +527,11 @@ reifyOcp ocp f =
   TV.reifyDim nc $ \(Proxy :: Proxy nc) ->
   TV.reifyDim nh $ \(Proxy :: Proxy nh) ->
   f OcpPhase
-     { ocpMayer = (\x t -> ocpMayer ocp (vectorize x) t) :: forall a . Floating a => Vec nx a -> a -> a
-     , ocpLagrange = (\x z u p o t -> ocpLagrange ocp (vectorize x) (vectorize z) (vectorize u) (vectorize p) (vectorize o) t) :: forall a . Floating a => Vec nx a -> Vec nz a -> Vec nu a -> Vec np a -> Vec no a -> a -> a
-     , ocpDae = (\x' x z u p t -> (devectorize *** devectorize) (ocpDae ocp (vectorize x') (vectorize x) (vectorize z) (vectorize u) (vectorize p) t)) :: forall a . Floating a => Dae (Vec nx) (Vec nz) (Vec nu) (Vec np) (Vec nr) (Vec no) a
-     , ocpBc = (\x0 xf -> devectorize (ocpBc ocp (vectorize x0) (vectorize xf))) :: forall a . Floating a => Vec nx a -> Vec nx a -> Vec nc a
-     , ocpPathC = (\x z u p o t -> devectorize (ocpPathC ocp (vectorize x) (vectorize z) (vectorize u) (vectorize p) (vectorize o) t)) :: forall a . Floating a => Vec nx a -> Vec nz a -> Vec nu a -> Vec np a -> Vec no a -> a -> Vec nh a
+     { ocpMayer = (\x t -> ocpMayer ocp (vectorize x) t) :: Vec nx SXElement -> SXElement -> SXElement
+     , ocpLagrange = (\x z u p o t -> ocpLagrange ocp (vectorize x) (vectorize z) (vectorize u) (vectorize p) (vectorize o) t) :: Vec nx SXElement -> Vec nz SXElement -> Vec nu SXElement -> Vec np SXElement -> Vec no SXElement -> SXElement -> SXElement
+     , ocpDae = (\x' x z u p t -> (devectorize *** devectorize) (ocpDae ocp (vectorize x') (vectorize x) (vectorize z) (vectorize u) (vectorize p) t)) :: Dae (Vec nx) (Vec nz) (Vec nu) (Vec np) (Vec nr) (Vec no) SXElement
+     , ocpBc = (\x0 xf -> devectorize (ocpBc ocp (vectorize x0) (vectorize xf))) :: Vec nx SXElement -> Vec nx SXElement -> Vec nc SXElement
+     , ocpPathC = (\x z u p o t -> devectorize (ocpPathC ocp (vectorize x) (vectorize z) (vectorize u) (vectorize p) (vectorize o) t)) :: Vec nx SXElement -> Vec nz SXElement -> Vec nu SXElement -> Vec np SXElement -> Vec no SXElement -> SXElement -> Vec nh SXElement
      , ocpPathCBnds = devectorize (ocpPathCBnds ocp) :: Vec nh (Maybe Double, Maybe Double)
      , ocpXbnd = TV.mkVec (ocpXbnd ocp) :: Vec nx (Maybe Double, Maybe Double)
      , ocpZbnd = TV.mkVec (ocpZbnd ocp) :: Vec nz (Maybe Double, Maybe Double)
@@ -554,4 +555,4 @@ reifyOcp ocp f =
         z = V.replicate nz 0
         u = V.replicate nu 0
         p = V.replicate np 0
-        t = 0 :: Double
+        t = 0 :: SXElement

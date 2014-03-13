@@ -260,12 +260,12 @@ newtype NlpSolver x p g a =
 
 runNlpSolver :: (NLPSolverClass nlp, Vectorize x, Vectorize p, Vectorize g) =>
   NlpSolverStuff nlp ->
-  (forall b . Floating b => NlpInputs x p b -> NlpFun g b)
+  (NlpInputs x p SXElement -> NlpFun g SXElement)
   -> Maybe (x Double -> IO Bool)
   -> NlpSolver x p g a
   -> IO a
 runNlpSolver solverStuff nlpFun callback' (NlpSolver nlpMonad) = do
-  (NlpInputs inputsX' inputsP', NlpFun obj g') <- funToSX nlpFun
+  (NlpInputs inputsX' inputsP', NlpFun obj g') <- funSXToSX nlpFun
 
   let inputsX = vectorize inputsX'
       inputsP = vectorize inputsP'

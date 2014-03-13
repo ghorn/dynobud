@@ -18,6 +18,7 @@ import Linear.V
 
 import JacobiRoots ( shiftedLegendreRoots )
 
+import Hascm.Casadi.SXElement ( SXElement )
 import Hascm.Vectorize
 import qualified Hascm.TypeVecs as TV
 import Hascm.TypeVecs ( Vec, Succ )
@@ -34,10 +35,10 @@ mkTaus deg = case shiftedLegendreRoots deg of
   Just taus -> TV.mkVec $ V.map (fromRational . toRational) taus
   Nothing -> error "makeTaus: too high degree"
 
-getFg :: forall z x u p r o c h a n deg .
-         (Dim deg, Vectorize x, Floating a, Dim n) =>
-         OcpPhase x z u p r o c h -> NlpInputs (CollTraj x z u p n deg) None a ->
-         NlpFun (CollOcpConstraints n deg x r c h) a
+getFg :: forall z x u p r o c h n deg .
+         (Dim deg, Vectorize x, Dim n) =>
+         OcpPhase x z u p r o c h -> NlpInputs (CollTraj x z u p n deg) None SXElement ->
+         NlpFun (CollOcpConstraints n deg x r c h) SXElement
 getFg ocp (NlpInputs collTraj@(CollTraj tf p stages xf) _) = NlpFun obj g
   where
     obj = objLagrange + objMayer
@@ -50,11 +51,11 @@ getFg ocp (NlpInputs collTraj@(CollTraj tf p stages xf) _) = NlpFun obj g
     n = ctN collTraj
 
     -- initial time at each collocation stage
-    t0s :: Vec n a
+    t0s :: Vec n SXElement
     t0s = TV.mkVec' $ take n [h * fromIntegral k | k <- [(0::Int)..]]
 
     -- times at each collocation point
-    times :: Vec n (Vec deg a)
+    times :: Vec n (Vec deg SXElement)
     times = fmap (\t0 -> fmap (\tau -> t0 + tau*h) taus) t0s
 
     -- the collocation points
@@ -64,15 +65,15 @@ getFg ocp (NlpInputs collTraj@(CollTraj tf p stages xf) _) = NlpFun obj g
     deg = ctDeg collTraj
 
     -- coefficients for getting xdot by lagrange interpolating polynomials
-    cijs :: Vec (Succ deg) (Vec (Succ deg) a)
+    cijs :: Vec (Succ deg) (Vec (Succ deg) SXElement)
     cijs = lagrangeDerivCoeffs (0 TV.<| taus)
 
     -- initial point at each stage
-    x0s :: Vec n (x a)
+    x0s :: Vec n (x SXElement)
     x0s = fmap (\(CollStage x0' _) -> x0') stages
 
     -- final point at each stage (for matching constraint)
-    xfs :: Vec n (x a)
+    xfs :: Vec n (x SXElement)
     xfs = TV.tvshiftl x0s xf
 
     x0 = (\(CollStage x0' _) -> x0') (TV.tvhead stages)
@@ -81,17 +82,17 @@ getFg ocp (NlpInputs collTraj@(CollTraj tf p stages xf) _) = NlpFun obj g
         , coPathC = TV.tvzipWith3 mkPathConstraints stages outputs times
         , coBc = ocpBc ocp x0 xf
         }
-    dcs :: Vec n (CollStageConstraints x deg r a)
-    outputs :: Vec n (Vec deg (o a))
+    dcs :: Vec n (CollStageConstraints x deg r SXElement)
+    outputs :: Vec n (Vec deg (o SXElement))
     (dcs,outputs) =
       TV.tvunzip $
       TV.tvzipWith3 (dynConstraints cijs (ocpDae ocp) taus h p) times stages xfs
 
-    mkPathConstraints :: CollStage x z u deg a -> Vec deg (o a) -> Vec deg a -> Vec deg (h a)
+    mkPathConstraints :: CollStage x z u deg SXElement -> Vec deg (o SXElement) -> Vec deg SXElement -> Vec deg (h SXElement)
     mkPathConstraints (CollStage _ collPoints) =
       TV.tvzipWith3 mkPathC collPoints
 
-    mkPathC :: CollPoint x z u a -> o a -> a -> h a
+    mkPathC :: CollPoint x z u SXElement -> o SXElement -> SXElement -> h SXElement
     mkPathC (CollPoint x z u) = ocpPathC ocp x z u p
 
 

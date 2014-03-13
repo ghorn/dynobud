@@ -3,7 +3,7 @@
 {-# Language FlexibleContexts #-}
 
 module Hascm.Casadi.SXElement
-       ( funToSX, algToSX, funToSX', SXElement
+       ( funToSX, funSXToSX, algToSX, funToSX', SXElement
        ) where
 
 import Data.Vector.Generic ( (!) )
@@ -36,6 +36,17 @@ funToSX :: (Vectorize f, Vectorize g) =>
            (forall a . Floating a => f a -> g a) -> IO (f SXElement, g SXElement)
 funToSX f = do
   let asFunOf :: (f Double -> g Double) -> f Double
+      asFunOf _ = undefined
+      len = vlength (asFunOf f)
+  inputsVec <- casadiSsyms "x" len
+  let inputs = devectorize inputsVec
+      outputs = f inputs
+  return (inputs, outputs)
+
+funSXToSX :: (Vectorize f, Vectorize g) =>
+           (f SXElement -> g SXElement) -> IO (f SXElement, g SXElement)
+funSXToSX f = do
+  let asFunOf :: (f SXElement -> g SXElement) -> f SXElement
       asFunOf _ = undefined
       len = vlength (asFunOf f)
   inputsVec <- casadiSsyms "x" len

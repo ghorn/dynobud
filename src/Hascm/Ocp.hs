@@ -3,6 +3,8 @@
 
 module Hascm.Ocp ( Dae, OcpPhase(..) ) where
 
+import Hascm.Casadi.SXElement ( SXElement )
+
 -- | fully implicit differential-algebraic equation of the form:
 --
 -- > f(x'(t), x(t), z(t), u(t), p, t) == 0
@@ -40,15 +42,15 @@ type Dae x z u p r o a = x a -> x a -> z a -> u a -> p a -> a -> (r a, o a)
 
 data OcpPhase x z u p r o c h =
   OcpPhase { -- | the Mayer term @Jm(x(T),T)@
-             ocpMayer :: forall a. Floating a => x a -> a -> a
+             ocpMayer :: x SXElement -> SXElement -> SXElement
              -- | the Lagrange term @Jl(x(t),z(t),u(t),p,t)@
-           , ocpLagrange :: forall a. Floating a => x a -> z a -> u a -> p a -> o a -> a -> a
+           , ocpLagrange :: x SXElement -> z SXElement -> u SXElement -> p SXElement -> o SXElement -> SXElement -> SXElement
              -- | the system dynamics of the stage: @f(x'(t), x(t), z(t), u(t), p, t)@
-           , ocpDae :: forall a. Floating a => Dae x z u p r o a
+           , ocpDae :: Dae x z u p r o SXElement
              -- | the boundary conditions @c(x(0), x(T))@
-           , ocpBc :: forall a. Floating a => x a -> x a -> c a
+           , ocpBc :: x SXElement -> x SXElement -> c SXElement
              -- | the path constraints @h(x(t), z(t), u(t), p), t)@
-           , ocpPathC :: forall a. Floating a => x a -> z a -> u a -> p a -> o a -> a -> h a
+           , ocpPathC :: x SXElement -> z SXElement -> u SXElement -> p SXElement -> o SXElement -> SXElement -> h SXElement
              -- | the path constraint bounds @(hlb, hub)@
            , ocpPathCBnds :: h (Maybe Double, Maybe Double)
              -- | differential state bounds @(xlb, xub)@
