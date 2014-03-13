@@ -45,7 +45,7 @@ newGraph channame metaStore chanseq = do
   optionsWidget <- makeOptionsWidget graphInfoMVar
   options <- Gtk.expanderNew "options"
   Gtk.set options [ Gtk.containerChild := optionsWidget
-                  , Gtk.expanderExpanded := True
+                  , Gtk.expanderExpanded := False
                   ]
 
 
