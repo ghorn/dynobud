@@ -13,6 +13,7 @@ import Linear.V ( Dim )
 import Data.Proxy ( Proxy(..) )
 
 import Hascm.Vectorize
+import Hascm.Cov
 import qualified Hascm.TypeVecs as TV
 import Hascm.TypeVecs ( Vec )
 import Hascm.DirectCollocation.Types
@@ -49,19 +50,21 @@ reifyCollStage (CollStage x0 points') f =
 
 reifyCollTraj
   :: forall a r.
-     CollTraj V.Vector V.Vector V.Vector V.Vector () () a
-  -> (forall x z u p n deg . (Vectorize x,Vectorize z,Vectorize u,Vectorize p, Dim n, Dim deg) =>
-      CollTraj x z u p n deg a -> r)
+     CollTraj V.Vector V.Vector V.Vector V.Vector V.Vector () () a
+  -> (forall x z u p s n deg . (Vectorize x,Vectorize z,Vectorize u,Vectorize p, Vectorize s, Dim n, Dim deg) =>
+      CollTraj x z u p s n deg a -> r)
   -> r
-reifyCollTraj (CollTraj endTime params stages' xf) f =
+reifyCollTraj (CollTraj endTime (Cov cov) params stages' xf) f =
   TV.reifyDim nx $ \(Proxy :: Proxy nx) ->
   TV.reifyDim nz $ \(Proxy :: Proxy nz) ->
   TV.reifyDim nu $ \(Proxy :: Proxy nu) ->
   TV.reifyDim np $ \(Proxy :: Proxy np) ->
+  TV.reifyDim ncov $ \(Proxy :: Proxy ncov) ->
   TV.reifyDim n $ \(Proxy :: Proxy n) ->
   TV.reifyDim deg $ \(Proxy :: Proxy deg) ->
   f (CollTraj
      endTime
+     (devectorize cov :: Cov (Vec ncov) a)
      (devectorize params :: Vec np a)
      (devectorize
       (V.map (\(CollStage x0 points'') ->
@@ -83,6 +86,7 @@ reifyCollTraj (CollTraj endTime params stages' xf) f =
     nz = V.length z1
     nu = V.length u1
     np = V.length params
+    ncov = nOfVecLen (V.length cov)
     n = V.length stages
     deg = V.length points
 

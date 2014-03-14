@@ -22,12 +22,18 @@ module Hascm.TypeVecs
        , (|>)
        , (<|)
        , tvtranspose
+       , tvzip
+       , tvzip3
+       , tvzip4
        , tvzipWith
        , tvzipWith3
        , tvunzip
+       , tvunzip3
        , tvhead
        , tvtail
+       , tvlast
        , tvshiftl
+       , tvshiftr
        , reifyVector
        , reifyDim
        , Dim
@@ -130,6 +136,15 @@ mkSeq = MkVec
 tvlength :: forall n a. Dim n => Vec n a -> Int
 tvlength _ = reflectDim (Proxy :: Proxy n)
 
+tvzip :: Vec n a -> Vec n b -> Vec n (a,b)
+tvzip x y = mkSeq (S.zip (unSeq x) (unSeq y))
+
+tvzip3 :: Vec n a -> Vec n b -> Vec n c -> Vec n (a,b,c)
+tvzip3 x y z = mkSeq (S.zip3 (unSeq x) (unSeq y) (unSeq z))
+
+tvzip4 :: Vec n a -> Vec n b -> Vec n c -> Vec n d -> Vec n (a,b,c,d)
+tvzip4 x y z w = mkSeq (S.zip4 (unSeq x) (unSeq y) (unSeq z) (unSeq w))
+
 tvzipWith :: (a -> b -> c) -> Vec n a -> Vec n b -> Vec n c
 tvzipWith f x y = mkSeq (S.zipWith f (unSeq x) (unSeq y))
 
@@ -141,6 +156,11 @@ tvunzip v = (mkVec v1, mkVec v2)
   where
     (v1,v2) = V.unzip (unVec v)
 
+tvunzip3 :: Vec n (a,b,c) -> (Vec n a, Vec n b, Vec n c)
+tvunzip3 v = (mkVec v1, mkVec v2, mkVec v3)
+  where
+    (v1,v2,v3) = V.unzip3 (unVec v)
+
 tvhead :: Vec n a -> a
 tvhead x = case S.viewl (unSeq x) of
   y S.:< _ -> y
@@ -151,10 +171,20 @@ tvtail x = case S.viewl (unSeq x) of
   _ S.:< ys -> mkSeq ys
   S.EmptyL -> error "vtail: empty"
 
+tvlast :: Vec n a -> a
+tvlast x = case S.viewr (unSeq x) of
+  _ S.:> y -> y
+  S.EmptyR -> error "vlast: empty"
+
 tvshiftl :: Dim n => Vec n a -> a -> Vec n a
 tvshiftl xs x = case S.viewl (unSeq xs) of
   _ S.:< ys -> mkSeq (ys S.|> x)
   S.EmptyL -> error "tvshiftl: EmptyL"
+
+tvshiftr :: Dim n => a -> Vec n a -> Vec n a
+tvshiftr x xs = case S.viewr (unSeq xs) of
+  ys S.:> _ -> mkSeq (x S.<| ys)
+  S.EmptyR -> error "tvshiftr: EmptyR"
 
 instance Show a => Show (Vec n a) where
   showsPrec _ = showV . F.toList . unSeq

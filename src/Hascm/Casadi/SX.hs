@@ -3,6 +3,7 @@
 module Hascm.Casadi.SX
        ( SX(), ssym, ssymV, ssymM, smm, strans
        , sgradient, sjacobian, shessian, svector
+       , ssolve
        , sdata
        , striu
        , stril
@@ -102,6 +103,10 @@ svertcat x = unsafePerformIO (C.vertcat'' x)
 shorzcat :: V.Vector SX -> SX
 shorzcat x = unsafePerformIO (C.horzcat'' x)
 {-# NOINLINE shorzcat #-}
+
+ssolve :: SX -> SX -> SX
+ssolve a b = unsafePerformIO (C.solve'' a b)
+{-# NOINLINE ssolve #-}
 
 instance Num SX where
   (+) x y = unsafePerformIO (sx___add__ x y)

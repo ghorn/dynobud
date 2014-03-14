@@ -28,7 +28,7 @@ import ServerSender ( withCallback )
 type NCollStages = D100
 type CollDeg = D2
 
-type GliderDesignVars a = CollTraj AcX None AcU None NCollStages CollDeg a
+type GliderDesignVars a = CollTraj AcX None AcU None None NCollStages CollDeg a
 
 mayer :: Num a => AcX a -> a -> a
 mayer _ _ = 0
@@ -57,7 +57,7 @@ dae x' x _ u _ _ = (aircraftDae (mass, inertia) fcs mcs refs x' x u, None)
     mcs = bettyMc
     refs = bettyRefs
 
-ocp :: OcpPhase AcX None AcU None AcX None AcX None
+ocp :: OcpPhase AcX None AcU None AcX None AcX None None None None
 ocp = OcpPhase { ocpMayer = mayer
                , ocpLagrange = lagrange
                , ocpDae = dae
@@ -70,6 +70,13 @@ ocp = OcpPhase { ocpMayer = mayer
                , ocpPbnd = None
                , ocpTbnd = (Just 0.5, Just 0.5)
 --               , ocpTbnd = (Just 4, Just 4)
+
+               , ocpSq = fill 0
+               , ocpSbnd = fill (Nothing,Nothing)
+               , ocpSc = \_ _ -> None
+               , ocpScBnds = None
+               , ocpSh = \_ _ -> None
+               , ocpShBnds = None
                }
 
 pathc :: x a -> z a -> u a -> p a -> None a -> a -> None a

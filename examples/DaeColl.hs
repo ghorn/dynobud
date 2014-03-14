@@ -68,7 +68,7 @@ pendDae (PendX x' y' vx' vy') (PendX x y vx vy) (PendZ tau) (PendU torque) (Pend
 --    dae['cdot'] = dae['dx']*dae['x'] + dae['dz']*dae['z']
 
 
-pendOcp :: OcpPhase PendX PendZ PendU PendP PendR PendO (Vec D8) None
+pendOcp :: OcpPhase PendX PendZ PendU PendP PendR PendO (Vec D8) None None None None
 pendOcp = OcpPhase { ocpMayer = mayer
                    , ocpLagrange = lagrange
                    , ocpDae = pendDae
@@ -80,6 +80,13 @@ pendOcp = OcpPhase { ocpMayer = mayer
                    , ocpZbnd = fill (Nothing, Nothing)
                    , ocpPbnd = fill (Just 0.3, Just 0.3)
                    , ocpTbnd = (Just 4, Just 10)
+
+                   , ocpSq = fill 0
+                   , ocpSbnd = fill (Nothing,Nothing)
+                   , ocpSc = \_ _ -> None
+                   , ocpScBnds = None
+                   , ocpSh = \_ _ -> None
+                   , ocpShBnds = None
                    }
 
 pathc :: x a -> z a -> u a -> p a -> o a -> a -> None a
@@ -110,7 +117,7 @@ bc (PendX x0 y0 vx0 vy0) (PendX xf yf vxf vyf) =
 type NCollStages = D80
 type CollDeg = D3
 
-guess :: CollTraj PendX PendZ PendU PendP NCollStages CollDeg Double
+guess :: CollTraj PendX PendZ PendU PendP None NCollStages CollDeg Double
 guess = fill 1
 
 main :: IO ()

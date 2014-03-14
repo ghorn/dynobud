@@ -1,11 +1,10 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language RankNTypes #-}
-{-# Language FlexibleInstances #-}
-{-# Language GeneralizedNewtypeDeriving #-}
-{-# Language PolyKinds #-}
 {-# Language ScopedTypeVariables #-}
 {-# Language PackageImports #-}
+{-# Language KindSignatures #-}
 {-# Language GADTs #-}
+{-# Language FlexibleInstances #-}
+{-# Language GeneralizedNewtypeDeriving #-}
 
 module Hascm.NlpSolver
        ( NlpSolver
@@ -249,7 +248,7 @@ data NlpState = NlpState { isNx :: Int
                          , isSolver :: NLPSolver
                          , isInterrupt :: IO ()
                          }
-newtype NlpSolver x p g a =
+newtype NlpSolver (x :: * -> *) (p :: * -> *) (g :: * -> *) a =
   NlpSolver (ReaderT NlpState IO a)
   deriving ( Functor
            , Applicative
@@ -367,18 +366,18 @@ solveStaticNlp solverStuff nlp callback = reifyNlp nlp callback foo
 
 
 solveOcp ::
-  forall x z u p r o c h nlp .
-  (NLPSolverClass nlp, Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize r, Vectorize o, Vectorize c, Vectorize h)
-  => NlpSolverStuff nlp -> Int -> Int -> Maybe (DynCollTraj Double -> IO Bool) -> OcpPhase x z u p r o c h -> IO ()
+  forall x z u p r o c h s sh sc nlp .
+  (NLPSolverClass nlp, Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize r, Vectorize o, Vectorize c, Vectorize h, Vectorize s, Vectorize sc, Vectorize sh)
+  => NlpSolverStuff nlp -> Int -> Int -> Maybe (DynCollTraj Double -> IO Bool) -> OcpPhase x z u p r o c h s sh sc -> IO ()
 solveOcp solverStuff n deg cb ocp =
   TV.reifyDim n $ \(Proxy :: Proxy n) ->
   TV.reifyDim deg $ \(Proxy :: Proxy deg) -> do
-    let guess :: CollTraj x z u p n deg Double
+    let guess :: CollTraj x z u p s n deg Double
         guess = fill 1
     _ <- solveNlp solverStuff ((makeCollNlp ocp) {nlpX0 = guess}) (fmap (. ctToDynamic) cb)
     return ()
 
 solveStaticOcp ::
   NLPSolverClass nlp =>
-  NlpSolverStuff nlp -> Int -> Int -> Maybe (DynCollTraj Double -> IO Bool) -> OcpPhase V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector -> IO ()
+  NlpSolverStuff nlp -> Int -> Int -> Maybe (DynCollTraj Double -> IO Bool) -> OcpPhase V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector -> IO ()
 solveStaticOcp solverStuff n deg cb ocp = reifyOcp ocp (solveOcp solverStuff n deg cb)

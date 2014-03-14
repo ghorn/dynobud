@@ -28,6 +28,7 @@ library
                        Hascm.DirectCollocation.Formulate
                        Hascm.DirectCollocation.Reify
                        Hascm.DirectCollocation.Dynamic
+                       Hascm.Cov
                        Hascm.Vectorize
                        Hascm.Nlp
                        Hascm.NlpMonad
@@ -162,3 +163,12 @@ executable gliderPlot
                        bytestring,
                        zeromq3-haskell
   ghc-options:         -O2
+
+executable covSpring
+  hs-source-dirs:      examples
+  main-is:             CovSpring.hs
+  default-language:    Haskell2010
+  build-depends:       hascm,
+                       vector,
+                       base >=4.6 && <4.8
+  ghc-options:         -threaded -O2

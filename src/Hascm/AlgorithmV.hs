@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language Rank2Types #-}
-{-# Language PolyKinds #-}
+{-# Language KindSignatures #-}
 
 module Hascm.AlgorithmV
        ( AlgorithmV(..)
@@ -22,7 +22,7 @@ import Dvda.Expr
 
 import Hascm.Vectorize
 
-newtype AlgorithmV f g a = AlgorithmV (Algorithm a)
+newtype AlgorithmV (f :: * -> *) (g :: * -> *) a = AlgorithmV (Algorithm a)
 
 toSymbolicAlgV :: Eq a => AlgorithmV f g a -> AlgorithmV f g (Expr a)
 toSymbolicAlgV (AlgorithmV alg) = AlgorithmV (toSymbolicAlg alg)

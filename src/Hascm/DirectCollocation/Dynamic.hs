@@ -30,6 +30,7 @@ import Linear.V
 
 import Hascm.Server.Accessors ( AccessorTree(..), Lookup(..), accessors )
 import Hascm.Vectorize
+import Hascm.Cov
 import qualified Hascm.TypeVecs as TV
 import Hascm.TypeVecs ( Vec )
 
@@ -45,11 +46,11 @@ data PlotPointsL x z u a =
   PlotPointsL [[(a, x a)]] [[(a, z a)]] [[(a, u a)]]
 
 plotPoints ::
-  forall x z u p n deg a .
+  forall x z u p s n deg a .
   (Dim n, Dim deg, Fractional a, Vectorize x)
-  => CollTraj x z u p n deg a ->
+  => CollTraj x z u p s n deg a ->
   PlotPoints n deg x z u a
-plotPoints ct@(CollTraj tf _ stages xf) = PlotPoints ret (tf', xf)
+plotPoints ct@(CollTraj tf _ _ stages xf) = PlotPoints ret (tf', xf)
   where
     (tf', ret) = T.mapAccumL f 0 stages
     nStages = TV.tvlength stages
@@ -163,11 +164,11 @@ forestFromMeta meta = [xTree,zTree,uTree]
         woo = map (map (\(t,x) -> (t, x V.! k)))
 
 
-toMeta :: forall x z u p n deg a .
+toMeta :: forall x z u p s n deg a .
           (Lookup (x ()), Lookup (z ()), Lookup (u ()), Lookup (p ()),
            Vectorize x, Vectorize z, Vectorize u, Vectorize p,
            Dim n, Dim deg)
-          => CollTraj x z u p n deg a -> CollTrajMeta
+          => CollTraj x z u p s n deg a -> CollTrajMeta
 toMeta ct =
   CollTrajMeta { ctmX = namesFromAccTree $ accessors (fill () :: x ())
                , ctmZ = namesFromAccTree $ accessors (fill () :: z ())
@@ -177,17 +178,18 @@ toMeta ct =
                , ctmDeg = ctDeg ct
                }
 
-newtype DynCollTraj a = DynCollTraj (CollTraj V.Vector V.Vector V.Vector V.Vector () () a) deriving Generic
+newtype DynCollTraj a = DynCollTraj (CollTraj V.Vector V.Vector V.Vector V.Vector V.Vector () () a)
+                      deriving Generic
 instance Serialize a => Serialize (DynCollTraj a)
 instance Serialize a => Serialize (V.Vector a) where
   put = put . V.toList
   get = fmap V.fromList get
 
 ctToDynamic ::
-  (Vectorize x, Vectorize z, Vectorize u, Vectorize p) =>
-  CollTraj x z u p n deg a -> DynCollTraj a
-ctToDynamic (CollTraj t p stages xf) = DynCollTraj $
-  CollTraj t (vectorize p) (TV.mkUnit (fmap csToDynamic stages)) (vectorize xf)
+  (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize s) =>
+  CollTraj x z u p s n deg a -> DynCollTraj a
+ctToDynamic (CollTraj t (Cov p0) p stages xf) = DynCollTraj $
+  CollTraj t (Cov p0) (vectorize p) (TV.mkUnit (fmap csToDynamic stages)) (vectorize xf)
 
 csToDynamic ::
   (Vectorize x, Vectorize z, Vectorize u) =>

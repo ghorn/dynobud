@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language FlexibleContexts #-}
-{-# Language PolyKinds #-}
+{-# Language KindSignatures #-}
 
 module Hascm.Casadi.SXFunction ( toSXFunction, evalSXFun, SXFunction ) where
 
@@ -16,7 +16,7 @@ import Casadi.Wrappers.Classes.FX
 
 import Hascm.Vectorize
 
-newtype SXFunction f g = SXFunction C.SXFunction
+newtype SXFunction (f :: * -> *) (g :: * -> *) = SXFunction C.SXFunction
 
 toSXFunction :: (Vectorize f, Vectorize g) => f SX -> g SX -> IO (SXFunction f g)
 toSXFunction inputs outputs = do

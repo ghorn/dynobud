@@ -47,6 +47,7 @@ import Dvda.Expr
 
 import Hascm.Casadi.SXElement ( SXElement )
 import Hascm.Ocp
+import Hascm.Cov
 import Hascm.AlgorithmV ( convertAlgorithm )
 import Hascm.Vectorize
 import Hascm.TypeVecs ( Vec )
@@ -329,7 +330,7 @@ buildOcpPhase ::
   -> (forall a . Floating a => (String -> BCMonad a a) -> (String -> BCMonad a a) -> BCMonad a ())
   -> ((String -> OcpMonad (Expr Double)) -> OcpMonad ())
   -> (Maybe Double, Maybe Double)
-  -> (OcpPhase V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector, Int -> Int -> CollTrajMeta)
+  -> (OcpPhase V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector, Int -> Int -> CollTrajMeta)
 buildOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds =
   (OcpPhase { ocpMayer = mayerFun
             , ocpLagrange = lagrangeFun
@@ -342,6 +343,13 @@ buildOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds =
             , ocpUbnd = V.replicate (length unames) (Nothing, Nothing)
             , ocpPbnd = V.replicate (length pnames) (Nothing, Nothing)
             , ocpTbnd = tbnds
+
+            , ocpSq = Cov V.empty
+            , ocpSbnd = Cov V.empty
+            , ocpSc = \_ _ -> V.empty
+            , ocpScBnds = V.empty
+            , ocpSh = \_ _ -> V.empty
+            , ocpShBnds = V.empty
             },
    \n deg -> CollTrajMeta { ctmX = NameTreeNode ("", "") (zip (map show xnames) (map NameTreeLeaf [0..]))
                           , ctmZ = NameTreeNode ("", "") (zip (map show znames) (map NameTreeLeaf [0..]))
@@ -513,9 +521,9 @@ buildOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds =
 -- so lazy divide-by-zero is totally fine.
 reifyOcp ::
   forall ret .
-  OcpPhase V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector
-  -> (forall x z u p r o c h . (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize r, Vectorize o, Vectorize c, Vectorize h)
-      => OcpPhase x z u p r o c h -> ret)
+  OcpPhase V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector V.Vector
+  -> (forall x z u p r o c h s sh sc . (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize r, Vectorize o, Vectorize c, Vectorize h, Vectorize s, Vectorize sc, Vectorize sh)
+      => OcpPhase x z u p r o c h s sh sc -> ret)
   -> ret
 reifyOcp ocp f =
   TV.reifyDim nx $ \(Proxy :: Proxy nx) ->
@@ -526,6 +534,9 @@ reifyOcp ocp f =
   TV.reifyDim no $ \(Proxy :: Proxy no) ->
   TV.reifyDim nc $ \(Proxy :: Proxy nc) ->
   TV.reifyDim nh $ \(Proxy :: Proxy nh) ->
+  TV.reifyDim ncov $ \(Proxy :: Proxy ncov) ->
+  TV.reifyDim nsh $ \(Proxy :: Proxy nsh) ->
+  TV.reifyDim nsc $ \(Proxy :: Proxy nsc) ->
   f OcpPhase
      { ocpMayer = (\x t -> ocpMayer ocp (vectorize x) t) :: Vec nx SXElement -> SXElement -> SXElement
      , ocpLagrange = (\x z u p o t -> ocpLagrange ocp (vectorize x) (vectorize z) (vectorize u) (vectorize p) (vectorize o) t) :: Vec nx SXElement -> Vec nz SXElement -> Vec nu SXElement -> Vec np SXElement -> Vec no SXElement -> SXElement -> SXElement
@@ -538,6 +549,17 @@ reifyOcp ocp f =
      , ocpUbnd = TV.mkVec (ocpUbnd ocp) :: Vec nu (Maybe Double, Maybe Double)
      , ocpPbnd = TV.mkVec (ocpPbnd ocp) :: Vec np (Maybe Double, Maybe Double)
      , ocpTbnd = ocpTbnd ocp
+
+     , ocpSq = devectorize (unCov (ocpSq ocp)) :: Cov (Vec ncov) Double
+     , ocpSbnd = devectorize (unCov (ocpSbnd ocp))
+
+     , ocpSc = (\(Cov p0) (Cov pf) -> devectorize (ocpSc ocp (Cov p0) (Cov pf)))
+               :: Cov (Vec ncov) SXElement -> Cov (Vec ncov) SXElement -> Vec nsc SXElement
+     , ocpScBnds = TV.mkVec (ocpScBnds ocp) :: Vec nsc (Maybe Double, Maybe Double)
+
+     , ocpSh = (\x (Cov p) -> devectorize (ocpSh ocp (vectorize x) (Cov p)))
+               :: Vec nx SXElement -> Cov (Vec ncov) SXElement -> Vec nsh SXElement
+     , ocpShBnds = TV.mkVec (ocpShBnds ocp) :: Vec nsh (Maybe Double, Maybe Double)
      }
   where
     nx = V.length (ocpXbnd ocp)
@@ -545,6 +567,10 @@ reifyOcp ocp f =
     nu = V.length (ocpUbnd ocp)
     np = V.length (ocpPbnd ocp)
     nh = V.length (ocpPathCBnds ocp)
+
+    ncov = nOfVecLen (V.length (unCov (ocpSbnd ocp)))
+    nsh = V.length (ocpShBnds ocp)
+    nsc = V.length (ocpScBnds ocp)
 
     nr = V.length daeRes
     no = V.length daeOut
