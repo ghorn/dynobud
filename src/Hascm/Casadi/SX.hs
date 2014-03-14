@@ -4,7 +4,9 @@ module Hascm.Casadi.SX
        ( SX(), ssym, ssymV, ssymM, smm, strans
        , sgradient, sjacobian, shessian, svector
        , sdata
-       , sdensify
+       , striu
+       , stril
+       , sfull
        , ssize, ssize1, ssize2, snumel
        , scrs, svertcat, shorzcat
        ) where
@@ -14,6 +16,7 @@ import System.IO.Unsafe ( unsafePerformIO )
 
 import Casadi.Wrappers.Classes.SXElement ( SXElement )
 import Casadi.Wrappers.Classes.SX
+import Casadi.Wrappers.Classes.GenSX
 import Casadi.Wrappers.Classes.Sparsity ( Sparsity )
 import qualified Casadi.Wrappers.Tools as C
 
@@ -51,9 +54,17 @@ strans :: SX -> SX
 strans x = unsafePerformIO (sx_trans x)
 {-# NOINLINE strans #-}
 
-sdensify :: SX -> SX
-sdensify x = unsafePerformIO (C.densify'' x)
-{-# NOINLINE sdensify #-}
+sfull :: SX -> SX
+sfull x = unsafePerformIO (C.full'' x)
+{-# NOINLINE sfull #-}
+
+striu :: SX -> SX
+striu x = unsafePerformIO (C.triu'' (castGenSX x))
+{-# NOINLINE striu #-}
+
+stril :: SX -> SX
+stril x = unsafePerformIO (C.tril'' (castGenSX x))
+{-# NOINLINE stril #-}
 
 scrs :: SX -> Sparsity
 scrs x = unsafePerformIO (sx_sparsityRef x)
@@ -69,19 +80,19 @@ sdata x = unsafePerformIO (sx_data x)
 {-# NOINLINE sdata #-}
 
 ssize :: SX -> Int
-ssize x = unsafePerformIO (sx_size x)
+ssize x = unsafePerformIO (genSX_size x)
 {-# NOINLINE ssize #-}
 
 ssize1 :: SX -> Int
-ssize1 x = unsafePerformIO (sx_size1 x)
+ssize1 x = unsafePerformIO (genSX_size1 x)
 {-# NOINLINE ssize1 #-}
 
 ssize2 :: SX -> Int
-ssize2 x = unsafePerformIO (sx_size2 x)
+ssize2 x = unsafePerformIO (genSX_size2 x)
 {-# NOINLINE ssize2 #-}
 
 snumel :: SX -> Int
-snumel x = unsafePerformIO (sx_numel x)
+snumel x = unsafePerformIO (genSX_numel x)
 {-# NOINLINE snumel #-}
 
 svertcat :: V.Vector SX -> SX

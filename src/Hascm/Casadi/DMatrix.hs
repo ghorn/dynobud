@@ -2,7 +2,7 @@
 
 module Hascm.Casadi.DMatrix
        ( DMatrix(), dcrs, dmm, dvector, ddata
-       , ddensify, dtrans
+       , dfull, dtrans
        , dsize, dsize1, dsize2, dnumel
        , dvertcat, dhorzcat
        ) where
@@ -12,6 +12,7 @@ import System.IO.Unsafe ( unsafePerformIO )
 
 import Casadi.Wrappers.Classes.Sparsity
 import Casadi.Wrappers.Classes.DMatrix
+import Casadi.Wrappers.Classes.GenDMatrix
 import qualified Casadi.Wrappers.Tools as C
 
 -- | matrix matrix product
@@ -24,9 +25,9 @@ dtrans :: DMatrix -> DMatrix
 dtrans x = unsafePerformIO (dmatrix_trans x)
 {-# NOINLINE dtrans #-}
 
-ddensify :: DMatrix -> DMatrix
-ddensify x = unsafePerformIO (C.densify' x)
-{-# NOINLINE ddensify #-}
+dfull :: DMatrix -> DMatrix
+dfull x = unsafePerformIO (C.full' x)
+{-# NOINLINE dfull #-}
 
 dcrs :: DMatrix -> Sparsity
 dcrs x = unsafePerformIO (dmatrix_sparsityRef x)
@@ -42,19 +43,19 @@ ddata x = unsafePerformIO (dmatrix_data x)
 {-# NOINLINE ddata #-}
 
 dsize :: DMatrix -> Int
-dsize x = unsafePerformIO (dmatrix_size x)
+dsize x = unsafePerformIO (genDMatrix_size x)
 {-# NOINLINE dsize #-}
 
 dsize1 :: DMatrix -> Int
-dsize1 x = unsafePerformIO (dmatrix_size1 x)
+dsize1 x = unsafePerformIO (genDMatrix_size1 x)
 {-# NOINLINE dsize1 #-}
 
 dsize2 :: DMatrix -> Int
-dsize2 x = unsafePerformIO (dmatrix_size2 x)
+dsize2 x = unsafePerformIO (genDMatrix_size2 x)
 {-# NOINLINE dsize2 #-}
 
 dnumel :: DMatrix -> Int
-dnumel x = unsafePerformIO (dmatrix_numel x)
+dnumel x = unsafePerformIO (genDMatrix_numel x)
 {-# NOINLINE dnumel #-}
 
 dvertcat :: V.Vector DMatrix -> DMatrix
