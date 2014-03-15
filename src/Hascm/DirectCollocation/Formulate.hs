@@ -6,9 +6,10 @@ module Hascm.DirectCollocation.Formulate
        ( makeCollNlp
        , mkTaus
        , interpolate
+       , makeGuess
        ) where
 
-import Debug.Trace
+--import Debug.Trace
 import Control.Applicative ( pure )
 import qualified Data.Vector as V
 import qualified Data.Foldable as F
@@ -268,16 +269,16 @@ propogateCovariance ::
   -> (CollStage x z u deg SXElement, CollDynConstraint deg r SXElement, x SXElement, Cov s Double)
   -> Cov s SXElement
 propogateCovariance p0' (CollStage x0 cps, CollDynConstraint dynConstrs, interpolatedX, q0') =
-  if covN p0' == 0 then p0' else
-    (x0',
-     (ssize1 x0', ssize2 x0'),
-     (ssize1 df_dx0, ssize2 df_dx0),
-     (ssize1 df_dz, ssize2 df_dz),
-     (ssize1 dz_dx0, ssize2 dz_dx0),
-     (ssize1 dx1_dx0, ssize2 dx1_dx0),
-     (ssize1 p1, ssize2 p1)
-    )
-    `traceShow`
+  if covN p0' == 0 then p0' else -- supress casadi zero size matrix error
+--    (x0',
+--     (ssize1 x0', ssize2 x0'),
+--     (ssize1 df_dx0, ssize2 df_dx0),
+--     (ssize1 df_dz, ssize2 df_dz),
+--     (ssize1 dz_dx0, ssize2 dz_dx0),
+--     (ssize1 dx1_dx0, ssize2 dx1_dx0),
+--     (ssize1 p1, ssize2 p1)
+--    )
+--    `traceShow`
     fromMatrix p1
   where
     q0 = toMatrix (fmap realToFrac q0')
@@ -311,3 +312,39 @@ interpolate taus x0 xs = dot (TV.mkVec' xis) (x0 TV.<| xs)
   where
     xis = map (lagrangeXis (0 : F.toList taus) 1) [0..deg]
     deg = TV.tvlength taus
+
+
+-- | make an initial guess
+makeGuess ::
+  forall x z u p s deg n .
+  (Dim n, Dim deg)
+  => Double -> (Double -> x Double) -> (Double -> z Double) -> (Double -> u Double)
+  -> Cov s Double -> p Double
+  -> CollTraj x z u p s n deg Double
+makeGuess tf guessX guessZ guessU cov' parm = CollTraj tf cov' parm guesses (guessX tf)
+  where
+
+    -- timestep
+    h = tf / fromIntegral n
+    n = vlength (undefined :: Vec n ())
+
+    -- initial time at each collocation stage
+    t0s :: Vec n Double
+    t0s = TV.mkVec' $ take n [h * fromIntegral k | k <- [(0::Int)..]]
+
+    -- times at each collocation point
+    times :: Vec n (Double, Vec deg Double)
+    times = fmap (\t0 -> (t0, fmap (\tau -> t0 + tau*h) taus)) t0s
+
+    mkGuess' :: (Double, Vec deg Double) -> CollStage x z u deg Double
+    mkGuess' (t,ts) = CollStage (guessX t) $
+                      fmap (\t' -> CollPoint (guessX t') (guessZ t') (guessU t')) ts
+
+    guesses :: Vec n (CollStage x z u deg Double)
+    guesses = fmap mkGuess' times
+
+    -- the collocation points
+    --taus :: forall b. Fractional b => Vec deg b
+    taus = mkTaus deg
+
+    deg = vlength (undefined :: Vec deg ())
