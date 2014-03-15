@@ -83,6 +83,7 @@ data NlpSolverStuff nlp =
   { nlpConstructor :: FX -> IO nlp
   , defaultOptions :: [(String,Opt)]
   , solverInterruptCode :: Int
+  , successCodes :: [String]
   }
 data Opt where
   Opt :: NlpOption a => a -> Opt
@@ -214,7 +215,7 @@ solve = do
                 Left _ -> takeMVar stop >> return () -- don't handle this one
     fx_getStat nlp "return_status"  >>= printableObject_getDescription
 
-  return $ if solveStatus `elem` ["Solve_Succeeded", "Solved_To_Acceptable_Level"]
+  return $ if solveStatus `elem` (isSuccessCodes nlpState)
     then Right solveStatus
     else Left solveStatus
 
@@ -247,6 +248,7 @@ data NlpState = NlpState { isNx :: Int
                          , isNp :: Int
                          , isSolver :: NLPSolver
                          , isInterrupt :: IO ()
+                         , isSuccessCodes :: [String]
                          }
 newtype NlpSolver (x :: * -> *) (p :: * -> *) (g :: * -> *) a =
   NlpSolver (ReaderT NlpState IO a)
@@ -302,6 +304,7 @@ runNlpSolver solverStuff nlpFun callback' (NlpSolver nlpMonad) = do
                           , isNg = V.length g
                           , isSolver = nlp
                           , isInterrupt = writeIORef intref True
+                          , isSuccessCodes = successCodes solverStuff
                           }
   liftIO $ runReaderT nlpMonad nlpState
 

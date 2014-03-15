@@ -18,5 +18,6 @@ ipoptSolver =
                      , ("tol", Opt (1e-9 :: Double))
                      ]
   , solverInterruptCode = 1
+  , successCodes = ["Solve_Succeeded", "Solved_To_Acceptable_Level"]
   }
 

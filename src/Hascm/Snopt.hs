@@ -18,5 +18,6 @@ snoptSolver =
                      --, ("monitor", V.fromList ["setup_nlp"])
                      ]
   , solverInterruptCode = -2
+  , successCodes = ["1"]
   }
 
