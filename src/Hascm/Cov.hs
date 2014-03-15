@@ -11,6 +11,8 @@ module Hascm.Cov
        , toMatrix
        , fromMatrix
        , nOfVecLen
+       , diag
+       , diag'
        ) where
 
 import Control.Monad ( when )
@@ -20,6 +22,8 @@ import GHC.Generics
 import System.IO.Unsafe ( unsafePerformIO )
 import Casadi.Wrappers.Classes.Sparsity ( sparsity_triu )
 import Casadi.Wrappers.Classes.SX ( sx''''''''' )
+import Casadi.Wrappers.Classes.GenSX ( GenSXClass(..) )
+import Casadi.Wrappers.Tools ( triu2symm'' )
 
 import Hascm.Casadi.SX
 import Hascm.Casadi.SXElement
@@ -38,7 +42,7 @@ instance Vectorize f => Vectorize (Cov f) where
   devectorize :: forall a . V.Vector a -> Cov f a
   devectorize v
     | vl == tvl = ret
-    | otherwise = error $ "Cov: devectorize dimension mismatch: " ++ show (vl, tvl)
+    | otherwise = error $ "Cov: devectorize dimension mismatch, want: " ++ show tvl ++ ", got: " ++ show vl
     where
       vl = V.length v
       tvl = vlength ret
@@ -54,8 +58,27 @@ toMatrix c@(Cov xs) = unsafePerformIO $ do
   let n = covN c
   when (covLength c /= V.length xs) $ error "toMatrix mismatch :("
   sp <- sparsity_triu n
-  sx''''''''' sp xs
+  triu <- sx''''''''' sp xs
+  triu2symm'' (castGenSX triu)
 {-# NOINLINE toMatrix #-}
+
+diag :: (Num a, Vectorize f) => f a -> Cov f a
+diag = flip diag' 0
+
+diag' :: forall f a . Vectorize f => f a -> a -> Cov f a
+diag' v' offDiag = devectorize $ V.fromList (reverse (concat (foo v n)))
+  where
+    v = reverse (V.toList (vectorize v'))
+    n = vlength v'
+
+    blah :: Int -> a -> [a]
+    blah k x = x : replicate (k-1) offDiag
+
+    foo :: [a] -> Int -> [[a]]
+    foo (v0:vs) k = blah k v0 : foo vs (k-1)
+    foo [] 0 = []
+    foo _ _ = error "Cov: diag mismatch"
+
 
 fromMatrix :: Vectorize f => SX -> Cov f SXElement
 fromMatrix x = devectorize (sdata (striu (sfull x)))
