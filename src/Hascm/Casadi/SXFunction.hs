@@ -1,5 +1,4 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language FlexibleContexts #-}
 {-# Language KindSignatures #-}
 
 module Hascm.Casadi.SXFunction ( toSXFunction, evalSXFun, SXFunction ) where

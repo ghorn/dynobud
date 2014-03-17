@@ -39,8 +39,10 @@ library
                        Hascm.Ipopt
 --                       Hascm.Snopt
                        Hascm.Casadi.IOSchemes
-                       Hascm.Casadi.SXFunction
+                       Hascm.Casadi.MX
+                       Hascm.Casadi.MXFunction
                        Hascm.Casadi.SX
+                       Hascm.Casadi.SXFunction
                        Hascm.Casadi.SXElement
                        Hascm.Casadi.DMatrix
 --                       Hascm.Sqp.Sqp

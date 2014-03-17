@@ -40,7 +40,7 @@ sjacobian :: SX -> SX -> SX
 sjacobian x y = unsafePerformIO (C.jacobian x y)
 {-# NOINLINE sjacobian #-}
 
--- | @jacobian exp x@ is the jacobian of exp w.r.t. x
+-- | @hessian exp x@ is the hessian of exp w.r.t. x
 shessian :: SX -> SX -> SX
 shessian x y = unsafePerformIO (C.hessian x y)
 {-# NOINLINE shessian #-}
