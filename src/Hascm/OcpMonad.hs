@@ -463,15 +463,15 @@ buildOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds =
         {-# NOINLINE alg #-}
 
 
-    mayerFun :: forall a. Floating a => V.Vector a -> a -> a
-    mayerFun x t =
+    mayerFun :: forall a. Floating a => a -> V.Vector a -> V.Vector a -> Cov V.Vector a -> Cov V.Vector a -> a
+    mayerFun t _ xf _ _ =
       case runWriter (runErrorT (mayerMonad lookupState t)) of
         (Left errmsg, logs) ->
           error $ unlines $ ("" : map show logs) ++ ["","mayer monad failure: " ++ show errmsg]
         (Right ret, _) -> ret
       where
         xmap :: M.Map Sym a
-        xmap = M.fromList $ zip xnames (V.toList x)
+        xmap = M.fromList $ zip xnames (V.toList xf)
 
         lookupState :: String -> ErrorT ErrorMessage (Writer [LogMessage]) a
         lookupState name = do
@@ -538,7 +538,7 @@ reifyOcp ocp f =
   TV.reifyDim nsh $ \(Proxy :: Proxy nsh) ->
   TV.reifyDim nsc $ \(Proxy :: Proxy nsc) ->
   f OcpPhase
-     { ocpMayer = (\x t -> ocpMayer ocp (vectorize x) t) :: Vec nx SXElement -> SXElement -> SXElement
+     { ocpMayer = (\t x0 xf (Cov p0) (Cov pf) -> ocpMayer ocp t (vectorize x0) (vectorize xf) (Cov p0) (Cov pf) ) :: SXElement -> Vec nx SXElement -> Vec nx SXElement -> Cov (Vec ncov) SXElement -> Cov (Vec ncov) SXElement -> SXElement
      , ocpLagrange = (\x z u p o t -> ocpLagrange ocp (vectorize x) (vectorize z) (vectorize u) (vectorize p) (vectorize o) t) :: Vec nx SXElement -> Vec nz SXElement -> Vec nu SXElement -> Vec np SXElement -> Vec no SXElement -> SXElement -> SXElement
      , ocpDae = (\x' x z u p t -> (devectorize *** devectorize) (ocpDae ocp (vectorize x') (vectorize x) (vectorize z) (vectorize u) (vectorize p) t)) :: Dae (Vec nx) (Vec nz) (Vec nu) (Vec np) (Vec nr) (Vec no) SXElement
      , ocpBc = (\x0 xf -> devectorize (ocpBc ocp (vectorize x0) (vectorize xf))) :: Vec nx SXElement -> Vec nx SXElement -> Vec nc SXElement

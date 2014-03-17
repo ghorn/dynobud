@@ -43,8 +43,8 @@ type Dae x z u p r o a = x a -> x a -> z a -> u a -> p a -> a -> (r a, o a)
 
 type SXE = SXElement
 data OcpPhase x z u p r o c h s sh sc =
-  OcpPhase { -- | the Mayer term @Jm(x(T),T)@
-             ocpMayer :: x SXE -> SXE -> SXE
+  OcpPhase { -- | the Mayer term @Jm(T, x(0), x(T), P(0), P(t))@
+             ocpMayer :: SXE -> x SXE -> x SXE -> Cov s SXE -> Cov s SXE -> SXE
              -- | the Lagrange term @Jl(x(t),z(t),u(t),p,t)@
            , ocpLagrange :: x SXE -> z SXE -> u SXE -> p SXE -> o SXE -> SXE -> SXE
              -- | the system dynamics of the stage: @f(x'(t), x(t), z(t), u(t), p, t)@

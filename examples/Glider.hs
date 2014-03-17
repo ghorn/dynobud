@@ -15,6 +15,7 @@ import Hascm.NlpSolver
 
 import Hascm.Ocp
 import Hascm.DirectCollocation
+import Hascm.Cov
 import Hascm.DirectCollocation.Dynamic ( toMeta, ctToDynamic )
 
 import Hascm.Models.Aircraft
@@ -30,8 +31,8 @@ type CollDeg = D2
 
 type GliderDesignVars a = CollTraj AcX None AcU None None NCollStages CollDeg a
 
-mayer :: Num a => AcX a -> a -> a
-mayer _ _ = 0
+mayer :: Num a => a -> AcX a -> AcX a -> Cov None a -> Cov None a -> a
+mayer _ _ _ _ _ = 0
 
 lagrange :: Floating a => AcX a -> None a -> AcU a -> None a -> None a -> a -> a
 lagrange (AcX _ _ _ _ (AcU surfs)) _ (AcU surfs') _ _ _ =

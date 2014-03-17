@@ -48,7 +48,7 @@ getFg ocp (NlpInputs collTraj@(CollTraj tf p0 parm stages xf) _) = NlpFun obj g
   where
     obj = objLagrange + objMayer
 
-    objMayer = ocpMayer ocp xf tf
+    objMayer = ocpMayer ocp tf x0 xf p0 pF
     objLagrange = evaluateQuadratures (ocpLagrange ocp) collTraj outputs h taus times
 
     -- timestep

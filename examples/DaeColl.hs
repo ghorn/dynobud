@@ -6,7 +6,7 @@ module Main where
 
 --import qualified Data.Vector as V
 
-
+import Hascm.Cov
 import Hascm.Vectorize
 import Hascm.TypeVecs
 import Hascm.Nats
@@ -43,8 +43,8 @@ instance (Lookup a, Generic a) => Lookup (PendX a)
 instance (Lookup a, Generic a) => Lookup (PendZ a)
 instance (Lookup a, Generic a) => Lookup (PendU a)
 
-mayer :: Num a => PendX a -> a -> a
-mayer _ _ = 0
+mayer :: Num a => t -> PendX a -> PendX a -> Cov None a -> Cov None a -> a
+mayer _ _ _ _ _ = 0
 
 lagrange :: Floating a => PendX a -> PendZ a -> PendU a -> PendP a -> PendO a -> a -> a
 lagrange (PendX _ _ vx vy) (PendZ _) (PendU torque) (PendP _) _ _ = vx*vx + vy*vy + 1e-4*torque**2
