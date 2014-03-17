@@ -122,9 +122,9 @@ main = do
         cb' traj = cb (ctToDynamic traj, toMeta traj)
         nlp = (makeCollNlp ocp) { nlpX0 = guess }
 
-    opt' <- solveNlp ipoptSolver nlp (Just cb')
-    opt <- case opt' of Left msg -> error msg
-                        Right opt'' -> return opt''
+    (msg,opt') <- solveNlp ipoptSolver nlp (Just cb')
+    opt <- case msg of Left msg' -> error msg'
+                       Right _ -> return opt'
 --    let xopt = xOpt opt
 --        lambda = lambdaOpt opt
 --

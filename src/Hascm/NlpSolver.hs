@@ -220,27 +220,26 @@ solve = do
     else Left solveStatus
 
 -- | solve with current inputs, return lots of info on success, or message on failure
-solve' :: (Vectorize x, Vectorize g) => NlpSolver x p g (Either String (NlpOut x g Double))
+solve' :: (Vectorize x, Vectorize g) => NlpSolver x p g (Either String String, NlpOut x g Double)
 solve' = do
   solveStatus <- solve
-  liftIO $ putStrLn $ "solve status: " ++ show solveStatus
-  case solveStatus of
-    Left ss -> return (Left ss)
-    Right _ -> do
-      fopt <- getF
-      xopt <- getX
-      gopt <- getG
-      lamXOpt <- getLamX
-      lamGOpt <- getLamG
-      let lambdaOut = Multipliers { lambdaX = lamXOpt
-                                  , lambdaG = lamGOpt
-                                  }
-          nlpOut = NlpOut { fOpt = fopt
-                          , xOpt = xopt
-                          , gOpt = gopt
-                          , lambdaOpt = lambdaOut
-                          }
-      return (Right nlpOut)
+
+  fopt <- getF
+  xopt <- getX
+  gopt <- getG
+  lamXOpt <- getLamX
+  lamGOpt <- getLamG
+  let lambdaOut = Multipliers { lambdaX = lamXOpt
+                              , lambdaG = lamGOpt
+                              }
+      nlpOut = NlpOut { fOpt = fopt
+                      , xOpt = xopt
+                      , gOpt = gopt
+                      , lambdaOpt = lambdaOut
+                      }
+
+  --liftIO $ putStrLn $ "solve status: " ++ show solveStatus
+  return (solveStatus, nlpOut)
 
 
 data NlpState = NlpState { isNx :: Int
@@ -314,7 +313,7 @@ solveNlp ::
   (NLPSolverClass nlp, Vectorize x, Vectorize p, Vectorize g) =>
   NlpSolverStuff nlp ->
   Nlp x p g -> Maybe (x Double -> IO Bool)
-  -> IO (Either String (NlpOut x g Double))
+  -> IO (Either String String, NlpOut x g Double)
 solveNlp solverStuff nlp callback = do
   runNlpSolver solverStuff (nlpFG nlp) callback $ do
 
@@ -343,29 +342,22 @@ solveStaticNlp ::
   NLPSolverClass nlp =>
   NlpSolverStuff nlp ->
   Nlp V.Vector V.Vector V.Vector ->
-  Maybe (V.Vector Double -> IO Bool) -> IO (Either String (NlpOut V.Vector V.Vector Double))
+  Maybe (V.Vector Double -> IO Bool) -> IO (Either String String, NlpOut V.Vector V.Vector Double)
 solveStaticNlp solverStuff nlp callback = reifyNlp nlp callback foo
   where
     foo ::
       (Vectorize x, Vectorize p, Vectorize g) =>
       Nlp x p g -> Maybe (x Double -> IO Bool) ->
-      IO (Either String (NlpOut V.Vector V.Vector Double))
+      IO (Either String String, NlpOut V.Vector V.Vector Double)
     foo nlp' cb' = do
-      ret <- solveNlp solverStuff nlp' cb'
-      return $ case ret of
-        Left x -> Left x
-        Right (NlpOut { fOpt = fopt
-                      , xOpt = xopt
-                      , gOpt = gopt
-                      , lambdaOpt = Multipliers { lambdaX = lambdax
-                                                , lambdaG = lambdag
-                                                }}) ->
-          Right NlpOut { fOpt = fopt
-                       , xOpt = vectorize xopt
-                       , gOpt = vectorize gopt
-                       , lambdaOpt = Multipliers { lambdaX = vectorize lambdax
-                                                 , lambdaG = vectorize lambdag
-                                                 }}
+      (ret,nlpOut) <- solveNlp solverStuff nlp' cb'
+      let nlpOut' = NlpOut { fOpt = fOpt nlpOut
+                           , xOpt = vectorize (xOpt nlpOut)
+                           , gOpt = vectorize (gOpt nlpOut)
+                           , lambdaOpt = Multipliers { lambdaX = vectorize (lambdaX (lambdaOpt nlpOut))
+                                                     , lambdaG = vectorize (lambdaG (lambdaOpt nlpOut))
+                                                     }}
+      return (ret, nlpOut')
 
 
 solveOcp ::
