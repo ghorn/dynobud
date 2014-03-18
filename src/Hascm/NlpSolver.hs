@@ -8,6 +8,7 @@
 
 module Hascm.NlpSolver
        ( NlpSolver
+       , NLPSolverClass
        , runNlpSolver
        , solveNlp
        , solveStaticNlp
