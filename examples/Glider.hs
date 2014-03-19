@@ -5,23 +5,23 @@ module Main ( main ) where
 
 import Linear
 
-import Hascm.Vectorize
-import Hascm.Ipopt
---import Hascm.Snopt
---import Hascm.Sqp.Sqp
---import Hascm.Sqp.LineSearch
-import Hascm.Nlp
-import Hascm.NlpSolver
+import Dyno.Vectorize
+import Dyno.Ipopt
+--import Dyno.Snopt
+--import Dyno.Sqp.Sqp
+--import Dyno.Sqp.LineSearch
+import Dyno.Nlp
+import Dyno.NlpSolver
 
-import Hascm.Ocp
-import Hascm.DirectCollocation
-import Hascm.Cov
-import Hascm.DirectCollocation.Dynamic ( toMeta, ctToDynamic )
+import Dyno.Ocp
+import Dyno.DirectCollocation
+import Dyno.Cov
+import Dyno.DirectCollocation.Dynamic ( toMeta, ctToDynamic )
 
-import Hascm.Models.Aircraft
-import Hascm.Models.AeroCoeffs
-import Hascm.Models.Betty
-import Hascm.Nats
+import Dyno.Models.Aircraft
+import Dyno.Models.AeroCoeffs
+import Dyno.Models.Betty
+import Dyno.Nats
 
 import GliderShared
 import ServerSender ( withCallback )

@@ -7,7 +7,7 @@ import Data.ByteString.Char8 ( pack )
 import Data.Serialize
 import qualified System.ZMQ3 as ZMQ
 
-import Hascm.DirectCollocation.Dynamic
+import Dyno.DirectCollocation.Dynamic
 
 callback :: (Serialize a) => ZMQ.Socket ZMQ.Pub -> String -> a -> IO Bool
 callback publisher chanName stuff = do

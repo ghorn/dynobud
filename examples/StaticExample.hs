@@ -4,13 +4,13 @@ module Main where
 
 import qualified Data.Vector as V
 
-import Hascm.Nlp
-import Hascm.NlpMonad
-import Hascm.NlpSolver
-import Hascm.Ipopt
---import Hascm.Snopt
---import Hascm.Sqp.Sqp
---import Hascm.Sqp.LineSearch
+import Dyno.Nlp
+import Dyno.NlpMonad
+import Dyno.NlpSolver
+import Dyno.Ipopt
+--import Dyno.Snopt
+--import Dyno.Sqp.Sqp
+--import Dyno.Sqp.LineSearch
 
 buildRosen :: IO (Nlp V.Vector V.Vector V.Vector)
 buildRosen = fmap fst $ buildNlp' $ do

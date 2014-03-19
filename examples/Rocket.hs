@@ -3,10 +3,10 @@
 module Main ( main ) where
 
 --import Control.Concurrent ( threadDelay )
-import Hascm.OcpMonad
-import Hascm.Ipopt
---import Hascm.Snopt
-import Hascm.NlpSolver ( solveStaticOcp )
+import Dyno.OcpMonad
+import Dyno.Ipopt
+--import Dyno.Snopt
+import Dyno.NlpSolver ( solveStaticOcp )
 
 import Dvda.Expr
 import ServerSender

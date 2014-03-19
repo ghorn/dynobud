@@ -9,15 +9,15 @@ module Main where
 --import GHC.Generics ( Generic1 )
 import qualified Data.Vector as V
 
-import Hascm.Vectorize
-import Hascm.Nats
-import Hascm.TypeVecs ( Vec(..), mkVec' )
-import Hascm.Nlp
-import Hascm.NlpSolver
-import Hascm.Ipopt
---import Hascm.Snopt
---import Hascm.Sqp.Sqp
---import Hascm.Sqp.LineSearch
+import Dyno.Vectorize
+import Dyno.Nats
+import Dyno.TypeVecs ( Vec(..), mkVec' )
+import Dyno.Nlp
+import Dyno.NlpSolver
+import Dyno.Ipopt
+--import Dyno.Snopt
+--import Dyno.Sqp.Sqp
+--import Dyno.Sqp.LineSearch
 
 myNlp :: Nlp (Vec D2) None (Vec D1)
 myNlp = Nlp { nlpFG = fg

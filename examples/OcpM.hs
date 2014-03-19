@@ -2,10 +2,10 @@
 
 module Main ( main ) where
 
-import Hascm.OcpMonad
-import Hascm.Ipopt
---import Hascm.Snopt
-import Hascm.NlpSolver
+import Dyno.OcpMonad
+import Dyno.Ipopt
+--import Dyno.Snopt
+import Dyno.NlpSolver
 import Dvda.Expr
 import ServerSender
 import GliderShared

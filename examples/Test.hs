@@ -26,14 +26,14 @@ import Data.Maybe
 
 import qualified Data.Foldable as F
 
-import Hascm.Vectorize
-import Hascm.Nats
-import Hascm.TypeVecs -- ( Vec(..), mkVec', tvlength )
-import Hascm.Nlp
-import Hascm.NlpSolver
-import Hascm.Ipopt
-import Hascm.Snopt
-import Hascm.Casadi.SXElement
+import Dyno.Vectorize
+import Dyno.Nats
+import Dyno.TypeVecs -- ( Vec(..), mkVec', tvlength )
+import Dyno.Nlp
+import Dyno.NlpSolver
+import Dyno.Ipopt
+import Dyno.Snopt
+import Dyno.Casadi.SXElement
 
 -- NOTES
 -- chooseNonzero restricts the tests

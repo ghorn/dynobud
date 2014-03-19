@@ -6,20 +6,20 @@ module Main where
 
 --import qualified Data.Vector as V
 
-import Hascm.Cov
-import Hascm.Vectorize
-import Hascm.TypeVecs
-import Hascm.Nats
-import Hascm.Ipopt
---import Hascm.Snopt
---import Hascm.Sqp.Sqp
---import Hascm.Sqp.LineSearch
-import Hascm.Nlp
-import Hascm.NlpSolver
-import Hascm.Server.Accessors
+import Dyno.Cov
+import Dyno.Vectorize
+import Dyno.TypeVecs
+import Dyno.Nats
+import Dyno.Ipopt
+--import Dyno.Snopt
+--import Dyno.Sqp.Sqp
+--import Dyno.Sqp.LineSearch
+import Dyno.Nlp
+import Dyno.NlpSolver
+import Dyno.Server.Accessors
 
-import Hascm.Ocp
-import Hascm.DirectCollocation
+import Dyno.Ocp
+import Dyno.DirectCollocation
 
 data PendX a = PendX { pX :: a
                      , pY :: a

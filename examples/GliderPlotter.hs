@@ -9,9 +9,9 @@ import Data.ByteString.Char8 ( pack )
 import Data.Serialize
 import qualified System.ZMQ3 as ZMQ
 
-import Hascm.Server.Server ( runPlotter, newChannel )
+import Dyno.Server.Server ( runPlotter, newChannel )
 
-import Hascm.DirectCollocation.Dynamic
+import Dyno.DirectCollocation.Dynamic
 
 import GliderShared ( gliderUrl, gliderChannelName )
 
