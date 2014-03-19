@@ -60,6 +60,7 @@ quietNonlinearSnoptSolver =
                    [ ("detect_linear", Opt False)
                    , ("_isumm",Opt (0::Int))
                    , ("_scale_option", Opt (0::Int))
+                   , ("_optimality_tolerance", Opt (1e-9 :: Double))
                    ]
               }
 quietIpoptSolver :: NlpSolverStuff IpoptSolver
@@ -71,14 +72,14 @@ quietIpoptSolver =
                    ]
               }
 
---main' :: IO ()
---main' = do
+main' :: IO ()
+main' = do
 --  quickCheckWith (stdArgs {maxSuccess = 1000})
 --    (matchesGlpk quietIpoptSolver :: NlpTest D2 D1 -> Property)
 --  quickCheckWith (stdArgs {maxSuccess = 10000})
 --    (matchesGlpk quietSnoptSolver :: NlpTest D2 D1 -> Property)
---  quickCheckWith (stdArgs {maxSuccess = 10000})
---    (matchesGlpk quietNonlinearSnoptSolver :: NlpTest D2 D1 -> Property)
+  quickCheckWith (stdArgs {maxSuccess = 10000})
+    (matchesGlpk quietNonlinearSnoptSolver :: NlpTest D2 D1 -> Property)
 
 main :: IO ()
 main = defaultMainWithOpts tests runnerOpts
@@ -96,8 +97,8 @@ tests :: [Test]
 tests = [ testGroup "run NLP solvers on LPs"
           [ testProperty "snopt nonlinear"
             (matchesGlpk quietNonlinearSnoptSolver :: NlpTest D2 D1 -> Property)
-          , testProperty "snopt linear"
-            (matchesGlpk quietSnoptSolver :: NlpTest D2 D1 -> Property)
+--          , testProperty "snopt linear"
+--            (matchesGlpk quietSnoptSolver :: NlpTest D2 D1 -> Property)
           --, testProperty "ipopt"
           --  (matchesGlpk quietIpoptSolver :: NlpTest D2 D1 -> Property)
           ]
@@ -147,7 +148,7 @@ runSum' :: Fractional a => a -> [(a, Coef a)] -> a
 runSum' acc [] = acc
 runSum' acc ((_,Zero):xs) = runSum' acc xs
 runSum' acc ((x,Linear c):xs) = runSum' (acc + c*x) xs
-runSum' acc ((x,Nonlinear c):xs) = runSum' (acc + c*(x + 1e-14*x*x)) xs
+runSum' acc ((x,Nonlinear c):xs) = runSum' (acc + c*(x + 1e-140*x*x)) xs
 
 newtype Bnd = Bnd { unBound :: (Double,Double) }
 instance Arbitrary Bnd where
@@ -316,8 +317,20 @@ matchesGlpk solver (NlpTest params nlp) = monadicIO $ do
       ferr = abs (fopt - fOpt nlpOut)
       v'@(Valid fe' xe' ge') = validSol params (xOpt nlpOut) (fOpt nlpOut)
 
+      summary = unlines
+               [ "design vars"
+               , "  glpk: " ++ show xopt
+               , "  nlp:  " ++ show (F.toList (xOpt nlpOut))
+               , "objective"
+               , "  glpk: " ++ show fopt
+               , "  nlp:  " ++ show (fOpt nlpOut)
+               , ""
+               ]
   case ret of
-    Left code -> stop $ failed {reason = "nlp solver failed with code " ++ show code}
+    Left "3" -> stop $ rejected {reason = "nlp solver got code 3"}
+    Left code -> do
+      --run $ writeFile "counterexample.py" (toPython params)
+      stop $ failed {reason = "====== nlp solver failed with code " ++ show code ++ " =====\n"++summary}
     Right _ ->
       if | or [fe' > 1e-5, xe' > 1e-6, ge' > 1e-4] ->
             stop $ failed {reason = "returned invalid solution: " ++ show v'}
@@ -325,17 +338,8 @@ matchesGlpk solver (NlpTest params nlp) = monadicIO $ do
          | ferr <= 1e-6 -> stop $ rejected {reason =
              "two valid solutions match objective, don't match decision vars"}
          | otherwise -> do
-             -- run $ writeFile "counterexample.py" (toPython params)
-             stop $ failed { reason = unlines
-               [ "======== solution doesn't match glpk! ========"
-               , "design vars"
-               , "  glpk: " ++ show xopt
-               , "  nlp:  " ++ show (F.toList (xOpt nlpOut))
-               , "objective"
-               , "  glpk: " ++ show fopt
-               , "  nlp:  " ++ show (fOpt nlpOut)
-               , ""
-               ]}
+             run $ writeFile "counterexample.py" (toPython params)
+             stop $ failed { reason = "======== solution doesn't match glpk! ========\n" ++ summary }
 
 prettyPrint :: (Dim nx, Dim ng) => Params nx ng -> String
 prettyPrint (Params x0' bx' bg' goffset' objCoeffs' jacCoeffs') =
