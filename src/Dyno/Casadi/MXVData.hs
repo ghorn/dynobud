@@ -3,27 +3,28 @@
 {-# LANGUAGE PolyKinds #-}
 -- {-# LANGUAGE KindSignatures #-}
 
-module Dyno.Casadi.MXVData ( MXV(..), MX, veccat, vertsplit, size1 ) where
+module Dyno.Casadi.MXVData ( MXV(..), MX, veccat, vertsplit, size1, symV ) where
 
 import Data.Vector ( Vector)
 import GHC.Generics
 
 --import Dyno.Casadi.MX ( MX, veccat, vertsplit )
-import Dyno.Casadi.SX ( SX, sveccat, svertsplit, ssize1 )
+import Dyno.Casadi.SX ( SX, sveccat, svertsplit, ssize1, ssymV )
 
 type MX = SX
 
-veccat :: Vector SX -> SX
+veccat :: Vector MX -> MX
 veccat = sveccat
 
-vertsplit :: SX -> Vector Int -> Vector SX
+vertsplit :: MX -> Vector Int -> Vector MX
 vertsplit = svertsplit
 
-size1 :: SX -> Int
+size1 :: MX -> Int
 size1 = ssize1
 
---data MXV (f :: k -> *) = MXV MX deriving (Generic, Show)
---data MXV (f :: (* -> *) -> *) = MXV MX deriving Generic
+symV :: String -> Int -> IO SX
+symV = ssymV
+
 data MXV f = MXV { unMXV :: MX } deriving Generic
 
 instance Show (MXV f) where
