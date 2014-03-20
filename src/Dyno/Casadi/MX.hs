@@ -8,7 +8,7 @@ module Dyno.Casadi.MX
        , tril
        , full
        , size, size1, size2, numel
-       , crs, vertcat, horzcat
+       , crs, vertcat, horzcat, veccat, vertsplit
        ) where
 
 import qualified Data.Vector as V
@@ -89,6 +89,14 @@ numel x = unsafePerformIO (genMX_numel x)
 vertcat :: V.Vector MX -> MX
 vertcat x = unsafePerformIO (C.vertcat'''' x)
 {-# NOINLINE vertcat #-}
+
+veccat :: V.Vector MX -> MX
+veccat x = unsafePerformIO (C.veccat''' x)
+{-# NOINLINE veccat #-}
+
+vertsplit :: MX -> V.Vector Int -> V.Vector MX
+vertsplit x ks = unsafePerformIO (C.vertsplit'''''''''' x ks)
+{-# NOINLINE vertsplit #-}
 
 horzcat :: V.Vector MX -> MX
 horzcat x = unsafePerformIO (C.horzcat'''' x)

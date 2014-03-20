@@ -9,7 +9,7 @@ module Dyno.Casadi.SX
        , stril
        , sfull
        , ssize, ssize1, ssize2, snumel
-       , scrs, svertcat, shorzcat
+       , scrs, svertcat, shorzcat, sveccat, svertsplit
        ) where
 
 import qualified Data.Vector as V
@@ -103,6 +103,14 @@ svertcat x = unsafePerformIO (C.vertcat'' x)
 shorzcat :: V.Vector SX -> SX
 shorzcat x = unsafePerformIO (C.horzcat'' x)
 {-# NOINLINE shorzcat #-}
+
+sveccat :: V.Vector SX -> SX
+sveccat x = unsafePerformIO (C.veccat'' x)
+{-# NOINLINE sveccat #-}
+
+svertsplit :: SX -> V.Vector Int -> V.Vector SX
+svertsplit x ks = unsafePerformIO (C.vertsplit'''''' x ks)
+{-# NOINLINE svertsplit #-}
 
 ssolve :: SX -> SX -> SX
 ssolve a b = unsafePerformIO (C.solve'' a b)
