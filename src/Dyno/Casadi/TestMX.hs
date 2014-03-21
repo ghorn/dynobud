@@ -1,79 +1,53 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE PolyKinds #-}
-
--- -- for Show:
--- {-# LANGUAGE StandaloneDeriving #-}
--- {-# LANGUAGE UndecidableInstances #-}
 
 module Dyno.TestMX where
 
+import Linear.V ( Dim(..) )
 import GHC.Generics ( Generic )
 import Data.Proxy
-import qualified Data.Vector as V
-import Dyno.Casadi.MXV
-import Dyno.Casadi.MXVData
+import Dyno.Casadi.V
+import Dyno.Casadi.MX ( MX )
+import Dyno.Casadi.SX ( SX )
 
-data Id m = Id (m S) deriving ( Generic  )
-data Xy m = Xy (m S) (m S) deriving ( Generic )
-data Fctr f m = Fctr (m f) deriving ( Generic, Show )
-data Tuple f g m = Tuple (m f) (m g) deriving ( Generic, Show )
+data Id a = Id (V a S) deriving ( Generic )
+data Xy a = Xy (V a S) (V a S) deriving ( Generic )
+data Xyz a = Xyz (V a S) (V a S) (V a S) deriving ( Generic )
+data Fctr f a = Fctr (V a f) deriving ( Generic, Show )
+data Tuple f g a = Tuple (V a f) (V a g) deriving ( Generic, Show )
 
 instance View Id
 instance View Xy
+instance View Xyz
 instance View f => View (Fctr f)
 instance (View f, View g) => View (Tuple f g)
-
-
-
-
-
-
-
---deriving instance Show (m S) => Show (Id m)
---deriving instance Show (m S) => Show (Xy m)
 
 proxy :: a -> Proxy a
 proxy = const Proxy
 
-vertsplit' :: MX -> [Int] -> [MX]
-vertsplit' x ks = V.toList (vertsplit x (V.fromList ks))
 
---anTuple :: Tuple (Fctr Xy) (Fctr Id) MXV
---anTuple = Tuple x y
---  where
---    x :: MXV (Fctr Xy)
---    x = MXV $ ssymV' "x" 2
---    y :: MXV (Fctr Id)
---    y = MXV $ ssymV' "y" 1
---
---anFunctor :: Fctr Xy MXV
---anFunctor = Fctr x
---  where
---    x :: MXV Xy
---    x = MXV $ veccat (V.fromList [0,1])
+---- design variables
+data CollStage x z u deg a = CollStage (V a x) (V a (Vec deg (CollPoint x z u)))
+                           deriving (Generic, Show)
+instance (View x, View z, View u, Dim deg) => View (CollStage x z u deg)
 
---go2 :: MXV (Fctr Xy)
---go2 = cat anFunctor
---
---go :: MXV (Tuple (Fctr Xy) (Fctr Id))
---go = cat anTuple
---
---og2 :: (Fctr Xy) MXV
---og2 = split $ MXV (ssymV' "x" 2)
---
---og :: Tuple (Fctr Xy) (Fctr Id) MXV
---og = split $ MXV (ssymV' "x" 3)
+data CollPoint x z u a = CollPoint (V a x) (V a z) (V a u) deriving (Generic, Show)
+instance (View x, View z, View u) => View (CollPoint x z u)
+
+data D2
+instance Dim D2 where
+  reflectDim = const 2
+
 
 go :: IO ()
 go = do
-  woo <- msym "x" :: IO (MXV (Tuple (Fctr Xy) (Fctr Id)))
+  woo <- sym "x" :: IO (V MX (CollPoint (Tuple (Tuple Xy S) Xyz) Xyz Xy)) -- Tuple (Fctr Xy) (Fctr Id)))
   print woo
-  let oow = split woo
+  let oow@(CollPoint xp yp zp) = split woo
   print oow
+  print xp
+  print yp
+  print zp
   let wootoo = cat oow
   print wootoo
   return ()

@@ -4,7 +4,7 @@ module Dyno.Casadi.DMatrix
        ( DMatrix(), dcrs, dmm, dvector, ddata
        , dfull, dtrans
        , dsize, dsize1, dsize2, dnumel
-       , dvertcat, dhorzcat
+       , dvertcat, dhorzcat, dveccat, dvertsplit
        ) where
 
 import qualified Data.Vector as V
@@ -61,6 +61,14 @@ dnumel x = unsafePerformIO (genDMatrix_numel x)
 dvertcat :: V.Vector DMatrix -> DMatrix
 dvertcat x = unsafePerformIO (C.vertcat' x)
 {-# NOINLINE dvertcat #-}
+
+dveccat :: V.Vector DMatrix -> DMatrix
+dveccat x = unsafePerformIO (C.veccat' x)
+{-# NOINLINE dveccat #-}
+
+dvertsplit :: DMatrix -> V.Vector Int -> V.Vector DMatrix
+dvertsplit x ks = unsafePerformIO (C.vertsplit''' x ks)
+{-# NOINLINE dvertsplit #-}
 
 dhorzcat :: V.Vector DMatrix -> DMatrix
 dhorzcat x = unsafePerformIO (C.horzcat' x)
