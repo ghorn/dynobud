@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 
-module Dyno.Casadi.Viewable ( Viewable(..), MX, SX, DMatrix ) where
+module Dyno.Viewable ( Viewable(..), MX, SX, DMatrix ) where
 
 import qualified Data.Vector as V
 

@@ -11,7 +11,7 @@
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveTraversable #-}
 
-module Dyno.Casadi.V
+module Dyno.View
        ( V, View(..), Symbolic(..), Vec(..), VV(..), S(..), sym
        ) where
 
@@ -26,7 +26,7 @@ import qualified Data.Vector as V
 import Dyno.Casadi.SX ( SX, ssymV )
 import Dyno.Casadi.MX ( MX, symV )
 
-import Dyno.Casadi.Viewable ( Viewable(..) )
+import Dyno.Viewable ( Viewable(..) )
 import Dyno.Vectorize
 
 data V (a :: *) (f :: * -> *) = V { unV :: a } -- deriving Generic

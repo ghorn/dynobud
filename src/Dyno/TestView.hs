@@ -1,12 +1,12 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE DeriveGeneric #-}
 
-module Dyno.TestMX where
+module Dyno.TestView where
 
 import Linear.V ( Dim(..) )
 import GHC.Generics ( Generic )
 import Data.Proxy
-import Dyno.Casadi.V
+import Dyno.View
 import Dyno.Casadi.MX ( MX )
 import Dyno.Casadi.SX ( SX )
 
