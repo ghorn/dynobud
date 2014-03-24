@@ -1,13 +1,17 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language DeriveFunctor #-}
 {-# Language DeriveGeneric #-}
+{-# Language FlexibleInstances #-}
+{-# Language FlexibleContexts #-}
 
 module Main where
 
---import qualified Data.Vector as V
+import Data.Vector ( Vector )
 
 import Dyno.Cov
-import Dyno.Vectorize
+--import Dyno.Vectorize
+import Dyno.View.View
+import Dyno.View.Viewable
 import Dyno.TypeVecs
 import Dyno.Nats
 import Dyno.Ipopt
@@ -21,109 +25,125 @@ import Dyno.Server.Accessors
 import Dyno.Ocp
 import Dyno.DirectCollocation
 
-data PendX a = PendX { pX :: a
-                     , pY :: a
-                     , pVx :: a
-                     , pVy :: a
-                     } deriving (Functor, Generic, Generic1, Show)
-data PendZ a = PendZ { pTau :: a}  deriving (Functor, Generic, Generic1, Show)
-data PendU a = PendU { pTorque :: a } deriving (Functor, Generic, Generic1, Show)
-data PendP a = PendP { pMass :: a } deriving (Functor, Generic, Generic1, Show)
-data PendR a = PendR a a a a a deriving (Functor, Generic, Generic1, Show)
-data PendO a = PendO deriving (Functor, Generic, Generic1, Show)
+data PendX a = PendX { pX  :: J S a
+                     , pY  :: J S a
+                     , pVx :: J S a
+                     , pVy :: J S a
+                     } deriving (Generic, Show)
+data PendZ a = PendZ { pTau :: J S a}  deriving (Generic, Show)
+data PendU a = PendU { pTorque :: J S a } deriving (Generic, Show)
+data PendP a = PendP { pMass :: J S a } deriving (Generic, Show)
+data PendR a = PendR (J S a) (J S a) (J S a) (J S a) (J S a) deriving (Generic, Show)
+data PendO a = PendO deriving (Generic, Show)
 
-instance Vectorize PendX
-instance Vectorize PendZ
-instance Vectorize PendU
-instance Vectorize PendP
-instance Vectorize PendR
-instance Vectorize PendO
+instance View PendX
+instance View PendZ
+instance View PendU
+instance View PendP
+instance View PendR
+instance View PendO
 
-instance (Lookup a, Generic a) => Lookup (PendX a)
-instance (Lookup a, Generic a) => Lookup (PendZ a)
-instance (Lookup a, Generic a) => Lookup (PendU a)
+instance Lookup (PendX (Vector ()))
+instance Lookup (PendZ (Vector ()))
+instance Lookup (PendU (Vector ()))
 
-mayer :: Num a => t -> PendX a -> PendX a -> Cov None a -> Cov None a -> a
-mayer _ _ _ _ _ = 0
+mayer :: (Viewable a, Num a) => t -> J PendX a -> J PendX a -> J (Cov JNone) a -> J (Cov JNone) a -> J S a
+mayer _ _ _ _ _ = cat 0
 
-lagrange :: Floating a => PendX a -> PendZ a -> PendU a -> PendP a -> PendO a -> a -> a
-lagrange (PendX _ _ vx vy) (PendZ _) (PendU torque) (PendP _) _ _ = vx*vx + vy*vy + 1e-4*torque**2
+lagrange :: (Viewable a, Floating (J S a))
+            => J PendX a -> J PendZ a -> J PendU a -> J PendP a -> J PendO a -> J S a -> J S a
+lagrange x _ u _ _ _ = vx*vx + vy*vy + 1e-4*torque**2
+  where
+    PendX _ _ vx vy = split x
+    PendU torque = split u
 
 r :: Floating a => a
 r = 0.3
 
-pendDae :: Floating a => Dae PendX PendZ PendU PendP PendR PendO a
-pendDae (PendX x' y' vx' vy') (PendX x y vx vy) (PendZ tau) (PendU torque) (PendP m) _ =
-  (PendR (x' - vx) (y' - vy)
+pendDae :: (Viewable a, Floating (J S a)) => Dae PendX PendZ PendU PendP PendR PendO a
+pendDae xx' xx zz uu pp _ =
+  (cat $ PendR (x' - vx) (y' - vy)
   (m*vx' + x*tau - fx)
   (m*vy' + y*tau - fy)
   (x*vx' + y*vy' + (vx*vx + vy*vy))
-  , PendO
+  , cat PendO
   )
   where
     fx =  torque*y
     fy = -torque*x + m*9.8
+    (PendX x' y' vx' vy') = split xx'
+    (PendX x y vx vy) = split xx
+    (PendZ tau) = split zz
+    (PendU torque) = split uu
+    (PendP m) = split pp
 
 --    dae['c']    = dae['x']*dae['x'] + dae['z']*dae['z'] - r*r
 --    dae['cdot'] = dae['dx']*dae['x'] + dae['dz']*dae['z']
 
 
-pendOcp :: OcpPhase PendX PendZ PendU PendP PendR PendO (Vec D8) None None None None
+pendOcp :: OcpPhase PendX PendZ PendU PendP PendR PendO (Jec D8 S) JNone JNone JNone JNone
 pendOcp = OcpPhase { ocpMayer = mayer
                    , ocpLagrange = lagrange
                    , ocpDae = pendDae
                    , ocpBc = bc
                    , ocpPathC = pathc
-                   , ocpPathCBnds = None -- pathcb
+                   , ocpPathCBnds = cat JNone -- pathcb
+                   , ocpBcBnds = jfill (Just 0, Just 0)
                    , ocpXbnd = xbnd
                    , ocpUbnd = ubnd
-                   , ocpZbnd = fill (Nothing, Nothing)
-                   , ocpPbnd = fill (Just 0.3, Just 0.3)
-                   , ocpTbnd = (Just 4, Just 10)
+                   , ocpZbnd = jfill (Nothing, Nothing)
+                   , ocpPbnd = jfill (Just 0.3, Just 0.3)
+                   , ocpTbnd = jfill (Just 4, Just 10)
 
-                   , ocpSq = fill 0
-                   , ocpSbnd = fill (Nothing,Nothing)
-                   , ocpSc = \_ _ -> None
-                   , ocpScBnds = None
-                   , ocpSh = \_ _ -> None
-                   , ocpShBnds = None
+                   , ocpSq = 0
+                   , ocpSbnd = jfill (Nothing,Nothing)
+                   , ocpSc = \_ _ -> cat JNone
+                   , ocpScBnds = cat JNone
+                   , ocpSh = \_ _ -> cat JNone
+                   , ocpShBnds = cat JNone
                    }
 
-pathc :: x a -> z a -> u a -> p a -> o a -> a -> None a
-pathc _ _ _ _ _ _ = None
+pathc :: Viewable a => J x a -> J z a -> J u a -> J p a -> J o a -> J S a -> J JNone a
+pathc _ _ _ _ _ _ = cat JNone
 
-xbnd :: PendX (Maybe Double, Maybe Double)
-xbnd = PendX { pX =  (Just (-10), Just 10)
-             , pY =  (Just (-10), Just 10)
-             , pVx = (Just (-10), Just 10)
-             , pVy = (Just (-10), Just 10)
-             }
+xbnd :: J PendX (Vector Bounds)
+xbnd = jfill (Just (-10), Just 10)
+--xbnd = cat $
+--       PendX { pX =  cat $ S (Just (-10), Just 10)
+--             , pY =  cat $ S (Just (-10), Just 10)
+--             , pVx = cat $ S (Just (-10), Just 10)
+--             , pVy = cat $ S (Just (-10), Just 10)
+--             }
 
-ubnd :: PendU (Maybe Double, Maybe Double)
-ubnd = PendU (Just (-40), Just 40)
+ubnd :: J PendU (Vector Bounds)
+ubnd = jfill (Just (-40), Just 40)
 
-bc :: Floating a => PendX a -> PendX a -> Vec D8 a
-bc (PendX x0 y0 vx0 vy0) (PendX xf yf vxf vyf) =
-  mkVec' [ x0
-         , y0 + r
-         , vx0
-         , vy0
-         , xf
-         , yf - r
-         , vxf
-         , vyf
-         ]
+bc :: (Viewable a, Floating (J S a)) => J PendX a -> J PendX a -> J (Jec D8 S) a
+bc xx0 xxf =
+  cat $ Jec $ mkVec'
+  [ x0
+  , y0 + r
+  , vx0
+  , vy0
+  , xf
+  , yf - r
+  , vxf
+  , vyf
+  ]
+  where
+    PendX x0 y0 vx0 vy0 = split xx0
+    PendX xf yf vxf vyf = split xxf
 
 type NCollStages = D80
 type CollDeg = D3
 
-guess :: CollTraj PendX PendZ PendU PendP None NCollStages CollDeg Double
-guess = fill 1
+guess :: J (CollTraj PendX PendZ PendU PendP JNone NCollStages CollDeg) (Vector Double)
+guess = jfill 1
 
 main :: IO ()
 main = do
-  let nlp = (makeCollNlp pendOcp) { nlpX0 = guess }
-  _ <- solveNlp ipoptSolver nlp Nothing
+  nlp <- makeCollNlp pendOcp
+  _ <- solveNlp ipoptSolver (nlp { nlpX0 = guess }) Nothing
   --(Right nlpOut) <- solveNlp snoptSolver (makeCollNlp pendOcp) Nothing guess None Nothing
   --_ <- solveSqp (makeCollNlp pendOcp) armilloSearch (Nlp.xOpt nlpOut) None
   return ()

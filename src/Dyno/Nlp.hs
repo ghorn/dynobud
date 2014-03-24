@@ -1,33 +1,28 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language RankNTypes #-}
-{-# Language DeriveFunctor #-}
 {-# Language DeriveGeneric #-}
 
-module Dyno.Nlp ( Nlp(..), NlpInputs(..), NlpFun(..), NlpOut(..), Multipliers(..) ) where
+module Dyno.Nlp ( Nlp(..), NlpOut(..), Multipliers(..), Bounds ) where
 
-import Dyno.Vectorize
-import Dyno.Casadi.SXElement ( SXElement )
+import GHC.Generics ( Generic )
+import qualified Data.Vector as V
 
-data NlpOut x g a = NlpOut { fOpt :: a
-                           , xOpt :: x a
-                           , gOpt :: g a
+import Dyno.View.View ( J, S )
+
+data NlpOut x g a = NlpOut { fOpt :: J S a
+                           , xOpt :: J x a
+                           , gOpt :: J g a
                            , lambdaOpt :: Multipliers x g a
-                           } deriving (Eq, Show, Functor, Generic1)
+                           } deriving (Eq, Show, Generic)
 
-data Multipliers x g a = Multipliers { lambdaX :: x a
-                                     , lambdaG :: g a
-                                     } deriving (Eq, Show, Functor, Generic1)
+data Multipliers x g a = Multipliers { lambdaX :: J x a
+                                     , lambdaG :: J g a
+                                     } deriving (Eq, Show, Generic)
 
-data NlpFun g a = NlpFun a (g a) deriving (Eq, Show, Functor, Generic1)
-instance Vectorize g => Vectorize (NlpFun g)
-
-data NlpInputs x p a = NlpInputs (x a) (p a) deriving (Eq, Show, Functor, Generic1)
-instance (Vectorize x, Vectorize p) => Vectorize (NlpInputs x p)
-
-data Nlp x p g =
-  Nlp { nlpFG :: NlpInputs x p SXElement -> NlpFun g SXElement
-      , nlpBX :: x (Maybe Double, Maybe Double)
-      , nlpBG :: g (Maybe Double, Maybe Double)
-      , nlpX0 :: x Double
-      , nlpP :: p Double
+type Bounds = (Maybe Double, Maybe Double)
+data Nlp x p g a =
+  Nlp { nlpFG :: (J x a, J p a) -> (J S a, J g a)
+      , nlpBX :: J x (V.Vector Bounds)
+      , nlpBG :: J g (V.Vector Bounds)
+      , nlpX0 :: J x (V.Vector Double)
+      , nlpP  :: J p (V.Vector Double)
       }

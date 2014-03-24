@@ -1,105 +1,148 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language ScopedTypeVariables #-}
+-- {-# Language DeriveGeneric #-}
 {-# Language KindSignatures #-}
-{-# Language DeriveFunctor #-}
-{-# Language DeriveGeneric #-}
-{-# Language InstanceSigs #-}
 
 module Dyno.Cov
        ( Cov(..)
-       , covN
        , toMatrix
+       , toMatrix'
+       , toMatrix''
        , fromMatrix
-       , nOfVecLen
+       , fromMatrix'
+       , fromMatrix''
        , diag
        , diag'
+       , diag''
        ) where
 
+-- import GHC.Generics ( Generic )
 import Control.Monad ( when )
+import Data.Proxy ( Proxy(..) )
+import Data.Vector ( Vector )
 import qualified Data.Vector as V
 import Data.Serialize
-import GHC.Generics
 import System.IO.Unsafe ( unsafePerformIO )
 import Casadi.Wrappers.Classes.Sparsity ( sparsity_triu )
-import Casadi.Wrappers.Classes.SX ( sx''''''''' )
+import Casadi.Wrappers.Classes.SX --( sx''''''''' )
+import Casadi.Wrappers.Classes.MX --( mx'''''''''' )
+import Casadi.Wrappers.Classes.DMatrix
 import Casadi.Wrappers.Classes.GenSX ( GenSXClass(..) )
-import Casadi.Wrappers.Tools ( triu2symm'' )
+import Casadi.Wrappers.Classes.GenMX ( GenMXClass(..) )
+import Casadi.Wrappers.Classes.GenDMatrix ( GenDMatrixClass(..) )
+import qualified Casadi.Wrappers.Tools as C
 
-import Dyno.Casadi.SX
+import qualified Dyno.Casadi.SX as SX
+import qualified Dyno.Casadi.MX as MX
+import qualified Dyno.Casadi.DMatrix as DMatrix
 import Dyno.Casadi.SXElement
-import Dyno.Vectorize
+import Dyno.View.View
+import Dyno.View.Viewable
+import qualified Dyno.View.Symbolic as S
 
-data Cov (f :: * -> *) a = Cov { unCov :: V.Vector a } deriving (Eq, Functor, Generic, Generic1, Show)
+newtype Cov (f :: * -> *) a = Cov { unCov :: Vector (J S a) } deriving (Eq, Show)
+instance View f => View (Cov f) where
+  cat = mkJ . vveccat . fmap unJ . unCov
+  split = Cov . fmap mkJ . flip vvecsplit ks . unJ
+    where
+      ks = V.fromList $ take (1 + size (Proxy :: Proxy (Cov f))) [0..]
+      --sizes kf 0 = [kf]
+      --sizes k0 k = k0 : sizes (k0 + k) (k-1)
+      --n = size (Proxy :: Proxy f)
+  size = const $ (n*n + n) `div` 2
+    where
+      n = size (Proxy :: Proxy f)
+
 
 -- THIS SKIPS THE DEVECTORIZE LENGTH CHECK!!
 instance (Serialize a) => Serialize (Cov f a) where
   put = put . V.toList . unCov
   get = fmap (Cov . V.fromList) get
 
-instance Vectorize f => Vectorize (Cov f) where
-  vectorize :: Cov f a -> V.Vector a
-  vectorize = unCov
-  devectorize :: forall a . V.Vector a -> Cov f a
-  devectorize v
-    | vl == tvl = ret
-    | otherwise = error $ "Cov: devectorize dimension mismatch, want: " ++ show tvl ++ ", got: " ++ show vl
-    where
-      vl = V.length v
-      tvl = vlength ret
-      ret :: Cov f a
-      ret = Cov v
-  empty :: Cov f ()
-  empty = ret
-    where
-      ret = Cov (V.replicate (covLength ret) ())
-
-toMatrix :: Vectorize f => Cov f SXElement -> SX
-toMatrix c@(Cov xs) = unsafePerformIO $ do
-  let n = covN c
-  when (covLength c /= V.length xs) $ error "toMatrix mismatch :("
+toMatrix :: forall f . View f => J (Cov f) SX -> SX
+toMatrix c = unsafePerformIO $ do
+  let c'@(Cov xs) = split c
+      n = covN c'
+      _ = xs :: Vector (J S SX)
+      toScalar :: SX -> SXElement
+      toScalar x = case V.toList (SX.sdata (SX.sfull x)) of
+        [y] -> y
+        ys -> error $ "Cov: toMatrix: toScalar: got non-scalar, length " ++ show (length ys)
+      xs' = fmap (toScalar . unJ) xs :: Vector SXElement
+      expected = size (Proxy :: Proxy (Cov f))
+      actual = V.length xs
+  when (expected /= actual) $ error $
+    "toMatrix mismatch, dim: " ++ show n ++ ", expected: " ++
+    show expected ++ ", actual: " ++ show actual
   sp <- sparsity_triu n
-  triu <- sx''''''''' sp xs
-  triu2symm'' (castGenSX triu)
+  triu <- sx''''' sp xs'
+  C.triu2symm'' (castGenSX triu)
 {-# NOINLINE toMatrix #-}
 
-diag :: (Num a, Vectorize f) => f a -> Cov f a
-diag = flip diag' 0
+toMatrix' :: forall f . View f => J (Cov f) MX -> MX
+toMatrix' c = unsafePerformIO $ do
+  let mymx = unJ c
+      n = covN (split c)
+  sp <- sparsity_triu n
+  triu <- mx'''' sp mymx -- :: Sparsity -> MX -> IO MX
+  C.triu2symm''' (castGenMX triu)
+{-# NOINLINE toMatrix' #-}
 
-diag' :: forall f a . Vectorize f => f a -> a -> Cov f a
-diag' v' offDiag = devectorize $ V.fromList (reverse (concat (foo v n)))
-  where
-    v = reverse (V.toList (vectorize v'))
-    n = vlength v'
+toMatrix'' :: forall f . View f => J (Cov f) DMatrix -> DMatrix
+toMatrix'' c = unsafePerformIO $ do
+  let c'@(Cov xs) = split c
+      n = covN c'
+      _ = xs :: Vector (J S DMatrix)
+      toScalar :: DMatrix -> Double
+      toScalar x = case V.toList (DMatrix.ddata (DMatrix.dfull x)) of
+        [y] -> y
+        ys -> error $ "Cov: toMatrix: toScalar: got non-scalar, length " ++ show (length ys)
+      xs' = fmap (toScalar . unJ) xs :: Vector Double
+      expected = size (Proxy :: Proxy (Cov f))
+      actual = V.length xs
+  when (expected /= actual) $ error $
+    "toMatrix mismatch, dim: " ++ show n ++ ", expected: " ++
+    show expected ++ ", actual: " ++ show actual
+  sp <- sparsity_triu n
+  triu <- dmatrix''''' sp xs'
+  C.triu2symm' (castGenDMatrix triu)
+{-# NOINLINE toMatrix'' #-}
 
-    blah :: Int -> a -> [a]
-    blah k x = x : replicate (k-1) offDiag
+diag :: View f => J f SX -> J (Cov f) SX
+diag = fromMatrix . S.diag . unJ
 
-    foo :: [a] -> Int -> [[a]]
-    foo (v0:vs) k = blah k v0 : foo vs (k-1)
-    foo [] 0 = []
-    foo _ _ = error "Cov: diag mismatch"
+diag' :: View f => J f MX -> J (Cov f) MX
+diag' = fromMatrix' . MX.diag . unJ
 
+diag'' :: View f => J f DMatrix -> J (Cov f) DMatrix
+diag'' = fromMatrix'' . DMatrix.ddiag . unJ
 
-fromMatrix :: Vectorize f => SX -> Cov f SXElement
-fromMatrix x = devectorize (sdata (striu (sfull x)))
+--data X a = X (J S a) (J S a) deriving (Generic, Show)
+--instance View X
+--xx = X 1 2 :: X DMatrix
+--xx' = cat xx
+--
+--dd :: J (Cov X) DMatrix
+--dd = diag'' xx'
+--
+--sp :: DMatrix
+--sp = toMatrix'' dd
+--
+--dd2 :: J (Cov X) DMatrix
+--dd2 = fromMatrix'' sp
+--
+-- todo: this is way too dense
+fromMatrix :: View f => SX -> J (Cov f) SX
+fromMatrix x = unsafePerformIO $ fmap mkJ $ (C.vecNZ'' (SX.striu (SX.sfull x)))
+{-# NOINLINE fromMatrix #-}
 
-covLength :: Vectorize f => Cov f a -> Int
-covLength c = (n*n + n) `div` 2
-  where
-    n = vlength (fOf c)
+fromMatrix' :: View f => MX -> J (Cov f) MX
+fromMatrix' x = unsafePerformIO $ fmap mkJ $ (C.vecNZ''' (MX.triu (MX.full x)))
+{-# NOINLINE fromMatrix' #-}
 
-covN :: Vectorize f => Cov f a -> Int
-covN c = vlength (fOf c)
+fromMatrix'' :: View f => DMatrix -> J (Cov f) DMatrix
+fromMatrix'' x = unsafePerformIO $ fmap mkJ $ (C.vecNZ' (DMatrix.dtriu (DMatrix.dfull x)))
+{-# NOINLINE fromMatrix'' #-}
 
--- inverse of covLength
-nOfVecLen :: Int -> Int
-nOfVecLen vl
-  | abs (realToFrac intRet - doubleRet) < 1e-6 = intRet
-  | otherwise = error $ "nOfVecLen: i don't think this is a valid length: " ++
-                show (vl,doubleRet,intRet)
-  where
-    doubleRet = sqrt (2 * (fromIntegral vl :: Double) + 0.25) - 0.5
-    intRet = round doubleRet
-
-fOf :: Cov f a -> f a
-fOf _ = undefined
+covN :: forall f a . View f => Cov f a -> Int
+covN = const $ size (Proxy :: Proxy f)

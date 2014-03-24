@@ -6,6 +6,7 @@ module Dyno.Server.Server
        , Channel
        ) where
 
+import Data.Vector ( Vector )
 import qualified Control.Concurrent as CC
 import qualified Control.Concurrent.STM as STM
 import Control.Monad ( unless )
@@ -20,20 +21,23 @@ import qualified GHC.Stats
 
 import Dyno.Server.PlotTypes ( Channel(..) )
 import Dyno.Server.GraphWidget ( newGraph )
-import Dyno.DirectCollocation.Dynamic ( DynCollTraj, CollTrajMeta(..), dynPlotPointsL, forestFromMeta )
+import Dyno.DirectCollocation.Dynamic ( DynCollTraj(..), CollTrajMeta(..), dynPlotPoints, forestFromMeta )
 
+-- This only concerns if we should rebuild the plot tree or not.
+-- The devectorization won't break because we always use the
+-- new meta to get the plot points
 sameMeta :: Maybe CollTrajMeta -> Maybe CollTrajMeta -> Bool
 sameMeta Nothing Nothing = True
-sameMeta (Just (CollTrajMeta x0 z0 u0 p0 _ _)) (Just (CollTrajMeta x1 z1 u1 p1 _ _)) =
-  and [ x0 == x1
-      , z0 == z1
-      , u0 == u1
-      , p0 == p1
+sameMeta (Just ctm0) (Just ctm1) =
+  and [ ctmX ctm0 == ctmX ctm1
+      , ctmZ ctm0 == ctmZ ctm1
+      , ctmU ctm0 == ctmU ctm1
+      , ctmP ctm0 == ctmP ctm1
       ]
 sameMeta _ _ = False
 
 newChannel ::
-  String -> IO (Channel, (DynCollTraj Double, CollTrajMeta) -> IO ())
+  String -> IO (Channel, (DynCollTraj (Vector Double), CollTrajMeta) -> IO ())
 newChannel name = do
   time0 <- getCurrentTime
 
@@ -52,7 +56,7 @@ newChannel name = do
   let serverLoop :: Maybe CollTrajMeta -> Int -> IO ()
       serverLoop oldMeta k = do
         -- wait until a new message is written to the Chan
-        (newTraj,newMeta) <- getLastValue -- STM.atomically (STM.readTQueue trajChan)
+        (newTraj, newMeta) <- getLastValue
 
         -- grab the timestamp
         time <- getCurrentTime
@@ -67,7 +71,7 @@ newChannel name = do
               else Gtk.listStoreSetValue metaStore 0 (forestFromMeta newMeta)
 
           -- write to the mvar
-          _ <- CC.swapMVar trajMv (Just (dynPlotPointsL newTraj, k, diffUTCTime time time0))
+          _ <- CC.swapMVar trajMv (Just (dynPlotPoints newTraj newMeta, k, diffUTCTime time time0))
           return ()
 
         -- loop forever

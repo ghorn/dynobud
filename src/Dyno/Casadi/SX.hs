@@ -79,7 +79,7 @@ scrs x = unsafePerformIO (sx_sparsityRef x)
 
 -- | from SXElement vector
 svector :: V.Vector SXElement -> SX
-svector x = unsafePerformIO (sx''''''''''' x)
+svector x = unsafePerformIO (sx''''''' x)
 {-# NOINLINE svector #-}
 
 sdata :: SX -> V.Vector SXElement
@@ -122,6 +122,14 @@ ssolve :: SX -> SX -> SX
 ssolve a b = unsafePerformIO (C.solve'' a b)
 {-# NOINLINE ssolve #-}
 
+sones :: (Int,Int) -> SX
+sones (r,c) = unsafePerformIO (genSX_ones r c)
+{-# NOINLINE sones #-}
+
+szeros :: (Int,Int) -> SX
+szeros (r,c) = unsafePerformIO (genSX_zeros r c)
+{-# NOINLINE szeros #-}
+
 instance Num SX where
   (+) x y = unsafePerformIO (sx___add__ x y)
   {-# NOINLINE (+) #-}
@@ -129,7 +137,7 @@ instance Num SX where
   {-# NOINLINE (-) #-}
   (*) x y = unsafePerformIO (sx___mul__ x y)
   {-# NOINLINE (*) #-}
-  fromInteger x = unsafePerformIO (sx'''''''''' (fromInteger x))
+  fromInteger x = unsafePerformIO (sx'''''' (fromInteger x))
   {-# NOINLINE fromInteger #-}
   abs x = unsafePerformIO (sx_fabs x)
   {-# NOINLINE abs #-}
@@ -139,11 +147,11 @@ instance Num SX where
 instance Fractional SX where
   (/) x y = unsafePerformIO (sx___truediv__ x y)
   {-# NOINLINE (/) #-}
-  fromRational x = unsafePerformIO (sx'''''''''' (fromRational x))
+  fromRational x = unsafePerformIO (sx'''''' (fromRational x))
   {-# NOINLINE fromRational #-}
 
 instance Floating SX where
-  pi = unsafePerformIO (sx' pi)
+  pi = unsafePerformIO (sx'''''' pi)
   {-# NOINLINE pi #-}
   (**) x y = unsafePerformIO (sx___pow__ x y)
   {-# NOINLINE (**) #-}

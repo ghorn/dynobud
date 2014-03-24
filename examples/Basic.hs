@@ -6,12 +6,14 @@
 
 module Main where
 
---import GHC.Generics ( Generic1 )
+import GHC.Generics ( Generic )
 import qualified Data.Vector as V
 
-import Dyno.Vectorize
 import Dyno.Nats
-import Dyno.TypeVecs ( Vec(..), mkVec' )
+import Dyno.Vectorize
+import Dyno.TypeVecs -- ( Vec(..), unVec, mkVec' )
+import Dyno.View.View
+import Dyno.View.Symbolic
 import Dyno.Nlp
 import Dyno.NlpSolver
 import Dyno.Ipopt
@@ -19,55 +21,43 @@ import Dyno.Ipopt
 --import Dyno.Sqp.Sqp
 --import Dyno.Sqp.LineSearch
 
-myNlp :: Nlp (Vec D2) None (Vec D1)
+
+data X a = X a a deriving (Functor, Generic, Generic1, Show)
+data G a = G a deriving (Functor, Generic, Generic1, Show)
+
+instance Vectorize X
+instance Vectorize G
+
+myNlp :: Nlp (JV X) JNone (JV G) MX
 myNlp = Nlp { nlpFG = fg
-            , nlpBX = bx
-            , nlpBG = bg
-            , nlpX0 = x0
-            , nlpP = None
+            , nlpBX = cat bx
+            , nlpBG = cat bg
+            , nlpX0 = cat x0
+            , nlpP = cat JNone
             }
   where
-    x0 = mkVec' [-8,-8] :: Vec D2 Double
+    x0 :: JV X (V.Vector Double)
+    x0 = JV $ fmap V.singleton $ X ((-8)) ((-8))
 
-    bx = mkVec' [ (Just (-21), Just 0.5)
-                , (Just (-2), Just 2)
-                --, (Nothing, Nothing)
-                ]
-    bg = mkVec' [(Just (-10), Just 10)]
-    
-    fg :: forall a . Floating a => NlpInputs (Vec D2) None a -> NlpFun (Vec D1) a
-    fg (NlpInputs xs' _) = NlpFun f g
+    bx = JV $ fmap V.singleton $ X (Just (-21), Just 0.5) (Just (-2), Just 2)
+    bg = JV $ fmap V.singleton $ G (Just (-10), Just 10)
+
+    fg :: NlpInputs (JV X) JNone MX -> NlpFun (JV G) MX
+    fg (NlpInputs xs' _) = NlpFun (cat (S f)) (cat g)
       where
         f = (1-x)**2 + 100*(y - x**2)**2
-        g = mkVec' [x]
-        
-        xs = vectorize xs'
-        x = xs V.! 0
-        y = xs V.! 1
+        g = JV $ G x
 
---myNlp :: Nlp (Vec D2) (Vec D1)
---myNlp = Nlp fg bx bg
---  where
---    bx = mkVec' [(Just (31), Just (234)),(Just (-9), Just 9)]
---    --bg = mkVec' [(Just (-30), Just (-1))]
---    bg = mkVec' [(Just 3, Nothing)]
---    
---    fg :: forall a . Floating a => Vec D2 a -> NlpFun (Vec D1) a
---    fg xs' = NlpFun f g
---      where
---        f = x**4 + 3*y**4
---        g = mkVec' [y]
---        
---        xs = vectorize xs'
---        x = xs V.! 0
---        y = xs V.! 1
+        xy :: X MX
+        xy = unJV $ split xs'
+        X x y = xy
 
 main :: IO ()
 main = do
   opt <- solveNlp ipoptSolver myNlp Nothing
   print opt
---  opt2 <- solveNlpSnopt myNlp Nothing guess None Nothing
+--  opt2 <- solveNlpSnopt myNlp Nothing guess JNone Nothing
 --  print opt2
---  (x0, kktInf) <- solveSqp myNlp armilloSearch guess None
+--  (x0, kktInf) <- solveSqp myNlp armilloSearch guess NNone
 --  print x0
 --  print kktInf

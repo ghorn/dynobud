@@ -72,9 +72,9 @@ getFg :: forall x u c h n a .
   (Floating a, Vectorize x, Dim n) =>
   MsOcp x u c h ->
   (x a -> u a -> x a) ->
-  NlpInputs (MsTraj x u n) None a ->
-  NlpFun (MsConstraints x n c h) a
-getFg ocp integrator (NlpInputs (MsTraj xus xf) _) = NlpFun objective constraints
+  (MsTraj x u n a, None a) ->
+  (a, MsConstraints x n c h)
+getFg ocp integrator (MsTraj xus xf, _) = (objective, constraints)
   where
     xs = fmap (\(MsPoint x _) -> x) xus
     us = fmap (\(MsPoint _ u) -> u) xus

@@ -1,8 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language RankNTypes #-}
 {-# Language ScopedTypeVariables #-}
 {-# Language FlexibleContexts #-}
-{-# Language DeriveFunctor #-}
 {-# Language DeriveGeneric #-}
 
 module Dyno.DirectCollocation.Types
@@ -21,70 +19,68 @@ module Dyno.DirectCollocation.Types
 import Data.Proxy ( Proxy(..) )
 import Data.Serialize ( Serialize )
 import GHC.Generics ( Generic )
-import Linear.V
+import Linear.V ( Dim(..) )
 
-import Dyno.Vectorize
-import Dyno.TypeVecs ( Vec )
+import Dyno.View.View
 import Dyno.Cov ( Cov )
 
 --import Dvda
 --data RorL = Radau | Legendre deriving (Eq, Show)
 
 -- design variables
-data CollTraj x z u p s n deg a = CollTraj a (Cov s a) (p a) (Vec n (CollStage x z u deg a)) (x a)
-                                deriving (Eq, Functor, Generic, Generic1)
-                                         -- endtime, params, coll stages, xf
+data CollTraj x z u p s n deg a =
+  CollTraj (J S a) (J (Cov s) a) (J p a) (J (Jec n (CollStage x z u deg)) a) (J x a)
+  deriving (Eq, Generic, Show)
+  -- endtime, params, coll stages, xf
 
-data CollStage x z u deg a = CollStage (x a) (Vec deg (CollPoint x z u a))
-                           deriving (Eq, Functor, Generic, Generic1)
+data CollStage x z u deg a = CollStage (J x a) (J (Jec deg (CollPoint x z u)) a)
+                           deriving (Eq, Generic, Show)
 
-data CollPoint x z u a = CollPoint (x a) (z a) (u a)
-                       deriving (Eq, Functor, Generic, Generic1)
+data CollPoint x z u a = CollPoint (J x a) (J z a) (J u a)
+                       deriving (Eq, Generic, Show)
 
 -- constraints
-data CollDynConstraint deg r a = CollDynConstraint (Vec deg (r a))
-                               deriving (Eq, Functor, Generic1)
+data CollDynConstraint deg r a = CollDynConstraint (J (Jec deg r) a)
+                               deriving (Eq, Generic, Show)
 
-data CollStageConstraints x deg r sh a = CollStageConstraints (CollDynConstraint deg r a) (x a) (sh a)
-                                    deriving (Eq, Functor, Generic1)
+data CollStageConstraints x deg r sh a =
+  CollStageConstraints (J (CollDynConstraint deg r) a) (J x a) (J sh a)
+  deriving (Eq, Generic, Show)
 
 data CollTrajConstraints n x deg r sh a =
-  CollTrajConstraints (Vec n (CollStageConstraints x deg r sh a))
-  deriving (Eq, Functor, Generic1)
+  CollTrajConstraints (J (Jec n (CollStageConstraints x deg r sh)) a)
+  deriving (Eq, Generic, Show)
 
 data CollOcpConstraints n deg x r c h sh sc a =
   CollOcpConstraints
-  { coStages :: CollTrajConstraints n x deg r sh a
-  , coPathC :: Vec n (Vec deg (h a))
-  , coBc :: c a
-  , coSbc :: sc a
-  } deriving (Eq, Functor, Generic1)
+  { coStages :: J (CollTrajConstraints n x deg r sh) a
+  , coPathC :: J (Jec n (Jec deg h)) a
+  , coBc :: J c a
+  , coSbc :: J sc a
+  } deriving (Eq, Generic, Show)
 
 -- serialize instances
-instance (Serialize (x a), Serialize (z a), Serialize (u a)) =>
+instance (Serialize (J x a), Serialize (J z a), Serialize (J u a)) =>
          Serialize (CollPoint x z u a)
-instance (Serialize (x a), Serialize (z a), Serialize (u a)) =>
+instance (Serialize a, Serialize (J x a), Serialize (J z a), Serialize (J u a)) =>
          Serialize (CollStage x z u deg a)
 instance (Serialize (x a), Serialize (z a), Serialize (u a), Serialize (p a), Serialize (Cov s a), Serialize a) =>
          Serialize (CollTraj x z u p s n deg a)
 
--- vectorize instances
-instance (Vectorize x, Vectorize z, Vectorize u) => Vectorize (CollPoint x z u)
-instance (Vectorize x, Vectorize z, Vectorize u, Dim deg) => Vectorize (CollStage x z u deg)
-instance (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize (Cov s), Dim n, Dim deg) =>
-         Vectorize (CollTraj x z u p s n deg)
+-- View instances
+instance (View x, View z, View u) => View (CollPoint x z u)
+instance (View x, View z, View u, Dim deg) => View (CollStage x z u deg)
+instance (View x, View z, View u, View p, View (Cov s), Dim n, Dim deg) =>
+         View (CollTraj x z u p s n deg)
 
-instance (Vectorize r, Dim deg) => Vectorize (CollDynConstraint deg r)
-instance (Vectorize x, Vectorize r, Vectorize sh, Dim deg) =>
-         Vectorize (CollStageConstraints x deg r sh)
-instance (Vectorize x, Vectorize r, Vectorize sh, Dim n, Dim deg) =>
-         Vectorize (CollTrajConstraints n x deg r sh)
-instance (Vectorize x, Vectorize r, Dim n, Dim deg, Vectorize c,
-          Vectorize h, Vectorize sh, Vectorize sc) =>
-         Vectorize (CollOcpConstraints n deg x r c h sh sc)
+instance (View r, Dim deg) => View (CollDynConstraint deg r)
+instance (View x, View r, View sh, Dim deg) => View (CollStageConstraints x deg r sh)
+instance (View x, View r, View sh, Dim n, Dim deg) => View (CollTrajConstraints n x deg r sh)
+instance (View x, View r, Dim n, Dim deg, View c, View h, View sh, View sc) =>
+         View (CollOcpConstraints n deg x r c h sh sc)
 
 -- getters
-getX :: CollPoint x z u a -> x a
+getX :: CollPoint x z u a -> J x a
 getX (CollPoint x _ _) = x
 
 ctDeg :: forall x z u p s n deg a . Dim deg => CollTraj x z u p s n deg a -> Int
