@@ -27,6 +27,7 @@ module Dyno.TypeVecs
        , tvzip4
        , tvzipWith
        , tvzipWith3
+       , tvzipWith4
        , tvunzip
        , tvunzip3
        , tvhead
@@ -150,6 +151,9 @@ tvzipWith f x y = mkSeq (S.zipWith f (unSeq x) (unSeq y))
 
 tvzipWith3 :: (a -> b -> c -> d) -> Vec n a -> Vec n b -> Vec n c -> Vec n d
 tvzipWith3 f x y z = mkSeq (S.zipWith3 f (unSeq x) (unSeq y) (unSeq z))
+
+tvzipWith4 :: (a -> b -> c -> d -> e) -> Vec n a -> Vec n b -> Vec n c -> Vec n d -> Vec n e
+tvzipWith4 f x y z u = mkSeq (S.zipWith4 f (unSeq x) (unSeq y) (unSeq z) (unSeq u))
 
 tvunzip :: Vec n (a,b) -> (Vec n a, Vec n b)
 tvunzip v = (mkVec v1, mkVec v2)
