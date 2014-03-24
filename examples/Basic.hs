@@ -7,10 +7,10 @@
 module Main where
 
 import GHC.Generics ( Generic )
+import Data.Vector ( Vector )
 import qualified Data.Vector as V
 
 import Dyno.Nats
-import Dyno.Vectorize
 import Dyno.TypeVecs -- ( Vec(..), unVec, mkVec' )
 import Dyno.View.View
 import Dyno.View.Symbolic
@@ -22,35 +22,38 @@ import Dyno.Ipopt
 --import Dyno.Sqp.LineSearch
 
 
-data X a = X a a deriving (Functor, Generic, Generic1, Show)
-data G a = G a deriving (Functor, Generic, Generic1, Show)
+data X a = X (J S a) (J S a) deriving (Generic, Show)
+data G a = G (J S a) deriving (Generic, Show)
 
-instance Vectorize X
-instance Vectorize G
+instance View X
+instance View G
 
-myNlp :: Nlp (JV X) JNone (JV G) MX
+myNlp :: Nlp X JNone G MX
 myNlp = Nlp { nlpFG = fg
-            , nlpBX = cat bx
-            , nlpBG = cat bg
-            , nlpX0 = cat x0
+            , nlpBX = bx
+            , nlpBG = bg
+            , nlpX0 = x0
             , nlpP = cat JNone
             }
   where
-    x0 :: JV X (V.Vector Double)
-    x0 = JV $ fmap V.singleton $ X ((-8)) ((-8))
+    x0 :: J X (V.Vector Double)
+    x0 = cat $ X (-8) (-8)
 
-    bx = JV $ fmap V.singleton $ X (Just (-21), Just 0.5) (Just (-2), Just 2)
-    bg = JV $ fmap V.singleton $ G (Just (-10), Just 10)
+    bx :: J X (Vector Bounds)
+    bx = mkJ $
+         V.fromList [ (Just (-21), Just 0.5)
+                    , (Just (-2), Just 2)
+                    ]
+    bg :: J G (Vector Bounds)
+    bg = mkJ $ (V.singleton (Just (-10), Just 10))
 
-    fg :: NlpInputs (JV X) JNone MX -> NlpFun (JV G) MX
-    fg (NlpInputs xs' _) = NlpFun (cat (S f)) (cat g)
+    fg :: (J X MX, J JNone MX) -> (J S MX, J G MX)
+    fg (xy, _) = (f, cat g)
       where
         f = (1-x)**2 + 100*(y - x**2)**2
-        g = JV $ G x
+        g = G x
 
-        xy :: X MX
-        xy = unJV $ split xs'
-        X x y = xy
+        X x y = split xy
 
 main :: IO ()
 main = do
