@@ -1,20 +1,23 @@
 {-# OPTIONS_GHC -Wall -fno-cse -fno-warn-orphans #-}
 
 module Dyno.Casadi.MX
-       ( MX(), sym, symV, symM, mm, trans
+       ( MX(), sym, symV, symM, mm, trans, diag
        , gradient, jacobian -- , hessian
 --       , solve
        , triu
        , tril
        , full
+       , d2m
        , size, size1, size2, numel
        , crs, vertcat, horzcat, veccat, vertsplit
+       , ones, zeros
        ) where
 
 import qualified Data.Vector as V
 import System.IO.Unsafe ( unsafePerformIO )
 
 import Casadi.Wrappers.Classes.MX
+import Casadi.Wrappers.Classes.DMatrix ( DMatrix )
 import Casadi.Wrappers.Classes.GenMX
 import Casadi.Wrappers.Classes.Sparsity ( Sparsity )
 import qualified Casadi.Wrappers.Tools as C
@@ -43,6 +46,10 @@ jacobian x y = unsafePerformIO (C.jacobian' x y)
 --hessian x y = unsafePerformIO (C.hessian x y)
 --{-# NOINLINE hessian #-}
 
+d2m :: DMatrix -> MX
+d2m x = unsafePerformIO (mx'''''''' x)
+{-# NOINLINE d2m #-}
+
 -- | matrix matrix product
 mm :: MX -> MX -> MX
 mm x y = unsafePerformIO (mx_mul' x y)
@@ -64,6 +71,10 @@ triu x = unsafePerformIO (C.triu''' (castGenMX x))
 tril :: MX -> MX
 tril x = unsafePerformIO (C.tril''' (castGenMX x))
 {-# NOINLINE tril #-}
+
+diag :: MX -> MX
+diag x = unsafePerformIO (C.diag''' x)
+{-# NOINLINE diag #-}
 
 crs :: MX -> Sparsity
 crs x = unsafePerformIO (mx_sparsityRef x)
@@ -106,6 +117,14 @@ horzcat x = unsafePerformIO (C.horzcat'''' x)
 -- solve a b = unsafePerformIO (C.solve'' a b)
 -- {-# NOINLINE solve #-}
 
+ones :: (Int,Int) -> MX
+ones (r,c) = unsafePerformIO (genMX_ones r c)
+{-# NOINLINE ones #-}
+
+zeros :: (Int,Int) -> MX
+zeros (r,c) = unsafePerformIO (genMX_zeros r c)
+{-# NOINLINE zeros #-}
+
 instance Num MX where
   (+) x y = unsafePerformIO (mx___add__ x y)
   {-# NOINLINE (+) #-}
@@ -113,7 +132,7 @@ instance Num MX where
   {-# NOINLINE (-) #-}
   (*) x y = unsafePerformIO (mx___mul__ x y)
   {-# NOINLINE (*) #-}
-  fromInteger x = unsafePerformIO (mx''''''''''' (fromInteger x))
+  fromInteger x = unsafePerformIO (mx''''' (fromInteger x))
   {-# NOINLINE fromInteger #-}
   abs x = unsafePerformIO (mx_fabs x)
   {-# NOINLINE abs #-}
@@ -123,11 +142,11 @@ instance Num MX where
 instance Fractional MX where
   (/) x y = unsafePerformIO (mx___truediv__ x y)
   {-# NOINLINE (/) #-}
-  fromRational x = unsafePerformIO (mx''''''''''' (fromRational x))
+  fromRational x = unsafePerformIO (mx''''' (fromRational x))
   {-# NOINLINE fromRational #-}
 
 instance Floating MX where
-  pi = unsafePerformIO (mx''''''''''' pi)
+  pi = unsafePerformIO (mx''''' pi)
   {-# NOINLINE pi #-}
   (**) x y = unsafePerformIO (mx___pow__ x y)
   {-# NOINLINE (**) #-}

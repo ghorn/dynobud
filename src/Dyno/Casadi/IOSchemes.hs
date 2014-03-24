@@ -2,7 +2,8 @@
 {-# Language ScopedTypeVariables #-}
 
 module Dyno.Casadi.IOSchemes
-       ( mkSchemeSXMatrix
+       ( mkSchemeSX
+       , mkSchemeMX
        , mkSchemeCRSSparsity
        ) where
 
@@ -13,6 +14,7 @@ import qualified Data.Vector as V
 
 import Casadi.Wrappers.Classes.Sparsity ( Sparsity, sparsity' )
 import Casadi.Wrappers.Classes.SX ( SX, sx )
+import Casadi.Wrappers.Classes.MX ( MX, mx )
 import Casadi.Wrappers.Classes.IOScheme ( ioScheme', ioScheme_size, ioScheme_entry )
 import Casadi.Wrappers.Enums ( InputOutputScheme(..) )
 
@@ -51,8 +53,11 @@ mkScheme newEmpty schemeEnum userVals = do
 
   fmap V.fromList $ mapM getElem entries
 
-mkSchemeSXMatrix :: InputOutputScheme -> [(String,SX)] -> IO (V.Vector SX)
-mkSchemeSXMatrix = mkScheme sx
+mkSchemeSX :: InputOutputScheme -> [(String,SX)] -> IO (V.Vector SX)
+mkSchemeSX = mkScheme sx
+
+mkSchemeMX :: InputOutputScheme -> [(String,MX)] -> IO (V.Vector MX)
+mkSchemeMX = mkScheme mx
 
 mkSchemeCRSSparsity :: InputOutputScheme -> [(String,Sparsity)] -> IO (V.Vector Sparsity)
 mkSchemeCRSSparsity = mkScheme sparsity'

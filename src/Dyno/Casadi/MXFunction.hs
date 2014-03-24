@@ -1,36 +1,45 @@
-{-# OPTIONS_GHC -Wall #-}
-{-# Language KindSignatures #-}
+{-# OPTIONS_GHC -Wall -fno-cse -fno-warn-orphans #-}
 
-module Dyno.Casadi.MXFunction ( toMXFunction, evalMXFun, MXFunction ) where
+module Dyno.Casadi.MXFunction
+       ( C.MXFunction, mxFunction, callMX, evalDMatrix
+       ) where
 
+import Data.Vector ( Vector )
 import qualified Data.Vector as V
-
+import System.IO.Unsafe ( unsafePerformIO )
 import Control.Monad ( zipWithM_ )
-import Casadi.Wrappers.Classes.DMatrix
-import Casadi.Wrappers.Classes.MX
+
+import Casadi.Wrappers.Classes.MX ( MX )
+import Casadi.Wrappers.Classes.DMatrix ( DMatrix )
 import qualified Casadi.Wrappers.Classes.MXFunction as C
-import Casadi.Wrappers.Classes.SharedObject
-import Casadi.Wrappers.Classes.IOInterfaceFX
-import Casadi.Wrappers.Classes.FX
+import qualified Casadi.Wrappers.Classes.SharedObject as C
+import qualified Casadi.Wrappers.Classes.IOInterfaceFX as C
+import qualified Casadi.Wrappers.Classes.FX as C
 
-import Dyno.Vectorize
+mxFunction :: Vector MX -> Vector MX -> C.MXFunction
+mxFunction inputs outputs = unsafePerformIO $ do
+  mxf <- C.mxFunction'' inputs outputs
+  C.sharedObject_init' mxf
+  return mxf
+{-# NOINLINE mxFunction #-}
 
-newtype MXFunction (f :: * -> *) (g :: * -> *) = MXFunction C.MXFunction
+-- | call an MXFunction on symbolic inputs, getting symbolic outputs
+callMX :: C.FXClass f => f -> Vector MX -> Vector MX
+callMX f ins = unsafePerformIO (C.fx_call'''''''' f ins)
+{-# NOINLINE callMX #-}
 
-toMXFunction :: (Vectorize f, Vectorize g) => f MX -> g MX -> IO (MXFunction f g)
-toMXFunction inputs outputs = do
-  mxf <- C.mxFunction'' (vectorize inputs) (vectorize outputs)
-  sharedObject_init' mxf
-  return (MXFunction mxf)
-
-evalMXFun :: (Vectorize f, Vectorize g) => MXFunction f g -> f DMatrix -> IO (g DMatrix)
-evalMXFun (MXFunction mxf) inputs = do
+-- | evaluate an MXFunction with 1 input and 1 output
+evalDMatrix :: (C.FXClass f, C.IOInterfaceFXClass f) => f -> Vector DMatrix -> IO (Vector DMatrix)
+evalDMatrix mxf inputs = do
   -- set inputs
-  zipWithM_ (ioInterfaceFX_setInput'''''' mxf) (V.toList (vectorize inputs)) [0..]
+  zipWithM_ (C.ioInterfaceFX_setInput'''''' mxf) (V.toList inputs) [0..]
+
   -- eval
-  fx_evaluate mxf
+  C.fx_evaluate mxf
+
   -- get outputs
-  numOut <- ioInterfaceFX_getNumOutputs mxf
-  outputs <- mapM (ioInterfaceFX_output mxf) (take numOut [0..])
+  numOut <- C.ioInterfaceFX_getNumOutputs mxf
+  outputs <- mapM (C.ioInterfaceFX_output mxf) (take numOut [0..])
+
   -- return vectorized outputs
-  return (devectorize (V.fromList outputs))
+  return (V.fromList outputs)

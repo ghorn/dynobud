@@ -29,7 +29,7 @@ instance Show SXElement where
   show = show . svector . V.singleton
 
 casadiSsyms :: String -> Int -> IO (V.Vector SXElement)
-casadiSsyms name k = fmap V.fromList $ mapM (sxElement'' . (name ++) . show) (take k [(0::Int)..])
+casadiSsyms name k = fmap V.fromList $ mapM (sxElement_sym . (name ++) . show) (take k [(0::Int)..])
 
 -- call function directly using SXElement's unsafePerformIO Floating instances
 funToSX :: (Vectorize f, Vectorize g) =>

@@ -2,7 +2,7 @@
 
 module Dyno.Casadi.SX
        ( SX(), ssym, ssymV, ssymM, smm, strans
-       , sgradient, sjacobian, shessian, svector
+       , sgradient, sjacobian, shessian, svector, sdiag
        , ssolve
        , sdata
        , striu
@@ -10,6 +10,7 @@ module Dyno.Casadi.SX
        , sfull
        , ssize, ssize1, ssize2, snumel
        , scrs, svertcat, shorzcat, sveccat, svertsplit
+       , sones, szeros
        ) where
 
 import qualified Data.Vector as V
@@ -18,17 +19,18 @@ import System.IO.Unsafe ( unsafePerformIO )
 import Casadi.Wrappers.Classes.SXElement ( SXElement )
 import Casadi.Wrappers.Classes.SX
 import Casadi.Wrappers.Classes.GenSX
+import Casadi.Wrappers.Classes.DMatrix ( DMatrix )
 import Casadi.Wrappers.Classes.Sparsity ( Sparsity )
 import qualified Casadi.Wrappers.Tools as C
 
 ssym :: String -> IO SX
-ssym = C.ssym''
+ssym = genSX_sym''
 
 ssymV :: String -> Int -> IO SX
-ssymV = C.ssym'
+ssymV = genSX_sym'
 
 ssymM :: String -> Int -> Int -> IO SX
-ssymM = C.ssym
+ssymM = genSX_sym
 
 -- | @jacobian exp x@ is the jacobian of exp w.r.t. x
 sgradient :: SX -> SX -> SX
@@ -49,6 +51,10 @@ shessian x y = unsafePerformIO (C.hessian x y)
 smm :: SX -> SX -> SX
 smm x y = unsafePerformIO (sx_mul' x y)
 {-# NOINLINE smm #-}
+
+sdiag :: SX -> SX
+sdiag x = unsafePerformIO (C.diag'' x)
+{-# NOINLINE sdiag #-}
 
 -- | transpose
 strans :: SX -> SX

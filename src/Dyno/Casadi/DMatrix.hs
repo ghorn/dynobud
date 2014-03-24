@@ -1,10 +1,11 @@
 {-# OPTIONS_GHC -Wall -fno-cse -fno-warn-orphans #-}
 
 module Dyno.Casadi.DMatrix
-       ( DMatrix(), dcrs, dmm, dvector, ddata
-       , dfull, dtrans
+       ( DMatrix(), dcrs, dmm, dvector, ddata, ddiag
+       , dfull, dtrans, dtriu, dtril
        , dsize, dsize1, dsize2, dnumel
        , dvertcat, dhorzcat, dveccat, dvertsplit
+       , dones, dzeros
        ) where
 
 import qualified Data.Vector as V
@@ -33,9 +34,13 @@ dcrs :: DMatrix -> Sparsity
 dcrs x = unsafePerformIO (dmatrix_sparsityRef x)
 {-# NOINLINE dcrs #-}
 
+ddiag :: DMatrix -> DMatrix
+ddiag x = unsafePerformIO (C.diag' x)
+{-# NOINLINE ddiag #-}
+
 -- | from vector
 dvector :: V.Vector Double -> DMatrix
-dvector x = unsafePerformIO (dmatrix''''''''''' x)
+dvector x = unsafePerformIO (dmatrix''''''' x)
 {-# NOINLINE dvector #-}
 
 ddata :: DMatrix -> V.Vector Double
@@ -74,6 +79,21 @@ dhorzcat :: V.Vector DMatrix -> DMatrix
 dhorzcat x = unsafePerformIO (C.horzcat' x)
 {-# NOINLINE dhorzcat #-}
 
+dtriu :: DMatrix -> DMatrix
+dtriu x = unsafePerformIO (C.triu' (castGenDMatrix x))
+{-# NOINLINE dtriu #-}
+
+dtril :: DMatrix -> DMatrix
+dtril x = unsafePerformIO (C.tril' (castGenDMatrix x))
+{-# NOINLINE dtril #-}
+
+dones :: (Int,Int) -> DMatrix
+dones (r,c) = unsafePerformIO (genDMatrix_ones r c)
+{-# NOINLINE dones #-}
+
+dzeros :: (Int,Int) -> DMatrix
+dzeros (r,c) = unsafePerformIO (genDMatrix_zeros r c)
+{-# NOINLINE dzeros #-}
 
 instance Num DMatrix where
   (+) x y = unsafePerformIO (dmatrix___add__ x y)
@@ -82,7 +102,7 @@ instance Num DMatrix where
   {-# NOINLINE (-) #-}
   (*) x y = unsafePerformIO (dmatrix___mul__ x y)
   {-# NOINLINE (*) #-}
-  fromInteger x = unsafePerformIO (dmatrix'''''''''' (fromInteger x))
+  fromInteger x = unsafePerformIO (dmatrix'''''' (fromInteger x))
   {-# NOINLINE fromInteger #-}
   abs x = unsafePerformIO (dmatrix_fabs x)
   {-# NOINLINE abs #-}
@@ -92,11 +112,11 @@ instance Num DMatrix where
 instance Fractional DMatrix where
   (/) x y = unsafePerformIO (dmatrix___truediv__ x y)
   {-# NOINLINE (/) #-}
-  fromRational x = unsafePerformIO (dmatrix'''''''''' (fromRational x))
+  fromRational x = unsafePerformIO (dmatrix'''''' (fromRational x))
   {-# NOINLINE fromRational #-}
 
 instance Floating DMatrix where
-  pi = unsafePerformIO (dmatrix' pi)
+  pi = unsafePerformIO (dmatrix'''''' pi)
   {-# NOINLINE pi #-}
   (**) x y = unsafePerformIO (dmatrix___pow__ x y)
   {-# NOINLINE (**) #-}
