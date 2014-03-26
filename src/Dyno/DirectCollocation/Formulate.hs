@@ -45,16 +45,23 @@ mkTaus deg = case shiftedLegendreRoots deg of
   Just taus -> TV.mkVec $ V.map (fromRational . toRational) taus
   Nothing -> error "makeTaus: too high degree"
 
-getFg :: forall z x u p r o c h s sh sc n deg .
-         (Dim deg, Dim n, View x, View z, View u, View p, View r, View c, View h, View s, View sc, View sh) =>
-         OcpPhase x z u p r o c h s sh sc ->
-         (SXFun
-          ((J (Cov s) :*: J (CollStage x z u deg) :*: J (CollDynConstraint deg r) :*: J x :*: J (Cov s)))
-          (J (Cov s))) ->
-         (J (CollTraj x z u p s n deg) MX, J JNone MX) ->
-         (J S MX, J (CollOcpConstraints n deg x r c h sh sc) MX)
-getFg ocp pCovFun (collTraj, _) =
-  (obj, cat g)
+getFg ::
+  forall z x u p r o c h s sh sc n deg .
+  (Dim deg, Dim n, View x, View z, View u, View p, View r, View o,
+   View c, View h, View s, View sc, View sh)
+  => Vec deg Double
+  -> OcpPhase x z u p r o c h s sh sc
+  -> (SXFun
+      (J (Cov s) :*: J (CollStage x z u deg) :*: J (CollDynConstraint deg r) :*: J x :*: J (Cov s))
+      (J (Cov s))
+     )
+  -> (SXFun
+      (J S :*: J p :*: J (JVec deg S) :*: J (CollStage x z u deg))
+      (J (CollDynConstraint deg r) :*: J (JVec deg o) :*: J x)
+     )
+  -> (J (CollTraj x z u p s n deg) MX, J JNone MX)
+  -> (J S MX, J (CollOcpConstraints n deg x r c h sh sc) MX)
+getFg taus ocp pCovFun dynFun (collTraj, _) = (obj, cat g)
   where
     -- split up the design vars
     ct@(CollTraj tf p0 parm stages' xf) = split collTraj
@@ -64,7 +71,7 @@ getFg ocp pCovFun (collTraj, _) =
 
     collPoints :: Vec n (Vec deg (CollPoint x z u MX))
     collPoints = fmap (\(CollStage _ cps) -> fmap split (unJVec (split cps))) spstages
-    
+
     obj = objLagrange + objMayer
 
     objMayer = ocpMayer ocp tf x0 xf p0 pF
@@ -82,15 +89,8 @@ getFg ocp pCovFun (collTraj, _) =
     times :: Vec n (Vec deg (J S MX))
     times = fmap (\t0 -> fmap (\tau -> t0 + (realToFrac tau)*h) taus) t0s
 
-    -- the collocation points
-    taus :: Vec deg Double
-    taus = mkTaus deg
-
-    deg = ctDeg ct
-
-    -- coefficients for getting xdot by lagrange interpolating polynomials
-    cijs :: Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
-    cijs = lagrangeDerivCoeffs (0 TV.<| taus)
+    times' :: Vec n (J (JVec deg S) MX)
+    times' = fmap (cat . JVec) times
 
     -- initial point at each stage
     x0s :: Vec n (J x MX)
@@ -137,7 +137,8 @@ getFg ocp pCovFun (collTraj, _) =
     interpolatedX :: Vec n (J x MX)
     (dcs,outputs, interpolatedX) =
       TV.tvunzip3 $
-      TV.tvzipWith (dynConstraints cijs (ocpDae ocp) taus h parm) times spstages
+      TV.tvzipWith (\ts css -> myunzip3 $ callSXFun dynFun (h :*: parm :*: ts :*: css)) times' stages
+    myunzip3 (dc :*: op :*: intx) = (split dc, unJVec (split op), intx)
 
     mkPathConstraints :: Vec deg (CollPoint x z u MX) -> Vec deg (J o MX) ->
                          Vec deg (J S MX) -> J (JVec deg h) MX
@@ -163,8 +164,19 @@ makeCollNlp ::
   IO (Nlp (CollTraj x z u p s n deg) JNone (CollOcpConstraints n deg x r c h sh sc) MX)
 makeCollNlp ocp = do
   pcf <- makeCovFun
---  print pcf
-  return $ Nlp { nlpFG = getFg ocp pcf
+  let -- the collocation points
+      taus :: Vec deg Double
+      taus = mkTaus deg
+
+      deg = reflectDim (Proxy :: Proxy deg)
+
+      -- coefficients for getting xdot by lagrange interpolating polynomials
+      cijs :: Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
+      cijs = lagrangeDerivCoeffs (0 TV.<| taus)
+
+  dynfun <- toSXFun $ dynConstraints cijs taus (ocpDae ocp)
+
+  return $ Nlp { nlpFG = getFg taus ocp pcf dynfun
                , nlpBX = cat (getBx ocp)
                , nlpBG = cat (getBg ocp)
                , nlpX0 = jfill 0
@@ -271,17 +283,19 @@ interpolateXDots cjks xs = TV.tvtail $ interpolateXDots' cjks xs
 
 -- return dynamics constraints, outputs, and interpolated state
 dynConstraints ::
-  forall x z u p r o deg a . (Dim deg, View x, View z, View u, View r, Viewable a, Fractional (J x a))
-  => Vec (TV.Succ deg) (Vec (TV.Succ deg) Double) -> Dae x z u p r o a ->
-  Vec deg Double -> J S a -> J p a -> Vec deg (J S a) ->
-  CollStage x z u deg a ->
-  (CollDynConstraint deg r a, Vec deg (J o a), J x a)
-dynConstraints cijs dae taus (UnsafeJ h) p stageTimes (CollStage x0 cps') =
-  (CollDynConstraint (cat (JVec dynConstrs)), outputs, xnext)
+  forall x z u p r o deg a . (Dim deg, View x, View z, View u, View r, View o, Viewable a, Fractional (J x a))
+  => Vec (TV.Succ deg) (Vec (TV.Succ deg) Double) -> Vec deg Double -> Dae x z u p r o a
+  -> (J S :*: J p :*: J (JVec deg S) :*: J (CollStage x z u deg)) a
+  -> (J (CollDynConstraint deg r) :*: J (JVec deg o) :*: J x) a
+dynConstraints cijs taus dae ((UnsafeJ h) :*: p :*: stageTimes' :*: collStage) =
+  (cat (CollDynConstraint (cat (JVec dynConstrs))) :*: cat (JVec outputs) :*: xnext)
   where
     -- interpolated final state
     xnext :: J x a
     xnext = interpolate taus x0 xs
+
+    stageTimes = unJVec $ split stageTimes'
+    CollStage x0 cps' = split collStage
 
     -- dae constraints (dynamics)
     dynConstrs :: Vec deg (J r a)
@@ -308,7 +322,7 @@ propogateCovariance ::
 propogateCovariance (p0' :*: collStage :*: collDynConstraint :*: interpolatedX :*: q0') =
   if size (Proxy :: Proxy s) == 0
   then p0' -- supress casadi zero size matrix error
-  else 
+  else
 --    (x0',
 --     (ssize1 (unJ x0'), ssize2 (unJ x0')),
 --     (ssize1 df_dx0, ssize2 df_dx0),
@@ -322,7 +336,7 @@ propogateCovariance (p0' :*: collStage :*: collDynConstraint :*: interpolatedX :
   where
     CollStage x0 cps' = split collStage
     CollDynConstraint dynConstrs = split collDynConstraint
-    
+
     q0 = toMatrix q0'
     p0 = toMatrix p0'
 
