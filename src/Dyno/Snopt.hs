@@ -23,6 +23,7 @@ snoptSolver =
 --                       , ("monitor", Opt (V.fromList ["setup_nlp"]) )
 --                       , ("_start", Opt "Warm")
                      ]
+  , options = []
   , solverInterruptCode = -2
   , successCodes = ["1"]
   }

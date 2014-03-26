@@ -140,10 +140,16 @@ type CollDeg = D3
 guess :: J (CollTraj PendX PendZ PendU PendP JNone NCollStages CollDeg) (Vector Double)
 guess = jfill 1
 
+solver :: NlpSolverStuff IpoptSolver
+solver = ipoptSolver
+
+solver2 :: NlpSolverStuff IpoptSolver
+solver2 = ipoptSolver { options = [("expand", Opt True)] }
+
+
 main :: IO ()
 main = do
   nlp <- makeCollNlp pendOcp
-  _ <- solveNlp ipoptSolver (nlp { nlpX0 = guess }) Nothing
-  --(Right nlpOut) <- solveNlp snoptSolver (makeCollNlp pendOcp) Nothing guess None Nothing
-  --_ <- solveSqp (makeCollNlp pendOcp) armilloSearch (Nlp.xOpt nlpOut) None
+  _ <- solveNlp solver (nlp { nlpX0 = guess }) Nothing
+  _ <- solveNlp solver2 (nlp { nlpX0 = guess }) Nothing
   return ()

@@ -83,6 +83,7 @@ data NlpSolverStuff nlp =
   NlpSolverStuff
   { nlpConstructor :: FX -> IO nlp
   , defaultOptions :: [(String,Opt)]
+  , options :: [(String,Opt)]
   , solverInterruptCode :: Int
   , successCodes :: [String]
   }
@@ -299,6 +300,8 @@ runNlpSolver solverStuff nlpFun callback' (NlpSolver nlpMonad) = do
   -- set all the user options
   mapM_ (\(l,Opt r) -> mkGeneric r >>= optionsFunctionality_setOption nlp l)
     (defaultOptions solverStuff)
+  mapM_ (\(l,Opt r) -> mkGeneric r >>= optionsFunctionality_setOption nlp l)
+    (options solverStuff)
   sharedObject_init' nlp
 
   let nlpState = NlpState { isNx = size (proxy inputsX)
