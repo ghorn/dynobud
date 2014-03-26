@@ -9,15 +9,16 @@ import qualified Data.Vector as V
 import System.IO.Unsafe ( unsafePerformIO )
 import Control.Monad ( zipWithM_ )
 
-import Casadi.Wrappers.Classes.MX ( MX )
-import Casadi.Wrappers.Classes.DMatrix ( DMatrix )
 import qualified Casadi.Wrappers.Classes.MXFunction as C
 import qualified Casadi.Wrappers.Classes.SharedObject as C
 import qualified Casadi.Wrappers.Classes.IOInterfaceFX as C
 import qualified Casadi.Wrappers.Classes.FX as C
 
-mxFunction :: Vector MX -> Vector MX -> C.MXFunction
-mxFunction inputs outputs = unsafePerformIO $ do
+import Dyno.Casadi.MX ( MX )
+import Dyno.Casadi.DMatrix ( DMatrix )
+
+mxFunction :: Vector MX -> Vector MX -> IO C.MXFunction
+mxFunction inputs outputs = do
   mxf <- C.mxFunction'' inputs outputs
   C.sharedObject_init' mxf
   return mxf

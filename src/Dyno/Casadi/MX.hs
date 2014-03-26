@@ -3,7 +3,7 @@
 module Dyno.Casadi.MX
        ( MX(), sym, symV, symM, mm, trans, diag
        , gradient, jacobian -- , hessian
---       , solve
+       , solve
        , triu
        , tril
        , dense --, sparse
@@ -40,6 +40,10 @@ gradient x y = unsafePerformIO (C.gradient' x y)
 jacobian :: MX -> MX -> MX
 jacobian x y = unsafePerformIO (C.jacobian' x y)
 {-# NOINLINE jacobian #-}
+
+solve :: MX -> MX -> MX
+solve a b = unsafePerformIO (C.solve''' a b)
+{-# NOINLINE solve #-}
 
 ---- | @hessian exp x@ is the jacobian of exp w.r.t. x
 --hessian :: MX -> MX -> MX
@@ -116,10 +120,6 @@ vertsplit x ks = unsafePerformIO (C.vertsplit'''''''''' x ks)
 horzcat :: V.Vector MX -> MX
 horzcat x = unsafePerformIO (C.horzcat'''' x)
 {-# NOINLINE horzcat #-}
-
--- solve :: MX -> MX -> MX
--- solve a b = unsafePerformIO (C.solve'' a b)
--- {-# NOINLINE solve #-}
 
 ones :: (Int,Int) -> MX
 ones (r,c) = unsafePerformIO (genMX_ones r c)

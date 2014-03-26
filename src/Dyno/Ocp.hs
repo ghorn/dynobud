@@ -8,7 +8,6 @@ import Dyno.View.View
 import Dyno.Cov
 import Dyno.Nlp ( Bounds )
 import Dyno.Casadi.MX ( MX )
-import Dyno.Casadi.SX ( SX )
 import Dyno.Casadi.DMatrix ( DMatrix )
 
 -- | fully implicit differential-algebraic equation of the form:
@@ -54,7 +53,7 @@ data OcpPhase x z u p r o c h s sh sc =
              -- | the Lagrange term @Jl(x(t),z(t),u(t),p,o,t)@
            , ocpLagrange :: M x -> M z -> M u -> M p -> M o -> M S -> M S
              -- | the system dynamics of the stage: @f(x'(t), x(t), z(t), u(t), p, t)@
-           , ocpDae :: Dae x z u p r o SX
+           , ocpDae :: Dae x z u p r o MX
              -- | the boundary conditions @clb <= c(x(0), x(T)) <= cub@
            , ocpBc :: M x -> M x -> M c
              -- | the path constraints @h(x(t), z(t), u(t), p), t)@

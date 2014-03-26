@@ -87,15 +87,13 @@ instance (SymInputs f a, SymInputs g a) => SymInputs ((:*:) f g) a where
 toMXFun :: forall f g . (SymInputs f MX, FunArgs g MX) => (f MX -> g MX) -> IO (MXFun f g)
 toMXFun fun = do
   (inputs,_) <- sym' 0 (Proxy :: Proxy (f MX))
-  let mxf = mxFunction (vectorize inputs) (vectorize (fun inputs))
-  return (MXFun mxf)
+  fmap MXFun $ mxFunction (vectorize inputs) (vectorize (fun inputs))
 
 -- | make an SXFunction
 toSXFun :: forall f g . (SymInputs f SX, FunArgs g SX) => (f SX -> g SX) -> IO (SXFun f g)
 toSXFun f = do
   (inputs,_) <- sym' 0 (Proxy :: Proxy (f SX))
-  let mxf = sxFunction (vectorize inputs) (vectorize (f inputs))
-  return (SXFun mxf)
+  fmap SXFun $ sxFunction (vectorize inputs) (vectorize (f inputs))
 
 -- | call an MXFunction on symbolic inputs, getting symbolic outputs
 callMXFun :: (FunArgs f MX, FunArgs g MX) => MXFun f g -> f MX -> g MX
