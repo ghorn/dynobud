@@ -38,8 +38,7 @@ module Dyno.NlpSolver
        , getLamG
        , NlpSolverStuff(..)
          -- * options
-       , Opt(..)
-       , NlpOption
+       , Op.Opt(..)
        , setOption
        , reinit
        ) where
@@ -57,14 +56,14 @@ import qualified Data.Vector as V
 import Casadi.Wrappers.Enums ( InputOutputScheme(..) )
 import Casadi.Callback
 import Casadi.Wrappers.Classes.FX ( FX, fx_getStat, castFX )
-import Casadi.Wrappers.Classes.OptionsFunctionality ( optionsFunctionality_setOption )
 import Casadi.Wrappers.Classes.PrintableObject ( printableObject_getDescription )
 import Casadi.Wrappers.Classes.GenericType
-import Casadi.Wrappers.Classes.SharedObject
 import Casadi.Wrappers.Classes.NLPSolver
 import Casadi.Wrappers.Classes.IOInterfaceFX
 
 import Dyno.Casadi.DMatrix
+import qualified Dyno.Casadi.Option as Op
+import Dyno.Casadi.SharedObject ( soInit )
 
 --import Dyno.NlpMonad ( reifyNlp )
 import Dyno.View.View
@@ -82,13 +81,11 @@ type VD a = J a (Vector Double)
 data NlpSolverStuff nlp =
   NlpSolverStuff
   { nlpConstructor :: FX -> IO nlp
-  , defaultOptions :: [(String,Opt)]
-  , options :: [(String,Opt)]
+  , defaultOptions :: [(String,Op.Opt)]
+  , options :: [(String,Op.Opt)]
   , solverInterruptCode :: Int
   , successCodes :: [String]
   }
-data Opt where
-  Opt :: NlpOption a => a -> Opt
 
 setInput :: (NlpState -> Int) -> String -> Vector Double -> NlpSolver x p g ()
 setInput getLen name x = do
@@ -162,41 +159,18 @@ getLamG :: View g => NlpSolver x p g (VD g)
 getLamG = liftM mkJ $ getOutput "lam_g"
 
 
-class NlpOption a where
-  mkGeneric :: a -> IO GenericType
-
-instance NlpOption Bool where
-  mkGeneric = genericType'
-instance NlpOption Int where
-  mkGeneric = genericType''
-instance NlpOption Double where
-  mkGeneric = genericType'''
-instance NlpOption String where
-  mkGeneric = genericType''''
-instance NlpOption (Vector Bool) where
-  mkGeneric = genericType'''''
-instance NlpOption (Vector Int) where
-  mkGeneric = genericType''''''
-instance NlpOption (Vector Double) where
-  mkGeneric = genericType'''''''
-instance NlpOption (Vector String) where
-  mkGeneric = genericType''''''''
-instance NlpOption GenericType where
-  mkGeneric = return
-
-setOption :: NlpOption a => String -> a -> NlpSolver x p g ()
+setOption :: Op.Option a => String -> a -> NlpSolver x p g ()
 setOption name val = do
   nlpState <- ask
   let nlp = isSolver nlpState
-  liftIO $ do
-    gt <- mkGeneric val
-    optionsFunctionality_setOption nlp name gt
+  liftIO $ Op.setOption nlp name val
+
 
 reinit :: NlpSolver x p g ()
 reinit = do
   nlpState <- ask
   let nlp = isSolver nlpState
-  liftIO $ sharedObject_init' nlp
+  liftIO $ soInit nlp
 
 -- | solve with current inputs, return success or failure code
 solve :: NlpSolver x p g (Either String String)
@@ -295,14 +269,11 @@ runNlpSolver solverStuff nlpFun callback' (NlpSolver nlpMonad) = do
         interrupt <- readIORef intref
         return $ if callbackRet && not interrupt then 0 else fromIntegral (solverInterruptCode solverStuff)
   casadiCallback <- makeCallback cb >>= genericType''''''''''''
-  optionsFunctionality_setOption nlp "iteration_callback" casadiCallback
+  Op.setOption nlp "iteration_callback" casadiCallback
 
   -- set all the user options
-  mapM_ (\(l,Opt r) -> mkGeneric r >>= optionsFunctionality_setOption nlp l)
-    (defaultOptions solverStuff)
-  mapM_ (\(l,Opt r) -> mkGeneric r >>= optionsFunctionality_setOption nlp l)
-    (options solverStuff)
-  sharedObject_init' nlp
+  mapM_ (\(l,Op.Opt o) -> Op.setOption nlp l o) (defaultOptions solverStuff ++ options solverStuff)
+  soInit nlp
 
   let nlpState = NlpState { isNx = size (proxy inputsX)
                           , isNp = size (proxy inputsP)
