@@ -70,14 +70,14 @@ plotPoints ::
   => CollTraj x z u p s n deg (Vector a) -> DynPlotPoints a
 plotPoints ct@(CollTraj (UnsafeJ tf') _ _ stages' xf) = DynPlotPoints (xss++[[(tf,unJ xf)]]) zss uss
   where
-    nStages = size (Proxy :: Proxy (Jec n S))
+    nStages = size (Proxy :: Proxy (JVec n S))
     tf,h :: a
     tf = V.head tf'
     h = tf / fromIntegral nStages
     --taus :: Vec deg Double
     taus = mkTaus (ctDeg ct)
 
-    stages = fmap split (unJec (split stages')) :: Vec n (CollStage x z u deg (Vector a))
+    stages = fmap split (unJVec (split stages')) :: Vec n (CollStage x z u deg (Vector a))
     (xss,zss,uss) = unzip3 $ f 0 (F.toList stages)
 
     -- todo: check this final time against expected tf
@@ -86,7 +86,7 @@ plotPoints ct@(CollTraj (UnsafeJ tf') _ _ stages' xf) = DynPlotPoints (xss++[[(t
     f t0 ((CollStage x0 xzus'):css) = (xs,zs,us) : f tnext css
       where
         tnext = t0 + h
-        xzus0 = fmap split (unJec (split xzus')) :: Vec deg (CollPoint x z u (Vector a))
+        xzus0 = fmap split (unJVec (split xzus')) :: Vec deg (CollPoint x z u (Vector a))
         xnext = interpolate taus x0 (fmap getX xzus0)
 
         xs :: [(a,Vector a)]

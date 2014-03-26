@@ -58,12 +58,12 @@ getFg ocp pCovFun (collTraj, _) =
   where
     -- split up the design vars
     ct@(CollTraj tf p0 parm stages' xf) = split collTraj
-    --stages = split stages' :: Jec n (CollStage x z u deg) MX
-    stages = unJec (split stages') :: Vec n (J (CollStage x z u deg) MX)
+    --stages = split stages' :: JVec n (CollStage x z u deg) MX
+    stages = unJVec (split stages') :: Vec n (J (CollStage x z u deg) MX)
     spstages = fmap split stages :: Vec n (CollStage x z u deg MX)
 
     collPoints :: Vec n (Vec deg (CollPoint x z u MX))
-    collPoints = fmap (\(CollStage _ cps) -> fmap split (unJec (split cps))) spstages
+    collPoints = fmap (\(CollStage _ cps) -> fmap split (unJVec (split cps))) spstages
     
     obj = objLagrange + objMayer
 
@@ -102,8 +102,8 @@ getFg ocp pCovFun (collTraj, _) =
 
     x0 = (\(CollStage x0' _) -> x0') (TV.tvhead spstages)
     g = CollOcpConstraints
-        { coStages = cat (CollTrajConstraints (cat (Jec (fmap cat stageConstraints))))
-        , coPathC = cat $ Jec (TV.tvzipWith3 mkPathConstraints collPoints outputs times)
+        { coStages = cat (CollTrajConstraints (cat (JVec (fmap cat stageConstraints))))
+        , coPathC = cat $ JVec (TV.tvzipWith3 mkPathConstraints collPoints outputs times)
         , coBc = ocpBc ocp x0 xf
         , coSbc = (ocpSc ocp) p0 pF
         }
@@ -140,8 +140,8 @@ getFg ocp pCovFun (collTraj, _) =
       TV.tvzipWith (dynConstraints cijs (ocpDae ocp) taus h parm) times spstages
 
     mkPathConstraints :: Vec deg (CollPoint x z u MX) -> Vec deg (J o MX) ->
-                         Vec deg (J S MX) -> J (Jec deg h) MX
-    mkPathConstraints cps outs = cat . Jec . TV.tvzipWith3 mkPathC cps outs
+                         Vec deg (J S MX) -> J (JVec deg h) MX
+    mkPathConstraints cps outs = cat . JVec . TV.tvzipWith3 mkPathC cps outs
       where
         mkPathC :: CollPoint x z u MX -> J o MX -> J S MX -> J h MX
         mkPathC (CollPoint x z u) = ocpPathC ocp x z u parm
@@ -224,7 +224,7 @@ evaluateQuadratures f p stages outputs h taus times =
       where
         qdots :: Vec deg (J S a)
         qdots = TV.tvzipWith3 (\(CollPoint x z u) o t -> f x z u p o t) stagelol output stageTimes
-        stagelol = (fmap split (unJec (split stage))) :: Vec deg (CollPoint x z u a)
+        stagelol = (fmap split (unJVec (split stage))) :: Vec deg (CollPoint x z u a)
 
         qs = cijInvFr !* qdots
 
@@ -277,7 +277,7 @@ dynConstraints ::
   CollStage x z u deg a ->
   (CollDynConstraint deg r a, Vec deg (J o a), J x a)
 dynConstraints cijs dae taus (UnsafeJ h) p stageTimes (CollStage x0 cps') =
-  (CollDynConstraint (cat (Jec dynConstrs)), outputs, xnext)
+  (CollDynConstraint (cat (JVec dynConstrs)), outputs, xnext)
   where
     -- interpolated final state
     xnext :: J x a
@@ -298,7 +298,7 @@ dynConstraints cijs dae taus (UnsafeJ h) p stageTimes (CollStage x0 cps') =
     xs :: Vec deg (J x a)
     xs = fmap getX cps
 
-    cps = fmap split (unJec (split cps')) :: Vec deg (CollPoint x z u a)
+    cps = fmap split (unJVec (split cps')) :: Vec deg (CollPoint x z u a)
 
 
 propogateCovariance ::
@@ -326,18 +326,18 @@ propogateCovariance (p0' :*: collStage :*: collDynConstraint :*: interpolatedX :
     q0 = toMatrix q0'
     p0 = toMatrix p0'
 
-    f' :: J (Jec deg r) SX
+    f' :: J (JVec deg r) SX
     f' = dynConstrs
 
-    z' :: J (Jec deg (JTuple x z)) SX
-    z' = cat (Jec z'') :: J (Jec deg (JTuple x z)) SX
+    z' :: J (JVec deg (JTuple x z)) SX
+    z' = cat (JVec z'') :: J (JVec deg (JTuple x z)) SX
       where
         z'' = fmap (\(CollPoint x z _) -> cat (JTuple x z)) cps :: Vec deg (J (JTuple x z) SX)
         cps :: Vec deg (CollPoint x z u SX)
         cps = fmap split cps''
           where
             cps'' :: Vec deg (J (CollPoint x z u) SX)
-            cps'' = unJec $ split cps'
+            cps'' = unJVec $ split cps'
 
     x0' :: J x SX
     x0' = x0
@@ -388,10 +388,10 @@ makeGuess tf guessX guessZ guessU cov' parm =
 
     mkGuess' :: (Double, Vec deg Double) -> CollStage x z u deg DMatrix
     mkGuess' (t,ts) = CollStage (guessX t) $
-                      cat $ Jec $ fmap (\t' -> cat (CollPoint (guessX t') (guessZ t') (guessU t'))) ts
+                      cat $ JVec $ fmap (\t' -> cat (CollPoint (guessX t') (guessZ t') (guessU t'))) ts
 
-    guesses :: J (Jec n (CollStage x z u deg)) DMatrix
-    guesses = cat $ Jec $ fmap (cat . mkGuess') times
+    guesses :: J (JVec n (CollStage x z u deg)) DMatrix
+    guesses = cat $ JVec $ fmap (cat . mkGuess') times
 
     -- the collocation points
     taus :: Vec deg Double

@@ -27,7 +27,7 @@ reifyCollPoint (CollPoint (UnsafeJ x) (UnsafeJ z) (UnsafeJ u)) f =
   TV.reifyDim (vsize1 x) $ \(Proxy :: Proxy nx) ->
   TV.reifyDim (vsize1 z) $ \(Proxy :: Proxy nz) ->
   TV.reifyDim (vsize1 u) $ \(Proxy :: Proxy nu) ->
-  f (CollPoint (mkJ x :: J (Jec nx S) a) (mkJ z :: J (Jec nz S) a) (mkJ u :: J (Jec nu S) a))
+  f (CollPoint (mkJ x :: J (JVec nx S) a) (mkJ z :: J (JVec nz S) a) (mkJ u :: J (JVec nu S) a))
 
 reifyCollStage
   :: forall a r x' z' u' . Viewable a =>
@@ -47,8 +47,8 @@ reifyCollStage ns@(nx, nz, nu, deg) (CollStage (UnsafeJ x0) (UnsafeJ points)) f
       TV.reifyDim nu $ \(Proxy :: Proxy nu) ->
       TV.reifyDim deg $ \(Proxy :: Proxy deg) ->
       f (CollStage
-         (mkJ x0 :: J (Jec nx S) a)
-         (mkJ points :: J (Jec deg (CollPoint (Jec nx S) (Jec nz S) (Jec nu S))) a)
+         (mkJ x0 :: J (JVec nx S) a)
+         (mkJ points :: J (JVec deg (CollPoint (JVec nx S) (JVec nz S) (JVec nu S))) a)
         )
   where
     nx' = vsize1 x0
@@ -87,10 +87,10 @@ reifyCollTraj (nx,nz,nu,np,ns,n,deg) (CollTraj (UnsafeJ endTime) (UnsafeJ cov) (
   TV.reifyDim deg $ \(Proxy :: Proxy deg) ->
   f (CollTraj
      (mkJ endTime :: J S a)
-     (mkJ cov :: J (Cov (Jec ns S)) a)
-     (mkJ params :: J (Jec np S) a)
-     (mkJ stages :: J (Jec n (CollStage (Jec nx S) (Jec nz S) (Jec nu S) deg)) a)
-     (mkJ xf :: J (Jec nx S) a)
+     (mkJ cov :: J (Cov (JVec ns S)) a)
+     (mkJ params :: J (JVec np S) a)
+     (mkJ stages :: J (JVec n (CollStage (JVec nx S) (JVec nz S) (JVec nu S) deg)) a)
+     (mkJ xf :: J (JVec nx S) a)
     )
   where
     nx' = vsize1 xf
@@ -122,7 +122,7 @@ reifyCollTraj' (nx,nz,nu,np,ns,n,deg) (UnsafeJ x) f
   TV.reifyDim ns $ \(Proxy :: Proxy ns) ->
   TV.reifyDim n $ \(Proxy :: Proxy n) ->
   TV.reifyDim deg $ \(Proxy :: Proxy deg) ->
-  f (mkJ x :: J (CollTraj (Jec nx S) (Jec nz S) (Jec nu S) (Jec np S) (Jec ns S) n deg) a)
+  f (mkJ x :: J (CollTraj (JVec nx S) (JVec nz S) (JVec nu S) (JVec np S) (JVec ns S) n deg) a)
   where
     ncov = (ns*ns + ns) `div` 2 
     ntotal = 1 + ncov + np + n*(nx + deg*(nx + nz + nu)) + nx

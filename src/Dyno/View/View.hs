@@ -15,10 +15,10 @@
 {-# LANGUAGE InstanceSigs #-}
 
 module Dyno.View.View
-       ( J(..), mkJ, unJ, unJ', View(..), Jec(..), JNone(..), S(..), JV(..), JV'(..), JV''(..)
+       ( J(..), mkJ, unJ, unJ', View(..), JVec(..), JNone(..), S(..), JV(..), JV'(..), JV''(..)
        , JTuple(..)
        , jreplicate, jreplicate'
-       , reifyJec, jfill
+       , reifyJVec, jfill
        ) where
 
 import GHC.Generics hiding ( S )
@@ -238,10 +238,10 @@ instance (Show a, Lookup a) => Lookup (J S (Vector a)) where
     toAccessorTree (V.head x) (V.head . unJ . f)
 
 -- | vectors in View
-newtype Jec n f a = Jec { unJec :: Vec n (J f a) } deriving ( Show, Eq )
-instance (Dim n, View f) => View (Jec n f) where
-  cat = mkJ . vveccat . fmap unJ . unVec . unJec
-  split = Jec . fmap mkJ . mkVec . flip vvecsplit ks . unJ
+newtype JVec n f a = JVec { unJVec :: Vec n (J f a) } deriving ( Show, Eq )
+instance (Dim n, View f) => View (JVec n f) where
+  cat = mkJ . vveccat . fmap unJ . unVec . unJVec
+  split = JVec . fmap mkJ . mkVec . flip vvecsplit ks . unJ
     where
       ks = V.fromList (take (n+1) [0,m..])
       n = reflectDim (Proxy :: Proxy n)
@@ -250,17 +250,17 @@ instance (Dim n, View f) => View (Jec n f) where
     where
       n = reflectDim (Proxy :: Proxy n)
       m = size (Proxy :: Proxy f)
-instance (Dim n, Serialize (J f a)) => Serialize (Jec n f a) where
-  get = fmap (Jec . mkVec') get
-  put = put . F.toList . unJec
+instance (Dim n, Serialize (J f a)) => Serialize (JVec n f a) where
+  get = fmap (JVec . mkVec') get
+  put = put . F.toList . unJVec
 
-jreplicate' :: forall a n f . (Dim n, View f) => J f a -> Jec n f a
+jreplicate' :: forall a n f . (Dim n, View f) => J f a -> JVec n f a
 jreplicate' el =  ret
   where
-    ret = Jec (mkVec (V.replicate nvec el))
-    nvec = size (Proxy :: Proxy (Jec n S))
+    ret = JVec (mkVec (V.replicate nvec el))
+    nvec = size (Proxy :: Proxy (JVec n S))
 
-jreplicate :: forall a n f . (Dim n, View f, Viewable a) => J f a -> J (Jec n f) a
+jreplicate :: forall a n f . (Dim n, View f, Viewable a) => J f a -> J (JVec n f) a
 jreplicate = cat . jreplicate'
 
 jfill :: forall a f . (View f) => a -> J f (Vector a)
@@ -268,9 +268,9 @@ jfill x = mkJ (V.replicate n x)
   where
     n = size (Proxy :: Proxy f)
 
-reifyJec :: forall a f r . Vector (J f a) -> (forall (n :: *). Dim n => Jec n f a -> r) -> r
-reifyJec v f = reifyVector v $ \(v' :: Vec n (J f a)) -> f (Jec v' :: Jec n f a)
-{-# INLINE reifyJec #-}
+reifyJVec :: forall a f r . Vector (J f a) -> (forall (n :: *). Dim n => JVec n f a -> r) -> r
+reifyJVec v f = reifyVector v $ \(v' :: Vec n (J f a)) -> f (JVec v' :: JVec n f a)
+{-# INLINE reifyJVec #-}
 
 -- | view into a None, for convenience
 data JNone a = JNone deriving ( Eq, Generic, Generic1, Show, Functor, Foldable, Traversable )

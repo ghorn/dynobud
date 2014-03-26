@@ -29,18 +29,18 @@ import Dyno.Cov ( Cov )
 
 -- design variables
 data CollTraj x z u p s n deg a =
-  CollTraj (J S a) (J (Cov s) a) (J p a) (J (Jec n (CollStage x z u deg)) a) (J x a)
+  CollTraj (J S a) (J (Cov s) a) (J p a) (J (JVec n (CollStage x z u deg)) a) (J x a)
   deriving (Eq, Generic, Show)
   -- endtime, params, coll stages, xf
 
-data CollStage x z u deg a = CollStage (J x a) (J (Jec deg (CollPoint x z u)) a)
+data CollStage x z u deg a = CollStage (J x a) (J (JVec deg (CollPoint x z u)) a)
                            deriving (Eq, Generic, Show)
 
 data CollPoint x z u a = CollPoint (J x a) (J z a) (J u a)
                        deriving (Eq, Generic, Show)
 
 -- constraints
-data CollDynConstraint deg r a = CollDynConstraint (J (Jec deg r) a)
+data CollDynConstraint deg r a = CollDynConstraint (J (JVec deg r) a)
                                deriving (Eq, Generic, Show)
 
 data CollStageConstraints x deg r sh a =
@@ -48,13 +48,13 @@ data CollStageConstraints x deg r sh a =
   deriving (Eq, Generic, Show)
 
 data CollTrajConstraints n x deg r sh a =
-  CollTrajConstraints (J (Jec n (CollStageConstraints x deg r sh)) a)
+  CollTrajConstraints (J (JVec n (CollStageConstraints x deg r sh)) a)
   deriving (Eq, Generic, Show)
 
 data CollOcpConstraints n deg x r c h sh sc a =
   CollOcpConstraints
   { coStages :: J (CollTrajConstraints n x deg r sh) a
-  , coPathC :: J (Jec n (Jec deg h)) a
+  , coPathC :: J (JVec n (JVec deg h)) a
   , coBc :: J c a
   , coSbc :: J sc a
   } deriving (Eq, Generic, Show)
