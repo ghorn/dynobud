@@ -65,7 +65,7 @@ toMatrix c = unsafePerformIO $ do
       n = covN c'
       _ = xs :: Vector (J S SX)
       toScalar :: SX -> SXElement
-      toScalar x = case V.toList (SX.sdata (SX.sfull x)) of
+      toScalar x = case V.toList (SX.sdata (SX.sdense x)) of
         [y] -> y
         ys -> error $ "Cov: toMatrix: toScalar: got non-scalar, length " ++ show (length ys)
       xs' = fmap (toScalar . unJ) xs :: Vector SXElement
@@ -94,7 +94,7 @@ toMatrix'' c = unsafePerformIO $ do
       n = covN c'
       _ = xs :: Vector (J S DMatrix)
       toScalar :: DMatrix -> Double
-      toScalar x = case V.toList (DMatrix.ddata (DMatrix.dfull x)) of
+      toScalar x = case V.toList (DMatrix.ddata (DMatrix.ddense x)) of
         [y] -> y
         ys -> error $ "Cov: toMatrix: toScalar: got non-scalar, length " ++ show (length ys)
       xs' = fmap (toScalar . unJ) xs :: Vector Double
@@ -133,15 +133,15 @@ diag'' = fromMatrix'' . DMatrix.ddiag . unJ
 --
 -- todo: this is way too dense
 fromMatrix :: View f => SX -> J (Cov f) SX
-fromMatrix x = unsafePerformIO $ fmap mkJ $ (C.vecNZ'' (SX.striu (SX.sfull x)))
+fromMatrix x = unsafePerformIO $ fmap mkJ $ (C.vecNZ'' (SX.striu (SX.sdense x)))
 {-# NOINLINE fromMatrix #-}
 
 fromMatrix' :: View f => MX -> J (Cov f) MX
-fromMatrix' x = unsafePerformIO $ fmap mkJ $ (C.vecNZ''' (MX.triu (MX.full x)))
+fromMatrix' x = unsafePerformIO $ fmap mkJ $ (C.vecNZ''' (MX.triu (MX.dense x)))
 {-# NOINLINE fromMatrix' #-}
 
 fromMatrix'' :: View f => DMatrix -> J (Cov f) DMatrix
-fromMatrix'' x = unsafePerformIO $ fmap mkJ $ (C.vecNZ' (DMatrix.dtriu (DMatrix.dfull x)))
+fromMatrix'' x = unsafePerformIO $ fmap mkJ $ (C.vecNZ' (DMatrix.dtriu (DMatrix.ddense x)))
 {-# NOINLINE fromMatrix'' #-}
 
 covN :: forall f a . View f => Cov f a -> Int

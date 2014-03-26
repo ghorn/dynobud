@@ -289,7 +289,7 @@ runNlpSolver solverStuff nlpFun callback' (NlpSolver nlpMonad) = do
         callbackRet <- case callback' of
           Nothing -> return True
           Just callback -> do
-            xval <- fmap (mkJ . ddata . dfull) $ ioInterfaceFX_output fx' 0
+            xval <- fmap (mkJ . ddata . ddense) $ ioInterfaceFX_output fx' 0
             callback xval
         interrupt <- readIORef intref
         return $ if callbackRet && not interrupt then 0 else fromIntegral (solverInterruptCode solverStuff)

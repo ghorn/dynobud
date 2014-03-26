@@ -6,7 +6,7 @@ module Dyno.Casadi.MX
 --       , solve
        , triu
        , tril
-       , full
+       , dense --, sparse
        , d2m
        , size, size1, size2, numel
        , crs, vertcat, horzcat, veccat, vertsplit
@@ -60,9 +60,13 @@ trans :: MX -> MX
 trans x = unsafePerformIO (mx_trans x)
 {-# NOINLINE trans #-}
 
-full :: MX -> MX
-full x = unsafePerformIO (C.full''' x)
-{-# NOINLINE full #-}
+dense :: MX -> MX
+dense x = unsafePerformIO (C.dense''' x)
+{-# NOINLINE dense #-}
+
+--sparse :: MX -> MX
+--sparse x = unsafePerformIO (C.sparse x)
+--{-# NOINLINE sparse #-}
 
 triu :: MX -> MX
 triu x = unsafePerformIO (C.triu''' (castGenMX x))

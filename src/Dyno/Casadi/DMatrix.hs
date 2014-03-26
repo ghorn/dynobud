@@ -2,7 +2,7 @@
 
 module Dyno.Casadi.DMatrix
        ( DMatrix(), dcrs, dmm, dvector, ddata, ddiag
-       , dfull, dtrans, dtriu, dtril
+       , ddense, dsparse, dtrans, dtriu, dtril
        , dsize, dsize1, dsize2, dnumel
        , dvertcat, dhorzcat, dveccat, dvertsplit
        , dones, dzeros
@@ -26,9 +26,13 @@ dtrans :: DMatrix -> DMatrix
 dtrans x = unsafePerformIO (dmatrix_trans x)
 {-# NOINLINE dtrans #-}
 
-dfull :: DMatrix -> DMatrix
-dfull x = unsafePerformIO (C.full' x)
-{-# NOINLINE dfull #-}
+ddense :: DMatrix -> DMatrix
+ddense x = unsafePerformIO (C.dense' x)
+{-# NOINLINE ddense #-}
+
+dsparse :: DMatrix -> DMatrix
+dsparse x = unsafePerformIO (C.sparse''' x)
+{-# NOINLINE dsparse #-}
 
 dcrs :: DMatrix -> Sparsity
 dcrs x = unsafePerformIO (dmatrix_sparsityRef x)
