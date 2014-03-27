@@ -13,7 +13,7 @@ import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 
 import Casadi.Wrappers.Classes.SharedObject
-import Casadi.Wrappers.Classes.FX ( FX, castFX )
+import Casadi.Wrappers.Classes.Function ( Function, castFunction )
 import Casadi.Wrappers.Classes.SXFunction ( sxFunction''' )
 import Casadi.Wrappers.Classes.MXFunction ( mxFunction'' )
 import Casadi.Wrappers.Enums ( InputOutputScheme(..) )
@@ -32,14 +32,14 @@ class (Show a, Viewable a) => Symbolic a where
   -- | creating symbolics
   sym :: View f => String -> IO (J f a)
   mkScheme :: InputOutputScheme -> [(String,a)] -> IO (Vector a)
-  mkFunction :: Vector a -> Vector a -> IO FX
+  mkFunction :: Vector a -> Vector a -> IO Function
 instance Symbolic SX where
   sym = mkSym ssymV
   mkScheme = mkSchemeSX
   mkFunction x y = do
     f <- sxFunction''' x y
     sharedObject_init' f
-    return (castFX f)
+    return (castFunction f)
 
 instance Symbolic MX where
   sym = mkSym symV
@@ -47,7 +47,7 @@ instance Symbolic MX where
   mkFunction x y = do
     f <- mxFunction'' x y
     sharedObject_init' f
-    return (castFX f)
+    return (castFunction f)
 
 
 class Matrix a where
