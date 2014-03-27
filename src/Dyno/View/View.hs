@@ -178,7 +178,7 @@ instance View S where
 class View f where
   cat :: Viewable a => f a -> J f a
   default cat :: (GCat (Rep (f a)) a, Generic (f a), Viewable a) => f a -> J f a
-  cat = mkJ . gcat vveccat . from
+  cat = mkJ . vveccat . V.fromList . F.toList . gcat . from
 
   size :: Proxy f -> Int
   default size :: (GSize (Rep (f ())), Generic (f ())) => Proxy f -> Int
@@ -261,24 +261,24 @@ instance GSize U1 where
 
 ----------------------------- CAT -------------------------------
 class GCat f a where
-  gcat :: (Vector a -> a) -> f p -> a
+  gcat :: f p -> Seq.Seq a
 
 -- concatenate fields recursively
 instance (GCat f a, GCat g a) => GCat (f :*: g) a where
-  gcat veccat (x :*: y) = veccat (V.fromList [x',y'])
+  gcat (x :*: y) = x' Seq.>< y'
     where
-      x' = gcat veccat x
-      y' = gcat veccat y
+      x' = gcat x
+      y' = gcat y
 -- discard the metadata
 instance GCat f a => GCat (M1 i d f) a where
-  gcat veccat = gcat veccat . unM1
+  gcat = gcat . unM1
 
 -- any field should just hold a view, no recursion here
-instance GCat (Rec0 (J f a)) a where
-  gcat _ (K1 (UnsafeJ x)) = x
+instance (View f, Viewable a) => GCat (Rec0 (J f a)) a where
+  gcat (K1 x) = Seq.singleton (unJ x)
 
 instance GCat U1 a where
-  gcat veccat U1 = veccat V.empty
+  gcat U1 = Seq.empty
 
 -------------------------
 class GBuild f a where
