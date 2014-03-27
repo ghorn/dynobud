@@ -129,7 +129,7 @@ instance (View f) => Floating (J f DMatrix) where
   acosh = fmap acosh
 
 ---------------------- Vector a ------------------------
-instance (View f, Num a) => Num (J f (Vector a)) where
+instance (View f, Num a, Show a) => Num (J f (Vector a)) where
   (UnsafeJ x) + (UnsafeJ y) = mkJ $ V.zipWith (+) x y
   (UnsafeJ x) - (UnsafeJ y) = mkJ $ V.zipWith (-) x y
   (UnsafeJ x) * (UnsafeJ y) = mkJ $ V.zipWith (*) x y
@@ -139,13 +139,13 @@ instance (View f, Num a) => Num (J f (Vector a)) where
     where
       n = size (Proxy :: Proxy f)
 
-instance (View f, Fractional a) => Fractional (J f (Vector a)) where
+instance (View f, Fractional a, Show a) => Fractional (J f (Vector a)) where
   (UnsafeJ x) / (UnsafeJ y) = mkJ $ V.zipWith (/) x y
   fromRational x = mkJ (V.replicate n (fromRational x))
     where
       n = size (Proxy :: Proxy f)
 
-instance (View f, Floating a) => Floating (J f (Vector a)) where
+instance (View f, Floating a, Show a) => Floating (J f (Vector a)) where
   pi = mkJ (V.replicate n pi)
     where
       n = size (Proxy :: Proxy f)

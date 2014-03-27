@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language ScopedTypeVariables #-}
--- {-# Language DeriveGeneric #-}
 {-# Language KindSignatures #-}
+--{-# Language DeriveGeneric #-}
 
 module Dyno.Cov
        ( Cov(..)
@@ -16,11 +16,12 @@ module Dyno.Cov
        , diag''
        ) where
 
--- import GHC.Generics ( Generic )
+--import GHC.Generics ( Generic )
 import Control.Monad ( when )
 import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
+import qualified Data.Sequence as Seq
 import Data.Serialize
 import System.IO.Unsafe ( unsafePerformIO )
 import Casadi.Wrappers.Classes.Sparsity ( sparsity_triu )
@@ -36,8 +37,7 @@ import qualified Dyno.Casadi.SX as SX
 import qualified Dyno.Casadi.MX as MX
 import qualified Dyno.Casadi.DMatrix as DMatrix
 import Dyno.Casadi.SXElement
-import Dyno.View.View
-import Dyno.View.Viewable
+import Dyno.View
 import qualified Dyno.View.Symbolic as S
 
 newtype Cov (f :: * -> *) a = Cov { unCov :: Vector (J S a) } deriving (Eq, Show)
@@ -50,6 +50,9 @@ instance View f => View (Cov f) where
       --sizes k0 k = k0 : sizes (k0 + k) (k-1)
       --n = size (Proxy :: Proxy f)
   size = const $ (n*n + n) `div` 2
+    where
+      n = size (Proxy :: Proxy f)
+  sizes k0 = const (Seq.singleton (k0 + n))
     where
       n = size (Proxy :: Proxy f)
 
@@ -130,7 +133,7 @@ diag'' = fromMatrix'' . DMatrix.ddiag . unJ
 --
 --dd2 :: J (Cov X) DMatrix
 --dd2 = fromMatrix'' sp
---
+
 -- todo: this is way too dense
 fromMatrix :: View f => SX -> J (Cov f) SX
 fromMatrix x = unsafePerformIO $ fmap mkJ $ (C.vecNZ'' (SX.striu (SX.sdense x)))

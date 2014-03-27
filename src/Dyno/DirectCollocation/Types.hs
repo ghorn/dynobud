@@ -21,7 +21,7 @@ import Data.Serialize ( Serialize )
 import GHC.Generics ( Generic )
 import Linear.V ( Dim(..) )
 
-import Dyno.View.View
+import Dyno.View
 import Dyno.Cov ( Cov )
 
 --import Dvda

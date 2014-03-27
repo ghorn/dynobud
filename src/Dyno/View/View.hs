@@ -1,6 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE TypeOperators #-}
@@ -12,10 +11,12 @@
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE InstanceSigs #-}
 
 module Dyno.View.View
-       ( J(..), mkJ, unJ, unJ', View(..), JVec(..), JNone(..), S(..), JV(..), JV'(..), JV''(..)
+       ( J(..), mkJ, unJ, unJ', View(..), JVec(..), JNone(..), S(..)
+--       , JV(..), JV'(..), JV''(..)
        , JTuple(..)
        , jreplicate, jreplicate'
        , reifyJVec, jfill
@@ -25,6 +26,7 @@ import GHC.Generics hiding ( S )
 
 import Data.Foldable ( Foldable )
 import qualified Data.Foldable as F
+import qualified Data.Sequence as Seq
 import Data.Traversable ( Traversable )
 import Data.Proxy ( Proxy(..) )
 import Linear.V ( Dim(..) )
@@ -34,16 +36,15 @@ import Data.Serialize ( Serialize(..) )
 
 import Dyno.TypeVecs ( Vec(..), unVec, mkVec, mkVec', reifyVector )
 import Dyno.View.Viewable ( Viewable(..) )
-import Dyno.Vectorize ( Vectorize(..), vlength )
-import Dyno.Server.Accessors -- ( Lookup(..) )
+import Dyno.Vectorize ( Vectorize(..)) -- , vlength )
+import Dyno.Server.Accessors ( Lookup(..), AccessorTree )
 
 data JTuple f g a = JTuple (J f a) (J g a) deriving ( Generic, Show )
-
+instance (View f, View g) => View (JTuple f g)
 --instance View Id
 --instance View Xy
 --instance View Xyz
 --instance View f => View (Fctr f)
-instance (View f, View g) => View (JTuple f g)
 
 newtype J (f :: * -> *) (a :: *) = UnsafeJ { unsafeUnJ :: a } deriving (Eq, Functor, Generic)
 
@@ -96,6 +97,10 @@ instance (Dim n, View f) => View (JVec n f) where
     where
       n = reflectDim (Proxy :: Proxy n)
       m = size (Proxy :: Proxy f)
+  sizes = const . Seq.iterateN n (+m) . (+ m)
+    where
+      n = reflectDim (Proxy :: Proxy n)
+      m = size (Proxy :: Proxy f)
 instance (Dim n, Serialize (J f a)) => Serialize (JVec n f a) where
   get = fmap (JVec . mkVec') get
   put = put . F.toList . unJVec
@@ -109,7 +114,7 @@ jreplicate' el =  ret
 jreplicate :: forall a n f . (Dim n, View f, Viewable a) => J f a -> J (JVec n f) a
 jreplicate = cat . jreplicate'
 
-jfill :: forall a f . (View f) => a -> J f (Vector a)
+jfill :: forall a f . (View f, Show a) => a -> J f (Vector a)
 jfill x = mkJ (V.replicate n x)
   where
     n = size (Proxy :: Proxy f)
@@ -120,16 +125,8 @@ reifyJVec v f = reifyVector v $ \(v' :: Vec n (J f a)) -> f (JVec v' :: JVec n f
 
 -- | view into a None, for convenience
 data JNone a = JNone deriving ( Eq, Generic, Generic1, Show, Functor, Foldable, Traversable )
--- just use a Vectorize instance
 instance Vectorize JNone where
---instance View JNone where
---  cat = J . unJ . cat . JV
---  size = const (size (Proxy :: Proxy (JV JNone)))
---  split = unJV . split . J . unJ
 instance View JNone where
-  cat = const $ mkJ (vveccat V.empty)
-  size = const 0
-  split = const JNone
 
 -- | view into a scalar, for convenience
 newtype S a = S { unS :: a } deriving ( Eq, Num, Fractional, Floating, Generic, Generic1, Show, Functor, Foldable, Traversable )
@@ -137,47 +134,43 @@ instance View S where
   cat :: forall a . Viewable a => S a -> J S a
   cat (S x) = mkJ x
   size = const 1
+  sizes = const . Seq.singleton . (1 +)
   split :: forall a . Viewable a => J S a -> S a
-  split (UnsafeJ x)
-    | n == 1 = S x
-    | otherwise = error $ "split S: got length " ++ show n
-    where
-      n = vsize1 x
+  split = S . unJ
 
-newtype JV'' f a = JV'' { unJV'' :: f (J S a) }
-instance Vectorize f => View (JV'' f) where
-  cat :: forall a . Viewable a => JV'' f a -> J (JV'' f) a
-  cat = mkJ . vveccat . fmap unJ . vectorize . unJV''
-  size = const $ vlength (empty :: f ())
-  split :: forall a . Viewable a => J (JV'' f) a -> JV'' f a
-  split = JV'' . devectorize . fmap mkJ . flip vvecsplit ks. unJ
-    where
-      ks = V.fromList (take (n+1) [0..])
-      n = size (Proxy :: Proxy (JV'' f))
-
-
-newtype JV' f a = JV' { unJV' :: f (S a) }
-instance Vectorize f => View (JV' f) where
-  cat :: forall a . Viewable a => JV' f a -> J (JV' f) a
-  cat = mkJ . vveccat . fmap unS . vectorize . unJV'
-  size = const $ vlength (empty :: f ())
-  split :: forall a . Viewable a => J (JV' f) a -> JV' f a
-  split = JV' . devectorize . fmap S . flip vvecsplit ks. unJ
-    where
-      ks = V.fromList (take (n+1) [0..])
-      n = size (Proxy :: Proxy (JV' f))
-
-newtype JV f a = JV { unJV :: f a }
-instance Vectorize f => View (JV f) where
-  cat :: forall a . Viewable a => JV f a -> J (JV f) a
-  cat = mkJ . vveccat . vectorize . unJV
-  size = const $ vlength (empty :: f ())
-  split :: forall a . Viewable a => J (JV f) a -> JV f a
-  split = JV . devectorize . flip vvecsplit ks. unJ
-    where
-      ks = V.fromList (take (n+1) [0..])
-      n = size (Proxy :: Proxy (JV f))
-
+--newtype JV'' f a = JV'' { unJV'' :: f (J S a) }
+--instance Vectorize f => View (JV'' f) where
+--  cat :: forall a . Viewable a => JV'' f a -> J (JV'' f) a
+--  cat = mkJ . vveccat . fmap unJ . vectorize . unJV''
+--  size = const $ vlength (empty :: f ())
+--  split :: forall a . Viewable a => J (JV'' f) a -> JV'' f a
+--  split = JV'' . devectorize . fmap mkJ . flip vvecsplit ks. unJ
+--    where
+--      ks = V.fromList (take (n+1) [0..])
+--      n = size (Proxy :: Proxy (JV'' f))
+--
+--
+--newtype JV' f a = JV' { unJV' :: f (S a) }
+--instance Vectorize f => View (JV' f) where
+--  cat :: forall a . Viewable a => JV' f a -> J (JV' f) a
+--  cat = mkJ . vveccat . fmap unS . vectorize . unJV'
+--  size = const $ vlength (empty :: f ())
+--  split :: forall a . Viewable a => J (JV' f) a -> JV' f a
+--  split = JV' . devectorize . fmap S . flip vvecsplit ks. unJ
+--    where
+--      ks = V.fromList (take (n+1) [0..])
+--      n = size (Proxy :: Proxy (JV' f))
+--
+--newtype JV f a = JV { unJV :: f a }
+--instance Vectorize f => View (JV f) where
+--  cat :: forall a . Viewable a => JV f a -> J (JV f) a
+--  cat = mkJ . vveccat . vectorize . unJV
+--  size = const $ vlength (empty :: f ())
+--  split :: forall a . Viewable a => J (JV f) a -> JV f a
+--  split = JV . devectorize . flip vvecsplit ks. unJ
+--    where
+--      ks = V.fromList (take (n+1) [0..])
+--      n = size (Proxy :: Proxy (JV f))
 
 
 -- | Type-save "views" into vectors, which can access subvectors
@@ -194,13 +187,36 @@ class View f where
       reproxy :: Proxy g -> Proxy ((Rep (g ())) p)
       reproxy = const Proxy
 
+  sizes :: Int -> Proxy f -> Seq.Seq Int
+  default sizes :: (GSize (Rep (f ())), Generic (f ())) => Int -> Proxy f -> Seq.Seq Int
+  sizes k0 = gsizes k0 . reproxy
+    where
+      reproxy :: Proxy g -> Proxy ((Rep (g ())) p)
+      reproxy = const Proxy
+
   split :: Viewable a => J f a -> f a
-  default split :: (GSplit (Rep (f a)) a, Generic (f a), Viewable a) => J f a -> f a
-  split = to . gsplit vvecsplit . unJ
+  default split :: (GBuild (Rep (f a)) a, Generic (f a), Viewable a) => J f a -> f a
+  split x'
+    | null leftovers = to ret
+    | otherwise = error $ unlines
+                  [ "split got " ++ show (length leftovers) ++ " leftover fields"
+                  , "ns: " ++ show ns ++ "\n" ++ show (map vsize1 leftovers)
+                  , "x: " ++ show x'
+                  , "size1(x): " ++ show (vsize1 (unJ x'))
+                  , "leftovers: " ++ show leftovers
+                  , "errors: " ++ show (reverse errors)
+                  ]
+    where
+      x = unJ x'
+      (ret,leftovers,errors) = gbuild [] xs
+      xs = V.toList $ vvecsplit x (V.fromList ns)
+      ns :: [Int]
+      ns = (0 :) $ F.toList $ sizes 0 (Proxy :: Proxy f)
 
 ------------------------------------ SIZE ------------------------------
 class GSize f where
   gsize :: Proxy (f p) -> Int
+  gsizes :: Int -> Proxy (f p) -> Seq.Seq Int
 
 instance (GSize f, GSize g) => GSize (f :*: g) where
   gsize pxy = gsize px + gsize py
@@ -208,8 +224,23 @@ instance (GSize f, GSize g) => GSize (f :*: g) where
       reproxy :: Proxy ((x :*: y) p) -> (Proxy (x p), Proxy (y p))
       reproxy = const (Proxy,Proxy)
       (px, py) = reproxy pxy
+  gsizes k0 pxy = xs Seq.>< ys
+    where
+      xs = gsizes k0 px
+      ys = gsizes k1 py
+      k1 = case Seq.viewr xs of
+        Seq.EmptyR -> k0
+        _ Seq.:> k1' -> k1'
+
+      reproxy :: Proxy ((x :*: y) p) -> (Proxy (x p), Proxy (y p))
+      reproxy = const (Proxy,Proxy)
+      (px, py) = reproxy pxy
 instance GSize f => GSize (M1 i d f) where
   gsize = gsize . reproxy
+    where
+      reproxy :: Proxy (M1 i d f p) -> Proxy (f p)
+      reproxy _ = Proxy
+  gsizes k0 = gsizes k0 . reproxy
     where
       reproxy :: Proxy (M1 i d f p) -> Proxy (f p)
       reproxy _ = Proxy
@@ -219,9 +250,14 @@ instance View f => GSize (Rec0 (J f a)) where
     where
       reproxy :: Proxy (Rec0 (J f a) p) -> Proxy f
       reproxy _ = Proxy
+  gsizes k0 = Seq.singleton . (k0 +) . size . reproxy
+    where
+      reproxy :: Proxy (Rec0 (J f a) p) -> Proxy f
+      reproxy _ = Proxy
 
 instance GSize U1 where
   gsize = const 0
+  gsizes = const . Seq.singleton
 
 ----------------------------- CAT -------------------------------
 class GCat f a where
@@ -244,39 +280,49 @@ instance GCat (Rec0 (J f a)) a where
 instance GCat U1 a where
   gcat veccat U1 = veccat V.empty
 
-------------------------------- SPLIT -------------------------------
-class GSplit f a where
-  gsplit :: (a -> Vector Int -> Vector a) -> a -> f p
+-------------------------
+class GBuild f a where
+  gbuild :: [String] -> [a] -> (f p, [a], [String])
 
 -- split fields recursively
-instance (GSplit f a, GSplit g a, GSize f, GSize g) => GSplit (f :*: g) a where
-  gsplit vecsplit mxy = ret
+instance (GBuild f a, GBuild g a, GSize f, GSize g) => GBuild (f :*: g) a where
+  gbuild errs0 xs0 = (x :*: y, xs2, errs2)
     where
-      ret = x :*: y
-      
-      nx = gsize (proxy x)
-      ny = gsize (proxy y)
+      (x,xs1,errs1) = gbuild errs0 xs0
+      (y,xs2,errs2) = gbuild errs1 xs1
 
-      proxy :: h -> Proxy h
-      proxy = const Proxy
+instance (GBuild f a, Datatype d) => GBuild (D1 d f) a where
+  gbuild :: forall p . [String] -> [a] -> (D1 d f p, [a], [String])
+  gbuild errs0 xs0 = (ret, xs1, errs1)
+    where
+      err = moduleName ret ++ "." ++ datatypeName ret :: String
+      ret = M1 x :: D1 d f p
+      (x,xs1,errs1) = gbuild (err:errs0) xs0
 
-      mx :: a
-      my :: a
-      (mx,my) = case V.toList (vecsplit mxy (V.fromList [0, nx, nx + ny])) of
-        [mx',my'] -> (mx',my')
---        [mx',my'] -> if nx == size1 mx' && ny == size1 my'
---                          then (mx',my')
---                          else error "size mismatch in vertsplit"
-        bad -> error $ "vecsplit error, wanted 2 but got: " ++ show (length bad)
-      
-      x = gsplit vecsplit mx -- :: (J f)
-      y = gsplit vecsplit my -- :: g p -- (J xy)
--- discard the metadata
-instance GSplit f a => GSplit (M1 i d f) a where
-  gsplit vecsplit = M1 . gsplit vecsplit
+instance (GBuild f a, Constructor c) => GBuild (C1 c f) a where
+  gbuild :: forall p . [String] -> [a] -> (C1 c f p, [a], [String])
+  gbuild errs0 xs0 = (ret, xs1, errs1)
+    where
+      err = conName ret :: String
+      ret = M1 x :: C1 c f p
+      (x,xs1,errs1) = gbuild (err:errs0) xs0
+
+instance (GBuild f a, Selector s) => GBuild (S1 s f) a where
+  gbuild :: forall p . [String] -> [a] -> (S1 s f p, [a], [String])
+  gbuild errs0 xs0 = (ret, xs1, errs1)
+    where
+      err = selName ret :: String
+      ret = M1 x :: S1 s f p
+      (x,xs1,errs1) = gbuild (err:errs0) xs0
+
 -- any field should just hold a view, no recursion here
-instance GSplit (Rec0 (J f a)) a where
-  gsplit _ x = K1 (UnsafeJ x)
+instance (View f, Viewable a) => GBuild (Rec0 (J f a)) a where
+  gbuild errs (x:xs) = (K1 (mkJ x), xs, errs)
+  gbuild errs [] = error $ "GBuild (Rec0 (J f a)) a: empty list" ++ show (reverse errs)
 
-instance GSplit U1 a where
-  gsplit _ _ = U1
+instance Viewable a => GBuild U1 a where
+  gbuild errs (x:xs)
+    | vsize1 x /= 0 = error $ "GBuild U1: got non-empty element: " ++
+                      show (vsize1 x) ++ "\n" ++ show (reverse errs)
+    | otherwise = (U1, xs, errs)
+  gbuild errs [] = error $ "GBuild U1: got empty" ++ show (reverse errs)
