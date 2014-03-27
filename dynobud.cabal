@@ -29,10 +29,7 @@ library
                        Dyno.DirectCollocation.Reify
                        Dyno.DirectCollocation.Dynamic
                        Dyno.Cov
-                       Dyno.View.Function
-                       Dyno.View.Symbolic
-                       Dyno.View.View
-                       Dyno.View.Viewable
+                       Dyno.View
                        Dyno.Vectorize
                        Dyno.Nlp
 --                       Dyno.NlpMonad
@@ -59,7 +56,12 @@ library
                        Dyno.Server.PlotTypes
                        Dyno.Server.Server
 
-  -- other-modules:
+  other-modules:       Dyno.View.Function
+                       Dyno.View.Symbolic
+                       Dyno.View.View
+                       Dyno.View.Viewable
+                       Dyno.View.NumInstances
+
   build-depends:       base >=4.6 && <4.8,
                        vector >=0.10 && <0.11,
                        dvda >=0.4 && <0.5,

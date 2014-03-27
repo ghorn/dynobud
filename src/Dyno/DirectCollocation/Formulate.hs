@@ -24,9 +24,7 @@ import JacobiRoots ( shiftedLegendreRoots )
 
 import Dyno.Cov
 import Dyno.Vectorize
-import Dyno.View.View
-import Dyno.View.Viewable ( Viewable )
-import Dyno.View.Function -- ( (:*:)(..), MXFun, SXFun, toMXFun, toSXFun, callMXFun, callSXFun )
+import Dyno.View
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs , lagrangeXis )
