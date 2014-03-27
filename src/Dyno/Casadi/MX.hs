@@ -4,6 +4,7 @@ module Dyno.Casadi.MX
        ( MX(), sym, symV, symM, mm, trans, diag
        , gradient, jacobian -- , hessian
        , solve
+       , expand
        , triu
        , tril
        , dense --, sparse
@@ -13,6 +14,7 @@ module Dyno.Casadi.MX
        , ones, zeros
        ) where
 
+import Data.Vector ( Vector )
 import qualified Data.Vector as V
 import System.IO.Unsafe ( unsafePerformIO )
 
@@ -40,6 +42,10 @@ gradient x y = unsafePerformIO (C.gradient' x y)
 jacobian :: MX -> MX -> MX
 jacobian x y = unsafePerformIO (C.jacobian' x y)
 {-# NOINLINE jacobian #-}
+
+expand :: Vector MX -> Vector MX
+expand x = unsafePerformIO (C.matrix_expand''' x)
+{-# NOINLINE expand #-}
 
 solve :: MX -> MX -> MX
 solve a b = unsafePerformIO (C.solve''' a b)

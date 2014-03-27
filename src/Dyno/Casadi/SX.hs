@@ -8,7 +8,7 @@ module Dyno.Casadi.SX
        , striu
        , stril
        , sdense, ssparse
---       , d2s
+       , d2s
        , ssize, ssize1, ssize2, snumel
        , scrs, svertcat, shorzcat, sveccat, svertsplit
        , sones, szeros
@@ -20,7 +20,7 @@ import System.IO.Unsafe ( unsafePerformIO )
 import Casadi.Wrappers.Classes.SXElement ( SXElement )
 import Casadi.Wrappers.Classes.SX
 import Casadi.Wrappers.Classes.GenSX
---import Casadi.Wrappers.Classes.DMatrix ( DMatrix )
+import Casadi.Wrappers.Classes.DMatrix ( DMatrix )
 import Casadi.Wrappers.Classes.Sparsity ( Sparsity )
 import qualified Casadi.Wrappers.Tools as C
 
@@ -53,9 +53,9 @@ smm :: SX -> SX -> SX
 smm x y = unsafePerformIO (sx_mul' x y)
 {-# NOINLINE smm #-}
 
---d2s :: DMatrix -> SX
---d2s x = unsafePerformIO (C.ssym'''''''' x)
---{-# NOINLINE d2s #-}
+d2s :: DMatrix -> SX
+d2s x = unsafePerformIO (sx'''''''''''' x)
+{-# NOINLINE d2s #-}
 
 sdiag :: SX -> SX
 sdiag x = unsafePerformIO (C.diag'' x)
