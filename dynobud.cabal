@@ -42,6 +42,8 @@ library
                        Dyno.NlpSolver
                        Dyno.Ipopt
 --                       Dyno.Snopt
+                       Dyno.Casadi.SharedObject
+                       Dyno.Casadi.Option
                        Dyno.Casadi.IOSchemes
                        Dyno.Casadi.MX
                        Dyno.Casadi.MXFunction

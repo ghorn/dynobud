@@ -7,6 +7,7 @@ import Data.Vector ( Vector )
 import Dyno.View.View
 import Dyno.Cov
 import Dyno.Nlp ( Bounds )
+import Dyno.Casadi.SX ( SX )
 import Dyno.Casadi.MX ( MX )
 import Dyno.Casadi.DMatrix ( DMatrix )
 
@@ -46,6 +47,7 @@ type Dae x z u p r o a = J x a -> J x a -> J z a -> J u a -> J p a -> J S a -> (
 -- > c(x(0), 0, x(T), T) == 0
 
 type M a = J a MX
+type Sx a = J a SX
 
 data OcpPhase x z u p r o c h s sh sc =
   OcpPhase { -- | the Mayer term @Jm(T, x(0), x(T), P(0), P(t))@
@@ -53,11 +55,12 @@ data OcpPhase x z u p r o c h s sh sc =
              -- | the Lagrange term @Jl(x(t),z(t),u(t),p,o,t)@
            , ocpLagrange :: M x -> M z -> M u -> M p -> M o -> M S -> M S
              -- | the system dynamics of the stage: @f(x'(t), x(t), z(t), u(t), p, t)@
-           , ocpDae :: Dae x z u p r o MX
+           , ocpDae :: Dae x z u p r o SX
              -- | the boundary conditions @clb <= c(x(0), x(T)) <= cub@
            , ocpBc :: M x -> M x -> M c
              -- | the path constraints @h(x(t), z(t), u(t), p), t)@
-           , ocpPathC :: M x -> M z -> M u -> M p -> M o -> M S -> M h
+           , ocpPathC :: Sx x -> Sx z -> Sx u -> Sx p -> Sx o -> Sx S -> Sx h
+--           , ocpPathC :: M x -> M z -> M u -> M p -> M o -> M S -> M h
              -- | the boundary condition bounds @clb <= c(x(0), x(T)) <= cub@
            , ocpBcBnds :: J c (Vector Bounds)
              -- | the path constraint bounds @(hlb, hub)@

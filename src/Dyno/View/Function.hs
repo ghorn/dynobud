@@ -1,32 +1,42 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE KindSignatures #-}
 
 module Dyno.View.Function
        ( MXFun
        , SXFun
        , (:*:)(..)
        , toMXFun
+       , toExpandedMXFun
        , toSXFun
        , callMXFun
        , callSXFun
        , evalMXFun
+       , expandMXFun
        ) where
 
 import Data.Proxy
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
 
+import Dyno.Casadi.MX ( MX, expand )
+import Dyno.Casadi.SX ( SX )
+import Dyno.Casadi.DMatrix ( DMatrix )
 import Dyno.Casadi.MXFunction ( MXFunction, mxFunction, callMX, evalDMatrix )
 import Dyno.Casadi.SXFunction ( SXFunction, sxFunction )
+import Dyno.Casadi.Option
+import Dyno.Casadi.SharedObject
 
-import Dyno.View.Symbolic
+import qualified Casadi.Wrappers.Classes.MXFunction as M
+import qualified Casadi.Wrappers.Classes.SharedObject as C
+
+import Dyno.View.Symbolic ( Symbolic(..) )
 import Dyno.View.View
-import Dyno.View.Viewable
+import Dyno.View.Viewable ( Viewable )
 
 newtype MXFun (f :: * -> *) (g :: * -> *) = MXFun MXFunction deriving Show
 newtype SXFun (f :: * -> *) (g :: * -> *) = SXFun SXFunction deriving Show
@@ -84,16 +94,32 @@ instance (SymInputs f a, SymInputs g a) => SymInputs ((:*:) f g) a where
     return (x :*: y, k2)
 
 -- | make an MXFunction
-toMXFun :: forall f g . (SymInputs f MX, FunArgs g MX) => (f MX -> g MX) -> IO (MXFun f g)
-toMXFun fun = do
+toMXFun :: forall f g . (SymInputs f MX, FunArgs g MX) => String -> (f MX -> g MX) -> IO (MXFun f g)
+toMXFun name fun = do
   (inputs,_) <- sym' 0 (Proxy :: Proxy (f MX))
-  fmap MXFun $ mxFunction (vectorize inputs) (vectorize (fun inputs))
+  mxf <- mxFunction (vectorize inputs) (vectorize (fun inputs))
+  setOption mxf "name" name
+  soInit mxf
+  return (MXFun mxf)
+
+-- | make an MXFunction
+toExpandedMXFun :: forall f g . (SymInputs f MX, FunArgs g MX) => String -> (f MX -> g MX) -> IO (MXFun f g)
+toExpandedMXFun name fun = do
+  (inputs,_) <- sym' 0 (Proxy :: Proxy (f MX))
+  let outputs = expand $ vectorize (fun inputs)
+  mxf <- mxFunction (vectorize inputs) outputs
+  setOption mxf "name" name
+  soInit mxf
+  return (MXFun mxf)
 
 -- | make an SXFunction
-toSXFun :: forall f g . (SymInputs f SX, FunArgs g SX) => (f SX -> g SX) -> IO (SXFun f g)
-toSXFun f = do
+toSXFun :: forall f g . (SymInputs f SX, FunArgs g SX) => String -> (f SX -> g SX) -> IO (SXFun f g)
+toSXFun name f = do
   (inputs,_) <- sym' 0 (Proxy :: Proxy (f SX))
-  fmap SXFun $ sxFunction (vectorize inputs) (vectorize (f inputs))
+  sxf <- sxFunction (vectorize inputs) (vectorize (f inputs))
+  setOption sxf "name" name
+  soInit sxf
+  return (SXFun sxf)
 
 -- | call an MXFunction on symbolic inputs, getting symbolic outputs
 callMXFun :: (FunArgs f MX, FunArgs g MX) => MXFun f g -> f MX -> g MX
@@ -106,3 +132,10 @@ callSXFun (SXFun mxf) = devectorize . callMX mxf . vectorize
 -- | evaluate an MXFunction with 1 input and 1 output
 evalMXFun :: (FunArgs f DMatrix, FunArgs g DMatrix) => MXFun f g -> f DMatrix -> IO (g DMatrix)
 evalMXFun (MXFun mxf) = fmap devectorize . evalDMatrix mxf . vectorize
+
+-- | expand an MXFunction with 1 input and 1 output
+expandMXFun :: MXFun f g -> IO (SXFun f g)
+expandMXFun (MXFun mxf) = do
+  sxf <- M.mxFunction_expand' mxf
+  C.sharedObject_init' sxf
+  return (SXFun sxf)

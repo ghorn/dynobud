@@ -273,7 +273,9 @@ runNlpSolver solverStuff nlpFun callback' (NlpSolver nlpMonad) = do
 
   -- set all the user options
   mapM_ (\(l,Op.Opt o) -> Op.setOption nlp l o) (defaultOptions solverStuff ++ options solverStuff)
+  putStrLn "initializing nlp solver..."
   soInit nlp
+  putStrLn "solver initialized"
 
   let nlpState = NlpState { isNx = size (proxy inputsX)
                           , isNp = size (proxy inputsP)

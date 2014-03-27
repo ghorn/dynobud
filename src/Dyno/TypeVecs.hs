@@ -31,6 +31,7 @@ module Dyno.TypeVecs
        , tvunzip
        , tvunzip3
        , tvunzip4
+       , tvunzip5
        , tvhead
        , tvtail
        , tvlast
@@ -170,6 +171,11 @@ tvunzip4 :: Vec n (a,b,c,d) -> (Vec n a, Vec n b, Vec n c, Vec n d)
 tvunzip4 v = (mkVec v1, mkVec v2, mkVec v3, mkVec v4)
   where
     (v1,v2,v3,v4) = V.unzip4 (unVec v)
+
+tvunzip5 :: Vec n (a,b,c,d,e) -> (Vec n a, Vec n b, Vec n c, Vec n d, Vec n e)
+tvunzip5 v = (mkVec v1, mkVec v2, mkVec v3, mkVec v4, mkVec v5)
+  where
+    (v1,v2,v3,v4,v5) = V.unzip5 (unVec v)
 
 tvhead :: Vec n a -> a
 tvhead x = case S.viewl (unSeq x) of

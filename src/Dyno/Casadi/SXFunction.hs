@@ -10,7 +10,6 @@ import System.IO.Unsafe ( unsafePerformIO )
 import Control.Monad ( zipWithM_ )
 
 import qualified Casadi.Wrappers.Classes.SXFunction as C
-import qualified Casadi.Wrappers.Classes.SharedObject as C
 import qualified Casadi.Wrappers.Classes.IOInterfaceFX as C
 import qualified Casadi.Wrappers.Classes.FX as C
 
@@ -18,10 +17,7 @@ import Dyno.Casadi.SX ( SX )
 import Dyno.Casadi.DMatrix ( DMatrix )
 
 sxFunction :: Vector SX -> Vector SX -> IO C.SXFunction
-sxFunction inputs outputs = do
-  sxf <- C.sxFunction''' inputs outputs
-  C.sharedObject_init' sxf
-  return sxf
+sxFunction inputs outputs = C.sxFunction''' inputs outputs
 {-# NOINLINE sxFunction #-}
 
 -- | call an SXFunction on symbolic inputs, getting symbolic outputs
