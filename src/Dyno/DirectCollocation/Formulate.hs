@@ -31,9 +31,7 @@ import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs , lagrangeXis )
 import Dyno.Nlp ( Nlp(..), Bounds )
 import Dyno.Ocp ( OcpPhase(..), Dae )
 import Dyno.DirectCollocation.Types
-import Dyno.Casadi.SX ( SX )
-import Dyno.Casadi.MX ( MX, jacobian, solve, mm, trans, d2m )
-import Dyno.Casadi.DMatrix ( DMatrix )
+import Dyno.Casadi.MX ( jacobian, solve, mm, trans, d2m )
 
 --data RorL = Radau | Legendre deriving (Eq, Show)
 
@@ -54,16 +52,25 @@ makeCollNlp ocp = do
       cijs :: Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
       cijs = lagrangeDerivCoeffs (0 TV.<| taus)
 
-  dynFun <- toSXFun "dynamics_fun" (dynamicsFunction (ocpDae ocp))
+  bcFun <- toSXFun "bc" $ \(x0:*:x1) -> ocpBc ocp x0 x1
+  sbcFun <- toSXFun "sbc" $ \(x0:*:x1) -> ocpSbc ocp x0 x1
+  shFun <- toSXFun "sh" $ \(x0:*:x1) -> ocpSh ocp x0 x1
+  mayerFun <- toSXFun "mayer" $ \(x0:*:x1:*:x2:*:x3:*:x4) -> ocpMayer ocp x0 x1 x2 x3 x4
+  lagrangeFun <- toSXFun "lagrange" $
+                 \(x0:*:x1:*:x2:*:x3:*:x4:*:x5) -> ocpLagrange ocp x0 x1 x2 x3 x4 x5
+  quadFun' <- toMXFun "quadratures" $ evaluateQuadraturesFunction lagrangeFun cijs taus
+  quadFun <- expandMXFun quadFun'
+
+  dynFun <- toSXFun "dynamics" (dynamicsFunction (ocpDae ocp))
   pathConFun <- toSXFun "pathConstraints" (pathConFunction (ocpPathC ocp))
 
   dynStageConFun' <- toMXFun "dynamicsStageCon" (dynStageConstraints cijs taus dynFun)
-  dynStageConFun <- expandMXFun dynStageConFun'
   pathStageConFun' <- toMXFun "pathStageCon" (pathStageConstraints pathConFun)
-  pathStageConFun <- expandMXFun pathStageConFun'
-  stageFun <- toMXFun "stageFunction" (stageFunction dynStageConFun pathStageConFun)
 
-  return $ Nlp { nlpFG = getFg taus ocp stageFun
+  stageFun' <- toMXFun "stageFunction" (stageFunction dynStageConFun' pathStageConFun')
+  stageFun <- expandMXFun stageFun'
+
+  return $ Nlp { nlpFG = getFg taus (ocpSq ocp) bcFun sbcFun shFun mayerFun quadFun stageFun
                , nlpBX = cat (getBx ocp)
                , nlpBG = cat (getBg ocp)
                , nlpX0 = jfill 0
@@ -81,13 +88,19 @@ getFg ::
   (Dim deg, Dim n, View x, View z, View u, View p, View r, View o,
    View c, View h, View s, View sc, View sh)
   => Vec deg Double
-  -> OcpPhase x z u p r o c h s sh sc
-  -> MXFun
-      (J (Cov s) :*: J S :*: J p :*: J (JVec deg S) :*: J x :*: J (JVec deg (JTuple x z)) :*: J (JVec deg u) :*: J (Cov s))
-      (J (Cov s) :*: J (CollDynConstraint deg r) :*: J (JVec deg o) :*: J (JVec deg h) :*: J x)
+  -> J (Cov s) DMatrix
+  -> SXFun (J x :*: J x) (J c)
+  -> SXFun (J (Cov s) :*: J (Cov s)) (J sc)
+  -> SXFun (J x :*: J (Cov s)) (J sh)
+  -> SXFun
+      (J S :*: J x :*: J x :*: J (Cov s) :*: J (Cov s)) (J S)
+  -> SXFun (J p :*: J (JVec deg (CollPoint x z u)) :*: J (JVec deg o) :*: J S :*: J (JVec deg S))
+           (J S)
+  -> SXFun (J (Cov s) :*: J S :*: J p :*: J (JVec deg S) :*: J x :*: J (JVec deg (JTuple x z)) :*: J (JVec deg u) :*: J (Cov s))
+           (J (Cov s) :*: J (CollDynConstraint deg r) :*: J (JVec deg o) :*: J (JVec deg h) :*: J x)
   -> (J (CollTraj x z u p s n deg) MX, J JNone MX)
   -> (J S MX, J (CollOcpConstraints n deg x r c h sh sc) MX)
-getFg taus ocp stageFun (collTraj, _) = (obj, cat g)
+getFg taus sq bcFun sbcFun shFun mayerFun quadFun stageFun (collTraj, _) = (obj, cat g)
   where
     -- split up the design vars
     ct@(CollTraj tf p0 parm stages' xf) = split collTraj
@@ -95,10 +108,19 @@ getFg taus ocp stageFun (collTraj, _) = (obj, cat g)
     stages = unJVec (split stages') :: Vec n (J (CollStage x z u deg) MX)
     spstages = fmap split stages :: Vec n (CollStage x z u deg MX)
 
+    spstagesPoints :: Vec n (J (JVec deg (CollPoint x z u)) MX)
+    spstagesPoints = fmap (\(CollStage _ cps) -> cps) spstages
+
     obj = objLagrange + objMayer
 
-    objMayer = ocpMayer ocp tf x0 xf p0 pF
-    objLagrange = evaluateQuadratures (ocpLagrange ocp) parm spstages outputs' dt taus times
+    objMayer = callSXFun mayerFun (tf :*: x0 :*: xf :*: p0 :*: pF)
+
+    objLagrange :: J S MX
+    objLagrange = F.sum $ TV.tvzipWith3 oneStage spstagesPoints outputs times'
+    oneStage :: J (JVec deg (CollPoint x z u)) MX -> J (JVec deg o) MX -> J (JVec deg S) MX
+                -> J S MX
+    oneStage stagePoints stageOutputs stageTimes =
+      callSXFun quadFun (parm :*: stagePoints :*: stageOutputs :*: dt :*: stageTimes)
 
     -- timestep
     dt = tf / fromIntegral n
@@ -127,26 +149,23 @@ getFg taus ocp stageFun (collTraj, _) = (obj, cat g)
     g = CollOcpConstraints
         { coStages = cat (CollTrajConstraints (cat (JVec (fmap cat stageConstraints))))
         , coPathC = cat $ JVec hs
-        , coBc = ocpBc ocp x0 xf
-        , coSbc = (ocpSc ocp) p0 pF
+        , coBc = callSXFun bcFun (x0 :*: xf)
+        , coSbc = callSXFun sbcFun (p0 :*: pF)
         }
 
     -- Q
     covInjections :: Vec n (J (Cov s) MX)
-    covInjections = fill (mkJ (d2m (unJ (ocpSq ocp))))
+    covInjections = fill (mkJ (d2m (unJ sq)))
 
     stageConstraints :: Vec n (CollStageConstraints x deg r sh MX)
     stageConstraints = vzipWith3 (\dc -> CollStageConstraints dc)
                        dcs integratorMatchingConstraints covPathConstraints
 
     covPathConstraints :: Vec n (J sh MX)
-    covPathConstraints = TV.tvzipWith (ocpSh ocp) x0s covs
+    covPathConstraints = TV.tvzipWith (\xk pk -> callSXFun shFun (xk:*:pk)) x0s covs
 
     integratorMatchingConstraints :: Vec n (J x MX) -- THIS SHOULD BE A NONLINEAR FUNCTION
     integratorMatchingConstraints = vzipWith (-) interpolatedXs xfs
-
-    outputs' :: Vec n (Vec deg (J o MX))
-    outputs' = fmap (unJVec . split) outputs
 
     dcs :: Vec n (J (CollDynConstraint deg r) MX)
     outputs :: Vec n (J (JVec deg o) MX)
@@ -160,7 +179,7 @@ getFg taus ocp stageFun (collTraj, _) = (obj, cat g)
     ff cov0 (CollStage x0' xzus, stageTimes, covInj) = (cov1, (cov0, dc, output, stageHs, interpolatedX'))
       where
         cov1 :*: dc :*: output :*: stageHs :*: interpolatedX' =
-          callMXFun stageFun (cov0 :*: dt :*: parm :*: stageTimes :*: x0' :*: xzs :*: us :*: covInj)
+          callSXFun stageFun (cov0 :*: dt :*: parm :*: stageTimes :*: x0' :*: xzs :*: us :*: covInj)
 
         xzs = cat (JVec xzs') :: J (JVec deg (JTuple x z)) MX
         us = cat (JVec us') :: J (JVec deg u) MX
@@ -201,7 +220,7 @@ getBg ocp =
   { coStages = cat $ CollTrajConstraints (jreplicate (cat stageCon))
   , coPathC = jreplicate (jreplicate (ocpPathCBnds ocp))
   , coBc = ocpBcBnds ocp
-  , coSbc = ocpScBnds ocp
+  , coSbc = ocpSbcBnds ocp
   }
   where
     stageCon :: CollStageConstraints x deg r sh (Vector Bounds)
@@ -210,28 +229,33 @@ getBg ocp =
                (jfill (Just 0, Just 0)) -- continuity constraint
                (ocpShBnds ocp) -- covariance path constraint
 
-evaluateQuadratures ::
-  forall x z u p o n deg a .
-  (Dim deg, Dim n, View x, View z, View u, Fractional (J S a), Viewable a) =>
-  (J x a -> J z a -> J u a -> J p a -> J o a -> J S a -> J S a) ->
-  J p a -> Vec n (CollStage x z u deg a) -> Vec n (Vec deg (J o a)) -> J S a ->
-  Vec deg Double -> Vec n (Vec deg (J S a)) -> J S a
-evaluateQuadratures f p stages outputs dt taus times =
-  (dt *) $ V.sum $ TV.unVec $ TV.tvzipWith3 oneStage stages outputs times
+evaluateQuadraturesFunction ::
+  forall x z u p o deg .
+  (Dim deg, View x, View z, View u, View o, View p)
+  => SXFun (J x :*: J z :*: J u :*: J p :*: J o :*: J S) (J S)
+  -> Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
+  -> Vec deg Double
+  -> (J p :*: J (JVec deg (CollPoint x z u)) :*: J (JVec deg o) :*: J S :*: J (JVec deg S)) MX
+  -> J S MX
+evaluateQuadraturesFunction f cijs' taus (p :*: stage' :*: outputs' :*: dt :*: stageTimes') =
+  (dt *) $ qnext
   where
-    oneStage :: CollStage x z u deg a -> Vec deg (J o a) -> Vec deg (J S a) -> J S a
-    oneStage (CollStage _ stage) output stageTimes = qnext
-      where
-        qdots :: Vec deg (J S a)
-        qdots = TV.tvzipWith3 (\(CollPoint x z u) o t -> f x z u p o t) stagelol output stageTimes
-        stagelol = (fmap split (unJVec (split stage))) :: Vec deg (CollPoint x z u a)
+    stage :: Vec deg (CollPoint x z u MX)
+    stage = fmap split $ unJVec $ split stage'
 
-        qs = cijInvFr !* qdots
+    outputs :: Vec deg (J o MX)
+    outputs = unJVec (split outputs')
 
-        qnext = interpolate taus 0 qs
+    stageTimes :: Vec deg (J S MX)
+    stageTimes = unJVec (split stageTimes')
 
-    cijs' :: Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
-    cijs' = lagrangeDerivCoeffs (0 TV.<| taus)
+    qnext :: J S MX
+    qnext = interpolate taus 0 qs
+
+    qdots :: Vec deg (J S MX)
+    qdots = TV.tvzipWith3 (\(CollPoint x z u) o t -> callSXFun f (x:*:z:*:u:*:p:*:o:*:t)) stage outputs stageTimes
+
+    qs = cijInvFr !* qdots
 
     cijs :: Vec deg (Vec deg Double)
     cijs = TV.tvtail $ fmap TV.tvtail cijs'
@@ -245,7 +269,7 @@ evaluateQuadratures f p stages outputs dt taus times =
     cijInv :: Vec deg (Vec deg Double)
     cijInv = TV.mkVec' (map TV.mkVec' (Mat.toLists cijInv'))
 
-    cijInvFr :: Vec deg (Vec deg (J S a))
+    cijInvFr :: Vec deg (Vec deg (J S MX))
     cijInvFr = fmap (fmap realToFrac) cijInv
 
 dot :: forall x deg a b. (Fractional (J x a), Real b) => Vec deg b -> Vec deg (J x a) -> J x a
@@ -359,9 +383,9 @@ pathStageConstraints pathCFun
 
 stageFunction ::
   forall x z u p o s r h deg . (Dim deg, View x, View z, View u, View p, View r, View o, View h, View s)
-  => SXFun (J S :*: J p :*: J (JVec deg S) :*: J (CollStage x z u deg))
+  => MXFun (J S :*: J p :*: J (JVec deg S) :*: J (CollStage x z u deg))
            (J (CollDynConstraint deg r) :*: J (JVec deg o) :*: J x)
-  -> SXFun (J p :*: J (JVec deg S) :*: J (JVec deg o) :*: J (JVec deg (CollPoint x z u)))
+  -> MXFun (J p :*: J (JVec deg S) :*: J (JVec deg o) :*: J (JVec deg (CollPoint x z u)))
            (J (JVec deg h))
   -> (J (Cov s) :*: J S :*: J p :*: J (JVec deg S) :*: J x :*: J (JVec deg (JTuple x z)) :*: J (JVec deg u) :*: J (Cov s)) MX
   -> (J (Cov s) :*: J (CollDynConstraint deg r) :*: J (JVec deg o) :*: J (JVec deg h) :*: J x) MX
@@ -382,11 +406,11 @@ stageFunction dynStageFun pathConStageFun (p0' :*: dt :*: parm :*: stageTimes :*
     outputs :: J (JVec deg o) MX
     interpolatedX :: J x MX
     dynConstrs' :*: outputs :*: interpolatedX =
-      callSXFun dynStageFun (dt :*: parm :*: stageTimes :*: (cat collStage))
+      callMXFun dynStageFun (dt :*: parm :*: stageTimes :*: (cat collStage))
 
     hs :: J (JVec deg h) MX
     hs =
-      callSXFun pathConStageFun (parm :*: stageTimes :*: outputs :*: collPoints)
+      callMXFun pathConStageFun (parm :*: stageTimes :*: outputs :*: collPoints)
     q0 = toMatrix' q0'
     p0 = toMatrix' p0'
 
@@ -409,7 +433,6 @@ stageFunction dynStageFun pathConStageFun (p0' :*: dt :*: parm :*: stageTimes :*
     -- supress casadi zero size matrix error
     p1 :: J (Cov s) MX
     p1 = if size (Proxy :: Proxy s) == 0 then p0' else fromMatrix' p1'
-
 
 
 interpolate :: (Dim deg, Real b, Fractional b, Fractional (J x a), View x) =>

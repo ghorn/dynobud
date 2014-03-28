@@ -15,6 +15,7 @@ module Dyno.View.Function
        , toSXFun
        , callMXFun
        , callSXFun
+       , callSXFunSX
        , evalMXFun
        , expandMXFun
        ) where
@@ -27,7 +28,7 @@ import Dyno.Casadi.MX ( MX, expand )
 import Dyno.Casadi.SX ( SX )
 import Dyno.Casadi.DMatrix ( DMatrix )
 import Dyno.Casadi.MXFunction ( MXFunction, mxFunction, callMX, evalDMatrix )
-import Dyno.Casadi.SXFunction ( SXFunction, sxFunction )
+import Dyno.Casadi.SXFunction ( SXFunction, sxFunction, callSX )
 import Dyno.Casadi.Option
 import Dyno.Casadi.SharedObject
 
@@ -127,7 +128,11 @@ callMXFun (MXFun mxf) = devectorize . callMX mxf . vectorize
 
 -- | call an MXFunction on symbolic inputs, getting symbolic outputs
 callSXFun :: (FunArgs f MX, FunArgs g MX) => SXFun f g -> f MX -> g MX
-callSXFun (SXFun mxf) = devectorize . callMX mxf . vectorize
+callSXFun (SXFun sxf) = devectorize . callMX sxf . vectorize
+
+-- | call an MXFunction on symbolic inputs, getting symbolic outputs
+callSXFunSX :: (FunArgs f SX, FunArgs g SX) => SXFun f g -> f SX -> g SX
+callSXFunSX (SXFun sxf) = devectorize . callSX sxf . vectorize
 
 -- | evaluate an MXFunction with 1 input and 1 output
 evalMXFun :: (FunArgs f DMatrix, FunArgs g DMatrix) => MXFun f g -> f DMatrix -> IO (g DMatrix)
