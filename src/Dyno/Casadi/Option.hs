@@ -9,6 +9,7 @@ module Dyno.Casadi.Option
        ) where
 
 import Data.Vector ( Vector )
+import Casadi.Wrappers.Classes.Function
 import Casadi.Wrappers.Classes.GenericType
 import Casadi.Wrappers.Classes.OptionsFunctionality
   ( OptionsFunctionalityClass, optionsFunctionality_setOption )
@@ -42,3 +43,5 @@ instance Option (Vector String) where
   mkGeneric = genericType''''''''
 instance Option GenericType where
   mkGeneric = return
+instance Option Function where
+  mkGeneric = genericType'''''''''

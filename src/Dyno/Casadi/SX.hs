@@ -10,7 +10,7 @@ module Dyno.Casadi.SX
        , sdense, ssparse
        , d2s
        , ssize, ssize1, ssize2, snumel
-       , scrs, svertcat, shorzcat, sveccat, svertsplit
+       , scrs, svertcat, shorzcat, sveccat, svertsplit, shorzsplit
        , sones, szeros
        ) where
 
@@ -126,6 +126,10 @@ sveccat x = unsafePerformIO (C.veccat'' x)
 svertsplit :: SX -> V.Vector Int -> V.Vector SX
 svertsplit x ks = unsafePerformIO (C.vertsplit'''''' x ks)
 {-# NOINLINE svertsplit #-}
+
+shorzsplit :: SX -> V.Vector Int -> V.Vector SX
+shorzsplit x ks = unsafePerformIO (C.horzsplit'''''' x ks)
+{-# NOINLINE shorzsplit #-}
 
 ssolve :: SX -> SX -> SX
 ssolve a b = unsafePerformIO (C.solve'' a b)

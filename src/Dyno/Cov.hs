@@ -43,7 +43,7 @@ import qualified Dyno.View.Symbolic as S
 newtype Cov (f :: * -> *) a = Cov { unCov :: Vector (J S a) } deriving (Eq, Show)
 instance View f => View (Cov f) where
   cat = mkJ . vveccat . fmap unJ . unCov
-  split = Cov . fmap mkJ . flip vvecsplit ks . unJ
+  split = Cov . fmap mkJ . flip vvertsplit ks . unJ
     where
       ks = V.fromList $ take (1 + size (Proxy :: Proxy (Cov f))) [0..]
       --sizes kf 0 = [kf]

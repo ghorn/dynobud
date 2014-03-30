@@ -21,6 +21,7 @@ import Casadi.Wrappers.Enums ( InputOutputScheme(..) )
 import Dyno.View.View ( View(..), J, mkJ )
 import Dyno.View.Viewable ( Viewable(..) )
 import Dyno.Casadi.SX ( SX, ssymV )
+import Dyno.Casadi.Option ( setOption )
 import Dyno.Casadi.MX ( MX, symV )
 import qualified Dyno.Casadi.SX as SX
 import qualified Dyno.Casadi.MX as MX
@@ -32,20 +33,22 @@ class (Show a, Viewable a) => Symbolic a where
   -- | creating symbolics
   sym :: View f => String -> IO (J f a)
   mkScheme :: InputOutputScheme -> [(String,a)] -> IO (Vector a)
-  mkFunction :: Vector a -> Vector a -> IO Function
+  mkFunction :: String -> Vector a -> Vector a -> IO Function
 instance Symbolic SX where
   sym = mkSym ssymV
   mkScheme = mkSchemeSX
-  mkFunction x y = do
+  mkFunction name x y = do
     f <- sxFunction''' x y
+    setOption f "name" name
     sharedObject_init' f
     return (castFunction f)
 
 instance Symbolic MX where
   sym = mkSym symV
   mkScheme = mkSchemeMX
-  mkFunction x y = do
+  mkFunction name x y = do
     f <- mxFunction'' x y
+    setOption f "name" name
     sharedObject_init' f
     return (castFunction f)
 

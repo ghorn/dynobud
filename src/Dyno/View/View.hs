@@ -88,7 +88,7 @@ instance (Show a, Lookup a) => Lookup (J S (Vector a)) where
 newtype JVec n f a = JVec { unJVec :: Vec n (J f a) } deriving ( Show, Eq )
 instance (Dim n, View f) => View (JVec n f) where
   cat = mkJ . vveccat . fmap unJ . unVec . unJVec
-  split = JVec . fmap mkJ . mkVec . flip vvecsplit ks . unJ
+  split = JVec . fmap mkJ . mkVec . flip vvertsplit ks . unJ
     where
       ks = V.fromList (take (n+1) [0,m..])
       n = reflectDim (Proxy :: Proxy n)
@@ -144,7 +144,7 @@ instance View S where
 --  cat = mkJ . vveccat . fmap unJ . vectorize . unJV''
 --  size = const $ vlength (empty :: f ())
 --  split :: forall a . Viewable a => J (JV'' f) a -> JV'' f a
---  split = JV'' . devectorize . fmap mkJ . flip vvecsplit ks. unJ
+--  split = JV'' . devectorize . fmap mkJ . flip vvertsplit ks. unJ
 --    where
 --      ks = V.fromList (take (n+1) [0..])
 --      n = size (Proxy :: Proxy (JV'' f))
@@ -156,7 +156,7 @@ instance View S where
 --  cat = mkJ . vveccat . fmap unS . vectorize . unJV'
 --  size = const $ vlength (empty :: f ())
 --  split :: forall a . Viewable a => J (JV' f) a -> JV' f a
---  split = JV' . devectorize . fmap S . flip vvecsplit ks. unJ
+--  split = JV' . devectorize . fmap S . flip vvertsplit ks. unJ
 --    where
 --      ks = V.fromList (take (n+1) [0..])
 --      n = size (Proxy :: Proxy (JV' f))
@@ -167,7 +167,7 @@ instance View S where
 --  cat = mkJ . vveccat . vectorize . unJV
 --  size = const $ vlength (empty :: f ())
 --  split :: forall a . Viewable a => J (JV f) a -> JV f a
---  split = JV . devectorize . flip vvecsplit ks. unJ
+--  split = JV . devectorize . flip vvertsplit ks. unJ
 --    where
 --      ks = V.fromList (take (n+1) [0..])
 --      n = size (Proxy :: Proxy (JV f))
@@ -209,7 +209,7 @@ class View f where
     where
       x = unJ x'
       (ret,leftovers,errors) = gbuild [] xs
-      xs = V.toList $ vvecsplit x (V.fromList ns)
+      xs = V.toList $ vvertsplit x (V.fromList ns)
       ns :: [Int]
       ns = (0 :) $ F.toList $ sizes 0 (Proxy :: Proxy f)
 

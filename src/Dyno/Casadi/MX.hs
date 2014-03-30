@@ -10,7 +10,7 @@ module Dyno.Casadi.MX
        , dense --, sparse
        , d2m
        , size, size1, size2, numel
-       , crs, vertcat, horzcat, veccat, vertsplit
+       , crs, vertcat, horzcat, veccat, vertsplit, horzsplit
        , ones, zeros
        ) where
 
@@ -122,6 +122,10 @@ veccat x = unsafePerformIO (C.veccat''' x)
 vertsplit :: MX -> V.Vector Int -> V.Vector MX
 vertsplit x ks = unsafePerformIO (C.vertsplit'''''''''' x ks)
 {-# NOINLINE vertsplit #-}
+
+horzsplit :: MX -> V.Vector Int -> V.Vector MX
+horzsplit x ks = unsafePerformIO (C.horzsplit'''''''''' x ks)
+{-# NOINLINE horzsplit #-}
 
 horzcat :: V.Vector MX -> MX
 horzcat x = unsafePerformIO (C.horzcat'''' x)

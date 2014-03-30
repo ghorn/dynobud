@@ -43,9 +43,10 @@ library
                        Dyno.Casadi.Option
                        Dyno.Casadi.IOSchemes
                        Dyno.Casadi.MX
-                       Dyno.Casadi.MXFunction
                        Dyno.Casadi.SX
+                       Dyno.Casadi.MXFunction
                        Dyno.Casadi.SXFunction
+                       Dyno.Casadi.Function
                        Dyno.Casadi.SXElement
                        Dyno.Casadi.DMatrix
 --                       Dyno.Sqp.Sqp
@@ -56,7 +57,7 @@ library
                        Dyno.Server.PlotTypes
                        Dyno.Server.Server
 
-  other-modules:       Dyno.View.Function
+  other-modules:       Dyno.View.Fun
                        Dyno.View.Symbolic
                        Dyno.View.View
                        Dyno.View.Viewable

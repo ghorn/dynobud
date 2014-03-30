@@ -55,13 +55,14 @@ import qualified Data.Vector as V
 
 import Casadi.Wrappers.Enums ( InputOutputScheme(..) )
 import Casadi.Callback
-import Casadi.Wrappers.Classes.Function ( Function, function_getStat, castFunction )
+import Casadi.Wrappers.Classes.Function ( function_getStat, castFunction )
 import Casadi.Wrappers.Classes.PrintableObject ( printableObject_getDescription )
 import Casadi.Wrappers.Classes.GenericType
 import Casadi.Wrappers.Classes.NLPSolver
 import Casadi.Wrappers.Classes.IOInterfaceFunction
 
 import Dyno.Casadi.DMatrix
+import Dyno.Casadi.Function
 import qualified Dyno.Casadi.Option as Op
 import Dyno.Casadi.SharedObject ( soInit )
 
@@ -255,8 +256,10 @@ runNlpSolver solverStuff nlpFun callback' (NlpSolver nlpMonad) = do
 
   inputScheme <- mkScheme SCHEME_NLPInput [("x", inputsXMat), ("p", inputsPMat)]
   outputScheme <- mkScheme SCHEME_NLPOutput [("f", objMat), ("g", gMat)]
-  f <- mkFunction inputScheme outputScheme
-  nlp <- fmap castNLPSolver $ (nlpConstructor solverStuff) (castFunction f)
+  nlp <- mkFunction "nlp" inputScheme outputScheme
+  soInit nlp
+
+  solver <- fmap castNLPSolver $ (nlpConstructor solverStuff) (castFunction nlp)
 
   -- add callback if user provides it
   intref <- newIORef False
@@ -269,18 +272,18 @@ runNlpSolver solverStuff nlpFun callback' (NlpSolver nlpMonad) = do
         interrupt <- readIORef intref
         return $ if callbackRet && not interrupt then 0 else fromIntegral (solverInterruptCode solverStuff)
   casadiCallback <- makeCallback cb >>= genericType''''''''''''
-  Op.setOption nlp "iteration_callback" casadiCallback
+  Op.setOption solver "iteration_callback" casadiCallback
 
   -- set all the user options
-  mapM_ (\(l,Op.Opt o) -> Op.setOption nlp l o) (defaultOptions solverStuff ++ options solverStuff)
+  mapM_ (\(l,Op.Opt o) -> Op.setOption solver l o) (defaultOptions solverStuff ++ options solverStuff)
   putStrLn "initializing nlp solver..."
-  soInit nlp
+  soInit solver
   putStrLn "solver initialized"
 
   let nlpState = NlpState { isNx = size (proxy inputsX)
                           , isNp = size (proxy inputsP)
                           , isNg = size (proxy g)
-                          , isSolver = nlp
+                          , isSolver = solver
                           , isInterrupt = writeIORef intref True
                           , isSuccessCodes = successCodes solverStuff
                           }
