@@ -81,7 +81,7 @@ pendDae xx' xx zz uu pp _ =
 --    dae['cdot'] = dae['dx']*dae['x'] + dae['dz']*dae['z']
 
 
-pendOcp :: OcpPhase PendX PendZ PendU PendP PendR PendO (Jec D8 S) JNone JNone JNone JNone
+pendOcp :: OcpPhase PendX PendZ PendU PendP PendR PendO (JVec D8 S) JNone JNone JNone JNone
 pendOcp = OcpPhase { ocpMayer = mayer
                    , ocpLagrange = lagrange
                    , ocpDae = pendDae
@@ -97,8 +97,8 @@ pendOcp = OcpPhase { ocpMayer = mayer
 
                    , ocpSq = 0
                    , ocpSbnd = jfill (Nothing,Nothing)
-                   , ocpSc = \_ _ -> cat JNone
-                   , ocpScBnds = cat JNone
+                   , ocpSbc = \_ _ -> cat JNone
+                   , ocpSbcBnds = cat JNone
                    , ocpSh = \_ _ -> cat JNone
                    , ocpShBnds = cat JNone
                    }
@@ -118,9 +118,9 @@ xbnd = jfill (Just (-10), Just 10)
 ubnd :: J PendU (Vector Bounds)
 ubnd = jfill (Just (-40), Just 40)
 
-bc :: (Viewable a, Floating (J S a)) => J PendX a -> J PendX a -> J (Jec D8 S) a
+bc :: (Viewable a, Floating (J S a)) => J PendX a -> J PendX a -> J (JVec D8 S) a
 bc xx0 xxf =
-  cat $ Jec $ mkVec'
+  cat $ JVec $ mkVec'
   [ x0
   , y0 + r
   , vx0
@@ -151,5 +151,5 @@ main :: IO ()
 main = do
   nlp <- makeCollNlp pendOcp
   _ <- solveNlp solver (nlp { nlpX0 = guess }) Nothing
-  _ <- solveNlp solver2 (nlp { nlpX0 = guess }) Nothing
+--  _ <- solveNlp solver2 (nlp { nlpX0 = guess }) Nothing
   return ()
