@@ -7,8 +7,6 @@ module Dyno.DirectCollocation.Types
        ( CollTraj(..)
        , CollStage(..)
        , CollPoint(..)
-       , CollTrajConstraints(..)
-       , CollDynConstraint(..)
        , CollStageConstraints(..)
        , CollOcpConstraints(..)
        , getX
@@ -40,20 +38,13 @@ data CollPoint x z u a = CollPoint (J x a) (J z a) (J u a)
                        deriving (Eq, Generic, Show)
 
 -- constraints
-data CollDynConstraint deg r a = CollDynConstraint (J (JVec deg r) a)
-                               deriving (Eq, Generic, Show)
-
 data CollStageConstraints x deg r sh a =
-  CollStageConstraints (J (CollDynConstraint deg r) a) (J x a) (J sh a)
-  deriving (Eq, Generic, Show)
-
-data CollTrajConstraints n x deg r sh a =
-  CollTrajConstraints (J (JVec n (CollStageConstraints x deg r sh)) a)
+  CollStageConstraints (J (JVec deg r) a) (J x a) (J sh a)
   deriving (Eq, Generic, Show)
 
 data CollOcpConstraints n deg x r c h sh sc a =
   CollOcpConstraints
-  { coStages :: J (CollTrajConstraints n x deg r sh) a
+  { coStages :: J (JVec n (CollStageConstraints x deg r sh)) a
   , coPathC :: J (JVec n (JVec deg h)) a
   , coBc :: J c a
   , coSbc :: J sc a
@@ -73,9 +64,7 @@ instance (View x, View z, View u, Dim deg) => View (CollStage x z u deg)
 instance (View x, View z, View u, View p, View (Cov s), Dim n, Dim deg) =>
          View (CollTraj x z u p s n deg)
 
-instance (View r, Dim deg) => View (CollDynConstraint deg r)
 instance (View x, View r, View sh, Dim deg) => View (CollStageConstraints x deg r sh)
-instance (View x, View r, View sh, Dim n, Dim deg) => View (CollTrajConstraints n x deg r sh)
 instance (View x, View r, Dim n, Dim deg, View c, View h, View sh, View sc) =>
          View (CollOcpConstraints n deg x r c h sh sc)
 

@@ -98,7 +98,7 @@ getFg ::
       (J S :*: J x :*: J x :*: J (Cov s) :*: J (Cov s)) (J S)
   -> ((J p :*: J (JVec deg (CollPoint x z u)) :*: J (JVec deg o) :*: J S :*: J (JVec deg S)) MX ->
       (J S) MX)
-  -> ((J (Cov s) :*: J S :*: J p :*: J (JVec deg S) :*: J x :*: J (JVec deg (JTuple x z)) :*: J (JVec deg u) :*: J (Cov s)) MX -> (J (Cov s) :*: J (CollDynConstraint deg r) :*: J (JVec deg o) :*: J (JVec deg h) :*: J x) MX)
+  -> ((J (Cov s) :*: J S :*: J p :*: J (JVec deg S) :*: J x :*: J (JVec deg (JTuple x z)) :*: J (JVec deg u) :*: J (Cov s)) MX -> (J (Cov s) :*: J (JVec deg r) :*: J (JVec deg o) :*: J (JVec deg h) :*: J x) MX)
   -> (J (CollTraj x z u p s n deg) MX, J JNone MX)
   -> (J S MX, J (CollOcpConstraints n deg x r c h sh sc) MX)
 getFg taus sq bcFun sbcFun shFun mayerFun quadFun stageFun (collTraj, _) = (obj, cat g)
@@ -148,7 +148,7 @@ getFg taus sq bcFun sbcFun shFun mayerFun quadFun stageFun (collTraj, _) = (obj,
 
     x0 = (\(CollStage x0' _) -> x0') (TV.tvhead spstages)
     g = CollOcpConstraints
-        { coStages = cat (CollTrajConstraints (cat (JVec (fmap cat stageConstraints))))
+        { coStages = cat $ JVec (fmap cat stageConstraints)
         , coPathC = cat $ JVec hs
         , coBc = callSXFun bcFun (x0 :*: xf)
         , coSbc = callSXFun sbcFun (p0 :*: pF)
@@ -168,7 +168,7 @@ getFg taus sq bcFun sbcFun shFun mayerFun quadFun stageFun (collTraj, _) = (obj,
     integratorMatchingConstraints :: Vec n (J x MX) -- THIS SHOULD BE A NONLINEAR FUNCTION
     integratorMatchingConstraints = vzipWith (-) interpolatedXs xfs
 
-    dcs :: Vec n (J (CollDynConstraint deg r) MX)
+    dcs :: Vec n (J (JVec deg r) MX)
     outputs :: Vec n (J (JVec deg o) MX)
     hs :: Vec n (J (JVec deg h) MX)
     interpolatedXs :: Vec n (J x MX)
@@ -176,7 +176,7 @@ getFg taus sq bcFun sbcFun shFun mayerFun quadFun stageFun (collTraj, _) = (obj,
     (pF, blah_) = T.mapAccumL ff p0 $ TV.tvzip3 spstages times' covInjections
 
     ff :: J (Cov s) MX -> (CollStage x z u deg MX, J (JVec deg S) MX, J (Cov s) MX) ->
-          (J (Cov s) MX, (J (Cov s) MX, J (CollDynConstraint deg r) MX, J (JVec deg o) MX, J (JVec deg h) MX, J x MX))
+          (J (Cov s) MX, (J (Cov s) MX, J (JVec deg r) MX, J (JVec deg o) MX, J (JVec deg h) MX, J x MX))
     ff cov0 (CollStage x0' xzus, stageTimes, covInj) = (cov1, (cov0, dc, output, stageHs, interpolatedX'))
       where
         cov1 :*: dc :*: output :*: stageHs :*: interpolatedX' =
@@ -218,7 +218,7 @@ getBg :: forall x z u p r o c h s sh sc deg n .
   CollOcpConstraints n deg x r c h sh sc (Vector Bounds)
 getBg ocp =
   CollOcpConstraints
-  { coStages = cat $ CollTrajConstraints (jreplicate (cat stageCon))
+  { coStages = jreplicate (cat stageCon)
   , coPathC = jreplicate (jreplicate (ocpPathCBnds ocp))
   , coBc = ocpBcBnds ocp
   , coSbc = ocpSbcBnds ocp
@@ -325,9 +325,9 @@ dynStageConstraints ::
   -> SXFun (J S :*: J p :*: J x :*: J (CollPoint x z u))
            (J r :*: J o)
   -> ((J x :*: J (JVec deg (JTuple x z))) MX, (J (JVec deg u) :*: J S :*: J p :*: J (JVec deg S)) MX)
-  -> ((J (CollDynConstraint deg r) :*: J x) MX, J (JVec deg o) MX)
+  -> ((J (JVec deg r) :*: J x) MX, J (JVec deg o) MX)
 dynStageConstraints cijs taus dynFun (x0 :*: xzs', us' :*: (UnsafeJ h) :*: p :*: stageTimes') =
-  (cat (CollDynConstraint (cat (JVec dynConstrs))) :*: xnext, cat (JVec outputs))
+  (cat (JVec dynConstrs) :*: xnext, cat (JVec outputs))
   where
     xzs = fmap split (unJVec (split xzs')) :: Vec deg (JTuple x z MX)
     us = unJVec (split us') :: Vec deg (J u MX)
@@ -390,10 +390,10 @@ stageFunction ::
   -> (((J x :*: J (JVec deg (JTuple x z))) MX,
                     (:*:) (J (JVec deg u)) (J S :*: J p :*: J (JVec deg S)) MX)
                    -> (Vector (Vector MX),
-                       (J (CollDynConstraint deg r) :*: J x) MX,
+                       (J (JVec deg r) :*: J x) MX,
                        J (JVec deg o) MX))
   -> (J (Cov s) :*: J S :*: J p :*: J (JVec deg S) :*: J x :*: J (JVec deg (JTuple x z)) :*: J (JVec deg u) :*: J (Cov s)) MX
-  -> (J (Cov s) :*: J (CollDynConstraint deg r) :*: J (JVec deg o) :*: J (JVec deg h) :*: J x) MX
+  -> (J (Cov s) :*: J (JVec deg r) :*: J (JVec deg o) :*: J (JVec deg h) :*: J x) MX
 stageFunction pathConStageFun dynStageConJac
   (p0' :*: dt :*: parm :*: stageTimes :*: x0' :*: xzs' :*: us :*: q0') =
     (p1 :*: dynConstrs :*: outputs :*: hs :*: interpolatedX)
@@ -406,7 +406,7 @@ stageFunction pathConStageFun dynStageConJac
       where
         JTuple x z = split xz
 
-    dynConstrs :: J (CollDynConstraint deg r) MX
+    dynConstrs :: J (JVec deg r) MX
     outputs :: J (JVec deg o) MX
     interpolatedX :: J x MX
     (jac, dynConstrs :*: interpolatedX, outputs) =
