@@ -59,7 +59,8 @@ makeCollNlp ocp = do
   lagrangeFun <- toSXFun "lagrange" $
                  \(x0:*:x1:*:x2:*:x3:*:x4:*:x5) -> ocpLagrange ocp x0 x1 x2 x3 x4 x5
   quadFun <- toMXFun "quadratures" $ evaluateQuadraturesFunction lagrangeFun cijs taus
-  --quadFun <- expandMXFun quadFun'
+  let callQuadFun = callMXFun quadFun
+--  callQuadFun <- fmap callSXFun (expandMXFun quadFun)
 
   dynFun <- toSXFun "dynamics" (dynamicsFunction (ocpDae ocp))
   pathConFun <- toSXFun "pathConstraints" (pathConFunction (ocpPathC ocp))
@@ -68,9 +69,10 @@ makeCollNlp ocp = do
   dynStageConFunJac <- toFunJac "dynamicsStageConJac" (dynStageConstraints cijs taus dynFun)
 
   stageFun <- toMXFun "stageFunction" $ stageFunction pathStageConFun dynStageConFunJac
-  --stageFun <- expandMXFun stageFun'
+  let callStageFun = callMXFun stageFun
+--  callStageFun <- fmap callSXFun (expandMXFun stageFun)
 
-  return $ Nlp { nlpFG = getFg taus (ocpSq ocp) bcFun sbcFun shFun mayerFun quadFun stageFun
+  return $ Nlp { nlpFG = getFg taus (ocpSq ocp) bcFun sbcFun shFun mayerFun callQuadFun callStageFun
                , nlpBX = cat (getBx ocp)
                , nlpBG = cat (getBg ocp)
                , nlpX0 = jfill 0
@@ -94,10 +96,9 @@ getFg ::
   -> SXFun (J x :*: J (Cov s)) (J sh)
   -> SXFun
       (J S :*: J x :*: J x :*: J (Cov s) :*: J (Cov s)) (J S)
-  -> MXFun (J p :*: J (JVec deg (CollPoint x z u)) :*: J (JVec deg o) :*: J S :*: J (JVec deg S))
-           (J S)
-  -> MXFun (J (Cov s) :*: J S :*: J p :*: J (JVec deg S) :*: J x :*: J (JVec deg (JTuple x z)) :*: J (JVec deg u) :*: J (Cov s))
-           (J (Cov s) :*: J (CollDynConstraint deg r) :*: J (JVec deg o) :*: J (JVec deg h) :*: J x)
+  -> ((J p :*: J (JVec deg (CollPoint x z u)) :*: J (JVec deg o) :*: J S :*: J (JVec deg S)) MX ->
+      (J S) MX)
+  -> ((J (Cov s) :*: J S :*: J p :*: J (JVec deg S) :*: J x :*: J (JVec deg (JTuple x z)) :*: J (JVec deg u) :*: J (Cov s)) MX -> (J (Cov s) :*: J (CollDynConstraint deg r) :*: J (JVec deg o) :*: J (JVec deg h) :*: J x) MX)
   -> (J (CollTraj x z u p s n deg) MX, J JNone MX)
   -> (J S MX, J (CollOcpConstraints n deg x r c h sh sc) MX)
 getFg taus sq bcFun sbcFun shFun mayerFun quadFun stageFun (collTraj, _) = (obj, cat g)
@@ -120,7 +121,7 @@ getFg taus sq bcFun sbcFun shFun mayerFun quadFun stageFun (collTraj, _) = (obj,
     oneStage :: J (JVec deg (CollPoint x z u)) MX -> J (JVec deg o) MX -> J (JVec deg S) MX
                 -> J S MX
     oneStage stagePoints stageOutputs stageTimes =
-      callMXFun quadFun (parm :*: stagePoints :*: stageOutputs :*: dt :*: stageTimes)
+      quadFun (parm :*: stagePoints :*: stageOutputs :*: dt :*: stageTimes)
 
     -- timestep
     dt = tf / fromIntegral n
@@ -179,7 +180,7 @@ getFg taus sq bcFun sbcFun shFun mayerFun quadFun stageFun (collTraj, _) = (obj,
     ff cov0 (CollStage x0' xzus, stageTimes, covInj) = (cov1, (cov0, dc, output, stageHs, interpolatedX'))
       where
         cov1 :*: dc :*: output :*: stageHs :*: interpolatedX' =
-          callMXFun stageFun (cov0 :*: dt :*: parm :*: stageTimes :*: x0' :*: xzs :*: us :*: covInj)
+          stageFun (cov0 :*: dt :*: parm :*: stageTimes :*: x0' :*: xzs :*: us :*: covInj)
 
         xzs = cat (JVec xzs') :: J (JVec deg (JTuple x z)) MX
         us = cat (JVec us') :: J (JVec deg u) MX
