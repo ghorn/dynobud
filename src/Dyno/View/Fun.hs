@@ -181,7 +181,7 @@ toFunJac name f0 = do
   mxf <- mxFunction allInputs allOutputs
   setOption mxf "name" name
   soInit mxf
-  let compact = True
+  let compact = False
       symmetric = False
   mxfJac <- jacobian mxf 0 0 compact symmetric
   soInit mxfJac
