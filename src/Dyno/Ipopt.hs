@@ -9,7 +9,7 @@ import Dyno.NlpSolver ( NlpSolverStuff(..), Opt(..) )
 ipoptSolver :: NlpSolverStuff IS.IpoptSolver
 ipoptSolver =
   NlpSolverStuff
-  { nlpConstructor = IS.ipoptSolver''
+  { nlpConstructor = IS.ipoptSolver'
   , defaultOptions = [ ("max_iter", Opt (3000 :: Int))
                      , ("tol", Opt (1e-9 :: Double))
 --                     , ("hessian_approximation", Opt "limited-memory")

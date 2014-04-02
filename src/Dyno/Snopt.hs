@@ -10,7 +10,7 @@ import Dyno.NlpSolver ( NlpSolverStuff(..), Opt(..) )
 snoptSolver :: NlpSolverStuff SS.SnoptSolver
 snoptSolver =
   NlpSolverStuff
-  { nlpConstructor = SS.snoptSolver''
+  { nlpConstructor = SS.snoptSolver'
   , defaultOptions = [ ("_iprint", Opt (0::Int))
 --                       , ("_isumm", Opt (6::Int))
 --                       , ("_scale_option", Opt (0::Int))
