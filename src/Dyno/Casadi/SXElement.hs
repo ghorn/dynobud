@@ -3,7 +3,7 @@
 {-# Language FlexibleContexts #-}
 
 module Dyno.Casadi.SXElement
-       ( funToSX, funSXToSX, algToSX, funToSX', SXElement
+       ( funToSX, funSXToSX, algToSX, funToSX', SXElement, sxElement_sym
        ) where
 
 import Data.Vector.Generic ( (!) )

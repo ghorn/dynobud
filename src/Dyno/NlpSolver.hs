@@ -2,8 +2,6 @@
 {-# Language ScopedTypeVariables #-}
 {-# Language PackageImports #-}
 {-# Language KindSignatures #-}
-{-# Language GADTs #-}
-{-# Language FlexibleInstances #-}
 {-# Language GeneralizedNewtypeDeriving #-}
 
 module Dyno.NlpSolver
@@ -11,7 +9,7 @@ module Dyno.NlpSolver
        , NLPSolverClass
        , runNlpSolver
        , solveNlp
---       , solveStaticNlp
+       , solveStaticNlp
        , solveOcp
 --       , solveStaticOcp
          -- * solve
@@ -52,6 +50,8 @@ import Data.Maybe ( fromMaybe )
 import Data.IORef ( newIORef, readIORef, writeIORef )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
+import qualified Data.Map.Strict as M
+import qualified Data.Foldable as F
 
 import Casadi.Wrappers.Enums ( InputOutputScheme(..) )
 import Casadi.Callback
@@ -66,7 +66,8 @@ import Dyno.Casadi.Function
 import qualified Dyno.Casadi.Option as Op
 import Dyno.Casadi.SharedObject ( soInit )
 
---import Dyno.NlpMonad ( reifyNlp )
+import Dyno.NlpMonad ( NlpMonad, reifyNlp )
+import Dyno.Interface.Types ( NlpMonadState(..) )
 import Dyno.View.View
 import Dyno.View.Symbolic
 import Dyno.Nlp ( Nlp(..), NlpOut(..), Multipliers(..), Bounds )
@@ -321,26 +322,28 @@ toBnds vs = (mkJ (V.map (fromMaybe (-inf)) lbs), mkJ (V.map (fromMaybe inf) ubs)
     (lbs, ubs) = V.unzip (unJ vs)
 
 
---solveStaticNlp ::
---  NLPSolverClass nlp =>
---  NlpSolverStuff nlp ->
---  Nlp Vector Vector Vector ->
---  Maybe (Vector Double -> IO Bool) -> IO (Either String String, NlpOut Vector Vector Double)
---solveStaticNlp solverStuff nlp callback = reifyNlp nlp callback foo
---  where
---    foo ::
---      (View x, View p, View g) =>
---      Nlp x p g -> Maybe (x Double -> IO Bool) ->
---      IO (Either String String, NlpOut Vector Vector Double)
---    foo nlp' cb' = do
---      (ret,nlpOut) <- solveNlp solverStuff nlp' cb'
---      let nlpOut' = NlpOut { fOpt = fOpt nlpOut
---                           , xOpt = vectorize (xOpt nlpOut)
---                           , gOpt = vectorize (gOpt nlpOut)
---                           , lambdaOpt = Multipliers { lambdaX = vectorize (lambdaX (lambdaOpt nlpOut))
---                                                     , lambdaG = vectorize (lambdaG (lambdaOpt nlpOut))
---                                                     }}
---      return (ret, nlpOut')
+solveStaticNlp ::
+  NLPSolverClass nlp
+  => NlpSolverStuff nlp
+  -> NlpMonad () -> [(String,Double)] -> Maybe (Vector Double -> IO Bool)
+  -> IO (Either String String, Double, [(String,Double)])
+solveStaticNlp solverStuff nlp x0' callback = reifyNlp nlp callback x0 foo
+  where
+    x0 = M.fromListWithKey errlol x0'
+    errlol name xx yy =
+      error $ "solveStaticNlp: initial guess has variable \"" ++ name ++ "\" more than once: " ++
+              show (xx,yy)
+
+    foo ::
+      (View x, View p, View g) =>
+      Nlp x p g MX -> Maybe (J x (Vector Double) -> IO Bool) -> NlpMonadState ->
+      IO (Either String String, Double, [(String,Double)])
+    foo nlp' cb' state = do
+      (ret,nlpOut) <- solveNlp solverStuff nlp' cb'
+      let fopt = V.head (unJ (fOpt nlpOut)) :: Double
+          xopt = F.toList $ unJ (xOpt nlpOut) :: [Double]
+          xnames = map fst (F.toList (nlpX state)) :: [String]
+      return (ret, fopt, zip xnames xopt)
 
 solveOcp ::
   forall x z u p r o c h s sh sc nlp .

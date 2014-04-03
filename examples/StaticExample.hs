@@ -2,18 +2,13 @@
 
 module Main where
 
-import qualified Data.Vector as V
-
-import Dyno.Nlp
 import Dyno.NlpMonad
 import Dyno.NlpSolver
 import Dyno.Ipopt
 --import Dyno.Snopt
---import Dyno.Sqp.Sqp
---import Dyno.Sqp.LineSearch
 
-buildRosen :: IO (Nlp V.Vector V.Vector V.Vector)
-buildRosen = fmap fst $ buildNlp' $ do
+rosen :: NlpMonad ()
+rosen = do
   x1 <- designVar "x1"
   x2 <- designVar "x2"
   x3 <- designVar "x3"
@@ -30,14 +25,13 @@ buildRosen = fmap fst $ buildNlp' $ do
 
 main :: IO ()
 main = do
-  rosen0 <- buildRosen
-
-  let rosen = rosen0 {nlpX0 = V.fromList [0.1,0.125,0.666666,0.142857]}
-
-  ret <- solveStaticNlp ipoptSolver rosen Nothing
-  print ret
-  --ret2 <- solveStaticNlp snoptSolver rosen Nothing
---  print ret'
---  (xopt , kktInf) <- solveSqp rosen armilloSearch
---  print xopt
---  print kktInf
+  let guess = [ ("x1", 0.1)
+              , ("x2", 0.125)
+              , ("x3", 0.666666)
+              , ("x4", 0.142857)
+              ]
+              
+  (status, fopt, xopt) <- solveStaticNlp ipoptSolver rosen guess Nothing
+  print status
+  putStrLn $ "value: " ++ show fopt
+  mapM_ (\(n,v) -> putStrLn $ n ++ ": " ++ show v) xopt
