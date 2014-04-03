@@ -14,6 +14,7 @@ module Dyno.View.Fun
        , toMXFun
        , toSXFun
        , toFunJac
+       , toFunJac'
        , callFun
        , callMXFun
        , callSXFun
@@ -210,6 +211,58 @@ toFunJac name f0 = do
           g = V.drop 2 vouts
 
           ng = numElems (Proxy :: Proxy (g MX))
+          vouts = callMX mxfJac $ V.cons x (vectorize y')
+
+  return callMe
+
+
+
+toFunJac' ::
+  forall x y f . (SymInputs x MX, SymInputs y MX, FunArgs f MX, FunArgs f (J x MX))
+  => String -> ((x MX, y MX) -> f MX) -> IO ((x MX, y MX) -> Vector (Vector MX))
+toFunJac' name f0 = do
+  (diffInputs',_) <- sym' 0 (Proxy :: Proxy (x MX))
+  let nsyms = F.sum $ fmap vsize1 (vectorize diffInputs')
+  diffInputsCat <- symV "dx" nsyms
+  let inputSizes = V.fromList ((0:) $ F.toList (sizeList 0 (Proxy :: Proxy (x MX))))
+      diffInputs = vvertsplit diffInputsCat inputSizes
+
+  (inputs,_) <- sym' 0 (Proxy :: Proxy (y MX))
+  let diffOutputs = f0 (devectorize diffInputs, inputs)
+      diffOutputsCat = vveccat (vectorize diffOutputs)
+
+      allInputs = V.cons diffInputsCat (vectorize inputs)
+      allOutputs = V.singleton diffOutputsCat
+
+  mxf <- mxFunction allInputs allOutputs
+  setOption mxf "name" name
+  soInit mxf
+  let compact = False
+      symmetric = False
+  mxfJac <- jacobian mxf 0 0 compact symmetric
+  soInit mxfJac
+
+  let callMe :: (x MX, y MX) -> (Vector (Vector MX)) -- , f MX)
+      callMe (x',y')
+        | 2 /= V.length vouts =
+          error $ "toFunJac': bad number of outputs :("
+        | otherwise = (rows) -- , devectorize fs)
+        where
+          --retJac :: f (J x MX)
+          --retJac = devectorize retJac'
+          --retJac' :: Vector (J x MX)
+          --retJac' = fmap devectorize rows
+          rows :: Vector (Vector MX)
+          rows = fmap (flip vhorzsplit horzsizes) $ vvertsplit jac vertsizes
+          vertsizes = V.fromList ((0:) $ F.toList (sizeList 0 (Proxy :: Proxy (f MX))))
+          horzsizes = V.fromList ((0:) $ F.toList (sizeList 0 (Proxy :: Proxy (x MX))))
+
+          --fs = vvertsplit f vertsizes
+          x = vveccat (vectorize x')
+
+          jac = vouts V.! 0
+          --f = vouts V.! 1
+
           vouts = callMX mxfJac $ V.cons x (vectorize y')
 
   return callMe

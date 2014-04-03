@@ -38,14 +38,16 @@ data CollPoint x z u a = CollPoint (J x a) (J z a) (J u a)
                        deriving (Eq, Generic, Show)
 
 -- constraints
-data CollStageConstraints x deg r sh a =
-  CollStageConstraints (J (JVec deg r) a) (J x a) (J sh a)
+data CollStageConstraints x deg r a =
+  CollStageConstraints (J (JVec deg r) a) (J x a)
   deriving (Eq, Generic, Show)
 
 data CollOcpConstraints n deg x r c h sh sc a =
   CollOcpConstraints
-  { coStages :: J (JVec n (CollStageConstraints x deg r sh)) a
+  { coCollPoints :: J (JVec n (JVec deg r)) a
+  , coContinuity :: J (JVec n x) a
   , coPathC :: J (JVec n (JVec deg h)) a
+  , coCovPathC :: J (JVec n sh) a
   , coBc :: J c a
   , coSbc :: J sc a
   } deriving (Eq, Generic, Show)
@@ -64,7 +66,7 @@ instance (View x, View z, View u, Dim deg) => View (CollStage x z u deg)
 instance (View x, View z, View u, View p, View (Cov s), Dim n, Dim deg) =>
          View (CollTraj x z u p s n deg)
 
-instance (View x, View r, View sh, Dim deg) => View (CollStageConstraints x deg r sh)
+instance (View x, View r, Dim deg) => View (CollStageConstraints x deg r)
 instance (View x, View r, Dim n, Dim deg, View c, View h, View sh, View sc) =>
          View (CollOcpConstraints n deg x r c h sh sc)
 
