@@ -56,7 +56,7 @@ data OcpPhase x z u p r o c h s sh sc =
            , ocpDae :: Dae x z u p r o SX
              -- | the boundary conditions @clb <= c(x(0), x(T)) <= cub@
            , ocpBc :: Sx x -> Sx x -> Sx c
-             -- | the path constraints @h(x(t), z(t), u(t), p), t)@
+             -- | the path constraints @h(x(t), z(t), u(t), p, t)@
            , ocpPathC :: Sx x -> Sx z -> Sx u -> Sx p -> Sx o -> Sx S -> Sx h
              -- | the boundary condition bounds @clb <= c(x(0), x(T)) <= cub@
            , ocpBcBnds :: J c (Vector Bounds)

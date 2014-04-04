@@ -3,17 +3,17 @@
 module Main ( main ) where
 
 --import Control.Concurrent ( threadDelay )
+import Dyno.Casadi.SXElement ( SXElement )
 import Dyno.OcpMonad
 import Dyno.Ipopt
 --import Dyno.Snopt
 import Dyno.NlpSolver ( solveStaticOcp )
 
-import Dvda.Expr
 import ServerSender
 import GliderShared
 
-myDae :: DaeMonad ()
-myDae = do
+myDae :: SXElement -> DaeMonad ()
+myDae time = do
   (p,p') <- diffState "p"
   (v,v') <- diffState "v"
   (m,m') <- diffState "m"
@@ -30,7 +30,7 @@ myDae = do
   m' === -1e-2*u**2
   u'' === u'
 
-boundaryConditions :: Floating a => (String -> BCMonad a a) -> (String -> BCMonad a a) -> BCMonad a ()
+boundaryConditions :: (String -> BCMonad SXElement) -> (String -> BCMonad SXElement) -> BCMonad ()
 boundaryConditions get0 getF = do
   -- initial
   p0 <- get0 "p"
@@ -48,14 +48,14 @@ boundaryConditions get0 getF = do
   pF === 0
   vF === 0
 
-mayer :: (Floating a, Monad m) => (String -> m a) -> a -> m a
-mayer get endTime = do
-  m <- get "m"
+mayer :: (Floating a, Monad m) => a -> (String -> m a) -> (String -> m a) -> m a
+mayer endTime get0 getF = do
+  m <- getF "m"
 
   return (-m) -- endTime -- (p**2 + v**2)
 
-myOcp :: (String -> OcpMonad (Expr Double)) -> OcpMonad ()
-myOcp get = do
+myOcp :: SXElement -> (String -> OcpMonad SXElement) -> OcpMonad ()
+myOcp time get = do
   p <- get "p"
   v <- get "v"
   m <- get "m"
@@ -86,9 +86,7 @@ main = withCallback gliderUrl gliderChannelName go
     deg = 3
     tbnds = (Just 0.2, Just 6)
     --tbnds = (Just 1.5, Just 1.5)
-    (ocpPhase, meta) = buildOcpPhase myDae mayer boundaryConditions myOcp tbnds
-    go cb = solveStaticOcp ipoptSolver n deg (Just cb') ocpPhase
-    --go cb = solveStaticOcp snoptSolver n deg (Just cb') ocpPhase
+    go cb = solveStaticOcp ipoptSolver myDae mayer boundaryConditions myOcp tbnds n deg (Just cb')
       where
-        cb' x = cb (x, meta n deg)
-        --cb' x = threadDelay 200000 >> cb (x, meta n deg)
+        cb' meta x = cb (x, meta)
+        --cb' meta x = threadDelay 200000 >> cb (x, meta)

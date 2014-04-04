@@ -14,6 +14,7 @@ module Dyno.Cov
        , diag
        , diag'
        , diag''
+       , nOfVecLen
        ) where
 
 --import GHC.Generics ( Generic )
@@ -56,6 +57,13 @@ instance View f => View (Cov f) where
     where
       n = size (Proxy :: Proxy f)
 
+nOfVecLen :: Int -> Int
+nOfVecLen m
+  | (n*n + n) `div` 2 == m = n
+  | otherwise = error $ "nOfVecLen fail: " ++ show m
+  where
+    m' = fromIntegral m :: Double
+    n = round $ sqrt (2*m' + 1/4) - 1/2
 
 -- THIS SKIPS THE DEVECTORIZE LENGTH CHECK!!
 instance (Serialize a) => Serialize (Cov f a) where

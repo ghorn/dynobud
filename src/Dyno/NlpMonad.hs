@@ -65,13 +65,13 @@ newtype NlpMonad a =
 emptySymbolicNlp :: NlpMonadState
 emptySymbolicNlp = NlpMonadState S.empty HS.empty S.empty ObjectiveUnset HomotopyParamUnset
 
-build' :: NlpMonadState -> NlpMonad a -> IO (Either ErrorMessage a, [LogMessage], NlpMonadState)
-build' nlp0 builder = do
-  ((result,logs),state) <- flip runStateT nlp0 . runWriterT . runErrorT . runNlp $ builder
-  return (result, logs, state)
-
 build :: NlpMonad a -> IO (Either ErrorMessage a, [LogMessage], NlpMonadState)
 build = build' emptySymbolicNlp
+  where
+    build' :: NlpMonadState -> NlpMonad a -> IO (Either ErrorMessage a, [LogMessage], NlpMonadState)
+    build' nlp0 builder = do
+      ((result,logs),state) <- flip runStateT nlp0 . runWriterT . runErrorT . runNlp $ builder
+      return (result, logs, state)
 
 designVar :: String -> NlpMonad SXElement
 designVar name = do
@@ -190,10 +190,10 @@ reifyNlp nlpmonad cb x0map f = do
       lookupGuess = flip (M.findWithDefault 0) x0map
       x0 = V.fromList $ map (lookupGuess . fst) $ F.toList (nlpX state)
       
-  TV.reifyDim nx $ \(Proxy :: Proxy nx) -> do
+  TV.reifyDim nx $ \(Proxy :: Proxy nx) ->
 --  TV.reifyDim np $ \(Proxy :: Proxy np) ->
-  TV.reifyDim ng $ \(Proxy :: Proxy ng) -> do
-    nlp0 <- buildNlp state :: IO (Nlp (JVec nx S) JNone (JVec ng S) MX)
-    let nlp = nlp0 { nlpX0 = mkJ x0 }
-    ret' <- f nlp (fmap (. unJ) cb) state
-    return ret'
+    TV.reifyDim ng $ \(Proxy :: Proxy ng) -> do
+      nlp0 <- buildNlp state :: IO (Nlp (JVec nx S) JNone (JVec ng S) MX)
+      let nlp = nlp0 { nlpX0 = mkJ x0 }
+      ret' <- f nlp (fmap (. unJ) cb) state
+      return ret'

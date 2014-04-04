@@ -11,9 +11,7 @@ import Data.Vector ( Vector )
 import qualified Data.Vector as V
 
 import Dyno.Nats
-import Dyno.TypeVecs -- ( Vec(..), unVec, mkVec' )
-import Dyno.View.View
-import Dyno.View.Symbolic
+import Dyno.View
 import Dyno.Nlp
 import Dyno.NlpSolver
 import Dyno.Ipopt

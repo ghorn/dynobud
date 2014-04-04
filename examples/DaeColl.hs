@@ -10,8 +10,7 @@ import Data.Vector ( Vector )
 
 import Dyno.Cov
 --import Dyno.Vectorize
-import Dyno.View.View
-import Dyno.View.Viewable
+import Dyno.View
 import Dyno.TypeVecs
 import Dyno.Nats
 import Dyno.Ipopt

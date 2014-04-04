@@ -5,13 +5,13 @@ module Main ( main ) where
 import Dyno.OcpMonad
 import Dyno.Ipopt
 --import Dyno.Snopt
-import Dyno.NlpSolver
-import Dvda.Expr
+import Dyno.NlpSolver ( solveStaticOcp )
+import Dyno.Casadi.SXElement ( SXElement )
 import ServerSender
 import GliderShared
 
-myDae :: DaeMonad ()
-myDae = do
+myDae :: SXElement -> DaeMonad ()
+myDae time = do
   (p,p') <- diffState "p"
   (v,v') <- diffState "v"
   u <- control "u"
@@ -25,9 +25,9 @@ myDae = do
   output "obj" obj
 
   p' === v
-  v' === force
+  v' === force + 0.1 * sin time
 
-boundaryConditions :: Floating a => (String -> BCMonad a a) -> (String -> BCMonad a a) -> BCMonad a ()
+boundaryConditions :: (String -> BCMonad SXElement) -> (String -> BCMonad SXElement) -> BCMonad ()
 boundaryConditions get0 getF = do
   p0 <- get0 "p"
   v0 <- get0 "v"
@@ -43,22 +43,22 @@ boundaryConditions get0 getF = do
   pF === 1
   vF === 0
 
-mayer :: (Floating a, Monad m) => (String -> m a) -> a -> m a
-mayer get endTime = do
-  p <- get "p"
-  v <- get "v"
+mayer :: (Floating a, Monad m) => a -> (String -> m a) -> (String -> m a) -> m a
+mayer endTime get0 getF = do
+  p <- getF "p"
+  v <- getF "v"
 
-  return (p**2 + v**2)
+  return (p**2 + v**2 + endTime/1000)
 
-myOcp :: (String -> OcpMonad (Expr Double)) -> OcpMonad ()
-myOcp get = do
+myOcp :: SXElement -> (String -> OcpMonad SXElement) -> OcpMonad ()
+myOcp time get = do
   p <- get "p"
   v <- get "v"
   u <- get "u"
   force <- get "force"
   obj <- get "obj"
 
-  v**2 + u**2 <== 4
+  v**2 + u**2 <== 4 + time/100
 
   lagrangeTerm obj
 
@@ -66,11 +66,8 @@ main :: IO ()
 main = withCallback gliderUrl gliderChannelName go
   where
     n = 100
-    --n = 2
     deg = 3
     tbnds = (Just 4, Just 4)
-    (ocpPhase, meta) = buildOcpPhase myDae mayer boundaryConditions myOcp tbnds
-    go cb = solveStaticOcp ipoptSolver n deg (Just cb') ocpPhase
-    --go cb = solveStaticOcp snoptSolver n deg (Just cb') ocpPhase
+    go cb = solveStaticOcp ipoptSolver myDae mayer boundaryConditions myOcp tbnds n deg (Just cb')
       where
-        cb' x = cb (x, meta n deg)
+        cb' meta x = cb (x, meta)

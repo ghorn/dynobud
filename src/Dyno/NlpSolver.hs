@@ -3,6 +3,7 @@
 {-# Language PackageImports #-}
 {-# Language KindSignatures #-}
 {-# Language GeneralizedNewtypeDeriving #-}
+{-# Language RankNTypes #-}
 
 module Dyno.NlpSolver
        ( NlpSolver
@@ -11,7 +12,7 @@ module Dyno.NlpSolver
        , solveNlp
        , solveStaticNlp
        , solveOcp
---       , solveStaticOcp
+       , solveStaticOcp
          -- * solve
        , solve
        , solve'
@@ -43,7 +44,7 @@ module Dyno.NlpSolver
 
 import Control.Exception ( AsyncException( UserInterrupt ), try )
 import Control.Concurrent ( forkIO, newEmptyMVar, takeMVar, putMVar )
-import Control.Applicative ( Applicative )
+import Control.Applicative ( Applicative(..) )
 import Control.Monad ( liftM, when )
 import "mtl" Control.Monad.Reader ( MonadIO(..), MonadReader(..), ReaderT(..) )
 import Data.Maybe ( fromMaybe )
@@ -62,6 +63,7 @@ import Casadi.Wrappers.Classes.NLPSolver
 import Casadi.Wrappers.Classes.IOInterfaceFunction
 
 import Dyno.Casadi.DMatrix
+import Dyno.Casadi.SXElement ( SXElement )
 import Dyno.Casadi.Function
 import qualified Dyno.Casadi.Option as Op
 import Dyno.Casadi.SharedObject ( soInit )
@@ -72,10 +74,10 @@ import Dyno.View.View
 import Dyno.View.Symbolic
 import Dyno.Nlp ( Nlp(..), NlpOut(..), Multipliers(..), Bounds )
 import Dyno.DirectCollocation ( CollTraj, makeCollNlp )
-import Dyno.DirectCollocation.Dynamic ( DynCollTraj, ctToDynamic )
+import Dyno.DirectCollocation.Dynamic ( CollTrajMeta, DynCollTraj, ctToDynamic )
 import Data.Proxy
 import qualified Dyno.TypeVecs as TV
---import Dyno.OcpMonad ( reifyOcp )
+import Dyno.OcpMonad ( OcpMonad, DaeMonad, BCMonad, reifyOcpPhase )
 import Dyno.Ocp ( OcpPhase )
 
 type VD a = J a (Vector Double)
@@ -358,7 +360,19 @@ solveOcp solverStuff n deg cb ocp =
     _ <- solveNlp solverStuff (nlp {nlpX0 = guess}) (fmap (. ctToDynamic) cb)
     return ()
 
---solveStaticOcp ::
---  NLPSolverClass nlp =>
---  NlpSolverStuff nlp -> Int -> Int -> Maybe (DynCollTraj Double -> IO Bool) -> OcpPhase Vector Vector Vector Vector Vector Vector Vector Vector Vector Vector Vector -> IO ()
---solveStaticOcp solverStuff n deg cb ocp = reifyOcp ocp (solveOcp solverStuff n deg cb)
+
+solveStaticOcp ::
+  NLPSolverClass nlp =>
+  NlpSolverStuff nlp
+  -> (SXElement -> DaeMonad ())
+  -> (forall a m . (Floating a, Monad m) => a -> (String -> m a) -> (String -> m a) -> m a)
+  -> ((String -> BCMonad SXElement) -> (String -> BCMonad SXElement) -> BCMonad ())
+  -> (SXElement -> (String -> OcpMonad SXElement) -> OcpMonad ())
+  -> (Maybe Double, Maybe Double)
+  -> Int -> Int
+  -> Maybe (CollTrajMeta -> DynCollTraj (Vector Double) -> IO Bool)
+  -> IO ()
+solveStaticOcp solverStuff dae mayer bc ocp tbnds n deg cb =
+  reifyOcpPhase dae mayer bc ocp tbnds n deg woo
+    where
+      woo ocpphase meta = solveOcp solverStuff n deg (cb <*> pure meta) ocpphase

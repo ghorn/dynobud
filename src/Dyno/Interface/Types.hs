@@ -44,38 +44,38 @@ data OcpState = OcpState { ocpPathConstraints :: S.Seq (Constraint SXElement)
                          , ocpHomoParam :: HomotopyParam SXElement
                          }
 
-data DaeState = DaeState { _daeXDot :: S.Seq SXElement
-                         , _daeX :: S.Seq SXElement
-                         , _daeZ :: S.Seq SXElement
-                         , _daeU :: S.Seq SXElement
-                         , _daeP :: S.Seq SXElement
+data DaeState = DaeState { _daeXDot :: S.Seq (String, SXElement)
+                         , _daeX :: S.Seq (String, SXElement)
+                         , _daeZ :: S.Seq (String, SXElement)
+                         , _daeU :: S.Seq (String, SXElement)
+                         , _daeP :: S.Seq (String, SXElement)
                          , _daeO :: M.Map String SXElement
                          , daeNameSet :: HS.HashSet String
                          , daeConstraints :: S.Seq (SXElement, SXElement)
                          }
 
 --makeLenses ''DaeState
-daeXDot :: Lens' DaeState (S.Seq SXElement)
+daeXDot :: Lens' DaeState (S.Seq (String, SXElement))
 daeXDot f (DaeState xdot' x z u p o ss c) =
   (\xdot -> DaeState xdot x z u p o ss c) <$> f xdot'
 {-# INLINE daeXDot #-}
 
-daeX :: Lens' DaeState (S.Seq SXElement)
+daeX :: Lens' DaeState (S.Seq (String, SXElement))
 daeX f (DaeState xdot x' z u p o ss c) =
   (\x -> DaeState xdot x z u p o ss c) <$> f x'
 {-# INLINE daeX #-}
 
-daeZ :: Lens' DaeState (S.Seq SXElement)
+daeZ :: Lens' DaeState (S.Seq (String, SXElement))
 daeZ f (DaeState xdot x z' u p o ss c) =
   (\z -> DaeState xdot x z u p o ss c) <$> f z'
 {-# INLINE daeZ #-}
 
-daeU :: Lens' DaeState (S.Seq SXElement)
+daeU :: Lens' DaeState (S.Seq (String, SXElement))
 daeU f (DaeState xdot x z u' p o ss c) =
   (\u -> DaeState xdot x z u p o ss c) <$> f u'
 {-# INLINE daeU #-}
 
-daeP :: Lens' DaeState (S.Seq SXElement)
+daeP :: Lens' DaeState (S.Seq (String, SXElement))
 daeP f (DaeState xdot x z u p' o ss c) =
   (\p -> DaeState xdot x z u p o ss c) <$> f p'
 {-# INLINE daeP #-}
