@@ -1,12 +1,12 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language GeneralizedNewtypeDeriving #-}
-{-# Language RankNTypes #-}
 {-# Language ScopedTypeVariables #-}
-{-# Language FlexibleContexts #-}
+{-# Language PackageImports #-}
 {-# Language MultiParamTypeClasses #-}
 {-# Language FunctionalDependencies #-}
+{-# Language GeneralizedNewtypeDeriving #-}
+{-# Language FlexibleContexts #-}
+{-# Language RankNTypes #-}
 {-# Language FlexibleInstances #-}
-{-# Language PackageImports #-}
 
 module Dyno.OcpMonad
        ( OcpMonad
@@ -39,18 +39,20 @@ import qualified Data.Map as M
 import Data.Sequence ( (|>) )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
-import Data.Proxy
+import Data.Proxy ( Proxy(..) )
 
 import Dyno.Casadi.Option ( setOption )
 import Dyno.Casadi.SXElement ( SXElement, sxElement_sym )
 import Dyno.Casadi.SXFunction ( sxFunction )
-import Dyno.Casadi.SX ( svector )
+import Dyno.Casadi.SX ( SX, sdata, sdense, svector )
 import Dyno.Casadi.Function ( callSX )
 import Dyno.Casadi.SharedObject ( soInit )
-import Dyno.Ocp
+import Dyno.Ocp ( OcpPhase(..) )
 import Dyno.Nlp ( Bounds )
-import Dyno.Cov
-import Dyno.View
+import Dyno.Cov ( Cov, diag'' )
+import Dyno.View ( View(..), J, JNone(..), jfill )
+import Dyno.Vectorize ( Vectorize(..), fill )
+import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.DirectCollocation.Dynamic ( CollTrajMeta(..), NameTree(..) )
 
@@ -233,7 +235,8 @@ reifyOcpPhase ::
   -> (SXElement -> (String -> OcpMonad SXElement) -> OcpMonad ())
   -> (Maybe Double, Maybe Double)
   -> Int -> Int
-  -> (forall x z u p r o c h . (View x, View z, View u, View p, View r, View o, View c, View h)
+  -> (forall x z u p r o c h .
+      (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize r, Vectorize o, Vectorize c, Vectorize h)
       => OcpPhase x z u p r o c h JNone JNone JNone -> CollTrajMeta -> IO ret)
   -> IO ret
 reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
@@ -401,16 +404,16 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
   --  TV.reifyDim nsh $ \(Proxy :: Proxy nsh) -> do
   --  TV.reifyDim nsc $ \(Proxy :: Proxy nsc) -> do
   
-    let daeFun :: J (JVec nx S) SX -> J (JVec nx S) SX -> J (JVec nz S) SX -> J (JVec nu S) SX
-                  -> J (JVec np S) SX -> J S SX
-                   -> (J (JVec nr S) SX, J (JVec no S) SX)
-        daeFun x' x z u p t = (mkJ (rets V.! 0), mkJ (rets V.! 1))
+    let daeFun :: Vec nx SXElement -> Vec nx SXElement -> Vec nz SXElement -> Vec nu SXElement
+                  -> Vec np SXElement -> SXElement
+                   -> (Vec nr SXElement, Vec no SXElement)
+        daeFun x' x z u p t = (devec (rets V.! 0), devec (rets V.! 1))
           where
-            rets = callSX daeFunSX (V.fromList [unJ x', unJ x, unJ z, unJ u, unJ p, unJ t])
+            rets = callSX daeFunSX (V.fromList [vec x', vec x, vec z, vec u, vec p, vec' t])
   
-        lagrangeFun :: J (JVec nx S) SX -> J (JVec nz S) SX -> J (JVec nu S) SX -> J (JVec np S) SX -> J (JVec no S) SX -> J S SX -> J S SX
+        lagrangeFun :: Vec nx SXElement -> Vec nz SXElement -> Vec nu SXElement -> Vec np SXElement -> Vec no SXElement -> SXElement -> SXElement
         lagrangeFun x z u p o t =
-          mkJ $ V.head $ callSX lagFunSX (V.fromList [unJ x, unJ z, unJ u, unJ p, unJ o, unJ t])
+          devec' $ V.head $ callSX lagFunSX (V.fromList [vec x, vec z, vec u, vec p, vec o, vec' t])
           --Left errmsg -> error $ "toOcpPhase: lagrangeFun: " ++ errmsg ++
           --  "\ninputs: " ++ show (xnames ++ znames ++ unames ++ pnames) ++ show onames ++
           --  "\nnumeric inputs x: " ++ show (V.length x) ++
@@ -419,32 +422,32 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
           --  "\nnumeric inputs p: " ++ show (V.length p) ++
           --  "\nnumeric inputs o: " ++ show (V.length o)
   
-        pathConstraintFun :: J (JVec nx S) SX -> J (JVec nz S) SX -> J (JVec nu S) SX
-                             -> J (JVec np S) SX -> J (JVec no S) SX -> J S SX -> J (JVec nh S) SX
+        pathConstraintFun :: Vec nx SXElement -> Vec nz SXElement -> Vec nu SXElement
+                             -> Vec np SXElement -> Vec no SXElement -> SXElement -> Vec nh SXElement
         pathConstraintFun x z u p o t =
-          mkJ $ V.head $ callSX pathcFunSX (V.fromList [unJ x, unJ z, unJ u, unJ p, unJ o, unJ t])
+          devec $ V.head $ callSX pathcFunSX (V.fromList [vec x, vec z, vec u, vec p, vec o, vec' t])
   
-        mayerFun :: J S SX -> J (JVec nx S) SX -> J (JVec nx S) SX
+        mayerFun :: SXElement -> Vec nx SXElement -> Vec nx SXElement
                     -> J (Cov JNone) SX -> J (Cov JNone) SX
-                    -> J S SX
-        mayerFun endT'' x0 xF _ _ = mkJ $ V.head $ callSX mayerFunSX (V.fromList [unJ endT'', unJ x0, unJ xF])
+                    -> SXElement
+        mayerFun endT'' x0 xF _ _ = devec' $ V.head $ callSX mayerFunSX (V.fromList [vec' endT'', vec x0, vec xF])
   
-        bcFun :: J (JVec nx S) SX -> J (JVec nx S) SX -> J (JVec nc S) SX
-        bcFun x0 xF = mkJ $ V.head $ callSX bcFunSX (V.fromList [unJ x0, unJ xF])
+        bcFun :: Vec nx SXElement -> Vec nx SXElement -> Vec nc SXElement
+        bcFun x0 xF = devec $ V.head $ callSX bcFunSX (V.fromList [vec x0, vec xF])
   
         ocpPhase =
           OcpPhase { ocpMayer = mayerFun
                    , ocpLagrange = lagrangeFun
                    , ocpDae = daeFun
                    , ocpBc = bcFun
-                   , ocpBcBnds = mkJ bcbnds
+                   , ocpBcBnds = devectorize bcbnds
                    , ocpPathC = pathConstraintFun
-                   , ocpPathCBnds = mkJ (V.fromList pathConstraintBnds)
-                   , ocpXbnd = jfill (Nothing, Nothing)
-                   , ocpZbnd = jfill (Nothing, Nothing)
-                   , ocpUbnd = jfill (Nothing, Nothing)
-                   , ocpPbnd = jfill (Nothing, Nothing)
-                   , ocpTbnd = jfill tbnds
+                   , ocpPathCBnds = devectorize (V.fromList pathConstraintBnds)
+                   , ocpXbnd = fill (Nothing, Nothing)
+                   , ocpZbnd = fill (Nothing, Nothing)
+                   , ocpUbnd = fill (Nothing, Nothing)
+                   , ocpPbnd = fill (Nothing, Nothing)
+                   , ocpTbnd = tbnds
   
                    , ocpSq = diag'' (cat JNone)
                    , ocpSbnd = jfill (Nothing, Nothing)
@@ -454,3 +457,15 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
                    , ocpShBnds = cat JNone
                    }
     f ocpPhase meta
+
+vec :: Vectorize f => f SXElement -> SX
+vec = svector . vectorize
+
+vec' :: SXElement -> SX
+vec' = svector . V.singleton
+
+devec :: Vectorize f => SX -> f SXElement
+devec = devectorize . sdata . sdense
+
+devec' :: SX -> SXElement
+devec' = V.head . sdata . sdense

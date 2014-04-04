@@ -70,6 +70,7 @@ import Dyno.Casadi.SharedObject ( soInit )
 
 import Dyno.NlpMonad ( NlpMonad, reifyNlp )
 import Dyno.Interface.Types ( NlpMonadState(..) )
+import Dyno.Vectorize ( Vectorize )
 import Dyno.View.View
 import Dyno.View.Symbolic
 import Dyno.Nlp ( Nlp(..), NlpOut(..), Multipliers(..), Bounds )
@@ -349,7 +350,8 @@ solveStaticNlp solverStuff nlp x0' callback = reifyNlp nlp callback x0 foo
 
 solveOcp ::
   forall x z u p r o c h s sh sc nlp .
-  (NLPSolverClass nlp, View x, View z, View u, View p, View r, View o, View c, View h, View s, View sc, View sh)
+  (NLPSolverClass nlp, Vectorize x, Vectorize z, Vectorize u, Vectorize p,
+   Vectorize r, Vectorize o, Vectorize c, Vectorize h, View s, View sc, View sh)
   => NlpSolverStuff nlp -> Int -> Int -> Maybe (DynCollTraj (Vector Double) -> IO Bool) -> OcpPhase x z u p r o c h s sh sc -> IO ()
 solveOcp solverStuff n deg cb ocp =
   TV.reifyDim n $ \(Proxy :: Proxy n) ->

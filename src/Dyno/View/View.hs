@@ -16,7 +16,7 @@
 
 module Dyno.View.View
        ( J(..), mkJ, unJ, unJ', View(..), JVec(..), JNone(..), S(..)
---       , JV(..), JV'(..), JV''(..)
+       , JV(..)
        , JTuple(..)
        , jreplicate, jreplicate'
        , reifyJVec, jfill
@@ -36,7 +36,7 @@ import Data.Serialize ( Serialize(..) )
 
 import Dyno.TypeVecs ( Vec(..), unVec, mkVec, mkVec', reifyVector )
 import Dyno.View.Viewable ( Viewable(..) )
-import Dyno.Vectorize ( Vectorize(..)) -- , vlength )
+import Dyno.Vectorize ( Vectorize(..), vlength )
 import Dyno.Server.Accessors ( Lookup(..), AccessorTree )
 
 data JTuple f g a = JTuple (J f a) (J g a) deriving ( Generic, Show )
@@ -138,39 +138,20 @@ instance View S where
   split :: forall a . Viewable a => J S a -> S a
   split = S . unJ
 
---newtype JV'' f a = JV'' { unJV'' :: f (J S a) }
---instance Vectorize f => View (JV'' f) where
---  cat :: forall a . Viewable a => JV'' f a -> J (JV'' f) a
---  cat = mkJ . vveccat . fmap unJ . vectorize . unJV''
---  size = const $ vlength (empty :: f ())
---  split :: forall a . Viewable a => J (JV'' f) a -> JV'' f a
---  split = JV'' . devectorize . fmap mkJ . flip vvertsplit ks. unJ
---    where
---      ks = V.fromList (take (n+1) [0..])
---      n = size (Proxy :: Proxy (JV'' f))
---
---
---newtype JV' f a = JV' { unJV' :: f (S a) }
---instance Vectorize f => View (JV' f) where
---  cat :: forall a . Viewable a => JV' f a -> J (JV' f) a
---  cat = mkJ . vveccat . fmap unS . vectorize . unJV'
---  size = const $ vlength (empty :: f ())
---  split :: forall a . Viewable a => J (JV' f) a -> JV' f a
---  split = JV' . devectorize . fmap S . flip vvertsplit ks. unJ
---    where
---      ks = V.fromList (take (n+1) [0..])
---      n = size (Proxy :: Proxy (JV' f))
---
---newtype JV f a = JV { unJV :: f a }
---instance Vectorize f => View (JV f) where
---  cat :: forall a . Viewable a => JV f a -> J (JV f) a
---  cat = mkJ . vveccat . vectorize . unJV
---  size = const $ vlength (empty :: f ())
---  split :: forall a . Viewable a => J (JV f) a -> JV f a
---  split = JV . devectorize . flip vvertsplit ks. unJ
---    where
---      ks = V.fromList (take (n+1) [0..])
---      n = size (Proxy :: Proxy (JV f))
+instance (Vectorize f, Lookup (f a), Show a) => Lookup (J (JV f) (Vector a)) where
+  toAccessorTree x g = toAccessorTree (devectorize (unJ x) :: f a) (devectorize . unJ . g)
+
+newtype JV f a = JV { unJV :: f a } deriving Generic
+instance Vectorize f => View (JV f) where
+  cat :: forall a . Viewable a => JV f a -> J (JV f) a
+  cat = mkJ . vveccat . vectorize . unJV
+  size = const $ vlength (empty :: f ())
+  sizes = const . Seq.singleton . (vlength (empty :: f ()) +)
+  split :: forall a . Viewable a => J (JV f) a -> JV f a
+  split = JV . devectorize . flip vvertsplit ks. unJ
+    where
+      ks = V.fromList (take (n+1) [0..])
+      n = size (Proxy :: Proxy (JV f))
 
 
 -- | Type-save "views" into vectors, which can access subvectors

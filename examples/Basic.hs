@@ -10,7 +10,6 @@ import GHC.Generics ( Generic )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
 
-import Dyno.Nats
 import Dyno.View
 import Dyno.Nlp
 import Dyno.NlpSolver

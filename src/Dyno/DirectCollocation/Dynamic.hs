@@ -27,13 +27,15 @@ import GHC.Generics ( Generic )
 import Linear.V
 
 import Dyno.Server.Accessors ( AccessorTree(..), Lookup(..), accessors )
+import Dyno.Vectorize
 import Dyno.View.View
+import Dyno.View.Viewable
 import qualified Dyno.TypeVecs as TV
 import Dyno.TypeVecs ( Vec )
 
 import Dyno.DirectCollocation.Types
 import Dyno.DirectCollocation.Formulate ( mkTaus, interpolate )
-import Dyno.DirectCollocation.Reify
+import Dyno.DirectCollocation.Reify ( reifyCollTraj )
 
 
 data DynPlotPoints a = DynPlotPoints [[(a, Vector a)]] [[(a, Vector a)]] [[(a, Vector a)]]
@@ -48,7 +50,7 @@ instance Serialize a => Serialize (V.Vector a) where
   get = fmap V.fromList get
 
 dynPlotPoints :: forall a . (Real a, Fractional a, Show a) => DynCollTraj (Vector a) -> CollTrajMeta -> DynPlotPoints a
-dynPlotPoints (DynCollTraj traj) meta = reifyCollTraj' (nx,nz,nu,np,ns,n,deg) traj foo
+dynPlotPoints (DynCollTraj traj) meta = reifyCollTraj (nx,nz,nu,np,ns,n,deg) traj foo
   where
     nx  = ctmNx meta
     nz  = ctmNz meta
@@ -58,7 +60,8 @@ dynPlotPoints (DynCollTraj traj) meta = reifyCollTraj' (nx,nz,nu,np,ns,n,deg) tr
     n   = ctmN meta
     deg = ctmDeg meta
     
-    foo :: (View x, View z, View u, View p, View s, Dim deg, Dim n) => J (CollTraj x z u p s n deg) (Vector a) -> DynPlotPoints a
+    foo :: (Vectorize x, Vectorize z, Vectorize u, Vectorize p, View s, Dim deg, Dim n)
+           => J (CollTraj x z u p s n deg) (Vector a) -> DynPlotPoints a
     foo ct = plotPoints (split ct)
 
 
@@ -66,7 +69,7 @@ dynPlotPoints (DynCollTraj traj) meta = reifyCollTraj' (nx,nz,nu,np,ns,n,deg) tr
 -- first stage in making a list
 plotPoints ::
   forall x z u p s n deg a .
-  (Dim n, Dim deg, Real a, Fractional a, Show a, View x, View z, View u)
+  (Dim n, Dim deg, Real a, Fractional a, Show a, Vectorize x, Vectorize z, Vectorize u)
   => CollTraj x z u p s n deg (Vector a) -> DynPlotPoints a
 plotPoints ct@(CollTraj (UnsafeJ tf') _ _ stages' xf) = DynPlotPoints (xss++[[(tf,unJ xf)]]) zss uss
   where
@@ -77,16 +80,16 @@ plotPoints ct@(CollTraj (UnsafeJ tf') _ _ stages' xf) = DynPlotPoints (xss++[[(t
     --taus :: Vec deg Double
     taus = mkTaus (ctDeg ct)
 
-    stages = fmap split (unJVec (split stages')) :: Vec n (CollStage x z u deg (Vector a))
+    stages = fmap split (unJVec (split stages')) :: Vec n (CollStage (JV x) (JV z) (JV u) deg (Vector a))
     (xss,zss,uss) = unzip3 $ f 0 (F.toList stages)
 
     -- todo: check this final time against expected tf
-    f :: a -> [CollStage x z u deg (Vector a)] -> [([(a,Vector a)], [(a,Vector a)], [(a,Vector a)])] 
+    f :: a -> [CollStage (JV x) (JV z) (JV u) deg (Vector a)] -> [([(a,Vector a)], [(a,Vector a)], [(a,Vector a)])] 
     f _ [] = []
     f t0 ((CollStage x0 xzus'):css) = (xs,zs,us) : f tnext css
       where
         tnext = t0 + h
-        xzus0 = fmap split (unJVec (split xzus')) :: Vec deg (CollPoint x z u (Vector a))
+        xzus0 = fmap split (unJVec (split xzus')) :: Vec deg (CollPoint (JV x) (JV z) (JV u) (Vector a))
         xnext = interpolate taus x0 (fmap getX xzus0)
 
         xs :: [(a,Vector a)]
@@ -169,25 +172,28 @@ forestFromMeta meta = [xTree,zTree,uTree]
 
 
 toMeta :: forall x z u p s n deg a .
-          (Lookup (x (Vector ())), Lookup (z (Vector ())), Lookup (u (Vector ())), Lookup (p (Vector ())),
-           View x, View z, View u, View p, View s,
+          (Lookup (x ()), Lookup (z ()), Lookup (u ()), Lookup (p ()),
+           Vectorize x, Vectorize z, Vectorize u, Vectorize p,
+           View s, Viewable a,
            Dim n, Dim deg)
-          => CollTraj x z u p s n deg a -> CollTrajMeta
+          => J (CollTraj x z u p s n deg) a -> CollTrajMeta
 toMeta ct =
-  CollTrajMeta { ctmX = namesFromAccTree $ accessors $ split $ (jfill () :: J x (Vector ()))
-               , ctmZ = namesFromAccTree $ accessors $ split $ (jfill () :: J z (Vector ()))
-               , ctmU = namesFromAccTree $ accessors $ split $ (jfill () :: J u (Vector ()))
-               , ctmP = namesFromAccTree $ accessors $ split $ (jfill () :: J p (Vector ()))
-               , ctmNx = size (Proxy :: Proxy x)
-               , ctmNz = size (Proxy :: Proxy z)
-               , ctmNu = size (Proxy :: Proxy u)
-               , ctmNp = size (Proxy :: Proxy p)
+  CollTrajMeta { ctmX = namesFromAccTree $ accessors $ (jfill () :: J (JV x) (Vector ()))
+               , ctmZ = namesFromAccTree $ accessors $ (jfill () :: J (JV z) (Vector ()))
+               , ctmU = namesFromAccTree $ accessors $ (jfill () :: J (JV u) (Vector ()))
+               , ctmP = namesFromAccTree $ accessors $ (jfill () :: J (JV p) (Vector ()))
+               , ctmNx = size (Proxy :: Proxy (JV x))
+               , ctmNz = size (Proxy :: Proxy (JV z))
+               , ctmNu = size (Proxy :: Proxy (JV u))
+               , ctmNp = size (Proxy :: Proxy (JV p))
                , ctmNs = size (Proxy :: Proxy s)
-               , ctmN = ctN ct
-               , ctmDeg = ctDeg ct
+               , ctmN = ctN ct'
+               , ctmDeg = ctDeg ct'
                }
+  where
+    ct' = split ct
 
 ctToDynamic ::
-  (View x, View z, View u, View p, View s) =>
+  (Vectorize x, Vectorize z, Vectorize u, Vectorize p, View s) =>
   J (CollTraj x z u p s n deg) a -> DynCollTraj a
 ctToDynamic (UnsafeJ x) = DynCollTraj (UnsafeJ x) -- this should be totally safe

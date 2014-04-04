@@ -1,11 +1,12 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language CPP #-}
 
 module Main ( main ) where
 
 import Linear
+import Data.Vector ( Vector )
 
 import Dyno.Vectorize
+import Dyno.View
 import Dyno.Ipopt
 --import Dyno.Snopt
 --import Dyno.Sqp.Sqp
@@ -29,9 +30,7 @@ import ServerSender ( withCallback )
 type NCollStages = D100
 type CollDeg = D2
 
-type GliderDesignVars a = CollTraj AcX None AcU None None NCollStages CollDeg a
-
-mayer :: Num a => a -> AcX a -> AcX a -> Cov None a -> Cov None a -> a
+mayer :: Floating a => a -> AcX a -> AcX a -> J (Cov JNone) SX -> J (Cov JNone) SX -> a
 mayer _ _ _ _ _ = 0
 
 lagrange :: Floating a => AcX a -> None a -> AcU a -> None a -> None a -> a -> a
@@ -58,13 +57,14 @@ dae x' x _ u _ _ = (aircraftDae (mass, inertia) fcs mcs refs x' x u, None)
     mcs = bettyMc
     refs = bettyRefs
 
-ocp :: OcpPhase AcX None AcU None AcX None AcX None None None None
+ocp :: OcpPhase AcX None AcU None AcX None AcX None JNone JNone JNone
 ocp = OcpPhase { ocpMayer = mayer
                , ocpLagrange = lagrange
                , ocpDae = dae
                , ocpBc = bc
                , ocpPathC = pathc
-               , ocpPathCBnds = None -- pathcb
+               , ocpPathCBnds = None
+               , ocpBcBnds = fill (Just 0, Just 0)
                , ocpXbnd = xbnd
                , ocpUbnd = ubnd
                , ocpZbnd = None
@@ -72,20 +72,16 @@ ocp = OcpPhase { ocpMayer = mayer
                , ocpTbnd = (Just 0.5, Just 0.5)
 --               , ocpTbnd = (Just 4, Just 4)
 
-               , ocpSq = fill 0
-               , ocpSbnd = fill (Nothing,Nothing)
-               , ocpSc = \_ _ -> None
-               , ocpScBnds = None
-               , ocpSh = \_ _ -> None
-               , ocpShBnds = None
+               , ocpSq = 0
+               , ocpSbnd = jfill (Nothing,Nothing)
+               , ocpSbc = \_ _ -> cat JNone
+               , ocpSbcBnds = cat JNone
+               , ocpSh = \_ _ -> cat JNone
+               , ocpShBnds = cat JNone
                }
 
 pathc :: x a -> z a -> u a -> p a -> None a -> a -> None a
 pathc _ _ _ _ _ _ = None
-
-------pathcb :: None a
-------pathcb = None
---
 
 xbnd :: AcX (Maybe Double, Maybe Double)
 xbnd = AcX { ac_r_n2b_n = fill (Nothing, Nothing)
@@ -115,14 +111,14 @@ main = do
   putStrLn $ "using ip \""++gliderUrl++"\""
   putStrLn $ "using channel \""++gliderChannelName++"\""
 
+  nlp <- makeCollNlp ocp
   withCallback gliderUrl gliderChannelName $ \cb -> do
-    let guess :: GliderDesignVars Double
-        guess = fill 1
+    let guess = jfill 1
 
+        cb' :: J (CollTraj AcX None AcU None JNone NCollStages CollDeg) (Vector Double) -> IO Bool
         cb' traj = cb (ctToDynamic traj, toMeta traj)
-        nlp = (makeCollNlp ocp) { nlpX0 = guess }
 
-    (msg,opt') <- solveNlp ipoptSolver nlp (Just cb')
+    (msg,opt') <- solveNlp ipoptSolver (nlp { nlpX0 = guess }) (Just cb')
     opt <- case msg of Left msg' -> error msg'
                        Right _ -> return opt'
 --    let xopt = xOpt opt

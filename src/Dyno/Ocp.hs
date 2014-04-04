@@ -8,12 +8,13 @@ import Dyno.View.View
 import Dyno.Cov
 import Dyno.Nlp ( Bounds )
 import Dyno.Casadi.SX ( SX )
+import Dyno.Casadi.SXElement ( SXElement )
 import Dyno.Casadi.DMatrix ( DMatrix )
 
 -- | fully implicit differential-algebraic equation of the form:
 --
 -- > f(x'(t), x(t), z(t), u(t), p, t) == 0
-type Dae x z u p r o a = J x a -> J x a -> J z a -> J u a -> J p a -> J S a -> (J r a, J o a)
+type Dae x z u p r o a = x a -> x a -> z a -> u a -> p a -> a -> (r a,  o a)
 
 -- | One stage of an optimal control problem, solvable as a stand-alone optimal control problem.
 --
@@ -46,32 +47,33 @@ type Dae x z u p r o a = J x a -> J x a -> J z a -> J u a -> J p a -> J S a -> (
 -- > c(x(0), 0, x(T), T) == 0
 
 type Sx a = J a SX
+type Sxe = SXElement
 
 data OcpPhase x z u p r o c h s sh sc =
   OcpPhase { -- | the Mayer term @Jm(T, x(0), x(T), P(0), P(t))@
-             ocpMayer :: Sx S -> Sx x -> Sx x -> Sx (Cov s) -> Sx (Cov s) -> Sx S
+             ocpMayer :: Sxe -> x Sxe -> x Sxe -> Sx (Cov s) -> Sx (Cov s) -> Sxe
              -- | the Lagrange term @Jl(x(t),z(t),u(t),p,o,t)@
-           , ocpLagrange :: Sx x -> Sx z -> Sx u -> Sx p -> Sx o -> Sx S -> Sx S
+           , ocpLagrange :: x Sxe -> z Sxe -> u Sxe -> p Sxe ->  o Sxe -> Sxe -> Sxe
              -- | the system dynamics of the stage: @f(x'(t), x(t), z(t), u(t), p, t)@
-           , ocpDae :: Dae x z u p r o SX
+           , ocpDae :: Dae x z u p r o SXElement
              -- | the boundary conditions @clb <= c(x(0), x(T)) <= cub@
-           , ocpBc :: Sx x -> Sx x -> Sx c
+           , ocpBc :: x Sxe -> x Sxe -> c Sxe
              -- | the path constraints @h(x(t), z(t), u(t), p, t)@
-           , ocpPathC :: Sx x -> Sx z -> Sx u -> Sx p -> Sx o -> Sx S -> Sx h
+           , ocpPathC :: x Sxe -> z Sxe -> u Sxe -> p Sxe -> o Sxe -> Sxe -> h Sxe
              -- | the boundary condition bounds @clb <= c(x(0), x(T)) <= cub@
-           , ocpBcBnds :: J c (Vector Bounds)
+           , ocpBcBnds :: c Bounds
              -- | the path constraint bounds @(hlb, hub)@
-           , ocpPathCBnds :: J h (Vector Bounds)
+           , ocpPathCBnds :: h Bounds
              -- | differential state bounds @(xlb, xub)@
-           , ocpXbnd :: J x (Vector Bounds)
+           , ocpXbnd :: x Bounds
              -- | algebraic variable bounds @(zlb, zub)@
-           , ocpZbnd :: J z (Vector Bounds)
+           , ocpZbnd :: z Bounds
              -- | control bounds @(ulb, uub)@
-           , ocpUbnd :: J u (Vector Bounds)
+           , ocpUbnd :: u Bounds
              -- | parameter bounds @(plb, pub)@
-           , ocpPbnd :: J p (Vector Bounds)
+           , ocpPbnd :: p Bounds
              -- | time bounds @(Tlb, Tub)@
-           , ocpTbnd :: J S (Vector Bounds)
+           , ocpTbnd :: Bounds
 
              -- covariance stuff
            , ocpSq :: J (Cov s) DMatrix
@@ -80,6 +82,6 @@ data OcpPhase x z u p r o c h s sh sc =
            , ocpSbc :: Sx (Cov s) -> Sx (Cov s) -> Sx sc
            , ocpSbcBnds :: J sc (Vector Bounds)
              -- | the covariance path constraints @h(s)@, only applied to first n Ss
-           , ocpSh :: Sx x -> Sx (Cov s) -> Sx sh
+           , ocpSh :: x SXElement -> Sx (Cov s) -> Sx sh
            , ocpShBnds :: J sh (Vector Bounds)
            }
