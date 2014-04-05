@@ -16,7 +16,7 @@ ipoptSolver =
 --                     , ("expand", Opt True)
 --                     , ("linear_solver", Opt "ma27")
 --                     , ("linear_solver", Opt "ma57")
-                     , ("linear_solver", Opt "ma86")
+--                     , ("linear_solver", Opt "ma86")
 --                     , ("linear_solver", Opt "ma97")
 --                     , ("fixed_variable_treatment", Opt "make_constraint") -- causes segfaults?
 --                     , ("fixed_variable_treatment", Opt "make_parameter")
