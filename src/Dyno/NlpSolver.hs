@@ -10,6 +10,7 @@ module Dyno.NlpSolver
        , NLPSolverClass
        , runNlpSolver
        , solveNlp
+       , solveNlp'
        , solveStaticNlp
        , solveOcp
        , solveStaticOcp
@@ -63,6 +64,7 @@ import Casadi.Wrappers.Classes.NLPSolver
 import Casadi.Wrappers.Classes.IOInterfaceFunction
 
 import Dyno.Casadi.DMatrix
+import Dyno.Casadi.SX
 import Dyno.Casadi.SXElement ( SXElement )
 import Dyno.Casadi.Function
 import qualified Dyno.Casadi.Option as Op
@@ -70,10 +72,10 @@ import Dyno.Casadi.SharedObject ( soInit )
 
 import Dyno.NlpMonad ( NlpMonad, reifyNlp )
 import Dyno.Interface.Types ( NlpMonadState(..) )
-import Dyno.Vectorize ( Vectorize )
+import Dyno.Vectorize ( Vectorize(..) )
 import Dyno.View.View
 import Dyno.View.Symbolic
-import Dyno.Nlp ( Nlp(..), NlpOut(..), Multipliers(..), Bounds )
+import Dyno.Nlp ( Nlp(..), NlpOut(..), Multipliers(..), Nlp'(..), NlpOut'(..), Multipliers'(..), Bounds )
 import Dyno.DirectCollocation ( CollTraj, makeCollNlp )
 import Dyno.DirectCollocation.Dynamic ( CollTrajMeta, DynCollTraj, ctToDynamic )
 import Data.Proxy
@@ -201,7 +203,7 @@ solve = do
     else Left solveStatus
 
 -- | solve with current inputs, return lots of info on success, or message on failure
-solve' :: (View x, View g) => NlpSolver x p g (Either String String, NlpOut x g (Vector Double))
+solve' :: (View x, View g) => NlpSolver x p g (Either String String, NlpOut' x g (Vector Double))
 solve' = do
   solveStatus <- solve
 
@@ -210,14 +212,14 @@ solve' = do
   gopt <- getG
   lamXOpt <- getLamX
   lamGOpt <- getLamG
-  let lambdaOut = Multipliers { lambdaX = lamXOpt
-                              , lambdaG = lamGOpt
-                              }
-      nlpOut = NlpOut { fOpt = fopt
-                      , xOpt = xopt
-                      , gOpt = gopt
-                      , lambdaOpt = lambdaOut
-                      }
+  let lambdaOut = Multipliers' { lambdaX' = lamXOpt
+                               , lambdaG' = lamGOpt
+                               }
+      nlpOut = NlpOut' { fOpt' = fopt
+                       , xOpt' = xopt
+                       , gOpt' = gopt
+                       , lambdaOpt' = lambdaOut
+                       }
 
   --liftIO $ putStrLn $ "solve status: " ++ show solveStatus
   return (solveStatus, nlpOut)
@@ -243,7 +245,7 @@ runNlpSolver ::
   forall nlp x p g a s .
   (NLPSolverClass nlp, View x, View p, View g, Symbolic s)
   => NlpSolverStuff nlp
-  -> ((J x s, J p s) -> (J S s, J g s))
+  -> (J x s -> J p s -> (J S s, J g s))
   -> Maybe (J x (Vector Double) -> IO Bool)
   -> NlpSolver x p g a
   -> IO a
@@ -251,7 +253,7 @@ runNlpSolver solverStuff nlpFun callback' (NlpSolver nlpMonad) = do
   inputsX <- sym "x"
   inputsP <- sym "p"
 
-  let (obj, g) = nlpFun (inputsX, inputsP)
+  let (obj, g) = nlpFun inputsX inputsP
 
   let inputsXMat = unJ inputsX
       inputsPMat = unJ inputsP
@@ -295,19 +297,57 @@ runNlpSolver solverStuff nlpFun callback' (NlpSolver nlpMonad) = do
 proxy :: J a b -> Proxy a
 proxy = const Proxy
 
--- | convenience function to solve a pure Nlp
-solveNlp ::
+-- | convenience function to solve a pure Nlp'
+solveNlp :: forall x p g nlp .
+  (NLPSolverClass nlp, Vectorize x, Vectorize p, Vectorize g) =>
+  NlpSolverStuff nlp ->
+  Nlp x p g SXElement -> Maybe (x Double -> IO Bool)
+  -> IO (Either String String, NlpOut x g Double)
+solveNlp solverStuff nlp callback = do
+  let nlp' :: Nlp' (JV x) (JV p) (JV g) SX
+      nlp' = Nlp' { nlpFG' = \x' p' -> let x = devectorize (sdata (sdense (unJ x'))) :: x SXElement
+                                           p = devectorize (sdata (sdense (unJ p'))) :: p SXElement
+                                           (obj,g) = nlpFG nlp x p
+                                           obj' = mkJ (svector (V.singleton obj))
+                                           g' = mkJ (svector (vectorize g))
+                                       in (obj',g')
+                  , nlpBX' = mkJ $ vectorize (nlpBX nlp) :: J (JV x) (V.Vector Bounds)
+                  , nlpBG' = mkJ $ vectorize (nlpBG nlp) :: J (JV g) (V.Vector Bounds)
+                  , nlpX0' = mkJ $ vectorize (nlpX0 nlp) :: J (JV x) (V.Vector Double)
+                  , nlpP'  = mkJ $ vectorize (nlpP  nlp) :: J (JV p) (V.Vector Double)
+                  }
+
+      callback' :: Maybe (J (JV x) (Vector Double) -> IO Bool)
+      callback' = fmap (. devectorize . unJ) callback
+
+  (r0, r1') <- solveNlp' solverStuff nlp' callback'
+
+  let lambda :: Multipliers x g Double
+      lambda = Multipliers { lambdaX = devectorize $ unJ $ lambdaX' $ (lambdaOpt' r1')
+                           , lambdaG = devectorize $ unJ $ lambdaG' $ (lambdaOpt' r1')
+                           }
+      r1 :: NlpOut x g Double
+      r1 = NlpOut { fOpt = V.head $ unJ (fOpt' r1')
+                  , xOpt = devectorize $ unJ (xOpt' r1')
+                  , gOpt = devectorize $ unJ (gOpt' r1')
+                  , lambdaOpt = lambda
+                  }
+
+  return (r0, r1)
+
+-- | convenience function to solve a pure Nlp'
+solveNlp' ::
   (NLPSolverClass nlp, View x, View p, View g, Symbolic a) =>
   NlpSolverStuff nlp ->
-  Nlp x p g a -> Maybe (J x (Vector Double) -> IO Bool)
-  -> IO (Either String String, NlpOut x g (Vector Double))
-solveNlp solverStuff nlp callback = do
-  runNlpSolver solverStuff (nlpFG nlp) callback $ do
-    let (lbx,ubx) = toBnds (nlpBX nlp)
-        (lbg,ubg) = toBnds (nlpBG nlp)
+  Nlp' x p g a -> Maybe (J x (Vector Double) -> IO Bool)
+  -> IO (Either String String, NlpOut' x g (Vector Double))
+solveNlp' solverStuff nlp callback = do
+  runNlpSolver solverStuff (nlpFG' nlp) callback $ do
+    let (lbx,ubx) = toBnds (nlpBX' nlp)
+        (lbg,ubg) = toBnds (nlpBG' nlp)
 
-    setX0 (nlpX0 nlp)
-    setP (nlpP nlp)
+    setX0 (nlpX0' nlp)
+    setP (nlpP' nlp)
     setLbx lbx
     setUbx ubx
     setLbg lbg
@@ -339,12 +379,12 @@ solveStaticNlp solverStuff nlp x0' callback = reifyNlp nlp callback x0 foo
 
     foo ::
       (View x, View p, View g) =>
-      Nlp x p g MX -> Maybe (J x (Vector Double) -> IO Bool) -> NlpMonadState ->
+      Nlp' x p g MX -> Maybe (J x (Vector Double) -> IO Bool) -> NlpMonadState ->
       IO (Either String String, Double, [(String,Double)])
     foo nlp' cb' state = do
-      (ret,nlpOut) <- solveNlp solverStuff nlp' cb'
-      let fopt = V.head (unJ (fOpt nlpOut)) :: Double
-          xopt = F.toList $ unJ (xOpt nlpOut) :: [Double]
+      (ret,nlpOut) <- solveNlp' solverStuff nlp' cb'
+      let fopt = V.head (unJ (fOpt' nlpOut)) :: Double
+          xopt = F.toList $ unJ (xOpt' nlpOut) :: [Double]
           xnames = map fst (F.toList (nlpX state)) :: [String]
       return (ret, fopt, zip xnames xopt)
 
@@ -359,7 +399,7 @@ solveOcp solverStuff n deg cb ocp =
     let guess :: J (CollTraj x z u p s n deg) (Vector Double)
         guess = jfill 1
     nlp <- makeCollNlp ocp
-    _ <- solveNlp solverStuff (nlp {nlpX0 = guess}) (fmap (. ctToDynamic) cb)
+    _ <- solveNlp' solverStuff (nlp {nlpX0' = guess}) (fmap (. ctToDynamic) cb)
     return ()
 
 

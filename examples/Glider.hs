@@ -118,7 +118,7 @@ main = do
         cb' :: J (CollTraj AcX None AcU None JNone NCollStages CollDeg) (Vector Double) -> IO Bool
         cb' traj = cb (ctToDynamic traj, toMeta traj)
 
-    (msg,opt') <- solveNlp ipoptSolver (nlp { nlpX0 = guess }) (Just cb')
+    (msg,opt') <- solveNlp' ipoptSolver (nlp { nlpX0' = guess }) (Just cb')
     opt <- case msg of Left msg' -> error msg'
                        Right _ -> return opt'
 --    let xopt = xOpt opt

@@ -28,7 +28,7 @@ import Dyno.Vectorize ( Vectorize(..), fill, vlength, vzipWith )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs , lagrangeXis )
-import Dyno.Nlp ( Nlp(..), Bounds )
+import Dyno.Nlp ( Nlp'(..), Bounds )
 import Dyno.Ocp ( OcpPhase(..) )
 import Dyno.DirectCollocation.Types ( CollTraj(..), CollStage(..), CollPoint(..), CollOcpConstraints(..), ctN )
 import Dyno.Casadi.MX ( solve, mm, trans, d2m )
@@ -56,7 +56,7 @@ makeCollNlp ::
   (Dim deg, Dim n, Vectorize x, Vectorize p, Vectorize u, Vectorize z,
    Vectorize r, Vectorize o, Vectorize h, Vectorize c, View s, View sh, View sc) =>
   OcpPhase x z u p r o c h s sh sc ->
-  IO (Nlp (CollTraj x z u p s n deg) JNone (CollOcpConstraints n deg x r c h sh sc) MX)
+  IO (Nlp' (CollTraj x z u p s n deg) JNone (CollOcpConstraints n deg x r c h sh sc) MX)
 makeCollNlp ocp = do
   let -- the collocation points
       taus :: Vec deg Double
@@ -99,8 +99,8 @@ makeCollNlp ocp = do
 --  let callStageFun = callMXFun stageFun
   callStageFun <- fmap callSXFun (expandMXFun stageFun)
 
-  return $ Nlp {
-    nlpFG =
+  return $ Nlp' {
+    nlpFG' =
        getFg taus
        (ocpSq ocp :: J (Cov s) DMatrix)
        (bcFun :: SXFun (J (JV x) :*: J (JV x)) (J (JV c)))
@@ -113,10 +113,10 @@ makeCollNlp ocp = do
                   -> (J (JVec deg (JV r)) :*: J (JVec deg (JV o)) :*: J (JVec deg (JV h)) :*: J (JV x)) MX)
        (callCovStageFun :: (J (Cov s) :*: J S :*: J (JV p) :*: J (JVec deg S) :*: J (JV x) :*: J (JVec deg (JTuple (JV x) (JV z))) :*: J (JVec deg (JV u)) :*: J (Cov s)) MX
                         -> J (Cov s) MX)
-    , nlpBX = cat (getBx ocp)
-    , nlpBG = cat (getBg ocp)
-    , nlpX0 = jfill 0
-    , nlpP = cat JNone
+    , nlpBX' = cat (getBx ocp)
+    , nlpBG' = cat (getBg ocp)
+    , nlpX0' = jfill 0
+    , nlpP' = cat JNone
     }
 
 
@@ -141,9 +141,10 @@ getFg ::
       (J S) MX)
   -> ((J S :*: J (JV p) :*: J (JVec deg S) :*: J (JV x) :*: J (JVec deg (JTuple (JV x) (JV z))) :*: J (JVec deg (JV u))) MX -> (J (JVec deg (JV r)) :*: J (JVec deg (JV o)) :*: J (JVec deg (JV h)) :*: J (JV x)) MX)
   -> ((J (Cov s) :*: J S :*: J (JV p) :*: J (JVec deg S) :*: J (JV x) :*: J (JVec deg (JTuple (JV x) (JV z))) :*: J (JVec deg (JV u)) :*: J (Cov s)) MX -> J (Cov s) MX)
-  -> (J (CollTraj x z u p s n deg) MX, J JNone MX)
+  -> J (CollTraj x z u p s n deg) MX
+  -> J JNone MX
   -> (J S MX, J (CollOcpConstraints n deg x r c h sh sc) MX)
-getFg taus sq bcFun sbcFun shFun mayerFun quadFun stageFun covStageFun (collTraj, _) = (obj, cat g)
+getFg taus sq bcFun sbcFun shFun mayerFun quadFun stageFun covStageFun collTraj _ = (obj, cat g)
   where
     -- split up the design vars
     ct@(CollTraj tf p0 parm stages' xf) = split collTraj

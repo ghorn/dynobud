@@ -38,7 +38,7 @@ import Dyno.Casadi.MX ( MX )
 import Dyno.Casadi.SXFunction
 import Dyno.Casadi.Function
 import Dyno.Vectorize
-import Dyno.Nlp
+import Dyno.Nlp ( Nlp'(..), Bounds)
 import Dyno.TypeVecs ( Vec )
 import Dyno.View.View
 import qualified Dyno.TypeVecs as TV
@@ -142,7 +142,7 @@ toG :: Dim ng => S.Seq (Constraint SXElement) -> Vec ng (SXElement, Bounds)
 toG nlpConstraints' = TV.mkSeq $ fmap constr nlpConstraints'
 
 buildNlp :: forall nx ng .
-            (Dim nx, Dim ng) => NlpMonadState -> IO (Nlp (JVec nx S) JNone (JVec ng S) MX)
+            (Dim nx, Dim ng) => NlpMonadState -> IO (Nlp' (JVec nx S) JNone (JVec ng S) MX)
 buildNlp state = do
   obj <- case nlpObj state of
     Objective obj' -> return obj'
@@ -159,24 +159,24 @@ buildNlp state = do
       xbnd = fill (Nothing, Nothing)
   sxfun <- sxFunction (V.fromList [svector inputs]) (V.fromList [svector (V.singleton obj), svector (TV.unVec g)])
   soInit sxfun
-  let fg :: (J (JVec nx S) MX, J JNone MX) -> (J S MX, J (JVec ng S) MX)
-      fg (x, _) = (mkJ (ret V.! 0), mkJ (ret V.! 1))
+  let fg :: J (JVec nx S) MX -> J JNone MX -> (J S MX, J (JVec ng S) MX)
+      fg x _ = (mkJ (ret V.! 0), mkJ (ret V.! 1))
         where
           ret = callMX sxfun (V.singleton (unJ x))
 
-  return Nlp { nlpFG = fg
-             , nlpBX = mkJ (TV.unVec xbnd)
-             , nlpBG = mkJ (TV.unVec gbnd)
-             , nlpX0 = jfill 0
-             , nlpP = cat JNone
-             }
+  return Nlp' { nlpFG' = fg
+              , nlpBX' = mkJ (TV.unVec xbnd)
+              , nlpBG' = mkJ (TV.unVec gbnd)
+              , nlpX0' = jfill 0
+              , nlpP' = cat JNone
+              }
 
 
 reifyNlp ::
   forall r .
   NlpMonad () -> Maybe (Vector Double -> IO Bool) -> M.Map String Double
   -> (forall x g . (View x, View g)
-      => Nlp x JNone g MX -> Maybe (J x (Vector Double) -> IO Bool) -> NlpMonadState -> IO r)
+      => Nlp' x JNone g MX -> Maybe (J x (Vector Double) -> IO Bool) -> NlpMonadState -> IO r)
   -> IO r
 reifyNlp nlpmonad cb x0map f = do
   (ret,logs,state) <- build nlpmonad
@@ -193,7 +193,7 @@ reifyNlp nlpmonad cb x0map f = do
   TV.reifyDim nx $ \(Proxy :: Proxy nx) ->
 --  TV.reifyDim np $ \(Proxy :: Proxy np) ->
     TV.reifyDim ng $ \(Proxy :: Proxy ng) -> do
-      nlp0 <- buildNlp state :: IO (Nlp (JVec nx S) JNone (JVec ng S) MX)
-      let nlp = nlp0 { nlpX0 = mkJ x0 }
+      nlp0 <- buildNlp state :: IO (Nlp' (JVec nx S) JNone (JVec ng S) MX)
+      let nlp = nlp0 { nlpX0' = mkJ x0 }
       ret' <- f nlp (fmap (. unJ) cb) state
       return ret'
