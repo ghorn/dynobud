@@ -15,6 +15,15 @@ import Dyno.View.View ( J, S )
 type Bounds = (Maybe Double, Maybe Double)
 
 -- | user-friendly NLP
+--
+-- >  minimize         f(x,p)
+-- >     x
+-- >
+-- > subject to   xlb <=  x   <= xub
+-- >              glb <= g(x) <= gub
+--
+-- where p is some parameter
+--
 data Nlp x p g a =
   Nlp
   { nlpFG :: x a -> p a -> (a, g a)
