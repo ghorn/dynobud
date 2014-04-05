@@ -7,3 +7,19 @@ This library has a few distinct features, which may later be broken into separat
 * OCP modeling/solving (examles/Glider.hs)
 * monadic OCP modeling DSL (examples/OcpM.hs, examples/Rocket.hs)
 * live plotter for OCP solving (examples/Plotter.hs)
+
+
+The current instructions for getting started:
+
+    >> apt-get install coinor-libipopt-dev
+
+    install libcasadi-shared from https://github.com/casadi/casadi/releases/latest
+
+    >> cabal update; cabal install casadi-bindings
+
+    >> git clone git://github.com:ghorn/dynobud.git
+    >> cd dynobud
+    >> cabal configure --disable-library-profiling
+    >> cabal build
+
+Try running the examples in dynobud/examples
