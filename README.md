@@ -9,11 +9,13 @@ This library has a few distinct features, which may later be broken into separat
 * live plotter for OCP solving (examples/Plotter.hs)
 
 
-The current instructions for getting started:
+The current instructions for getting started on Debian/Ubuntu:
 
     >> apt-get install coinor-libipopt-dev
 
-    install libcasadi-shared from https://github.com/casadi/casadi/releases/latest
+    Install libcasadi-shared from https://github.com/casadi/casadi/releases/latest,
+    first download it from that website, then:
+    >> dpkg -i libcasadi-shared.deb
 
     >> cabal update; cabal install casadi-bindings
 
