@@ -57,6 +57,6 @@ split' :: V.Vector a -> [Int] -> [V.Vector a]
 split' _ [] = error "can't split with no input"
 split' x [kf]
   | V.length x == kf = []
-  | otherwise = error $ "split: last index must be length of vector"
+  | otherwise = error "split: last index must be length of vector"
 split' x (k0:k1:ks) = V.slice k0 (k1 - k0) x : split' x (k1:ks)
 

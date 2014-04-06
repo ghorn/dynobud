@@ -1,8 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language ScopedTypeVariables #-}
-{-# Language PackageImports #-}
-{-# Language KindSignatures #-}
-{-# Language GeneralizedNewtypeDeriving #-}
 
 module Dyno.DirectCollocation
        ( CollTraj(..)

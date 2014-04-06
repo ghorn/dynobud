@@ -43,7 +43,7 @@ module Dyno.NlpSolver
 import Control.Exception ( AsyncException( UserInterrupt ), try )
 import Control.Concurrent ( forkIO, newEmptyMVar, takeMVar, putMVar )
 import Control.Applicative ( Applicative(..) )
-import Control.Monad ( liftM, when )
+import Control.Monad ( liftM, when, void )
 import "mtl" Control.Monad.Reader ( MonadIO(..), MonadReader(..), ReaderT(..) )
 import Data.Maybe ( fromMaybe )
 import Data.IORef ( newIORef, readIORef, writeIORef )
@@ -95,7 +95,7 @@ setInput getLen name x = do
   return ()
 
 setX0 :: forall x p g. View x => VD x -> NlpSolver x p g ()
-setX0 = (setInput isNx "x0") . unJ
+setX0 = setInput isNx "x0" . unJ
 
 setLbx :: View x => VD x -> NlpSolver x p g ()
 setLbx = setInput isNx "lbx" . unJ
@@ -186,10 +186,10 @@ solve = do
                   isInterrupt nlpState -- tell nlp to stop iterations
                   _ <- takeMVar stop -- wait for nlp to return
                   return ()
-                Left _ -> takeMVar stop >> return () -- don't handle this one
+                Left _ -> void (takeMVar stop) -- don't handle this one
     function_getStat nlp "return_status"  >>= printableObject_getDescription
 
-  return $ if solveStatus `elem` (isSuccessCodes nlpState)
+  return $ if solveStatus `elem` isSuccessCodes nlpState
     then Right solveStatus
     else Left solveStatus
 
@@ -284,7 +284,7 @@ runNlpSolver solverStuff nlpFun callback' (NlpSolver nlpMonad) = do
 --  C.sparsity_spyMatlab jac_sparsity "jac_sparsity_reorder.m"
 
 
-  solver <- fmap castNLPSolver $ (nlpConstructor solverStuff) (castFunction nlp)
+  solver <- fmap castNLPSolver $ nlpConstructor solverStuff (castFunction nlp)
 
   -- add callback if user provides it
   intref <- newIORef False
@@ -362,8 +362,8 @@ solveNlp solverStuff nlp callback = do
   (r0, r1') <- solveNlp' solverStuff nlp' callback'
 
   let lambda :: Multipliers x g Double
-      lambda = Multipliers { lambdaX = devectorize $ unJ $ lambdaX' $ (lambdaOpt' r1')
-                           , lambdaG = devectorize $ unJ $ lambdaG' $ (lambdaOpt' r1')
+      lambda = Multipliers { lambdaX = devectorize $ unJ $ lambdaX' $ lambdaOpt' r1'
+                           , lambdaG = devectorize $ unJ $ lambdaG' $ lambdaOpt' r1'
                            }
       r1 :: NlpOut x g Double
       r1 = NlpOut { fOpt = V.head $ unJ (fOpt' r1')
@@ -380,7 +380,7 @@ solveNlp' ::
   NlpSolverStuff nlp ->
   Nlp' x p g a -> Maybe (J x (Vector Double) -> IO Bool)
   -> IO (Either String String, NlpOut' x g (Vector Double))
-solveNlp' solverStuff nlp callback = do
+solveNlp' solverStuff nlp callback =
 --  runNlpSolver solverStuff (nlpFG' nlp) (nlpX0' nlp) callback $ do
   runNlpSolver solverStuff (nlpFG' nlp) callback $ do
     let (lbx,ubx) = toBnds (nlpBX' nlp)

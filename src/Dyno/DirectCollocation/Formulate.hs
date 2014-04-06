@@ -72,7 +72,7 @@ makeCollNlp ocp = do
   sbcFun <- toSXFun "sbc" $ \(x0:*:x1) -> ocpSbc ocp x0 x1
   shFun <- toSXFun "sh" $ \(x0:*:x1) -> ocpSh ocp (de x0) x1
   mayerFun <- toSXFun "mayer" $ \(x0:*:x1:*:x2:*:x3:*:x4) ->
-    re' $ ocpMayer ocp (de' x0) (de x1) (de x2) (x3) (x4)
+    re' $ ocpMayer ocp (de' x0) (de x1) (de x2) x3 x4
   lagrangeFun <- toSXFun "lagrange" $ \(x0:*:x1:*:x2:*:x3:*:x4:*:x5) ->
     re' $ ocpLagrange ocp (de x0) (de x1) (de x2) (de x3) (de x4) (de' x5)
   quadFun <- toMXFun "quadratures" $ evaluateQuadraturesFunction lagrangeFun cijs taus
@@ -99,7 +99,7 @@ makeCollNlp ocp = do
 --  let callStageFun = callMXFun stageFun
   callStageFun <- fmap callSXFun (expandMXFun stageFun)
 
-  return $ Nlp' {
+  return Nlp' {
     nlpFG' =
        getFg taus
        (ocpSq ocp :: J (Cov s) DMatrix)
@@ -175,7 +175,7 @@ getFg taus sq bcFun sbcFun shFun mayerFun quadFun stageFun covStageFun collTraj 
 
     -- times at each collocation point
     times :: Vec n (Vec deg (J S MX))
-    times = fmap (\t0 -> fmap (\tau -> t0 + (realToFrac tau)*dt) taus) t0s
+    times = fmap (\t0 -> fmap (\tau -> t0 + realToFrac tau * dt) taus) t0s
 
     times' :: Vec n (J (JVec deg S) MX)
     times' = fmap (cat . JVec) times
@@ -292,7 +292,7 @@ evaluateQuadraturesFunction ::
   -> (J p :*: J (JVec deg (CollPoint x z u)) :*: J (JVec deg o) :*: J S :*: J (JVec deg S)) MX
   -> J S MX
 evaluateQuadraturesFunction f cijs' taus (p :*: stage' :*: outputs' :*: dt :*: stageTimes') =
-  (dt *) $ qnext
+  dt * qnext
   where
     stage :: Vec deg (CollPoint x z u MX)
     stage = fmap split $ unJVec $ split stage'
@@ -392,8 +392,8 @@ dynStageConstraints' ::
            (J r :*: J o)
   -> (J x :*: J (JVec deg (JTuple x z)) :*: J (JVec deg u) :*: J S :*: J p :*: J (JVec deg S)) MX
   -> (J (JVec deg r) :*: J x :*: J (JVec deg o)) MX
-dynStageConstraints' cijs taus dynFun (x0 :*: xzs' :*: us' :*: (UnsafeJ h) :*: p :*: stageTimes') =
-  (cat (JVec dynConstrs) :*: xnext :*: cat (JVec outputs))
+dynStageConstraints' cijs taus dynFun (x0 :*: xzs' :*: us' :*: UnsafeJ h :*: p :*: stageTimes') =
+  cat (JVec dynConstrs) :*: xnext :*: cat (JVec outputs)
   where
     xzs = fmap split (unJVec (split xzs')) :: Vec deg (JTuple x z MX)
     us = unJVec (split us') :: Vec deg (J u MX)
@@ -417,7 +417,7 @@ dynStageConstraints' cijs taus dynFun (x0 :*: xzs' :*: us' :*: (UnsafeJ h) :*: p
 
     -- state derivatives, maybe these could be useful as outputs
     xdots :: Vec deg (J x MX)
-    xdots = fmap (/(UnsafeJ h)) $ interpolateXDots cijs (x0 TV.<| xs)
+    xdots = fmap (/ UnsafeJ h) $ interpolateXDots cijs (x0 TV.<| xs)
 
     xs :: Vec deg (J x MX)
     xs = fmap (\(JTuple x _) -> x) xzs
@@ -460,7 +460,7 @@ stageFunction ::
   -> (J (JVec deg r) :*: J (JVec deg o) :*: J (JVec deg h) :*: J x) MX
 stageFunction pathConStageFun dynStageCon
   (dt :*: parm :*: stageTimes :*: x0' :*: xzs' :*: us) =
-    (dynConstrs :*: outputs :*: hs :*: interpolatedX)
+    dynConstrs :*: outputs :*: hs :*: interpolatedX
   where
     collPoints = cat $ JVec $ TV.tvzipWith catXzu (unJVec (split xzs')) (unJVec (split us))
 
@@ -483,9 +483,9 @@ covStageFunction ::
   forall x z u p s deg . (Dim deg, View x, View z, View u, View p, View s)
   => (((J x :*: J (JVec deg (JTuple x z))) MX,
                     (:*:) (J (JVec deg u)) (J S :*: J p :*: J (JVec deg S)) MX)
-                   -> (Vector (Vector MX)))
+                   -> Vector (Vector MX))
   -> (J (Cov s) :*: J S :*: J p :*: J (JVec deg S) :*: J x :*: J (JVec deg (JTuple x z)) :*: J (JVec deg u) :*: J (Cov s)) MX
-  -> (J (Cov s) MX)
+  -> J (Cov s) MX
 covStageFunction dynStageConJac
   (p0' :*: dt :*: parm :*: stageTimes :*: x0' :*: xzs' :*: us :*: q0') =
     p1
@@ -504,7 +504,7 @@ covStageFunction dynStageConJac
     dx1_dx0 = dg_dx0 + dg_dxz `mm` dxz_dx0
 
     p1' :: MX
-    p1' = dx1_dx0 `mm` p0 `mm` (trans dx1_dx0) + q0
+    p1' = dx1_dx0 `mm` p0 `mm` trans dx1_dx0 + q0
 
     -- supress casadi zero size matrix error
     p1 :: J (Cov s) MX

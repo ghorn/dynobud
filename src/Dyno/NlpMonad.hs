@@ -38,14 +38,13 @@ import Dyno.Casadi.MX ( MX )
 import Dyno.Casadi.SXFunction
 import Dyno.Casadi.Function
 import Dyno.Vectorize
-import Dyno.Nlp ( Nlp'(..), Bounds)
 import Dyno.TypeVecs ( Vec )
 import Dyno.View.View
 import qualified Dyno.TypeVecs as TV
 import Dyno.Interface.LogsAndErrors
 import Dyno.Interface.Types
 import Dyno.NlpSolver ( NLPSolverClass, NlpSolverStuff, solveNlp' )
-import Dyno.Nlp ( NlpOut'(..) )
+import Dyno.Nlp ( Nlp'(..), NlpOut'(..), Bounds)
 
 withEllipse :: Int -> String -> String
 withEllipse n blah
@@ -119,7 +118,7 @@ bound mid (lhs, rhs) = do
     withEllipse 30 (show mid) ++ " <= " ++
     withEllipse 30 (show rhs)
   state0 <- get
-  put $ state0 { nlpConstraints = nlpConstraints state0 |> (Ineq3 mid (lhs, rhs)) }
+  put $ state0 { nlpConstraints = nlpConstraints state0 |> Ineq3 mid (lhs, rhs) }
 
 minimize :: SXElement -> NlpMonad ()
 minimize obj = do
@@ -184,7 +183,7 @@ reifyNlp nlpmonad cb x0map f = do
   (ret,logs,state) <- build nlpmonad
   case ret of
     Right _ -> return ()
-    Left err' -> error $ unlines $ (map show logs) ++ [show err']
+    Left err' -> error $ unlines $ map show logs ++ [show err']
 
   let nx = S.length (nlpX state)
       ng = S.length (nlpConstraints state)
@@ -197,8 +196,7 @@ reifyNlp nlpmonad cb x0map f = do
     TV.reifyDim ng $ \(Proxy :: Proxy ng) -> do
       nlp0 <- buildNlp state :: IO (Nlp' (JVec nx S) JNone (JVec ng S) MX)
       let nlp = nlp0 { nlpX0' = mkJ x0 }
-      ret' <- f nlp (fmap (. unJ) cb) state
-      return ret'
+      f nlp (fmap (. unJ) cb) state
 
 
 solveStaticNlp ::

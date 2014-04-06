@@ -86,7 +86,7 @@ plotPoints ct@(CollTraj (UnsafeJ tf') _ _ stages' xf) = DynPlotPoints (xss++[[(t
     -- todo: check this final time against expected tf
     f :: a -> [CollStage (JV x) (JV z) (JV u) deg (Vector a)] -> [([(a,Vector a)], [(a,Vector a)], [(a,Vector a)])] 
     f _ [] = []
-    f t0 ((CollStage x0 xzus'):css) = (xs,zs,us) : f tnext css
+    f t0 (CollStage x0 xzus' : css) = (xs,zs,us) : f tnext css
       where
         tnext = t0 + h
         xzus0 = fmap split (unJVec (split xzus')) :: Vec deg (CollPoint (JV x) (JV z) (JV u) (Vector a))
@@ -178,10 +178,10 @@ toMeta :: forall x z u p s n deg a .
            Dim n, Dim deg)
           => J (CollTraj x z u p s n deg) a -> CollTrajMeta
 toMeta ct =
-  CollTrajMeta { ctmX = namesFromAccTree $ accessors $ (jfill () :: J (JV x) (Vector ()))
-               , ctmZ = namesFromAccTree $ accessors $ (jfill () :: J (JV z) (Vector ()))
-               , ctmU = namesFromAccTree $ accessors $ (jfill () :: J (JV u) (Vector ()))
-               , ctmP = namesFromAccTree $ accessors $ (jfill () :: J (JV p) (Vector ()))
+  CollTrajMeta { ctmX = namesFromAccTree $ accessors (jfill () :: J (JV x) (Vector ()))
+               , ctmZ = namesFromAccTree $ accessors (jfill () :: J (JV z) (Vector ()))
+               , ctmU = namesFromAccTree $ accessors (jfill () :: J (JV u) (Vector ()))
+               , ctmP = namesFromAccTree $ accessors (jfill () :: J (JV p) (Vector ()))
                , ctmNx = size (Proxy :: Proxy (JV x))
                , ctmNz = size (Proxy :: Proxy (JV z))
                , ctmNu = size (Proxy :: Proxy (JV u))

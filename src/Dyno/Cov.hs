@@ -144,15 +144,15 @@ diag'' = fromMatrix'' . DMatrix.ddiag . unJ
 
 -- todo: this is way too dense
 fromMatrix :: View f => SX -> J (Cov f) SX
-fromMatrix x = unsafePerformIO $ fmap mkJ $ (C.vecNZ'' (SX.striu (SX.sdense x)))
+fromMatrix x = unsafePerformIO $ fmap mkJ $ C.vecNZ'' (SX.striu (SX.sdense x))
 {-# NOINLINE fromMatrix #-}
 
 fromMatrix' :: View f => MX -> J (Cov f) MX
-fromMatrix' x = unsafePerformIO $ fmap mkJ $ (C.vecNZ''' (MX.triu (MX.dense x)))
+fromMatrix' x = unsafePerformIO $ fmap mkJ $ C.vecNZ''' (MX.triu (MX.dense x))
 {-# NOINLINE fromMatrix' #-}
 
 fromMatrix'' :: View f => DMatrix -> J (Cov f) DMatrix
-fromMatrix'' x = unsafePerformIO $ fmap mkJ $ (C.vecNZ' (DMatrix.dtriu (DMatrix.ddense x)))
+fromMatrix'' x = unsafePerformIO $ fmap mkJ $ C.vecNZ' (DMatrix.dtriu (DMatrix.ddense x))
 {-# NOINLINE fromMatrix'' #-}
 
 covN :: forall f a . View f => Cov f a -> Int

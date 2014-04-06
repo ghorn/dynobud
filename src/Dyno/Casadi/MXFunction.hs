@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -Wall -fno-cse -fno-warn-orphans #-}
+{-# OPTIONS_GHC -Wall #-}
 
 module Dyno.Casadi.MXFunction
        ( C.MXFunction, mxFunction
@@ -10,5 +10,4 @@ import qualified Casadi.Wrappers.Classes.MXFunction as C
 import Dyno.Casadi.MX ( MX )
 
 mxFunction :: Vector MX -> Vector MX -> IO C.MXFunction
-mxFunction inputs outputs = C.mxFunction'' inputs outputs
-{-# NOINLINE mxFunction #-}
+mxFunction = C.mxFunction''

@@ -84,7 +84,7 @@ newChannel name = do
                         , chanServerThreadId = serverTid
                         }
 
-  return (retChan, STM.atomically . (STM.writeTQueue trajChan))
+  return (retChan, STM.atomically . STM.writeTQueue trajChan)
 
 runPlotter :: Channel -> [CC.ThreadId] -> IO ()
 runPlotter channel backgroundThreadsToKill = do

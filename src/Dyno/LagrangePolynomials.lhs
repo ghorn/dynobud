@@ -271,14 +271,14 @@ runComparison = do
   let zs :: [SX]
       zs = map (lagrangeXis taus tau) [0..deg]
       inputs = tau : taus
-      zdot = map (\x -> sgradient x tau) zs
+      zdot = map (`sgradient` tau) zs
   zdotAlg <- sxFunction (V.fromList inputs) (V.fromList zdot)
   soInit zdotAlg
 
   --mapM_ print zdot'
   
   putStrLn "numeric:"
-  vals' <- V.mapM (\tau_i -> (evalDMatrix zdotAlg (V.fromList (tau_i : sampleTaus')))) (V.fromList sampleTaus')
+  vals' <- V.mapM (\tau_i -> evalDMatrix zdotAlg (V.fromList (tau_i : sampleTaus'))) (V.fromList sampleTaus')
   let d2d :: DMatrix -> Double
       d2d x = case V.toList (ddata (ddense x)) of
         [y] -> y

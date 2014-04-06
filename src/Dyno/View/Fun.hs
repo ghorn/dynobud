@@ -72,7 +72,7 @@ instance View f => FunArgs (J f) a where
 
 instance (FunArgs f a, FunArgs g a) => FunArgs (f :*: g) a where
   vectorize (x :*: y) = vectorize x V.++ vectorize y
-  devectorize xy = (devectorize x) :*: (devectorize y)
+  devectorize xy = devectorize x :*: devectorize y
     where
       x :: Vector a
       y :: Vector a
@@ -102,7 +102,7 @@ class FunArgs f a => SymInputs f a where -- | f -> a where
 
 instance (View f, Symbolic a) => SymInputs (J f) a where
   sym' k = const $ do
-    x <- sym ("x" ++ show k)
+    x <- sym ('x' : show k)
     return (x,k+1)
 --instance (View f, Symbolic a) => SymInputs f a where
 --  sym' k0 = const $ do
@@ -190,7 +190,7 @@ toFunJac name f0 = do
   let callMe :: (x MX, y MX) -> (Vector (Vector MX), f MX, g MX)
       callMe (x',y')
         | 2 + ng /= V.length vouts =
-          error $ "toFunJac: bad number of outputs :("
+          error "toFunJac: bad number of outputs :("
         | ng /= V.length g = error "toFunJac: g: bad split"
         | otherwise = (rows, devectorize fs, devectorize g)
         where
@@ -199,7 +199,7 @@ toFunJac name f0 = do
           --retJac' :: Vector (J x MX)
           --retJac' = fmap devectorize rows
           rows :: Vector (Vector MX)
-          rows = fmap (flip vhorzsplit horzsizes) $ vvertsplit jac vertsizes
+          rows = fmap (`vhorzsplit` horzsizes) $ vvertsplit jac vertsizes
           vertsizes = V.fromList ((0:) $ F.toList (sizeList 0 (Proxy :: Proxy (f MX))))
           horzsizes = V.fromList ((0:) $ F.toList (sizeList 0 (Proxy :: Proxy (x MX))))
 
@@ -242,18 +242,18 @@ toFunJac' name f0 = do
   mxfJac <- jacobian mxf 0 0 compact symmetric
   soInit mxfJac
 
-  let callMe :: (x MX, y MX) -> (Vector (Vector MX)) -- , f MX)
+  let callMe :: (x MX, y MX) -> Vector (Vector MX) -- , f MX)
       callMe (x',y')
         | 2 /= V.length vouts =
-          error $ "toFunJac': bad number of outputs :("
-        | otherwise = (rows) -- , devectorize fs)
+          error "toFunJac': bad number of outputs :("
+        | otherwise = rows -- , devectorize fs)
         where
           --retJac :: f (J x MX)
           --retJac = devectorize retJac'
           --retJac' :: Vector (J x MX)
           --retJac' = fmap devectorize rows
           rows :: Vector (Vector MX)
-          rows = fmap (flip vhorzsplit horzsizes) $ vvertsplit jac vertsizes
+          rows = fmap (`vhorzsplit` horzsizes) $ vvertsplit jac vertsizes
           vertsizes = V.fromList ((0:) $ F.toList (sizeList 0 (Proxy :: Proxy (f MX))))
           horzsizes = V.fromList ((0:) $ F.toList (sizeList 0 (Proxy :: Proxy (x MX))))
 

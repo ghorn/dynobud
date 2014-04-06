@@ -117,7 +117,7 @@ newDaeVariable ::
   => String -> Lens' DaeState (S.Seq (String, SXElement)) -> String -> m SXElement
 newDaeVariable description lens name = do
   debug $ "adding " ++ description ++ " \""++name++"\""
-  case name of [] -> err $ "name cannot be empty"
+  case name of [] -> err "name cannot be empty"
                ('_':_) -> err $ "name \"" ++ name ++
                           "\" cannot have leading underscore (this is reserved for internal use)"
                _ -> return ()
@@ -194,14 +194,14 @@ instance EqMonad BCMonad SXElement where
     debug $ "adding inequality constraint: " ++
       withEllipse 30 (show lhs) ++ " == " ++ withEllipse 30 (show rhs)
     state0 <- State.get
-    State.put $ state0 |> (Eq2 lhs rhs)
+    State.put $ state0 |> Eq2 lhs rhs
 
 instance LeqMonad BCMonad where
   (<==) lhs rhs = do
     debug $ "adding inequality constraint: " ++
       withEllipse 30 (show lhs) ++ " <= " ++ withEllipse 30 (show rhs)
     state0 <- State.get
-    State.put $ state0 |> (Ineq2 lhs rhs)
+    State.put $ state0 |> Ineq2 lhs rhs
 
 
 constr :: Constraint SXElement -> (SXElement, Bounds)
@@ -311,7 +311,7 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
       (pathConstraints, pathConstraintBnds) = unzip $ map constr (F.toList (ocpPathConstraints ocp))
 
   pathcFunSX <- sxFunction (V.fromList [xs',zs',us',ps',os',time'])
-                         (V.singleton (svector (V.fromList (pathConstraints))))
+                         (V.singleton (svector (V.fromList pathConstraints)))
   setOption pathcFunSX "name" "pathConstraints"
   soInit pathcFunSX
 
