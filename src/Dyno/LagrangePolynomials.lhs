@@ -109,7 +109,11 @@ module Dyno.LagrangePolynomials ( lagrangeDerivCoeffs, lagrangeXis, runCompariso
 
 import qualified Data.Vector as V
 
-import Dvda
+import Dyno.Casadi.SXFunction ( sxFunction )
+import Dyno.Casadi.Function ( evalDMatrix )
+import Dyno.Casadi.SharedObject ( soInit )
+import Dyno.Casadi.SX ( SX, ssym, sgradient )
+import Dyno.Casadi.DMatrix ( DMatrix, ddata, ddense )
 
 import Dyno.TypeVecs
 
@@ -252,35 +256,38 @@ lagrangeDerivCoeffs taus' = mkVec' [mkVec' [cjk j k | k <- [0..deg]] | j <- [0..
 
 Testing code:
 \begin{code}
-syms :: String -> Int -> [Expr a]
-syms name k = map (sym . (name ++) . show) $ take k [(0::Int)..]
+ssyms :: String -> Int -> IO [SX]
+ssyms name k = mapM (ssym . (name ++) . show) $ take k [(0::Int)..]
 
 runComparison :: IO ()
 runComparison = do
   let deg = 6
       sampleTaus = take (deg+1) [0.1,0.2..]
+      sampleTaus' = map realToFrac sampleTaus
 
-      zs :: [Expr Double]
+  tau <- ssym "t"
+  taus <- ssyms "t" (deg + 1)
+
+  let zs :: [SX]
       zs = map (lagrangeXis taus tau) [0..deg]
-      tau = sym "t"
-      taus = syms "t" (deg + 1)
       inputs = tau : taus
+      zdot = map (\x -> sgradient x tau) zs
+  zdotAlg <- sxFunction (V.fromList inputs) (V.fromList zdot)
+  soInit zdotAlg
 
-      zdot = map (\x -> head (rad x [tau])) zs
-  --mapM_ print zdot
-  zdotAlg <- constructAlgorithm (V.fromList inputs) (V.fromList zdot)
-  let zdotAlgSym = toSymbolicAlg zdotAlg
-      fromEither (Right x) = x
-      fromEither (Left x) = error $ "lagrangePolynomials: " ++ x
-
-  putStrLn "symbolic:"
-  mapM_ (print . V.toList) [fromEither $ runAlgorithm zdotAlgSym (V.fromList (tau_i : taus)) | tau_i <- taus]
+  --mapM_ print zdot'
   
   putStrLn "numeric:"
-  let vals = V.fromList [fromEither $ runAlgorithm zdotAlg (V.fromList (tau_i : sampleTaus)) | tau_i <- sampleTaus]
+  vals' <- V.mapM (\tau_i -> (evalDMatrix zdotAlg (V.fromList (tau_i : sampleTaus')))) (V.fromList sampleTaus')
+  let d2d :: DMatrix -> Double
+      d2d x = case V.toList (ddata (ddense x)) of
+        [y] -> y
+        ys -> error $ "d2d: need length 1, got length " ++ show (length ys)
+
+      vals = fmap (fmap d2d) vals'
   V.mapM_ print vals
   
-  putStrLn "numeric difference:"
+  putStrLn "\nnumeric difference:"
   let cmp :: V.Vector Double -> V.Vector Double -> IO ()
       cmp v1s v2s = print $ V.zipWith (-) v1s v2s
       f :: Dim n => Vec n Double -> IO ()

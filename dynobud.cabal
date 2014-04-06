@@ -14,7 +14,6 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Dyno.LagrangePolynomials
-                       Dyno.AlgorithmV
                        Dyno.TypeVecs
                        Dyno.Nats
 --                       Dyno.MultipleShooting
@@ -65,7 +64,6 @@ library
 
   build-depends:       base >=4.6 && <4.8,
                        vector >=0.10 && <0.11,
-                       dvda >=0.4 && <0.5,
                        mtl >=2.1 && <2.2,
                        containers >=0.5 && <0.6,
                        jacobi-roots >=0.2 && <0.3,
@@ -102,7 +100,6 @@ executable ocpMonad
   build-depends:       dynobud,
                        vector >=0.10 && <0.11,
                        base >=4.6 && <4.8,
-                       dvda,
                        zeromq3-haskell,
                        cereal,
                        bytestring
@@ -116,7 +113,6 @@ executable rocket
   build-depends:       dynobud,
                        vector >=0.10 && <0.11,
                        base >=4.6 && <4.8,
-                       dvda,
                        zeromq3-haskell,
                        cereal,
                        bytestring
