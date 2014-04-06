@@ -12,7 +12,7 @@ module Dyno.NlpMonad
        , bound
        , minimize
        , designVar
-       , reifyNlp
+       , solveStaticNlp
        ) where
 
 import Control.Applicative ( Applicative )
@@ -44,6 +44,8 @@ import Dyno.View.View
 import qualified Dyno.TypeVecs as TV
 import Dyno.Interface.LogsAndErrors
 import Dyno.Interface.Types
+import Dyno.NlpSolver ( NLPSolverClass, NlpSolverStuff, solveNlp' )
+import Dyno.Nlp ( NlpOut'(..) )
 
 withEllipse :: Int -> String -> String
 withEllipse n blah
@@ -197,3 +199,27 @@ reifyNlp nlpmonad cb x0map f = do
       let nlp = nlp0 { nlpX0' = mkJ x0 }
       ret' <- f nlp (fmap (. unJ) cb) state
       return ret'
+
+
+solveStaticNlp ::
+  NLPSolverClass nlp
+  => NlpSolverStuff nlp
+  -> NlpMonad () -> [(String,Double)] -> Maybe (Vector Double -> IO Bool)
+  -> IO (Either String String, Double, [(String,Double)])
+solveStaticNlp solverStuff nlp x0' callback = reifyNlp nlp callback x0 foo
+  where
+    x0 = M.fromListWithKey errlol x0'
+    errlol name xx yy =
+      error $ "solveStaticNlp: initial guess has variable \"" ++ name ++ "\" more than once: " ++
+              show (xx,yy)
+
+    foo ::
+      (View x, View p, View g) =>
+      Nlp' x p g MX -> Maybe (J x (Vector Double) -> IO Bool) -> NlpMonadState ->
+      IO (Either String String, Double, [(String,Double)])
+    foo nlp' cb' state = do
+      (ret,nlpOut) <- solveNlp' solverStuff nlp' cb'
+      let fopt = V.head (unJ (fOpt' nlpOut)) :: Double
+          xopt = F.toList $ unJ (xOpt' nlpOut) :: [Double]
+          xnames = map fst (F.toList (nlpX state)) :: [String]
+      return (ret, fopt, zip xnames xopt)

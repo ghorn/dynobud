@@ -7,7 +7,6 @@ import Dyno.Casadi.SXElement ( SXElement )
 import Dyno.OcpMonad
 import Dyno.Ipopt
 --import Dyno.Snopt
-import Dyno.NlpSolver ( solveStaticOcp )
 
 import ServerSender
 import GliderShared

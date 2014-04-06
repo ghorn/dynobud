@@ -3,7 +3,6 @@
 module Main where
 
 import Dyno.NlpMonad
-import Dyno.NlpSolver
 import Dyno.Ipopt
 --import Dyno.Snopt
 

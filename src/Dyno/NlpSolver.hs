@@ -3,18 +3,14 @@
 {-# Language PackageImports #-}
 {-# Language KindSignatures #-}
 {-# Language GeneralizedNewtypeDeriving #-}
-{-# Language RankNTypes #-}
 
 module Dyno.NlpSolver
        ( NlpSolver
        , NLPSolverClass
        , runNlpSolver
+         -- * solve
        , solveNlp
        , solveNlp'
-       , solveStaticNlp
-       , solveOcp
-       , solveStaticOcp
-         -- * solve
        , solve
        , solve'
          -- * inputs
@@ -43,6 +39,7 @@ module Dyno.NlpSolver
        , reinit
        ) where
 
+--import System.Process ( callProcess, showCommandForUser )
 import Control.Exception ( AsyncException( UserInterrupt ), try )
 import Control.Concurrent ( forkIO, newEmptyMVar, takeMVar, putMVar )
 import Control.Applicative ( Applicative(..) )
@@ -52,8 +49,6 @@ import Data.Maybe ( fromMaybe )
 import Data.IORef ( newIORef, readIORef, writeIORef )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
-import qualified Data.Map.Strict as M
-import qualified Data.Foldable as F
 
 import Casadi.Wrappers.Enums ( InputOutputScheme(..) )
 import Casadi.Callback
@@ -62,6 +57,7 @@ import Casadi.Wrappers.Classes.PrintableObject ( printableObject_getDescription 
 import Casadi.Wrappers.Classes.GenericType
 import Casadi.Wrappers.Classes.NLPSolver
 import Casadi.Wrappers.Classes.IOInterfaceFunction
+--import Casadi.Wrappers.Classes.CasadiOptions
 
 import Dyno.Casadi.DMatrix
 import Dyno.Casadi.SX
@@ -69,19 +65,14 @@ import Dyno.Casadi.SXElement ( SXElement )
 import Dyno.Casadi.Function
 import qualified Dyno.Casadi.Option as Op
 import Dyno.Casadi.SharedObject ( soInit )
+--import qualified Casadi.Wrappers.Classes.Function as C
+--import qualified Casadi.Wrappers.Classes.Sparsity as C
 
-import Dyno.NlpMonad ( NlpMonad, reifyNlp )
-import Dyno.Interface.Types ( NlpMonadState(..) )
 import Dyno.Vectorize ( Vectorize(..) )
 import Dyno.View.View
 import Dyno.View.Symbolic
 import Dyno.Nlp ( Nlp(..), NlpOut(..), Multipliers(..), Nlp'(..), NlpOut'(..), Multipliers'(..), Bounds )
-import Dyno.DirectCollocation ( CollTraj, makeCollNlp )
-import Dyno.DirectCollocation.Dynamic ( CollTrajMeta, DynCollTraj, ctToDynamic )
 import Data.Proxy
-import qualified Dyno.TypeVecs as TV
-import Dyno.OcpMonad ( OcpMonad, DaeMonad, BCMonad, reifyOcpPhase )
-import Dyno.Ocp ( OcpPhase )
 
 type VD a = J a (Vector Double)
 
@@ -241,14 +232,25 @@ newtype NlpSolver (x :: * -> *) (p :: * -> *) (g :: * -> *) a =
            , MonadIO
            )
 
+--generateAndCompile :: String -> Function -> IO Function
+--generateAndCompile name f = do
+--  writeFile (name ++ ".c") (generateCode f)
+--  let cmd = "clang"
+--      args = ["-fPIC","-shared","-O","-Wall","-Wno-unused-variable",name++".c","-o",name++".so"]
+--  putStrLn (showCommandForUser cmd args)
+--  callProcess cmd args
+--  externalFunction ("./"++name++".so")
+
 runNlpSolver ::
   forall nlp x p g a s .
   (NLPSolverClass nlp, View x, View p, View g, Symbolic s)
   => NlpSolverStuff nlp
   -> (J x s -> J p s -> (J S s, J g s))
+--  -> (J x (Vector Double))
   -> Maybe (J x (Vector Double) -> IO Bool)
   -> NlpSolver x p g a
   -> IO a
+--runNlpSolver solverStuff nlpFun nlpX0' callback' (NlpSolver nlpMonad) = do
 runNlpSolver solverStuff nlpFun callback' (NlpSolver nlpMonad) = do
   inputsX <- sym "x"
   inputsP <- sym "p"
@@ -263,7 +265,24 @@ runNlpSolver solverStuff nlpFun callback' (NlpSolver nlpMonad) = do
   inputScheme <- mkScheme SCHEME_NLPInput [("x", inputsXMat), ("p", inputsPMat)]
   outputScheme <- mkScheme SCHEME_NLPOutput [("f", objMat), ("g", gMat)]
   nlp <- mkFunction "nlp" inputScheme outputScheme
+--  Op.setOption nlp "verbose" True
   soInit nlp
+
+--  let eval 0 = error "finished"
+--      eval k = do
+--        putStrLn "setting input"
+--        ioInterfaceFunction_setInput''' nlp (unJ nlpX0') (0::Int)
+--        putStrLn $ "evaluating " ++ show k
+--        C.function_evaluate nlp
+--        eval (k-1 :: Int)
+--  eval (300::Int)
+--  casadiOptions_stopProfiling
+--  _ <- error "done"
+
+
+--  jac_sparsity <- C.function_jacSparsity nlp 0 1 True False
+--  C.sparsity_spyMatlab jac_sparsity "jac_sparsity_reorder.m"
+
 
   solver <- fmap castNLPSolver $ (nlpConstructor solverStuff) (castFunction nlp)
 
@@ -279,6 +298,26 @@ runNlpSolver solverStuff nlpFun callback' (NlpSolver nlpMonad) = do
         return $ if callbackRet && not interrupt then 0 else fromIntegral (solverInterruptCode solverStuff)
   casadiCallback <- makeCallback cb >>= genericType''''''''''''
   Op.setOption solver "iteration_callback" casadiCallback
+--  grad_f <- gradient nlp 0 0
+--  soInit grad_f
+--  jac_g <- jacobian nlp 0 1 True False
+--  soInit jac_g
+--
+--  let eval 0 = error "finished"
+--      eval k = do
+--        putStrLn "setting input"
+--        ioInterfaceFunction_setInput''' jac_g (unJ nlpX0') (0::Int)
+--        putStrLn $ "evaluating " ++ show k
+--        C.function_evaluate jac_g
+--        eval (k-1 :: Int)
+--  eval (40::Int)
+
+--  nlp' <- generateAndCompile "nlp" nlp
+--  grad_f' <- generateAndCompile "grad_f" grad_f
+--  jac_g' <- generateAndCompile "jac_g" jac_g
+--  _ <- error "lal"
+--  Op.setOption solver "grad_f" grad_f'
+--  Op.setOption solver "jac_g" jac_g'
 
   -- set all the user options
   mapM_ (\(l,Op.Opt o) -> Op.setOption solver l o) (defaultOptions solverStuff ++ options solverStuff)
@@ -342,6 +381,7 @@ solveNlp' ::
   Nlp' x p g a -> Maybe (J x (Vector Double) -> IO Bool)
   -> IO (Either String String, NlpOut' x g (Vector Double))
 solveNlp' solverStuff nlp callback = do
+--  runNlpSolver solverStuff (nlpFG' nlp) (nlpX0' nlp) callback $ do
   runNlpSolver solverStuff (nlpFG' nlp) callback $ do
     let (lbx,ubx) = toBnds (nlpBX' nlp)
         (lbg,ubg) = toBnds (nlpBG' nlp)
@@ -363,58 +403,3 @@ toBnds :: View f => J f (Vector Bounds) -> (VD f, VD f)
 toBnds vs = (mkJ (V.map (fromMaybe (-inf)) lbs), mkJ (V.map (fromMaybe inf) ubs))
   where
     (lbs, ubs) = V.unzip (unJ vs)
-
-
-solveStaticNlp ::
-  NLPSolverClass nlp
-  => NlpSolverStuff nlp
-  -> NlpMonad () -> [(String,Double)] -> Maybe (Vector Double -> IO Bool)
-  -> IO (Either String String, Double, [(String,Double)])
-solveStaticNlp solverStuff nlp x0' callback = reifyNlp nlp callback x0 foo
-  where
-    x0 = M.fromListWithKey errlol x0'
-    errlol name xx yy =
-      error $ "solveStaticNlp: initial guess has variable \"" ++ name ++ "\" more than once: " ++
-              show (xx,yy)
-
-    foo ::
-      (View x, View p, View g) =>
-      Nlp' x p g MX -> Maybe (J x (Vector Double) -> IO Bool) -> NlpMonadState ->
-      IO (Either String String, Double, [(String,Double)])
-    foo nlp' cb' state = do
-      (ret,nlpOut) <- solveNlp' solverStuff nlp' cb'
-      let fopt = V.head (unJ (fOpt' nlpOut)) :: Double
-          xopt = F.toList $ unJ (xOpt' nlpOut) :: [Double]
-          xnames = map fst (F.toList (nlpX state)) :: [String]
-      return (ret, fopt, zip xnames xopt)
-
-solveOcp ::
-  forall x z u p r o c h s sh sc nlp .
-  (NLPSolverClass nlp, Vectorize x, Vectorize z, Vectorize u, Vectorize p,
-   Vectorize r, Vectorize o, Vectorize c, Vectorize h, View s, View sc, View sh)
-  => NlpSolverStuff nlp -> Int -> Int -> Maybe (DynCollTraj (Vector Double) -> IO Bool) -> OcpPhase x z u p r o c h s sh sc -> IO ()
-solveOcp solverStuff n deg cb ocp =
-  TV.reifyDim n $ \(Proxy :: Proxy n) ->
-  TV.reifyDim deg $ \(Proxy :: Proxy deg) -> do
-    let guess :: J (CollTraj x z u p s n deg) (Vector Double)
-        guess = jfill 1
-    nlp <- makeCollNlp ocp
-    _ <- solveNlp' solverStuff (nlp {nlpX0' = guess}) (fmap (. ctToDynamic) cb)
-    return ()
-
-
-solveStaticOcp ::
-  NLPSolverClass nlp =>
-  NlpSolverStuff nlp
-  -> (SXElement -> DaeMonad ())
-  -> (forall a m . (Floating a, Monad m) => a -> (String -> m a) -> (String -> m a) -> m a)
-  -> ((String -> BCMonad SXElement) -> (String -> BCMonad SXElement) -> BCMonad ())
-  -> (SXElement -> (String -> OcpMonad SXElement) -> OcpMonad ())
-  -> (Maybe Double, Maybe Double)
-  -> Int -> Int
-  -> Maybe (CollTrajMeta -> DynCollTraj (Vector Double) -> IO Bool)
-  -> IO ()
-solveStaticOcp solverStuff dae mayer bc ocp tbnds n deg cb =
-  reifyOcpPhase dae mayer bc ocp tbnds n deg woo
-    where
-      woo ocpphase meta = solveOcp solverStuff n deg (cb <*> pure meta) ocpphase

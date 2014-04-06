@@ -20,11 +20,10 @@ module Dyno.OcpMonad
        , parameter
        , output
        , lagrangeTerm
-       , reifyOcpPhase
-       )
-       where
+       , solveStaticOcp
+       ) where
 
-import Control.Applicative ( Applicative )
+import Control.Applicative ( Applicative(..) )
 import Control.Lens ( Lens', over )
 import Control.Monad ( when )
 import qualified "mtl" Control.Monad.State as State
@@ -54,7 +53,9 @@ import Dyno.View ( View(..), J, JNone(..), jfill )
 import Dyno.Vectorize ( Vectorize(..), fill )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
-import Dyno.DirectCollocation.Dynamic ( CollTrajMeta(..), NameTree(..) )
+import Dyno.NlpSolver ( NLPSolverClass, NlpSolverStuff )
+import Dyno.DirectCollocation.Dynamic ( DynCollTraj, CollTrajMeta(..), NameTree(..) )
+import Dyno.DirectCollocation ( solveOcp )
 
 import Dyno.Interface.LogsAndErrors
 import Dyno.Interface.Types
@@ -469,3 +470,20 @@ devec = devectorize . sdata . sdense
 
 devec' :: SX -> SXElement
 devec' = V.head . sdata . sdense
+
+
+solveStaticOcp ::
+  NLPSolverClass nlp =>
+  NlpSolverStuff nlp
+  -> (SXElement -> DaeMonad ())
+  -> (forall a m . (Floating a, Monad m) => a -> (String -> m a) -> (String -> m a) -> m a)
+  -> ((String -> BCMonad SXElement) -> (String -> BCMonad SXElement) -> BCMonad ())
+  -> (SXElement -> (String -> OcpMonad SXElement) -> OcpMonad ())
+  -> (Maybe Double, Maybe Double)
+  -> Int -> Int
+  -> Maybe (CollTrajMeta -> DynCollTraj (Vector Double) -> IO Bool)
+  -> IO ()
+solveStaticOcp solverStuff dae mayer bc ocp tbnds n deg cb =
+  reifyOcpPhase dae mayer bc ocp tbnds n deg woo
+    where
+      woo ocpphase meta = solveOcp solverStuff n deg (cb <*> pure meta) ocpphase
