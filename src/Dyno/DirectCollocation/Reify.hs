@@ -7,7 +7,6 @@ module Dyno.DirectCollocation.Reify
        ) where
 
 import Linear.V ( Dim )
-import Data.Proxy ( Proxy(..) )
 
 import Dyno.Vectorize
 import Dyno.TypeVecs ( Vec )

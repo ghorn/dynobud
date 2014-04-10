@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE TypeOperators #-}
@@ -20,6 +21,7 @@ module Dyno.Vectorize
        , fill
        , GVectorize(..)
        , Generic1
+       , Proxy(..)
        ) where
 
 
@@ -27,6 +29,7 @@ import GHC.Generics
 import qualified Data.Vector as V
 import Data.Foldable ( Foldable )
 import Data.Traversable ( Traversable )
+import Data.Proxy ( Proxy(..) )
 
 import Dyno.Server.Accessors
 
@@ -76,28 +79,26 @@ class Functor f => Vectorize (f :: * -> *) where
   default empty :: (Generic1 f, GVectorize (Rep1 f)) => f ()
   empty = to1 gempty
 
+--vlength :: Vectorize f => Proxy f -> Int
+--vlength = const (gvlength (Proxy :: Proxy (Rep1 f)))
+
+vlength :: Vectorize f => Proxy f -> Int
+vlength = V.length . vectorize . (empty `asFunctorOf`)
+  where
+    asFunctorOf :: f a -> Proxy f -> f a
+    asFunctorOf x _ = x
+
 class GVectorize (f :: * -> *) where
   gvectorize :: f a -> V.Vector a
   gdevectorize :: V.Vector a -> f a
   gempty :: f ()
+  gvlength :: Proxy f -> Int
 
 vzipWith :: Vectorize f => (a -> b -> c) -> f a -> f b -> f c
 vzipWith f x y = devectorize $ V.zipWith f (vectorize x) (vectorize y)
 
 vzipWith3 :: Vectorize f => (a -> b -> c -> d) -> f a -> f b -> f c -> f d
 vzipWith3 f x y z = devectorize $ V.zipWith3 f (vectorize x) (vectorize y) (vectorize z)
-
-vlength :: Vectorize f => f a -> Int
-vlength = V.length . vectorize . (empty `asFunctorOf`)
-  where
-    asFunctorOf :: f a -> f b -> f a
-    asFunctorOf x _ = x
-
-gvlength :: GVectorize f => f a -> Int
-gvlength = V.length . gvectorize . (gempty `asFunctorOf`)
-  where
-    asFunctorOf :: f a -> f b -> f a
-    asFunctorOf x _ = x
 
 -- product type (concatination)
 instance (GVectorize f, GVectorize g) => GVectorize (f :*: g) where
@@ -114,18 +115,26 @@ instance (GVectorize f, GVectorize g) => GVectorize (f :*: g) where
       f0 = gdevectorize v0
       f1 = gdevectorize v1
 
-      n0 = gvlength f0
-      n1 = gvlength f1
+      n0 = gvlength (Proxy :: Proxy f)
+      n1 = gvlength (Proxy :: Proxy g)
 
       (v0,v1) = V.splitAt n0 v0s
 
   gempty = gempty :*: gempty
+  gvlength = const (nf + ng)
+    where
+      nf = gvlength (Proxy :: Proxy f)
+      ng = gvlength (Proxy :: Proxy g)
 
 -- Metadata (constructor name, etc)
 instance GVectorize f => GVectorize (M1 i c f) where
   gvectorize = gvectorize . unM1
   gdevectorize = M1 . gdevectorize
   gempty = M1 gempty
+  gvlength = gvlength . proxy
+    where
+      proxy :: Proxy (M1 i c f) -> Proxy f
+      proxy = const Proxy
 
 -- singleton
 instance GVectorize Par1 where
@@ -135,6 +144,7 @@ instance GVectorize Par1 where
     [x] -> Par1 x
     xs -> error $ "gdevectorize Par1: got non-1 length: " ++ show (length xs)
   gempty = Par1 ()
+  gvlength = const 1
 
 -- data with no fields
 instance GVectorize U1 where
@@ -143,34 +153,35 @@ instance GVectorize U1 where
     | V.null v = U1
     | otherwise = error $ "gdevectorize U1: got non-null vector, length: " ++ show (V.length v)
   gempty = U1
+  gvlength = const 0
 
 -- Constants, additional parameters, and rank-1 recursion
 instance Vectorize f => GVectorize (Rec1 f) where
   gvectorize = vectorize . unRec1
   gdevectorize = Rec1 . devectorize
   gempty = Rec1 empty
+  gvlength = vlength . proxy
+    where
+      proxy :: Proxy (Rec1 f) -> Proxy f
+      proxy = const Proxy
 
 -- composition
 instance (Vectorize f, GVectorize g) => GVectorize (f :.: g) where
-  gempty = Comp1 ret
+  gempty = Comp1 (devectorize (V.replicate k gempty))
     where
-      ret = devectorize $ V.replicate k gempty
-      k = vlength ret
+      k = vlength (Proxy :: Proxy f)
   gvectorize = V.concatMap gvectorize . vectorize . unComp1
-  gdevectorize v = Comp1 ret
+  gdevectorize v = Comp1 (devectorize vs)
     where
-      -- ret :: f (g a)
-      ret = devectorize vs
-
-      kf = vlength ret
-      kg = gvlength (insideOf vs)
-
-      insideOf :: V.Vector (g a) -> g a
-      insideOf _ = undefined
+      kf = vlength (Proxy :: Proxy f)
+      kg = gvlength (Proxy :: Proxy g)
 
       -- vs :: V.Vector (g a)
       vs = fmap gdevectorize (splitsAt kg kf v {-:: Vec nf (Vec ng a)-} )
-
+  gvlength = const (nf * ng)
+    where
+      nf = vlength (Proxy :: Proxy f)
+      ng = gvlength (Proxy :: Proxy g)
 
 -- break a vector jOuter vectors, each of length kInner
 splitsAt' :: Int -> Int -> V.Vector a -> [V.Vector a]
