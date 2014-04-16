@@ -1,6 +1,6 @@
 dynobud - dynamic optimization buddy
 
-This library has a few distinct features, which may later be broken into separate modules:
+This library has a few distinct features, which may later be broken into separate packages:
 * high level interface to CasADi
 * NLP modeling/solving (examples/Basic.hs, examples/BasicJ.hs)
 * monadic NLP modeling DSL (examples/StaticExample.hs)
@@ -21,7 +21,7 @@ The current instructions for getting started on Debian/Ubuntu:
 
     >> git clone git://github.com:ghorn/dynobud.git
     >> cd dynobud
-    >> cabal configure --disable-library-profiling
+    >> cabal configure
     >> cabal build
 
 Try running the examples in dynobud/examples
