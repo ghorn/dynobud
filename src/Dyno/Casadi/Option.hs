@@ -9,9 +9,9 @@ module Dyno.Casadi.Option
        ) where
 
 import Data.Vector ( Vector )
-import Casadi.Wrappers.Classes.Function
-import Casadi.Wrappers.Classes.GenericType
-import Casadi.Wrappers.Classes.OptionsFunctionality
+import Casadi.Symbolic.Classes.Function ( Function )
+import Casadi.Symbolic.Classes.GenericType
+import Casadi.Symbolic.Classes.OptionsFunctionality
   ( OptionsFunctionalityClass, optionsFunctionality_setOption )
 
 data Opt where
@@ -26,22 +26,22 @@ class Option a where
   mkGeneric :: a -> IO GenericType
 
 instance Option Bool where
-  mkGeneric = genericType'
+  mkGeneric = genericType__11
 instance Option Int where
-  mkGeneric = genericType''
+  mkGeneric = genericType__10
 instance Option Double where
-  mkGeneric = genericType'''
+  mkGeneric = genericType__9
 instance Option String where
-  mkGeneric = genericType''''
+  mkGeneric = genericType__8
 instance Option (Vector Bool) where
-  mkGeneric = genericType'''''
+  mkGeneric = genericType__7
 instance Option (Vector Int) where
-  mkGeneric = genericType''''''
+  mkGeneric = genericType__6
 instance Option (Vector Double) where
-  mkGeneric = genericType'''''''
+  mkGeneric = genericType__5
 instance Option (Vector String) where
-  mkGeneric = genericType''''''''
+  mkGeneric = genericType__4
 instance Option GenericType where
   mkGeneric = return
 instance Option Function where
-  mkGeneric = genericType'''''''''
+  mkGeneric = genericType__3

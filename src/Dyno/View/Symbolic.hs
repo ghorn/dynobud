@@ -12,11 +12,11 @@ module Dyno.View.Symbolic
 import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 
-import Casadi.Wrappers.Classes.SharedObject
-import Casadi.Wrappers.Classes.Function ( Function, castFunction )
-import Casadi.Wrappers.Classes.SXFunction ( sxFunction''' )
-import Casadi.Wrappers.Classes.MXFunction ( mxFunction'' )
-import Casadi.Wrappers.Enums ( InputOutputScheme(..) )
+import Casadi.Symbolic.Classes.SharedObject
+import Casadi.Symbolic.Classes.Function ( Function, castFunction )
+import Casadi.Symbolic.Classes.SXFunction
+import Casadi.Symbolic.Classes.MXFunction
+import Casadi.Symbolic.Enums ( InputOutputScheme(..) )
 
 import Dyno.View.View ( View(..), J, mkJ )
 import Dyno.View.Viewable ( Viewable(..) )
@@ -38,18 +38,18 @@ instance Symbolic SX where
   sym = mkSym ssymV
   mkScheme = mkSchemeSX
   mkFunction name x y = do
-    f <- sxFunction''' x y
+    f <- sxFunction__0 x y
     setOption f "name" name
-    sharedObject_init' f
+    sharedObject_init__0 f
     return (castFunction f)
 
 instance Symbolic MX where
   sym = mkSym symV
   mkScheme = mkSchemeMX
   mkFunction name x y = do
-    f <- mxFunction'' x y
+    f <- mxFunction__0 x y
     setOption f "name" name
-    sharedObject_init' f
+    sharedObject_init__0 f
     return (castFunction f)
 
 

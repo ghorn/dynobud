@@ -39,6 +39,7 @@ library
                        Dyno.Ipopt
 --                       Dyno.Snopt
                        Dyno.Casadi.SharedObject
+                       Dyno.Casadi.Callback
                        Dyno.Casadi.Option
                        Dyno.Casadi.IOSchemes
                        Dyno.Casadi.MX
@@ -69,7 +70,10 @@ library
                        jacobi-roots >=0.2 && <0.3,
                        hmatrix,
                        unordered-containers >=0.2 && <0.3,
-                       casadi-bindings >= 1.9.0.0 && < 1.10,
+                       casadi-bindings-internal,
+                       casadi-bindings-symbolic,
+                       casadi-bindings-ipopt-interface,
+                       casadi-bindings-snopt-interface,
                        transformers >=0.3 && <0.4,
                        primitive >=0.5 && <0.6,
                        ghc-prim >=0.3 && <0.4,

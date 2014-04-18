@@ -17,48 +17,47 @@ module Dyno.Casadi.SX
 import qualified Data.Vector as V
 import System.IO.Unsafe ( unsafePerformIO )
 
-import Casadi.Wrappers.Classes.SXElement ( SXElement )
-import Casadi.Wrappers.Classes.SX
-import Casadi.Wrappers.Classes.GenSX
-import Casadi.Wrappers.Classes.DMatrix ( DMatrix )
-import Casadi.Wrappers.Classes.Sparsity ( Sparsity )
-import qualified Casadi.Wrappers.Tools as C
+import Casadi.Symbolic.Classes.SXElement ( SXElement )
+import Casadi.Symbolic.Classes.SX
+import Casadi.Symbolic.Classes.DMatrix ( DMatrix )
+import Casadi.Symbolic.Classes.Sparsity ( Sparsity )
+import qualified Casadi.Symbolic.Tools as C
 
 ssym :: String -> IO SX
-ssym = genSX_sym''
+ssym = sx_sym__5
 
 ssymV :: String -> Int -> IO SX
-ssymV = genSX_sym'
+ssymV = sx_sym__6
 
 ssymM :: String -> Int -> Int -> IO SX
-ssymM = genSX_sym
+ssymM = sx_sym__7
 
 -- | @jacobian exp x@ is the jacobian of exp w.r.t. x
 sgradient :: SX -> SX -> SX
-sgradient x y = unsafePerformIO (C.gradient x y)
+sgradient x y = unsafePerformIO (C.gradient__1 x y)
 {-# NOINLINE sgradient #-}
 
 -- | @jacobian exp x@ is the jacobian of exp w.r.t. x
 sjacobian :: SX -> SX -> SX
-sjacobian x y = unsafePerformIO (C.jacobian x y)
+sjacobian x y = unsafePerformIO (C.jacobian__1 x y)
 {-# NOINLINE sjacobian #-}
 
 -- | @hessian exp x@ is the hessian of exp w.r.t. x
 shessian :: SX -> SX -> SX
-shessian x y = unsafePerformIO (C.hessian x y)
+shessian x y = unsafePerformIO (C.hessian__1 x y)
 {-# NOINLINE shessian #-}
 
 -- | matrix matrix product
 smm :: SX -> SX -> SX
-smm x y = unsafePerformIO (sx_mul' x y)
+smm x y = unsafePerformIO (sx_mul__0 x y)
 {-# NOINLINE smm #-}
 
 d2s :: DMatrix -> SX
-d2s x = unsafePerformIO (sx'''''''''''' x)
+d2s x = unsafePerformIO (sx__2 x)
 {-# NOINLINE d2s #-}
 
 sdiag :: SX -> SX
-sdiag x = unsafePerformIO (C.diag'' x)
+sdiag x = unsafePerformIO (C.diag__1 x)
 {-# NOINLINE sdiag #-}
 
 -- | transpose
@@ -67,80 +66,80 @@ strans x = unsafePerformIO (sx_trans x)
 {-# NOINLINE strans #-}
 
 sdense :: SX -> SX
-sdense x = unsafePerformIO (C.dense'' x)
+sdense x = unsafePerformIO (C.dense__1 x)
 {-# NOINLINE sdense #-}
 
 ssparse :: SX -> SX
-ssparse x = unsafePerformIO (C.sparse''''' x)
+ssparse x = unsafePerformIO (C.sparse__0 x)
 {-# NOINLINE ssparse #-}
 
 striu :: SX -> SX
-striu x = unsafePerformIO (C.triu'' (castGenSX x))
+striu x = unsafePerformIO (C.triu__3 (castSX x))
 {-# NOINLINE striu #-}
 
 stril :: SX -> SX
-stril x = unsafePerformIO (C.tril'' (castGenSX x))
+stril x = unsafePerformIO (C.tril__3 (castSX x))
 {-# NOINLINE stril #-}
 
 scrs :: SX -> Sparsity
-scrs x = unsafePerformIO (sx_sparsityRef x)
+scrs x = unsafePerformIO (sx_sparsityRef__0 x)
 {-# NOINLINE scrs #-}
 
 -- | from SXElement vector
 svector :: V.Vector SXElement -> SX
-svector x = unsafePerformIO (sx''''''' x)
+svector x = unsafePerformIO (sx__7 x)
 {-# NOINLINE svector #-}
 
 sdata :: SX -> V.Vector SXElement
-sdata x = unsafePerformIO (sx_data x)
+sdata x = unsafePerformIO (sx_data__0 x)
 {-# NOINLINE sdata #-}
 
 ssize :: SX -> Int
-ssize x = unsafePerformIO (genSX_size x)
+ssize x = unsafePerformIO (sx_size__1 x)
 {-# NOINLINE ssize #-}
 
 ssize1 :: SX -> Int
-ssize1 x = unsafePerformIO (genSX_size1 x)
+ssize1 x = unsafePerformIO (sx_size1 x)
 {-# NOINLINE ssize1 #-}
 
 ssize2 :: SX -> Int
-ssize2 x = unsafePerformIO (genSX_size2 x)
+ssize2 x = unsafePerformIO (sx_size2 x)
 {-# NOINLINE ssize2 #-}
 
 snumel :: SX -> Int
-snumel x = unsafePerformIO (genSX_numel x)
+snumel x = unsafePerformIO (sx_numel x)
 {-# NOINLINE snumel #-}
 
 svertcat :: V.Vector SX -> SX
-svertcat x = unsafePerformIO (C.vertcat'' x)
+svertcat x = unsafePerformIO (C.vertcat__2 x)
 {-# NOINLINE svertcat #-}
 
 shorzcat :: V.Vector SX -> SX
-shorzcat x = unsafePerformIO (C.horzcat'' x)
+shorzcat x = unsafePerformIO (C.horzcat__2 x)
 {-# NOINLINE shorzcat #-}
 
 sveccat :: V.Vector SX -> SX
-sveccat x = unsafePerformIO (C.veccat'' x)
+sveccat x = unsafePerformIO (C.veccat__1 x)
 {-# NOINLINE sveccat #-}
 
 svertsplit :: SX -> V.Vector Int -> V.Vector SX
-svertsplit x ks = unsafePerformIO (C.vertsplit'''''' x ks)
+svertsplit x ks = unsafePerformIO (C.vertsplit__6 x ks)
 {-# NOINLINE svertsplit #-}
 
 shorzsplit :: SX -> V.Vector Int -> V.Vector SX
-shorzsplit x ks = unsafePerformIO (C.horzsplit'''''' x ks)
+shorzsplit x ks = unsafePerformIO (C.horzsplit__6 x ks)
 {-# NOINLINE shorzsplit #-}
 
 ssolve :: SX -> SX -> SX
-ssolve a b = unsafePerformIO (C.solve'' a b)
+ssolve a b = unsafePerformIO (C.solve__1 a b)
 {-# NOINLINE ssolve #-}
 
 sones :: (Int,Int) -> SX
-sones (r,c) = unsafePerformIO (genSX_ones r c)
+sones (r,c) = unsafePerformIO (sx_ones__3 r c)
 {-# NOINLINE sones #-}
 
 szeros :: (Int,Int) -> SX
-szeros (r,c) = unsafePerformIO (genSX_zeros r c)
+szeros (r,c) = unsafePerformIO (sx_zeros__3 r c)
 {-# NOINLINE szeros #-}
 
 instance Num SX where
@@ -150,7 +149,7 @@ instance Num SX where
   {-# NOINLINE (-) #-}
   (*) x y = unsafePerformIO (sx___mul__ x y)
   {-# NOINLINE (*) #-}
-  fromInteger x = unsafePerformIO (sx'''''' (fromInteger x))
+  fromInteger x = unsafePerformIO (sx__8 (fromInteger x :: Double))
   {-# NOINLINE fromInteger #-}
   abs x = unsafePerformIO (sx_fabs x)
   {-# NOINLINE abs #-}
@@ -158,13 +157,13 @@ instance Num SX where
   {-# NOINLINE signum #-}
 
 instance Fractional SX where
-  (/) x y = unsafePerformIO (sx___truediv__ x y)
+  (/) x y = unsafePerformIO (sx___truediv____0 x y)
   {-# NOINLINE (/) #-}
-  fromRational x = unsafePerformIO (sx'''''' (fromRational x))
+  fromRational x = unsafePerformIO (sx__8 (fromRational x :: Double))
   {-# NOINLINE fromRational #-}
 
 instance Floating SX where
-  pi = unsafePerformIO (sx'''''' pi)
+  pi = unsafePerformIO (sx__8 (pi :: Double))
   {-# NOINLINE pi #-}
   (**) x y = unsafePerformIO (sx___pow__ x y)
   {-# NOINLINE (**) #-}

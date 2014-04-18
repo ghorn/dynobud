@@ -12,15 +12,15 @@ import qualified Data.Set as S
 import qualified Data.Foldable as F
 import qualified Data.Vector as V
 
-import Casadi.Wrappers.Classes.Sparsity ( Sparsity, sparsity' )
-import Casadi.Wrappers.Classes.SX ( SX, sx )
-import Casadi.Wrappers.Classes.MX ( MX, mx )
-import Casadi.Wrappers.Classes.IOScheme ( ioScheme', ioScheme_size, ioScheme_entry )
-import Casadi.Wrappers.Enums ( InputOutputScheme(..) )
+import Casadi.Symbolic.Classes.Sparsity -- ( Sparsity, sparsity' )
+import Casadi.Symbolic.Classes.SX -- ( SX, sx )
+import Casadi.Symbolic.Classes.MX -- ( MX, mx )
+import Casadi.Symbolic.Classes.IOScheme -- ( ioScheme', ioScheme_size, ioScheme_entry )
+import Casadi.Symbolic.Enums ( InputOutputScheme(..) )
 
 mkScheme :: forall a . IO a -> InputOutputScheme -> [(String,a)] -> IO (V.Vector a)
 mkScheme newEmpty schemeEnum userVals = do
-  sch <- ioScheme' schemeEnum
+  sch <- ioScheme__22 schemeEnum
   size <- ioScheme_size sch
   let ks = take size [(0::Int)..]
   entries <- mapM (ioScheme_entry sch) ks
@@ -54,10 +54,10 @@ mkScheme newEmpty schemeEnum userVals = do
   fmap V.fromList $ mapM getElem entries
 
 mkSchemeSX :: InputOutputScheme -> [(String,SX)] -> IO (V.Vector SX)
-mkSchemeSX = mkScheme sx
+mkSchemeSX = mkScheme sx__14
 
 mkSchemeMX :: InputOutputScheme -> [(String,MX)] -> IO (V.Vector MX)
-mkSchemeMX = mkScheme mx
+mkSchemeMX = mkScheme mx__8
 
 mkSchemeCRSSparsity :: InputOutputScheme -> [(String,Sparsity)] -> IO (V.Vector Sparsity)
-mkSchemeCRSSparsity = mkScheme sparsity'
+mkSchemeCRSSparsity = mkScheme sparsity__1

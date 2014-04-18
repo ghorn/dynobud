@@ -6,8 +6,8 @@ module Dyno.Casadi.MXFunction
 
 import Data.Vector ( Vector )
 
-import qualified Casadi.Wrappers.Classes.MXFunction as C
+import qualified Casadi.Symbolic.Classes.MXFunction as C
 import Dyno.Casadi.MX ( MX )
 
 mxFunction :: Vector MX -> Vector MX -> IO C.MXFunction
-mxFunction = C.mxFunction''
+mxFunction = C.mxFunction__0

@@ -8,7 +8,7 @@ module Dyno.Casadi.SXElement
 import qualified Data.Vector as V
 import System.IO.Unsafe ( unsafePerformIO )
 
-import Casadi.Wrappers.Classes.SXElement
+import Casadi.Symbolic.Classes.SXElement
 
 import Dyno.Casadi.SX ( svector )
 import Dyno.Vectorize
@@ -54,17 +54,17 @@ instance Num SXElement where
   {-# NOINLINE abs #-}
   signum x = unsafePerformIO (sxElement_sign x)
   {-# NOINLINE signum #-}
-  fromInteger x = unsafePerformIO (sxElement' (fromInteger x))
+  fromInteger x = unsafePerformIO (sxElement__0 (fromInteger x :: Double))
   {-# NOINLINE fromInteger #-}
 
 instance Fractional SXElement where
-  (/) x y = unsafePerformIO (sxElement___truediv__ x y)
+  (/) x y = unsafePerformIO (sxElement___truediv____0 x y)
   {-# NOINLINE (/) #-}
-  fromRational x = unsafePerformIO (sxElement' (fromRational x))
+  fromRational x = unsafePerformIO (sxElement__0 (fromRational x :: Double))
   {-# NOINLINE fromRational #-}
 
 instance Floating SXElement where
-  pi = unsafePerformIO (sxElement' pi)
+  pi = unsafePerformIO (sxElement__0 (pi :: Double))
   {-# NOINLINE pi #-}
   (**) x y = unsafePerformIO (sxElement___pow__ x y)
   {-# NOINLINE (**) #-}

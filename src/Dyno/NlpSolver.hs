@@ -50,22 +50,22 @@ import Data.IORef ( newIORef, readIORef, writeIORef )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
 
-import Casadi.Wrappers.Enums ( InputOutputScheme(..) )
-import Casadi.Callback
-import Casadi.Wrappers.Classes.Function ( function_getStat, castFunction )
-import Casadi.Wrappers.Classes.PrintableObject ( printableObject_getDescription )
-import Casadi.Wrappers.Classes.GenericType
-import Casadi.Wrappers.Classes.NLPSolver
-import Casadi.Wrappers.Classes.IOInterfaceFunction
+import Casadi.Symbolic.Enums ( InputOutputScheme(..) )
+import Casadi.Symbolic.Classes.Function ( function_getStat, castFunction )
+import Casadi.Symbolic.Classes.PrintableObject ( printableObject_getDescription )
+import Casadi.Symbolic.Classes.GenericType
+import Casadi.Symbolic.Classes.NLPSolver
+import Casadi.Symbolic.Classes.IOInterfaceFunction
 --import Casadi.Wrappers.Classes.CasadiOptions
 
+import Dyno.Casadi.Callback ( makeCallback )
 import Dyno.Casadi.DMatrix
 import Dyno.Casadi.SX
 import Dyno.Casadi.SXElement ( SXElement )
 import Dyno.Casadi.Function
 import qualified Dyno.Casadi.Option as Op
 import Dyno.Casadi.SharedObject ( soInit )
---import qualified Casadi.Wrappers.Classes.Function as C
+import qualified Casadi.Symbolic.Classes.Function as C
 --import qualified Casadi.Wrappers.Classes.Sparsity as C
 
 import Dyno.Vectorize ( Vectorize(..) )
@@ -91,7 +91,7 @@ setInput getLen name x = do
   let nx' = V.length x
       nx = getLen nlpState
   when (nx /= nx') $ error $ name ++ " dimension mismatch, " ++ show nx ++ " (true) /= " ++ show nx' ++ " (given)"
-  liftIO $ ioInterfaceFunction_setInput''''' (isSolver nlpState) x name
+  liftIO $ ioInterfaceFunction_setInput__3 (isSolver nlpState) x name
   return ()
 
 setX0 :: forall x p g. View x => VD x -> NlpSolver x p g ()
@@ -116,7 +116,7 @@ setP = setInput isNp "p" . unJ
 getInput :: String -> NlpSolver x p g (Vector Double)
 getInput name = do
   nlpState <- ask
-  liftIO $ fmap ddata $ ioInterfaceFunction_input'' (isSolver nlpState) name
+  liftIO $ fmap ddata $ ioInterfaceFunction_input__0 (isSolver nlpState) name
 
 getX0 :: View x => NlpSolver x p g (VD x)
 getX0 = liftM mkJ $ getInput "x0"
@@ -139,7 +139,7 @@ getP = liftM mkJ $ getInput "p"
 getOutput :: String -> NlpSolver x p g (Vector Double)
 getOutput name = do
   nlpState <- ask
-  liftIO $ fmap ddata $ ioInterfaceFunction_output'' (isSolver nlpState) name
+  liftIO $ fmap ddata $ ioInterfaceFunction_output__0 (isSolver nlpState) name
 
 getF :: NlpSolver x p g (VD S)
 getF = liftM mkJ $ getOutput "f"
@@ -178,7 +178,7 @@ solve = do
   solveStatus <- liftIO $ do
 
     stop <- newEmptyMVar -- mvar that will be filled when nlp finishes
-    _ <- forkIO (functionSolveSafe nlp >> putMVar stop ())
+    _ <- forkIO (C.function_solve nlp >> putMVar stop ())
     -- wait until nlp finishes
     ret <- try (takeMVar stop)
     case ret of Right () -> return () -- no exceptions
@@ -292,11 +292,11 @@ runNlpSolver solverStuff nlpFun callback' (NlpSolver nlpMonad) = do
         callbackRet <- case callback' of
           Nothing -> return True
           Just callback -> do
-            xval <- fmap (mkJ . ddata . ddense) $ ioInterfaceFunction_output function' 0
+            xval <- fmap (mkJ . ddata . ddense) $ ioInterfaceFunction_output__2 function' 0
             callback xval
         interrupt <- readIORef intref
         return $ if callbackRet && not interrupt then 0 else fromIntegral (solverInterruptCode solverStuff)
-  casadiCallback <- makeCallback cb >>= genericType''''''''''''
+  casadiCallback <- makeCallback cb >>= genericType__0
   Op.setOption solver "iteration_callback" casadiCallback
 --  grad_f <- gradient nlp 0 0
 --  soInit grad_f

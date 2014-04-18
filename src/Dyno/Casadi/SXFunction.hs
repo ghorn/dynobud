@@ -6,8 +6,8 @@ module Dyno.Casadi.SXFunction
 
 import Data.Vector ( Vector )
 
-import qualified Casadi.Wrappers.Classes.SXFunction as C
+import qualified Casadi.Symbolic.Classes.SXFunction as C
 import Dyno.Casadi.SX ( SX )
 
 sxFunction :: Vector SX -> Vector SX -> IO C.SXFunction
-sxFunction = C.sxFunction'''
+sxFunction = C.sxFunction__0

@@ -3,14 +3,14 @@
 module Dyno.Snopt ( SS.SnoptSolver, snoptSolver ) where
 
 --import qualified Data.Vector as V
-import qualified Casadi.Wrappers.Classes.SnoptSolver as SS
+import qualified Casadi.SnoptInterface.Classes.SnoptSolver as SS
 
 import Dyno.NlpSolver ( NlpSolverStuff(..), Opt(..) )
 
 snoptSolver :: NlpSolverStuff SS.SnoptSolver
 snoptSolver =
   NlpSolverStuff
-  { nlpConstructor = SS.snoptSolver'
+  { nlpConstructor = SS.snoptSolver__0
   , defaultOptions = [ ("_iprint", Opt (0::Int))
 --                       , ("_isumm", Opt (6::Int))
 --                       , ("_scale_option", Opt (0::Int))

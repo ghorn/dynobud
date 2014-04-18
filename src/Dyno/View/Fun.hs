@@ -36,8 +36,8 @@ import Dyno.Casadi.SXFunction ( SXFunction, sxFunction )
 import Dyno.Casadi.Option
 import Dyno.Casadi.SharedObject
 
-import qualified Casadi.Wrappers.Classes.MXFunction as M
-import qualified Casadi.Wrappers.Classes.SharedObject as C
+import qualified Casadi.Symbolic.Classes.MXFunction as M
+import qualified Casadi.Symbolic.Classes.SharedObject as C
 
 import Dyno.View.Symbolic ( Symbolic(..) )
 import Dyno.View.View
@@ -136,8 +136,8 @@ toSXFun name f = do
 -- | expand an MXFunction
 expandMXFun :: MXFun f g -> IO (SXFun f g)
 expandMXFun (MXFun mxf) = do
-  sxf <- M.mxFunction_expand' mxf
-  C.sharedObject_init' sxf
+  sxf <- M.mxFunction_expand__0 mxf
+  C.sharedObject_init__0 sxf
   return (SXFun sxf)
 
 -- | call an MXFunction on symbolic inputs, getting symbolic outputs

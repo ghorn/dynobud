@@ -25,14 +25,11 @@ import qualified Data.Vector as V
 import qualified Data.Sequence as Seq
 import Data.Serialize
 import System.IO.Unsafe ( unsafePerformIO )
-import Casadi.Wrappers.Classes.Sparsity ( sparsity_triu )
-import Casadi.Wrappers.Classes.SX --( sx''''''''' )
-import Casadi.Wrappers.Classes.MX --( mx'''''''''' )
-import Casadi.Wrappers.Classes.DMatrix
-import Casadi.Wrappers.Classes.GenSX ( GenSXClass(..) )
-import Casadi.Wrappers.Classes.GenMX ( GenMXClass(..) )
-import Casadi.Wrappers.Classes.GenDMatrix ( GenDMatrixClass(..) )
-import qualified Casadi.Wrappers.Tools as C
+import Casadi.Symbolic.Classes.Sparsity ( sparsity_triu )
+import Casadi.Symbolic.Classes.SX --( sx''''''''' )
+import Casadi.Symbolic.Classes.MX --( mx'''''''''' )
+import Casadi.Symbolic.Classes.DMatrix
+import qualified Casadi.Symbolic.Tools as C
 
 import qualified Dyno.Casadi.SX as SX
 import qualified Dyno.Casadi.MX as MX
@@ -86,8 +83,8 @@ toMatrix c = unsafePerformIO $ do
     "toMatrix mismatch, dim: " ++ show n ++ ", expected: " ++
     show expected ++ ", actual: " ++ show actual
   sp <- sparsity_triu n
-  triu <- sx''''' sp xs'
-  C.triu2symm'' (castGenSX triu)
+  triu <- sx__9 sp xs'
+  C.triu2symm__1 triu
 {-# NOINLINE toMatrix #-}
 
 toMatrix' :: forall f . View f => J (Cov f) MX -> MX
@@ -95,8 +92,8 @@ toMatrix' c = unsafePerformIO $ do
   let mymx = unJ c
       n = covN (split c)
   sp <- sparsity_triu n
-  triu <- mx'''' sp mymx -- :: Sparsity -> MX -> IO MX
-  C.triu2symm''' (castGenMX triu)
+  triu <- mx__4 sp mymx -- :: Sparsity -> MX -> IO MX
+  C.triu2symm__0 triu
 {-# NOINLINE toMatrix' #-}
 
 toMatrix'' :: forall f . View f => J (Cov f) DMatrix -> DMatrix
@@ -115,8 +112,8 @@ toMatrix'' c = unsafePerformIO $ do
     "toMatrix mismatch, dim: " ++ show n ++ ", expected: " ++
     show expected ++ ", actual: " ++ show actual
   sp <- sparsity_triu n
-  triu <- dmatrix''''' sp xs'
-  C.triu2symm' (castGenDMatrix triu)
+  triu <- dmatrix__6 sp xs'
+  C.triu2symm__2 triu
 {-# NOINLINE toMatrix'' #-}
 
 diag :: View f => J f SX -> J (Cov f) SX
@@ -144,15 +141,15 @@ diag'' = fromMatrix'' . DMatrix.ddiag . unJ
 
 -- todo: this is way too dense
 fromMatrix :: View f => SX -> J (Cov f) SX
-fromMatrix x = unsafePerformIO $ fmap mkJ $ C.vecNZ'' (SX.striu (SX.sdense x))
+fromMatrix x = unsafePerformIO $ fmap mkJ $ C.vecNZ__1 (SX.striu (SX.sdense x))
 {-# NOINLINE fromMatrix #-}
 
 fromMatrix' :: View f => MX -> J (Cov f) MX
-fromMatrix' x = unsafePerformIO $ fmap mkJ $ C.vecNZ''' (MX.triu (MX.dense x))
+fromMatrix' x = unsafePerformIO $ fmap mkJ $ C.vecNZ__0 (MX.triu (MX.dense x))
 {-# NOINLINE fromMatrix' #-}
 
 fromMatrix'' :: View f => DMatrix -> J (Cov f) DMatrix
-fromMatrix'' x = unsafePerformIO $ fmap mkJ $ C.vecNZ' (DMatrix.dtriu (DMatrix.ddense x))
+fromMatrix'' x = unsafePerformIO $ fmap mkJ $ C.vecNZ__2 (DMatrix.dtriu (DMatrix.ddense x))
 {-# NOINLINE fromMatrix'' #-}
 
 covN :: forall f a . View f => Cov f a -> Int
