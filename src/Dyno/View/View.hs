@@ -145,8 +145,8 @@ newtype JV f a = JV { unJV :: f a } deriving Generic
 instance Vectorize f => View (JV f) where
   cat :: forall a . Viewable a => JV f a -> J (JV f) a
   cat = mkJ . vveccat . vectorize . unJV
-  size = const $ vlength (empty :: f ())
-  sizes = const . Seq.singleton . (vlength (empty :: f ()) +)
+  size = const $ vlength (Proxy :: Proxy f)
+  sizes = const . Seq.singleton . (vlength (Proxy :: Proxy f) +)
   split :: forall a . Viewable a => J (JV f) a -> JV f a
   split = JV . devectorize . flip vvertsplit ks. unJ
     where

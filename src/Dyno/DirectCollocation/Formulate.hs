@@ -531,7 +531,7 @@ makeGuess tf guessX guessZ guessU cov' parm =
   where
     -- timestep
     dt = tf / fromIntegral n
-    n = vlength (undefined :: Vec n ())
+    n = vlength (Proxy :: Proxy (Vec n))
 
     -- initial time at each collocation stage
     t0s :: Vec n Double
@@ -553,7 +553,7 @@ makeGuess tf guessX guessZ guessU cov' parm =
     taus :: Vec deg Double
     taus = mkTaus deg
 
-    deg = vlength (undefined :: Vec deg ())
+    deg = vlength (Proxy :: Proxy (Vec deg))
 
     v2j :: Vectorize v => v Double -> J (JV v) DMatrix
     v2j = mkJ . dvector . vectorize

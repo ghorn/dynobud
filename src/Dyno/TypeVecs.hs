@@ -86,11 +86,6 @@ instance Dim n => Vectorize (Vec n) where
   devectorize = mkVec
   empty = pure ()
 
-instance Dim n => GVectorize (Vec n) where
-  gvectorize = unVec
-  gdevectorize = mkVec
-  gempty = pure ()
-
 tvtranspose :: Vec n (Vec m a) -> Vec m (Vec n a)
 tvtranspose vec = mkVec $ fmap mkVec $ T.sequence (unVec (fmap unVec vec))
 

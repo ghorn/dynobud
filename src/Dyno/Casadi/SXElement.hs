@@ -23,8 +23,8 @@ casadiSsyms name k = fmap V.fromList $ mapM (sxElement_sym . (name ++) . show) (
 funToSX :: (Vectorize f, Vectorize g) =>
            (forall a . Floating a => f a -> g a) -> IO (f SXElement, g SXElement)
 funToSX f = do
-  let asFunOf :: (f Double -> g Double) -> f Double
-      asFunOf _ = undefined
+  let asFunOf :: (f Double -> g Double) -> Proxy f
+      asFunOf = const Proxy
       len = vlength (asFunOf f)
   inputsVec <- casadiSsyms "x" len
   let inputs = devectorize inputsVec
@@ -34,8 +34,8 @@ funToSX f = do
 funSXToSX :: (Vectorize f, Vectorize g) =>
            (f SXElement -> g SXElement) -> IO (f SXElement, g SXElement)
 funSXToSX f = do
-  let asFunOf :: (f SXElement -> g SXElement) -> f SXElement
-      asFunOf _ = undefined
+  let asFunOf :: (f SXElement -> g SXElement) -> Proxy f
+      asFunOf = const Proxy
       len = vlength (asFunOf f)
   inputsVec <- casadiSsyms "x" len
   let inputs = devectorize inputsVec
