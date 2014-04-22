@@ -224,8 +224,8 @@ executable dynoplot
 
 --test-suite lp_tests
 --  type: exitcode-stdio-1.0
---  hs-source-dirs:      examples
---  main-is:             Test.hs
+--  hs-source-dirs:      tests
+--  main-is:             OldTests.hs
 --  default-language:    Haskell2010
 --  build-depends:       dynobud,
 --                       vector,
