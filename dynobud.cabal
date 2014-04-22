@@ -187,22 +187,36 @@ executable dynoplot
                        cmdargs
   ghc-options:         -O2
 
-test-suite lp_tests
+--test-suite lp_tests
+--  type: exitcode-stdio-1.0
+--  hs-source-dirs:      examples
+--  main-is:             Test.hs
+--  default-language:    Haskell2010
+--  build-depends:       dynobud,
+--                       vector,
+--                       linear,
+--                       hmatrix-glpk,
+--                       QuickCheck >= 2,
+--                       HUnit,
+--                       test-framework,
+--                       test-framework-hunit,
+--                       test-framework-quickcheck2,
+--                       base >=4.6 && <4.8
+--  ghc-options:         -O2
+
+test-suite unit-tests
   type: exitcode-stdio-1.0
-  hs-source-dirs:      examples
-  main-is:             Test.hs
+  hs-source-dirs:      tests
+  main-is:             UnitTests.hs
   default-language:    Haskell2010
   build-depends:       dynobud,
-                       vector,
-                       linear,
-                       hmatrix-glpk,
                        QuickCheck >= 2,
                        HUnit,
                        test-framework,
                        test-framework-hunit,
                        test-framework-quickcheck2,
                        base >=4.6 && <4.8
-  ghc-options:         -O2
+--  ghc-options:         -O2
 
 --:set -isrc -iexamples -iexamples/CovSpring
 --:set -i../examples -i../examples/CovSpring -i../../src
