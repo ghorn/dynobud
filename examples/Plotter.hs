@@ -8,7 +8,7 @@ import Control.Monad ( when, forever )
 import Data.ByteString.Char8 ( pack )
 import Data.Serialize
 import Data.Vector ( Vector )
-import qualified System.ZMQ3 as ZMQ
+import qualified System.ZMQ4 as ZMQ
 import System.Console.CmdArgs ( (&=), Data, Typeable )
 import qualified System.Console.CmdArgs as CA
 

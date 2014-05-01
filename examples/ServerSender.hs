@@ -5,7 +5,7 @@ module ServerSender ( withCallback ) where
 
 import Data.ByteString.Char8 ( pack )
 import Data.Serialize
-import qualified System.ZMQ3 as ZMQ
+import qualified System.ZMQ4 as ZMQ
 
 import Dyno.DirectCollocation.Dynamic
 
