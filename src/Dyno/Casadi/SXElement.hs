@@ -8,7 +8,7 @@ module Dyno.Casadi.SXElement
 import qualified Data.Vector as V
 import System.IO.Unsafe ( unsafePerformIO )
 
-import Casadi.Symbolic.Classes.SXElement
+import Casadi.Core.Classes.SXElement
 
 import Dyno.Casadi.SX ( svector )
 import Dyno.Vectorize

@@ -25,11 +25,11 @@ import qualified Data.Vector as V
 import qualified Data.Sequence as Seq
 import Data.Serialize
 import System.IO.Unsafe ( unsafePerformIO )
-import Casadi.Symbolic.Classes.Sparsity ( sparsity_triu )
-import Casadi.Symbolic.Classes.SX --( sx''''''''' )
-import Casadi.Symbolic.Classes.MX --( mx'''''''''' )
-import Casadi.Symbolic.Classes.DMatrix
-import qualified Casadi.Symbolic.Tools as C
+import Casadi.Core.Classes.Sparsity ( sparsity_triu )
+import Casadi.Core.Classes.SX --( sx''''''''' )
+import Casadi.Core.Classes.MX --( mx'''''''''' )
+import Casadi.Core.Classes.DMatrix
+import qualified Casadi.Core.Tools as C
 
 import qualified Dyno.Casadi.SX as SX
 import qualified Dyno.Casadi.MX as MX

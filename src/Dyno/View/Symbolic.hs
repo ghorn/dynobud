@@ -12,11 +12,11 @@ module Dyno.View.Symbolic
 import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 
-import Casadi.Symbolic.Classes.SharedObject
-import Casadi.Symbolic.Classes.Function ( Function, castFunction )
-import Casadi.Symbolic.Classes.SXFunction
-import Casadi.Symbolic.Classes.MXFunction
-import Casadi.Symbolic.Enums ( InputOutputScheme(..) )
+import Casadi.Core.Classes.SharedObject
+import Casadi.Core.Classes.Function ( Function, castFunction )
+import Casadi.Core.Classes.SXFunction
+import Casadi.Core.Classes.MXFunction
+import Casadi.Core.Enums ( InputOutputScheme(..) )
 
 import Dyno.View.View ( View(..), J, mkJ )
 import Dyno.View.Viewable ( Viewable(..) )

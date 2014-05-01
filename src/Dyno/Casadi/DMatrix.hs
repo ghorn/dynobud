@@ -11,9 +11,9 @@ module Dyno.Casadi.DMatrix
 import qualified Data.Vector as V
 import System.IO.Unsafe ( unsafePerformIO )
 
-import Casadi.Symbolic.Classes.Sparsity
-import Casadi.Symbolic.Classes.DMatrix
-import qualified Casadi.Symbolic.Tools as C
+import Casadi.Core.Classes.Sparsity
+import Casadi.Core.Classes.DMatrix
+import qualified Casadi.Core.Tools as C
 
 -- | matrix matrix product
 dmm :: DMatrix -> DMatrix -> DMatrix

@@ -18,10 +18,10 @@ import Data.Vector ( Vector )
 import qualified Data.Vector as V
 import System.IO.Unsafe ( unsafePerformIO )
 
-import Casadi.Symbolic.Classes.MX
-import Casadi.Symbolic.Classes.DMatrix ( DMatrix )
-import Casadi.Symbolic.Classes.Sparsity ( Sparsity )
-import qualified Casadi.Symbolic.Tools as C
+import Casadi.Core.Classes.MX
+import Casadi.Core.Classes.DMatrix ( DMatrix )
+import Casadi.Core.Classes.Sparsity ( Sparsity )
+import qualified Casadi.Core.Tools as C
 
 sym :: String -> IO MX
 sym x = fmap castMX (mx_sym__5 x)

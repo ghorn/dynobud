@@ -50,12 +50,12 @@ import Data.IORef ( newIORef, readIORef, writeIORef )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
 
-import Casadi.Symbolic.Enums ( InputOutputScheme(..) )
-import Casadi.Symbolic.Classes.Function ( function_getStat, castFunction )
-import Casadi.Symbolic.Classes.PrintableObject ( printableObject_getDescription )
-import Casadi.Symbolic.Classes.GenericType
-import Casadi.Symbolic.Classes.NLPSolver
-import Casadi.Symbolic.Classes.IOInterfaceFunction
+import Casadi.Core.Enums ( InputOutputScheme(..) )
+import Casadi.Core.Classes.Function ( function_getStat, castFunction )
+import Casadi.Core.Classes.PrintableObject ( printableObject_getDescription )
+import Casadi.Core.Classes.GenericType
+import Casadi.Core.Classes.NLPSolver
+import Casadi.Core.Classes.IOInterfaceFunction
 --import Casadi.Wrappers.Classes.CasadiOptions
 
 import Dyno.Casadi.Callback ( makeCallback )
@@ -65,7 +65,7 @@ import Dyno.Casadi.SXElement ( SXElement )
 import Dyno.Casadi.Function
 import qualified Dyno.Casadi.Option as Op
 import Dyno.Casadi.SharedObject ( soInit )
-import qualified Casadi.Symbolic.Classes.Function as C
+import qualified Casadi.Core.Classes.Function as C
 --import qualified Casadi.Wrappers.Classes.Sparsity as C
 
 import Dyno.Vectorize ( Vectorize(..) )
@@ -394,7 +394,6 @@ solveNlp' solverStuff nlp callback =
     setUbg ubg
 
     solve'
-
 
 inf :: Double
 inf = read "Infinity"

@@ -9,9 +9,9 @@ module Dyno.Casadi.Option
        ) where
 
 import Data.Vector ( Vector )
-import Casadi.Symbolic.Classes.Function ( Function )
-import Casadi.Symbolic.Classes.GenericType
-import Casadi.Symbolic.Classes.OptionsFunctionality
+import Casadi.Core.Classes.Function ( Function )
+import Casadi.Core.Classes.GenericType
+import Casadi.Core.Classes.OptionsFunctionality
   ( OptionsFunctionalityClass, optionsFunctionality_setOption )
 
 data Opt where

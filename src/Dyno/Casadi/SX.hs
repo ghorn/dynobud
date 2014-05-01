@@ -17,11 +17,11 @@ module Dyno.Casadi.SX
 import qualified Data.Vector as V
 import System.IO.Unsafe ( unsafePerformIO )
 
-import Casadi.Symbolic.Classes.SXElement ( SXElement )
-import Casadi.Symbolic.Classes.SX
-import Casadi.Symbolic.Classes.DMatrix ( DMatrix )
-import Casadi.Symbolic.Classes.Sparsity ( Sparsity )
-import qualified Casadi.Symbolic.Tools as C
+import Casadi.Core.Classes.SXElement ( SXElement )
+import Casadi.Core.Classes.SX
+import Casadi.Core.Classes.DMatrix ( DMatrix )
+import Casadi.Core.Classes.Sparsity ( Sparsity )
+import qualified Casadi.Core.Tools as C
 
 ssym :: String -> IO SX
 ssym = sx_sym__5

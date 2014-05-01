@@ -36,8 +36,8 @@ import Dyno.Casadi.SXFunction ( SXFunction, sxFunction )
 import Dyno.Casadi.Option
 import Dyno.Casadi.SharedObject
 
-import qualified Casadi.Symbolic.Classes.MXFunction as M
-import qualified Casadi.Symbolic.Classes.SharedObject as C
+import qualified Casadi.Core.Classes.MXFunction as M
+import qualified Casadi.Core.Classes.SharedObject as C
 
 import Dyno.View.Symbolic ( Symbolic(..) )
 import Dyno.View.View

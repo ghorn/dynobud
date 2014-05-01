@@ -12,11 +12,11 @@ import qualified Data.Set as S
 import qualified Data.Foldable as F
 import qualified Data.Vector as V
 
-import Casadi.Symbolic.Classes.Sparsity -- ( Sparsity, sparsity' )
-import Casadi.Symbolic.Classes.SX -- ( SX, sx )
-import Casadi.Symbolic.Classes.MX -- ( MX, mx )
-import Casadi.Symbolic.Classes.IOScheme -- ( ioScheme', ioScheme_size, ioScheme_entry )
-import Casadi.Symbolic.Enums ( InputOutputScheme(..) )
+import Casadi.Core.Classes.Sparsity -- ( Sparsity, sparsity' )
+import Casadi.Core.Classes.SX -- ( SX, sx )
+import Casadi.Core.Classes.MX -- ( MX, mx )
+import Casadi.Core.Classes.IOScheme -- ( ioScheme', ioScheme_size, ioScheme_entry )
+import Casadi.Core.Enums ( InputOutputScheme(..) )
 
 mkScheme :: forall a . IO a -> InputOutputScheme -> [(String,a)] -> IO (V.Vector a)
 mkScheme newEmpty schemeEnum userVals = do

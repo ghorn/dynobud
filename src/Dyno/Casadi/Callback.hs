@@ -10,7 +10,7 @@ import Foreign.C.Types
 import Foreign.Ptr ( Ptr )
 import Foreign.ForeignPtr ( newForeignPtr_ )
 
-import Casadi.Symbolic.Data
+import Casadi.Core.Data
 import Casadi.Internal.WrapReturn ( WrapReturn(..) )
 import Casadi.Internal.Callback ( mkCallback, c_newCallbackHaskell )
 

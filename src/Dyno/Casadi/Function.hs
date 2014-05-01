@@ -11,10 +11,10 @@ import qualified Data.Vector as V
 import System.IO.Unsafe ( unsafePerformIO )
 import Control.Monad ( zipWithM_ )
 
-import qualified Casadi.Symbolic.Classes.MXFunction as C
-import qualified Casadi.Symbolic.Classes.IOInterfaceFunction as C
-import qualified Casadi.Symbolic.Classes.Function as C
-import qualified Casadi.Symbolic.Classes.ExternalFunction as C
+import qualified Casadi.Core.Classes.MXFunction as C
+import qualified Casadi.Core.Classes.IOInterfaceFunction as C
+import qualified Casadi.Core.Classes.Function as C
+import qualified Casadi.Core.Classes.ExternalFunction as C
 
 import Dyno.Casadi.SX ( SX )
 import Dyno.Casadi.MX ( MX )
