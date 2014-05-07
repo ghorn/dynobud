@@ -482,7 +482,7 @@ solveStaticOcp ::
   -> (Maybe Double, Maybe Double)
   -> Int -> Int
   -> Maybe (CollTrajMeta -> DynCollTraj (Vector Double) -> IO Bool)
-  -> IO ()
+  -> IO (Either String String, Vector Double)
 solveStaticOcp solverStuff dae mayer bc ocp tbnds n deg cb =
   reifyOcpPhase dae mayer bc ocp tbnds n deg woo
     where
