@@ -16,7 +16,6 @@ module Dyno.DirectCollocation.Dynamic
        ) where
 
 import Data.List ( mapAccumL )
-import Data.Proxy ( Proxy(..) )
 import Data.Tree ( Tree(..) )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
