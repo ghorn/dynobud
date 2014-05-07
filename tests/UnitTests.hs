@@ -2,9 +2,13 @@
 
 module Main ( main ) where
 
-import Test.Framework ( Test, defaultMain, testGroup )
+import Data.Monoid ( mempty )
+import Test.QuickCheck hiding ( Result, reason )
+
+import Test.Framework ( Test, ColorMode(..), RunnerOptions'(..), TestOptions'(..)
+                      , defaultMainWithOpts, plusTestOptions, testGroup
+                      )
 import Test.Framework.Providers.QuickCheck2 ( testProperty )
-import Test.QuickCheck.Property
 
 import Dyno.Ipopt ( IpoptSolver, ipoptSolver )
 import Dyno.Nats
@@ -28,7 +32,7 @@ ocpTests :: [Test]
 ocpTests =
   [ testGroup "linear ocp tests"
     [ testProperty "feasible is solvable"
-      (feasibleOcpIsFeasible (quietIpoptSolver 1e-9) :: FeasibleLinearOcp D3 D2 -> Property)
+      (feasibleOcpIsFeasible (quietIpoptSolver 1e-10) :: FeasibleLinearOcp D3 D2 -> Property)
 --    , testProperty "infeasible is not solvable"
 --      (infeasibleOcpIsInfeasible quietIpoptSolver :: InfeasibleLinearOcp n m -> Property)
     ]
@@ -38,13 +42,19 @@ lpTests :: [Test]
 lpTests =
   [ testGroup "lps"
     [ testProperty "ipopt solves lps"
-      (matchesGlpk (quietIpoptSolver 1e-10) :: Lp D3 D2 -> Property)
+      (matchesGlpk (quietIpoptSolver 1e-10) :: Lp D2 D1 -> Property)
     ]
   ]
 
 -- this uses test-framework to run all the tests
 main :: IO ()
-main = defaultMain [ testGroup "the dummy tests" dummyTests
-                   , testGroup "ocp tests" ocpTests
-                   , testGroup "lps/qps" lpTests
-                   ]
+main = do
+  defaultMainWithOpts
+    [ testGroup "the dummy tests" dummyTests
+    , testGroup "ocp tests" ocpTests
+    , mempty { topt_maximum_generated_tests = Just 3000
+             , topt_maximum_unsuitable_generated_tests = Just 10000
+             } `plusTestOptions`
+      testGroup "lps/qps" lpTests
+    ]
+    mempty { ropt_color_mode = Just ColorAlways }
