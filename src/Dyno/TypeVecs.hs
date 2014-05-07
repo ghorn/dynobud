@@ -206,7 +206,6 @@ instance Show a => Show (Vec n a) where
           showl []      = showChar '>'
           showl (y:ys)  = showChar ',' . shows y . showl ys
 
-
 data ReifiedDim (s :: *)
 
 retagDim :: (Proxy s -> a) -> proxy (ReifiedDim s) -> a

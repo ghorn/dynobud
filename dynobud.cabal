@@ -250,6 +250,10 @@ test-suite unit-tests
                        test-framework,
                        test-framework-hunit,
                        test-framework-quickcheck2,
+                       hmatrix,
+                       vector,
+                       linear,
+                       MemoTrie,
                        base >=4.6 && <4.8
 --  ghc-options:         -O2
 
