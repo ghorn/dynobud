@@ -251,6 +251,7 @@ test-suite unit-tests
                        test-framework-hunit,
                        test-framework-quickcheck2,
                        hmatrix,
+                       hmatrix-glpk,
                        vector,
                        linear,
                        MemoTrie,

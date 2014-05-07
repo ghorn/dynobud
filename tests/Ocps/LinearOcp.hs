@@ -4,7 +4,7 @@
 {-# Language FunctionalDependencies #-}
 {-# Language FlexibleInstances #-}
 
-module LinearOcp
+module Ocps.LinearOcp
        ( LinearOcp(..), IsLinearOcp(..)
        , FeasibleLinearOcp(..), InfeasibleLinearOcp(..)
        , runGenWithSeed

@@ -4,7 +4,7 @@
 {-# Language DeriveGeneric #-}
 {-# Language FlexibleContexts #-}
 
-module SolveLinearOcp
+module Ocps.SolveLinearOcp
        ( feasibleOcpIsFeasible, infeasibleOcpIsInfeasible
        ) where
 
@@ -24,11 +24,11 @@ import Dyno.Cov
 import Dyno.Nats
 import Dyno.TypeVecs
 
-import LinearOcp ( IsLinearOcp(..), LinearOcp(..)
-                 , FeasibleLinearOcp(..)
-                 , InfeasibleLinearOcp(..)
-                 --, runGenWithSeed
-                 )
+import Ocps.LinearOcp ( IsLinearOcp(..), LinearOcp(..)
+                      , FeasibleLinearOcp(..)
+                      , InfeasibleLinearOcp(..)
+                      --, runGenWithSeed
+                      )
 
 data Bcs n a = Bcs (Vec n a) (Vec n a) deriving (Functor, Generic1, Show)
 data X n a = X (Vec n a) deriving (Functor, Generic1, Show)
