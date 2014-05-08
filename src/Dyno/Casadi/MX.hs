@@ -17,11 +17,15 @@ module Dyno.Casadi.MX
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
 import System.IO.Unsafe ( unsafePerformIO )
+import Linear.Conjugate ( Conjugate(..) )
 
 import Casadi.Core.Classes.MX
 import Casadi.Core.Classes.DMatrix ( DMatrix )
 import Casadi.Core.Classes.Sparsity ( Sparsity )
 import qualified Casadi.Core.Tools as C
+
+instance Conjugate MX where
+  conjugate = id
 
 sym :: String -> IO MX
 sym x = fmap castMX (mx_sym__5 x)

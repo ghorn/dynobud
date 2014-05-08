@@ -16,12 +16,16 @@ module Dyno.Casadi.SX
 
 import qualified Data.Vector as V
 import System.IO.Unsafe ( unsafePerformIO )
+import Linear.Conjugate ( Conjugate(..) )
 
 import Casadi.Core.Classes.SXElement ( SXElement )
 import Casadi.Core.Classes.SX
 import Casadi.Core.Classes.DMatrix ( DMatrix )
 import Casadi.Core.Classes.Sparsity ( Sparsity )
 import qualified Casadi.Core.Tools as C
+
+instance Conjugate SX where
+  conjugate = id
 
 ssym :: String -> IO SX
 ssym = sx_sym__5

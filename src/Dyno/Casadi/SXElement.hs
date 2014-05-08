@@ -2,11 +2,12 @@
 {-# Language Rank2Types #-}
 
 module Dyno.Casadi.SXElement
-       ( funToSX, funSXToSX, SXElement, sxElement_sym
+       ( funToSX, funSXToSX, SXElement(), sxElement_sym
        ) where
 
 import qualified Data.Vector as V
 import System.IO.Unsafe ( unsafePerformIO )
+import Linear.Conjugate ( Conjugate(..) )
 
 import Casadi.Core.Classes.SXElement
 
@@ -15,6 +16,9 @@ import Dyno.Vectorize
 
 instance Show SXElement where
   show = show . svector . V.singleton
+
+instance Conjugate SXElement where
+  conjugate = id
 
 casadiSsyms :: String -> Int -> IO (V.Vector SXElement)
 casadiSsyms name k = fmap V.fromList $ mapM (sxElement_sym . (name ++) . show) (take k [(0::Int)..])
