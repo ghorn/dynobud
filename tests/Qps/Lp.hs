@@ -14,6 +14,7 @@ import Test.QuickCheck.Arbitrary
 import Test.QuickCheck hiding ( Result, reason )
 import Test.QuickCheck.Property
 import Test.QuickCheck.Monadic
+import Linear.Conjugate ( Conjugate(..) )
 
 import qualified Numeric.LinearProgramming as GLPK
 import qualified Data.Vector as V
@@ -46,6 +47,62 @@ data Coef a = Linear a
             | Nonlinear a
             | Zero
             deriving (Functor, Show, Eq)
+
+instance Num a => Num (Coef a) where
+  fromInteger 0 = Zero
+  fromInteger x = Linear (fromInteger x)
+  abs = fmap abs
+  signum = fmap signum
+  negate = fmap negate
+
+  x + Zero = x
+  Zero + y = y
+  (Linear x) + (Linear y)
+    -- | z == 0 = Zero
+    | otherwise = Linear z
+    where
+      z = x + y
+  (Nonlinear x) + (Nonlinear y)
+    -- | z == 0 = Zero
+    | otherwise = Nonlinear z
+    where
+      z = x + y
+  (Linear x) + (Nonlinear y)
+    -- | z == 0 = Zero
+    | otherwise = Nonlinear z
+    where
+      z = x + y
+  (Nonlinear x) + (Linear y)
+    -- | z == 0 = Zero
+    | otherwise = Nonlinear z
+    where
+      z = x + y
+
+  _ * Zero = Zero
+  Zero * _ = Zero
+  (Linear x) * (Linear y)
+    -- | z == 0 = Zero
+    | otherwise = Linear z
+    where
+      z = x * y
+  (Nonlinear x) * (Nonlinear y)
+    -- | z == 0 = Zero
+    | otherwise = Nonlinear z
+    where
+      z = x * y
+  (Linear x) * (Nonlinear y)
+    -- | z == 0 = Zero
+    | otherwise = Nonlinear z
+    where
+      z = x * y
+  (Nonlinear x) * (Linear y)
+    -- | z == 0 = Zero
+    | otherwise = Nonlinear z
+    where
+      z = x * y
+
+instance Conjugate a => Conjugate (Coef a) where
+  conjugate = fmap conjugate
 
 data Lp nx ng = Lp { px0 :: Vec nx Double
                    , pbx :: Vec nx (Double, Double)
