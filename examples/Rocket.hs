@@ -2,7 +2,9 @@
 
 module Main ( main ) where
 
+import Control.Monad ( void )
 --import Control.Concurrent ( threadDelay )
+
 import Dyno.Casadi.SXElement ( SXElement )
 import Dyno.OcpMonad
 import Dyno.Ipopt
@@ -79,7 +81,7 @@ myOcp time get = do
   --lagrangeTerm (1e-6*u*u + 1e-6*p*p + 1e-6*v*v + 1e-6*m*m)
 
 main :: IO ()
-main = withCallback gliderUrl gliderChannelName go
+main = void $ withCallback gliderUrl gliderChannelName go
   where
     n = 100
     deg = 3

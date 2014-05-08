@@ -2,6 +2,8 @@
 
 module Main ( main ) where
 
+import Control.Monad ( void )
+
 import Dyno.OcpMonad
 import Dyno.Ipopt
 --import Dyno.Snopt
@@ -62,7 +64,7 @@ myOcp time get = do
   lagrangeTerm obj
 
 main :: IO ()
-main = withCallback gliderUrl gliderChannelName go
+main = void $ withCallback gliderUrl gliderChannelName go
   where
     n = 100
     deg = 3
