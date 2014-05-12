@@ -34,6 +34,9 @@ you may need to do something like this on Debian/Ubuntu:
     >> cabal install gtk2hs-buildtools
 
     >> sudo apt-get install coinor-libipopt-dev
+    >> sudo apt-get install liblapack-dev
+    >> sudo apt-get install libblas-dev
+    >> sudo apt-get install libglpk-dev
     >> sudo apt-get install libgl1-mesa-dev
     >> sudo apt-get install libglu1-mesa-dev
     >> sudo apt-get install freeglut3-dev
