@@ -178,7 +178,7 @@ solve = do
   solveStatus <- liftIO $ do
 
     stop <- newEmptyMVar -- mvar that will be filled when nlp finishes
-    _ <- forkIO (C.function_solve nlp >> putMVar stop ())
+    _ <- forkIO (C.function_evaluate nlp >> putMVar stop ())
     -- wait until nlp finishes
     ret <- try (takeMVar stop)
     case ret of Right () -> return () -- no exceptions
