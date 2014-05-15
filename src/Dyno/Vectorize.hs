@@ -30,6 +30,7 @@ import qualified Data.Vector as V
 import Data.Foldable ( Foldable )
 import Data.Traversable ( Traversable )
 import Data.Proxy ( Proxy(..) )
+import qualified Linear
 
 import Dyno.Server.Accessors
 
@@ -60,6 +61,12 @@ instance (Lookup (f a), Generic (f a),
 instance (Lookup (f a), Generic (f a),
           Lookup (g a), Generic (g a),
           Lookup (h a), Generic (h a)) => Lookup (Triple f g h a)
+instance Vectorize Linear.V0
+instance Vectorize Linear.V1
+instance Vectorize Linear.V2
+instance Vectorize Linear.V3
+instance Vectorize Linear.V4
+instance Vectorize Linear.Quaternion
 
 fill :: Vectorize f => a -> f a
 fill x = fmap (const x) empty

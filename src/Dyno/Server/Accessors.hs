@@ -15,6 +15,7 @@ module Dyno.Server.Accessors
        ) where
 
 import Data.List ( intercalate )
+import qualified Linear
 import GHC.Generics
 
 showAccTree :: String -> AccessorTree a -> [String]
@@ -59,6 +60,61 @@ class GLookup f where
 
 class GLookupS f where
   gtoAccessorTreeS :: f a -> (b -> f a) -> [(String, AccessorTree b)]
+
+-- some instance from linear
+instance (Lookup a, Generic a) => Lookup (Linear.V0 a) where
+  toAccessorTree _ _ =
+    Data ("V0", "V0") []
+instance (Lookup a, Generic a) => Lookup (Linear.V1 a) where
+  toAccessorTree xyz f =
+    Data ("V1", "V1") [ ("x", toAccessorTree (getX xyz) (getX . f))
+                      ]
+    where
+      getX (Linear.V1 x) = x
+instance (Lookup a, Generic a) => Lookup (Linear.V2 a) where
+  toAccessorTree xyz f =
+    Data ("V2", "V2") [ ("x", toAccessorTree (getX xyz) (getX . f))
+                      , ("y", toAccessorTree (getY xyz) (getY . f))
+                      ]
+    where
+      getX (Linear.V2 x _) = x
+      getY (Linear.V2 _ y) = y
+instance (Lookup a, Generic a) => Lookup (Linear.V3 a) where
+  toAccessorTree xyz f =
+    Data ("V3", "V3") [ ("x", toAccessorTree (getX xyz) (getX . f))
+                      , ("y", toAccessorTree (getY xyz) (getY . f))
+                      , ("z", toAccessorTree (getZ xyz) (getZ . f))
+                      ]
+    where
+      getX (Linear.V3 x _ _) = x
+      getY (Linear.V3 _ y _) = y
+      getZ (Linear.V3 _ _ z) = z
+instance (Lookup a, Generic a) => Lookup (Linear.V4 a) where
+  toAccessorTree xyz f =
+    Data ("V4", "V4") [ ("x", toAccessorTree (getX xyz) (getX . f))
+                      , ("y", toAccessorTree (getY xyz) (getY . f))
+                      , ("z", toAccessorTree (getZ xyz) (getZ . f))
+                      , ("w", toAccessorTree (getW xyz) (getW . f))
+                      ]
+    where
+      getX (Linear.V4 x _ _ _) = x
+      getY (Linear.V4 _ y _ _) = y
+      getZ (Linear.V4 _ _ z _) = z
+      getW (Linear.V4 _ _ _ w) = w
+instance (Lookup a, Generic a) => Lookup (Linear.Quaternion a) where
+  toAccessorTree xyz f =
+    Data ("Quaternion", "Quaternion")
+    [ ("q0", toAccessorTree (getQ0 xyz) (getQ0 . f))
+    , ("q1", toAccessorTree (getQ1 xyz) (getQ1 . f))
+    , ("q2", toAccessorTree (getQ2 xyz) (getQ2 . f))
+    , ("q3", toAccessorTree (getQ3 xyz) (getQ3 . f))
+    ]
+    where
+      getQ0 (Linear.Quaternion q0 _) = q0
+      getQ1 (Linear.Quaternion _ (Linear.V3 x _ _)) = x
+      getQ2 (Linear.Quaternion _ (Linear.V3 _ y _)) = y
+      getQ3 (Linear.Quaternion _ (Linear.V3 _ _ z)) = z
+
 
 instance Lookup Float where
   toAccessorTree _ f = Getter $ realToFrac . f
