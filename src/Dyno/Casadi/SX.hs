@@ -24,6 +24,8 @@ import Casadi.Core.Classes.DMatrix ( DMatrix )
 import Casadi.Core.Classes.Sparsity ( Sparsity )
 import qualified Casadi.Core.Tools as C
 
+import Dyno.Casadi.Overloading ( Fmod(..), ArcTan2(..) )
+
 instance Conjugate SX where
   conjugate = id
 
@@ -199,3 +201,11 @@ instance Floating SX where
   {-# NOINLINE atanh #-}
   acosh x = unsafePerformIO (sx_arccosh x)
   {-# NOINLINE acosh #-}
+
+instance Fmod SX where
+  fmod x y = unsafePerformIO (sx_fmod x y)
+  {-# NOINLINE fmod #-}
+
+instance ArcTan2 SX where
+  arctan2 x y = unsafePerformIO (sx_arctan2 x y)
+  {-# NOINLINE arctan2 #-}

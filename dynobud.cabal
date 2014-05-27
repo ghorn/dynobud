@@ -42,6 +42,7 @@ library
                        Dyno.Casadi.Callback
                        Dyno.Casadi.Option
                        Dyno.Casadi.IOSchemes
+                       Dyno.Casadi.Overloading
                        Dyno.Casadi.MX
                        Dyno.Casadi.SX
                        Dyno.Casadi.MXFunction
@@ -71,7 +72,7 @@ library
                        hmatrix,
                        unordered-containers >=0.2,
                        casadi-bindings-internal,
-                       casadi-bindings-core,
+                       casadi-bindings-core >= 1.9.0.3,
                        casadi-bindings-ipopt-interface,
 --                       casadi-bindings-snopt-interface,
                        transformers >=0.3,
