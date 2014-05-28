@@ -12,6 +12,7 @@ import Linear.Conjugate ( Conjugate(..) )
 import Casadi.Core.Classes.SXElement
 
 import Dyno.Casadi.SX ( svector )
+import Dyno.Casadi.Overloading ( Fmod(..), ArcTan2(..), SymOrd(..) )
 import Dyno.Vectorize
 
 instance Show SXElement where
@@ -100,3 +101,19 @@ instance Floating SXElement where
   {-# NOINLINE atanh #-}
   acosh x = unsafePerformIO (sxElement_arccosh x)
   {-# NOINLINE acosh #-}
+
+instance Fmod SXElement where
+  fmod x y = unsafePerformIO (sxElement_fmod x y)
+  {-# NOINLINE fmod #-}
+
+instance ArcTan2 SXElement where
+  arctan2 x y = unsafePerformIO (sxElement_arctan2__1 x y)
+  {-# NOINLINE arctan2 #-}
+
+instance SymOrd SXElement where
+  x `leq` y = unsafePerformIO (sxElement___le__ x y)
+  {-# NOINLINE leq #-}
+  x `geq` y = unsafePerformIO (sxElement___ge__ x y)
+  {-# NOINLINE geq #-}
+  x  `eq` y = unsafePerformIO (sxElement___eq__ x y)
+  {-# NOINLINE eq #-}
