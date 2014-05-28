@@ -15,7 +15,7 @@ import Casadi.Core.Classes.Sparsity
 import Casadi.Core.Classes.DMatrix
 import qualified Casadi.Core.Tools as C
 
-import Dyno.Casadi.Overloading ( Fmod(..), ArcTan2(..) )
+import Dyno.Casadi.Overloading ( Fmod(..), ArcTan2(..), SymOrd(..) )
 
 -- | matrix matrix product
 dmm :: DMatrix -> DMatrix -> DMatrix
@@ -165,3 +165,11 @@ instance Fmod DMatrix where
 instance ArcTan2 DMatrix where
   arctan2 x y = unsafePerformIO (dmatrix_arctan2 x y)
   {-# NOINLINE arctan2 #-}
+
+instance SymOrd DMatrix where
+  x `leq` y = unsafePerformIO (dmatrix___le__ x y)
+  {-# NOINLINE leq #-}
+  x `geq` y = unsafePerformIO (dmatrix___ge__ x y)
+  {-# NOINLINE geq #-}
+  x  `eq` y = unsafePerformIO (dmatrix___eq__ x y)
+  {-# NOINLINE eq #-}
