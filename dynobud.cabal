@@ -102,6 +102,20 @@ flag examples
     description:    build the examples
     default:        False
 
+executable vec
+  if flag(examples)
+    Buildable: True
+  else
+    Buildable: False
+  hs-source-dirs:      examples
+  main-is:             Vec.hs
+  default-language:    Haskell2010
+  build-depends:       dynobud,
+                       vector >=0.10 && <0.11,
+                       base >=4.6 && <4.8
+
+  ghc-options:         -threaded -O2
+
 executable ocpMonad
   if flag(examples)
     Buildable: True
