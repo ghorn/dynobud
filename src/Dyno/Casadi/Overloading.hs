@@ -1,6 +1,4 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language FlexibleInstances #-}
-{-# Language UndecidableInstances #-}
 
 module Dyno.Casadi.Overloading
        ( Fmod(..)
@@ -14,15 +12,15 @@ import Data.Fixed ( mod' )
 class Fmod a where
   fmod :: a -> a -> a
 
-instance Real a => Fmod a where
-  fmod = mod'
+instance Fmod Double where fmod = mod'
+instance Fmod Float where fmod = mod'
 
 -- | doesn't require RealFloat, used for overloading symbolics
 class ArcTan2 a where
   arctan2 :: a -> a -> a
 
-instance RealFloat a => ArcTan2 a where
-  arctan2 = atan2
+instance ArcTan2 Double where arctan2 = atan2
+instance ArcTan2 Float where arctan2 = atan2
 
 -- | Ord, but returns a 1 or a 0 instead of True or False
 class SymOrd a where
@@ -30,7 +28,11 @@ class SymOrd a where
   geq :: a -> a -> a
   eq :: a -> a -> a
 
-instance (Num a, Ord a) => SymOrd a where
+instance SymOrd Double where
+  x `leq` y = if x <= y then 1 else 0
+  x `geq` y = if x >= y then 1 else 0
+  x  `eq` y = if x == y then 1 else 0
+instance SymOrd Float where
   x `leq` y = if x <= y then 1 else 0
   x `geq` y = if x >= y then 1 else 0
   x  `eq` y = if x == y then 1 else 0
