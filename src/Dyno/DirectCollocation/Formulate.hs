@@ -8,6 +8,7 @@ module Dyno.DirectCollocation.Formulate
        , mkTaus
        , interpolate
        , makeGuess
+       , makeGuess'
        ) where
 
 import Data.Proxy ( Proxy(..) )
@@ -521,12 +522,54 @@ interpolate taus x0 xs = dot (TV.mkVec' xis) (x0 TV.<| xs)
 
 -- | make an initial guess
 makeGuess ::
+  forall x z u p deg n .
+  (Dim n, Dim deg, Vectorize x, Vectorize z, Vectorize u, Vectorize p)
+  => Double -> (Double -> x Double) -> (Double -> z Double) -> (Double -> u Double)
+  -> p Double
+  -> CollTraj x z u p JNone n deg (Vector Double)
+makeGuess tf guessX guessZ guessU parm =
+  CollTraj (jfill tf) cov (v2j parm) guesses (v2j (guessX tf))
+  where
+    cov :: J (Cov JNone) (Vector Double)
+    cov = jfill 0
+
+    -- timestep
+    dt = tf / fromIntegral n
+    n = vlength (Proxy :: Proxy (Vec n))
+
+    -- initial time at each collocation stage
+    t0s :: Vec n Double
+    t0s = TV.mkVec' $ take n [dt * fromIntegral k | k <- [(0::Int)..]]
+
+    -- times at each collocation point
+    times :: Vec n (Double, Vec deg Double)
+    times = fmap (\t0 -> (t0, fmap (\tau -> t0 + tau*dt) taus)) t0s
+
+    mkGuess' :: (Double, Vec deg Double) -> CollStage (JV x) (JV z) (JV u) deg (Vector Double)
+    mkGuess' (t,ts) =
+      CollStage (v2j (guessX t)) $
+      cat $ JVec $ fmap (\t' -> cat (CollPoint (v2j (guessX t')) (v2j (guessZ t')) (v2j (guessU t')))) ts
+
+    guesses :: J (JVec n (CollStage (JV x) (JV z) (JV u) deg)) (Vector Double)
+    guesses = cat $ JVec $ fmap (cat . mkGuess') times
+
+    -- the collocation points
+    taus :: Vec deg Double
+    taus = mkTaus deg
+
+    deg = vlength (Proxy :: Proxy (Vec deg))
+
+    v2j :: Vectorize v => v Double -> J (JV v) (Vector Double)
+    v2j = mkJ . vectorize
+
+-- | make an initial guess (covariance version)
+makeGuess' ::
   forall x z u p s deg n .
   (Dim n, Dim deg, Vectorize x, Vectorize z, Vectorize u, Vectorize p)
   => Double -> (Double -> x Double) -> (Double -> z Double) -> (Double -> u Double)
   -> J (Cov s) DMatrix -> p Double
   -> CollTraj x z u p s n deg DMatrix
-makeGuess tf guessX guessZ guessU cov' parm =
+makeGuess' tf guessX guessZ guessU cov' parm =
   CollTraj (mkJ (realToFrac tf)) cov' (v2j parm) guesses (v2j (guessX tf))
   where
     -- timestep
