@@ -3,10 +3,14 @@
 {-# Language DeriveFunctor #-}
 {-# Language FlexibleInstances #-}
 {-# Language MultiWayIf #-}
+{-# Language MultiParamTypeClasses #-}
+{-# Language FunctionalDependencies #-}
 
 module Qps.Lp
-       ( Lp(..)
-       , matchesGlpk
+       ( Lp(..), FLp(..), ILp(..), Coef(..)
+       , matchesGlpk' , asNumber
+       , glpkSolved, glpkUnsolved
+       , ipoptSolved, ipoptUnsolved
        ) where
 
 import Control.Monad ( unless )
@@ -14,12 +18,13 @@ import Test.QuickCheck.Arbitrary
 import Test.QuickCheck hiding ( Result, reason )
 import Test.QuickCheck.Property
 import Test.QuickCheck.Monadic
-import Linear.Conjugate ( Conjugate(..) )
+--import Linear.Conjugate ( Conjugate(..) )
 
 import qualified Numeric.LinearProgramming as GLPK
 import qualified Data.Vector as V
 import Data.List ( intersperse )
 import Data.Maybe
+import Linear hiding ( vector )
 
 import qualified Data.Foldable as F
 
@@ -28,6 +33,7 @@ import Dyno.TypeVecs -- ( Vec(..), mkVec', tvlength )
 import Dyno.Nlp
 import Dyno.NlpSolver
 import Dyno.Casadi.SXElement
+--import Dyno.Nats
 
 -- NOTES
 -- chooseNonzero restricts the tests
@@ -111,8 +117,20 @@ data Lp nx ng = Lp { px0 :: Vec nx Double
                    , pobjCoeffs :: Vec nx (Coef Double)
                    , pjacCoeffs :: Vec ng (Vec nx (Coef Double))
                    } --deriving Show
+data FLp nx ng = FLp (Lp nx ng) 
+data ILp nx ng = ILp (Lp nx ng)
+
+class IsLp a n m | a -> n, a -> m where
+  getLp :: a -> Lp n m
+instance IsLp (Lp n m) n m where
+  getLp = id
+instance IsLp (FLp n m) n m where
+  getLp (FLp lp) = lp
+instance IsLp (ILp n m) n m where
+  getLp (ILp lp) = lp
+
 --instance (Dim nx, Dim ng) => Show (Lp nx ng) where
---  show = prettyPrint
+-- show = prettyPrint
 
 asNumber :: Num a => Coef a -> a
 asNumber Zero = 0
@@ -234,7 +252,7 @@ instance (Dim nx, Dim ng) => Arbitrary (Lp nx ng) where
 
     goffset <- fmap (devectorize . V.fromList . map fromIntegral) $
                vectorOf (tvlength bg) (choose (0,0::Int))
---               vectorOf (tvlength bg) (choose (-2,2::Int))
+-- vectorOf (tvlength bg) (choose (-2,2::Int))
 
     objCoeffs'' <- arbitrary :: Gen (Vec nx (Coef Double))
     let objCoeffs' = fmap absnl objCoeffs''
@@ -262,9 +280,100 @@ instance (Dim nx, Dim ng) => Arbitrary (Lp nx ng) where
 justs :: (a, a) -> (Maybe a, Maybe a)
 justs (x,y) = (Just x, Just y)
 
+instance (Dim nx, Dim ng) => Arbitrary (FLp nx ng) where
+  arbitrary = do
+    objCoeffs'' <- arbitrary :: Gen (Vec nx (Coef Double))
+    let objCoeffs' = fmap absnl objCoeffs''
+        makeNonzero objCoeffs0
+          | V.any (/= Zero) objCoeffs0 = return (devectorize objCoeffs0)
+          | otherwise = do
+            k <- choose (0, V.length objCoeffs0 - 1)
+            newCoeff <- arbitrary
+            makeNonzero (objCoeffs0 V.// [(k,newCoeff)])
+    objCoeffs <- makeNonzero (vectorize objCoeffs')
+    
+    jacCoeffs <- arbitrary :: Gen (Vec ng (Vec nx (Coef Double)))
+
+    xsol <- arbitrary :: Gen (Vec nx Double)
+    let axsol = (fmap (fmap asNumber) jacCoeffs) !*  xsol
+        
+    bx <- fmap (devectorize . V.fromList) $ createBounds (V.toList (vectorize xsol)) :: Gen (Vec nx (Double, Double))
+    bg <- fmap (devectorize . V.fromList) $ createBounds (V.toList (vectorize axsol)) :: Gen (Vec ng (Double, Double))
+    goffset <- fmap (devectorize . V.fromList . map fromIntegral) $
+               vectorOf (tvlength bg) (choose (0,0::Int))
+    x0 <- fmap (devectorize . V.fromList) $ extractGen $ V.toList (vectorize (fmap choose bx))
+    return $ FLp $ Lp { px0 = x0
+                , pbx = bx
+                , pbg = bg
+                , pgoffset = goffset
+                , pobjCoeffs = objCoeffs
+                , pjacCoeffs = jacCoeffs
+                }
+
+extractGen :: [Gen a] -> Gen [a]
+extractGen [] = return []
+extractGen (hd:tl) = do
+  h <- hd
+  t <- extractGen tl
+  return (h:t)
+
+createBounds :: forall t t1.
+                      (Fractional t1,
+                       Fractional t) =>
+                      [Double] -> Gen [(t, t1)]
+createBounds xb 
+  | xb == [] = return []
+  | otherwise = do
+    let hxb:txb = xb
+    high <- fmap ceiling $ choose (hxb, hxb + 10) :: Gen Int
+    low <- fmap floor $ choose (hxb - 10, hxb) :: Gen Int
+    end <- createBounds txb
+    return $ (realToFrac low, realToFrac high):end
+
+instance (Dim nx, Dim ng) => Arbitrary (ILp nx ng) where
+  arbitrary = do
+    objCoeffs'' <- arbitrary :: Gen (Vec nx (Coef Double))
+    let objCoeffs' = fmap absnl objCoeffs''
+        makeNonzero objCoeffs0
+          | V.any (/= Zero) objCoeffs0 = return (devectorize objCoeffs0)
+          | otherwise = do
+            k <- choose (0, V.length objCoeffs0 - 1)
+            newCoeff <- arbitrary
+            makeNonzero (objCoeffs0 V.// [(k,newCoeff)])
+    objCoeffs <- makeNonzero (vectorize objCoeffs')
+    bx <- fmap (fmap unBound) arbitrary :: Gen (Vec nx (Double,Double))
+    jacCoeffs <- arbitrary :: Gen (Vec ng (Vec nx (Coef Double)))
+    x0 <- fmap (devectorize . V.fromList) $ extractGen $ V.toList (vectorize (fmap choose bx))
+    gl <- fmap (fmap unBound) arbitrary :: Gen (Vec ng (Double,Double))
+    let runMinMax f xs = map (\y -> sum $ zipWith f (zipWith (*) (map fst xs) y) (zipWith (*) (map snd xs) y))
+        atoList = V.toList $ vectorize (fmap (V.toList . vectorize) (fmap (fmap asNumber) jacCoeffs))
+        lBounds = runMinMax min (V.toList (vectorize bx)) atoList
+        uBounds = runMinMax max (V.toList (vectorize bx)) atoList  
+    j <- choose (0, V.length (vectorize gl) - 1)
+    up <- arbitrary 
+    let range = if up then (ceiling (uBounds!!j+1.0) ::Int, ceiling(uBounds!!j+10.0)::Int) 
+                      else (floor(lBounds!!j-10.0), floor(lBounds!!j-1.0))
+    [l,u] <- vectorOf 2 $ choose range 
+    let bg = devectorize $ (vectorize gl) V.// ([(j,(realToFrac (min l u), realToFrac (max l u)))])
+    goffset <- fmap (devectorize . V.fromList . map fromIntegral) $
+               vectorOf (tvlength bg) (choose (0,0::Int))
+
+    return $ ILp $ Lp { px0 = x0
+                , pbx = bx
+                , pbg = bg
+                , pgoffset = goffset
+                , pobjCoeffs = objCoeffs
+                , pjacCoeffs = jacCoeffs
+                }
+
+
 newtype LpNlp nx ng = LpNlp (Nlp (Vec nx) None (Vec ng) SXElement)
 instance (Dim nx, Dim ng) => Show (Lp nx ng) where
   show = prettyPrint
+instance (Dim nx, Dim ng) => Show (FLp nx ng) where
+  show (FLp flp) = prettyPrint flp
+instance (Dim nx, Dim ng) => Show (ILp nx ng) where
+  show (ILp ilp) = prettyPrint ilp
 
 nlpOfLp :: forall nx ng . (Dim nx, Dim ng) => Lp nx ng -> LpNlp nx ng
 nlpOfLp (Lp x0 bx bg goffset objCoeffs jacCoeffs) =
@@ -282,6 +391,56 @@ nlpOfLp (Lp x0 bx bg goffset objCoeffs jacCoeffs) =
         f = runSum (tvzip xs (fmap (fmap realToFrac) objCoeffs))
         g' = fmap (runSum . tvzip xs) (fmap (fmap (fmap realToFrac)) jacCoeffs)
         g = tvzipWith (+) g' (fmap realToFrac goffset)
+
+glpkUnsolved :: (Dim nx, Dim ng) => ILp nx ng -> Property
+glpkUnsolved lp = monadicIO $ do
+  let nlp = (getLp lp)
+  (_,_) <- case solveWithGlpk nlp of
+    GLPK.Feasible _ -> stop (failed {reason = "glpk result Feasible, should not be"})
+    GLPK.Optimal _ -> stop (failed {reason = "glpk result Optimal, should definitely not be"})
+    _ -> stop (succeeded {reason = "Not solvable !"})
+  return ()
+
+glpkSolved :: (Dim nx, Dim ng) => FLp nx ng -> Property
+glpkSolved lp = monadicIO $ do
+  let nlp = (getLp lp)
+  (_,_) <- case solveWithGlpk nlp of
+    GLPK.Unbounded -> stop (rejected {reason = "unbounded"})
+    GLPK.NoFeasible -> stop (rejected {reason = "NoFeasible"})
+    GLPK.Infeasible _ -> stop (rejected {reason = "Infeasible"})
+    GLPK.Undefined -> stop (failed {reason = "glpk result Undefined"})
+    GLPK.Feasible _ -> stop (failed {reason = "glpk result Feasible, should be optimal"})
+    GLPK.Optimal _ -> stop (succeeded {reason = "Optimal !"})
+  return ()
+
+ipoptSolved :: (Dim nx, Dim ng, NLPSolverClass nlp)
+                => NlpSolverStuff nlp -> FLp nx ng -> Property
+ipoptSolved solver lp = monadicIO $ do
+  let LpNlp nlp = nlpOfLp (getLp lp)
+  (ret,_) <- run $ solveNlp solver nlp Nothing
+  case ret of
+    Left "3" -> stop $ rejected {reason = "nlp solver got code 3"}
+    Left code -> do
+      stop $ failed {reason = "====== nlp solver failed with code " ++ show code ++ " ====="}
+    Right "Solve_Succeeded" -> stop (succeeded {reason = "Optimal !"})
+    Right _ -> stop (failed {reason = "feasible but not optimal !"})
+
+ipoptUnsolved :: (Dim nx, Dim ng, NLPSolverClass nlp)
+                => NlpSolverStuff nlp -> ILp nx ng -> Property
+ipoptUnsolved solver lp = monadicIO $ do
+  let LpNlp nlp = nlpOfLp (getLp lp)
+  (ret,_) <- run $ solveNlp solver nlp Nothing
+  case ret of
+    Left "3" -> stop $ rejected {reason = "nlp solver got code 3"}
+    Left code -> do
+      stop $ succeeded {reason = "====== nlp solver failed with code " ++ show code ++ " ====="}
+    Right "Solve_Succeeded" -> stop (failed {reason = "Optimal ?!"})
+    Right _ -> stop (failed {reason = "feasible but not optimal ?!"})
+
+matchesGlpk' :: (Dim nx, Dim ng, NLPSolverClass nlp)
+               => NlpSolverStuff nlp -> FLp nx ng -> Property
+matchesGlpk' solver flp = matchesGlpk solver (getLp flp)
+
 
 matchesGlpk :: (Dim nx, Dim ng, NLPSolverClass nlp)
                => NlpSolverStuff nlp -> Lp nx ng -> Property
@@ -305,11 +464,11 @@ matchesGlpk solver lp = monadicIO $ do
 
       summary = unlines
                [ "design vars"
-               , "  glpk: " ++ show xopt
-               , "  nlp:  " ++ show (F.toList (xOpt nlpOut))
+               , " glpk: " ++ show xopt
+               , " nlp: " ++ show (F.toList (xOpt nlpOut))
                , "objective"
-               , "  glpk: " ++ show fopt
-               , "  nlp:  " ++ show (fOpt nlpOut)
+               , " glpk: " ++ show fopt
+               , " nlp: " ++ show (fOpt nlpOut)
                , ""
                ]
   case ret of
@@ -331,11 +490,11 @@ prettyPrint :: (Dim nx, Dim ng) => Lp nx ng -> String
 prettyPrint (Lp x0' bx' bg' goffset' objCoeffs' jacCoeffs') =
   init $ unlines $
   [ "minimize:"
-  , "    " ++ myShowList (zipWith showCoeff objCoeffs ks)
+  , " " ++ myShowList (zipWith showCoeff objCoeffs ks)
   , "subject to:"
-  ] ++ (zipWith3 (\coeffs goff (lb,ub) -> "    " ++ show lb ++ " <= " ++ myShowList (zipWith showCoeff coeffs ks) ++ " + " ++ show goff  ++ " <= " ++ show ub) jacCoeffs goffset bg) ++
+  ] ++ (zipWith3 (\coeffs goff (lb,ub) -> " " ++ show lb ++ " <= " ++ myShowList (zipWith showCoeff coeffs ks) ++ " + " ++ show goff ++ " <= " ++ show ub) jacCoeffs goffset bg) ++
   ["subject to (bounds):"] ++
-  zipWith (\k (lb,ub) -> "    " ++ show lb ++ " <= " ++ xname k ++ " <= " ++ show ub) ks bx
+  zipWith (\k (lb,ub) -> " " ++ show lb ++ " <= " ++ xname k ++ " <= " ++ show ub) ks bx
   where
     --maybeOffset
     x0 = V.toList (vectorize x0')

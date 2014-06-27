@@ -17,7 +17,7 @@ import Dyno.NlpSolver
 import DummyTest ( dummyTests )
 import Ocps.SolveLinearOcp ( feasibleOcpIsFeasible )
 import Ocps.LinearOcp ( FeasibleLinearOcp )
-import Qps.Lp ( Lp, matchesGlpk )
+import Qps.Lp ( FLp, ILp, glpkSolved, glpkUnsolved, ipoptSolved, ipoptUnsolved, matchesGlpk' )
 
 quietIpoptSolver :: Double -> NlpSolverStuff IpoptSolver
 quietIpoptSolver tol =
@@ -40,9 +40,21 @@ ocpTests =
 
 lpTests :: [Test]
 lpTests =
-  [ testGroup "lps"
-    [ testProperty "ipopt solves lps"
-      (matchesGlpk (quietIpoptSolver 1e-10) :: Lp D2 D1 -> Property)
+  [ testGroup "lps with glpk"
+    [ testProperty "feasible is solvable"
+      (glpkSolved :: FLp D2 D1 -> Property)
+    , testProperty "infeasible is not solvable"
+      (glpkUnsolved :: ILp D2 D1 -> Property)
+    ]
+  , testGroup "lps with ipopt"
+    [ testProperty "feasible is solvable"
+      (ipoptSolved (quietIpoptSolver 1e-10) :: FLp D2 D1 -> Property)
+    , testProperty "infeasible is not solvable"
+      (ipoptUnsolved (quietIpoptSolver 1e-10) :: ILp D2 D1 -> Property)
+    ]
+  , testGroup "compare lp solving"
+    [ testProperty "feasible is solvable by glpk and ipopt"
+      (matchesGlpk' (quietIpoptSolver 1e-10) :: FLp D2 D1 -> Property)
     ]
   ]
 
