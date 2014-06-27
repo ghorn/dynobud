@@ -116,7 +116,7 @@ makeCollNlp ocp = do
                         -> J (Cov s) MX)
     , nlpBX' = cat (getBx ocp)
     , nlpBG' = cat (getBg ocp)
-    , nlpX0' = jfill 0
+    , nlpX0' = jfill 0 :: J (CollTraj x z u p s n deg) (Vector Double)
     , nlpP' = cat JNone
     }
 
