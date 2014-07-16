@@ -10,9 +10,9 @@ module Main where
 import Dyno.Vectorize
 import Dyno.Nlp
 import Dyno.NlpSolver
-import Dyno.Ipopt
 import Dyno.Casadi.SXElement
-
+import Dyno.Ipopt
+import Dyno.Snopt
 
 data X a = X a a deriving (Functor, Generic1, Show)
 data G a = G a deriving (Functor, Generic1, Show)
@@ -44,8 +44,11 @@ myNlp = Nlp { nlpFG = fg
         f = (1-x)**2 + 100*(y - x**2)**2
         g = G x
 
+solver :: NlpSolverStuff
+--solver = ipoptSolver { options = [("linear_solver",Opt "mumps")] }
+solver = snoptSolver
 
 main :: IO ()
 main = do
-  opt <- solveNlp ipoptSolver myNlp Nothing
+  opt <- solveNlp solver myNlp Nothing
   print opt

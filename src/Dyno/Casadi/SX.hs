@@ -137,7 +137,7 @@ shorzsplit x ks = unsafePerformIO (C.horzsplit__6 x ks)
 {-# NOINLINE shorzsplit #-}
 
 ssolve :: SX -> SX -> SX
-ssolve a b = unsafePerformIO (C.solve__1 a b)
+ssolve a b = unsafePerformIO (C.solve__2 a b)
 {-# NOINLINE ssolve #-}
 
 sones :: (Int,Int) -> SX

@@ -6,7 +6,6 @@
 
 module Dyno.NlpSolver
        ( NlpSolver
-       , NLPSolverClass
        , runNlpSolver
          -- * solve
        , solveNlp
@@ -51,10 +50,10 @@ import Data.Vector ( Vector )
 import qualified Data.Vector as V
 
 import Casadi.Core.Enums ( InputOutputScheme(..) )
-import Casadi.Core.Classes.Function ( function_getStat, castFunction )
+import qualified Casadi.Core.Classes.Function as C
+import qualified Casadi.Core.Classes.NLPSolver as C
 import Casadi.Core.Classes.PrintableObject ( printableObject_getDescription )
 import Casadi.Core.Classes.GenericType
-import Casadi.Core.Classes.NLPSolver
 import Casadi.Core.Classes.IOInterfaceFunction
 --import Casadi.Wrappers.Classes.CasadiOptions
 
@@ -62,11 +61,9 @@ import Dyno.Casadi.Callback ( makeCallback )
 import Dyno.Casadi.DMatrix
 import Dyno.Casadi.SX
 import Dyno.Casadi.SXElement ( SXElement )
-import Dyno.Casadi.Function
+--import Dyno.Casadi.Function
 import qualified Dyno.Casadi.Option as Op
 import Dyno.Casadi.SharedObject ( soInit )
-import qualified Casadi.Core.Classes.Function as C
---import qualified Casadi.Wrappers.Classes.Sparsity as C
 
 import Dyno.Vectorize ( Vectorize(..) )
 import Dyno.View.View
@@ -76,9 +73,9 @@ import Data.Proxy
 
 type VD a = J a (Vector Double)
 
-data NlpSolverStuff nlp =
+data NlpSolverStuff =
   NlpSolverStuff
-  { nlpConstructor :: Function -> IO nlp
+  { solverName :: String
   , defaultOptions :: [(String,Op.Opt)]
   , options :: [(String,Op.Opt)]
   , solverInterruptCode :: Int
@@ -187,7 +184,7 @@ solve = do
                   _ <- takeMVar stop -- wait for nlp to return
                   return ()
                 Left _ -> void (takeMVar stop) -- don't handle this one
-    function_getStat nlp "return_status"  >>= printableObject_getDescription
+    C.function_getStat nlp "return_status"  >>= printableObject_getDescription
 
   return $ if solveStatus `elem` isSuccessCodes nlpState
     then Right solveStatus
@@ -219,7 +216,7 @@ solve' = do
 data NlpState = NlpState { isNx :: Int
                          , isNg :: Int
                          , isNp :: Int
-                         , isSolver :: NLPSolver
+                         , isSolver :: C.NLPSolver
                          , isInterrupt :: IO ()
                          , isSuccessCodes :: [String]
                          }
@@ -242,9 +239,9 @@ newtype NlpSolver (x :: * -> *) (p :: * -> *) (g :: * -> *) a =
 --  externalFunction ("./"++name++".so")
 
 runNlpSolver ::
-  forall nlp x p g a s .
-  (NLPSolverClass nlp, View x, View p, View g, Symbolic s)
-  => NlpSolverStuff nlp
+  forall x p g a s .
+  (View x, View p, View g, Symbolic s)
+  => NlpSolverStuff
   -> (J x s -> J p s -> (J S s, J g s))
 --  -> (J x (Vector Double))
   -> Maybe (J x (Vector Double) -> IO Bool)
@@ -284,7 +281,7 @@ runNlpSolver solverStuff nlpFun callback' (NlpSolver nlpMonad) = do
 --  C.sparsity_spyMatlab jac_sparsity "jac_sparsity_reorder.m"
 
 
-  solver <- fmap castNLPSolver $ nlpConstructor solverStuff (castFunction nlp)
+  solver <- C.nlpSolver__0 (solverName solverStuff) (C.castFunction nlp)
 
   -- add callback if user provides it
   intref <- newIORef False
@@ -335,10 +332,10 @@ proxy :: J a b -> Proxy a
 proxy = const Proxy
 
 -- | convenience function to solve a pure Nlp'
-solveNlp :: forall x p g nlp .
-  (NLPSolverClass nlp, Vectorize x, Vectorize p, Vectorize g) =>
-  NlpSolverStuff nlp ->
-  Nlp x p g SXElement -> Maybe (x Double -> IO Bool)
+solveNlp :: forall x p g .
+  (Vectorize x, Vectorize p, Vectorize g)
+  => NlpSolverStuff
+  -> Nlp x p g SXElement -> Maybe (x Double -> IO Bool)
   -> IO (Either String String, NlpOut x g Double)
 solveNlp solverStuff nlp callback = do
   let nlp' :: Nlp' (JV x) (JV p) (JV g) SX
@@ -374,9 +371,9 @@ solveNlp solverStuff nlp callback = do
 
 -- | convenience function to solve a pure Nlp'
 solveNlp' ::
-  (NLPSolverClass nlp, View x, View p, View g, Symbolic a) =>
-  NlpSolverStuff nlp ->
-  Nlp' x p g a -> Maybe (J x (Vector Double) -> IO Bool)
+  (View x, View p, View g, Symbolic a)
+  => NlpSolverStuff
+  -> Nlp' x p g a -> Maybe (J x (Vector Double) -> IO Bool)
   -> IO (Either String String, NlpOut' x g (Vector Double))
 solveNlp' solverStuff nlp callback =
 --  runNlpSolver solverStuff (nlpFG' nlp) (nlpX0' nlp) callback $ do

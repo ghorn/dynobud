@@ -122,10 +122,10 @@ type CollDeg = D3
 guess :: J (CollTraj PendX PendZ PendU PendP JNone NCollStages CollDeg) (Vector Double)
 guess = jfill 1
 
-solver :: NlpSolverStuff IpoptSolver
+solver :: NlpSolverStuff
 solver = ipoptSolver
 
-solver2 :: NlpSolverStuff IpoptSolver
+solver2 :: NlpSolverStuff
 solver2 = ipoptSolver { options = [("expand", Opt True)] }
 
 

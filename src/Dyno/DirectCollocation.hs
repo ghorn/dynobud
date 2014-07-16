@@ -13,7 +13,7 @@ import Data.Vector ( Vector )
 import Dyno.View ( View, J, jfill )
 import Dyno.Vectorize ( Vectorize )
 import Dyno.Ocp ( OcpPhase )
-import Dyno.NlpSolver ( NLPSolverClass, NlpSolverStuff, solveNlp' )
+import Dyno.NlpSolver ( NlpSolverStuff, solveNlp' )
 import Dyno.Nlp ( Nlp'(..) )
 import Dyno.DirectCollocation.Formulate ( makeCollNlp )
 import Dyno.DirectCollocation.Types ( CollTraj(..) )
@@ -21,10 +21,10 @@ import Dyno.DirectCollocation.Dynamic ( DynCollTraj, ctToDynamic )
 import qualified Dyno.TypeVecs as TV
 
 solveOcp ::
-  forall x z u p r o c h s sh sc nlp .
-  (NLPSolverClass nlp, Vectorize x, Vectorize z, Vectorize u, Vectorize p,
+  forall x z u p r o c h s sh sc .
+  (Vectorize x, Vectorize z, Vectorize u, Vectorize p,
    Vectorize r, Vectorize o, Vectorize c, Vectorize h, View s, View sc, View sh)
-  => NlpSolverStuff nlp -> Int -> Int -> Maybe (DynCollTraj (Vector Double) -> IO Bool)
+  => NlpSolverStuff -> Int -> Int -> Maybe (DynCollTraj (Vector Double) -> IO Bool)
   -> OcpPhase x z u p r o c h s sh sc
   -> IO (Either String String)
 solveOcp solverStuff n deg cb ocp =

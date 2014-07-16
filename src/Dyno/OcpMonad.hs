@@ -53,7 +53,7 @@ import Dyno.View ( View(..), J, JNone(..), jfill )
 import Dyno.Vectorize ( Vectorize(..), fill )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
-import Dyno.NlpSolver ( NLPSolverClass, NlpSolverStuff )
+import Dyno.NlpSolver ( NlpSolverStuff )
 import Dyno.DirectCollocation.Dynamic ( DynCollTraj, CollTrajMeta(..), NameTree(..) )
 import Dyno.DirectCollocation ( solveOcp )
 
@@ -473,8 +473,7 @@ devec' = V.head . sdata . sdense
 
 
 solveStaticOcp ::
-  NLPSolverClass nlp =>
-  NlpSolverStuff nlp
+  NlpSolverStuff
   -> (SXElement -> DaeMonad ())
   -> (forall a m . (Floating a, Monad m) => a -> (String -> m a) -> (String -> m a) -> m a)
   -> ((String -> BCMonad SXElement) -> (String -> BCMonad SXElement) -> BCMonad ())

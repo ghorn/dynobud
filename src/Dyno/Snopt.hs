@@ -1,16 +1,15 @@
 {-# OPTIONS_GHC -Wall #-}
 
-module Dyno.Snopt ( SS.SnoptSolver, snoptSolver ) where
+module Dyno.Snopt ( snoptSolver ) where
 
 --import qualified Data.Vector as V
-import qualified Casadi.SnoptInterface.Classes.SnoptSolver as SS
 
 import Dyno.NlpSolver ( NlpSolverStuff(..), Opt(..) )
 
-snoptSolver :: NlpSolverStuff SS.SnoptSolver
+snoptSolver :: NlpSolverStuff
 snoptSolver =
   NlpSolverStuff
-  { nlpConstructor = SS.snoptSolver__0
+  { solverName = "snopt"
   , defaultOptions = [ ("_iprint", Opt (0::Int))
 --                       , ("_isumm", Opt (6::Int))
 --                       , ("_scale_option", Opt (0::Int))

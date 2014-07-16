@@ -1,15 +1,13 @@
 {-# OPTIONS_GHC -Wall #-}
 
-module Dyno.Ipopt ( IS.IpoptSolver, ipoptSolver ) where
-
-import qualified Casadi.IpoptInterface.Classes.IpoptSolver as IS
+module Dyno.Ipopt ( ipoptSolver ) where
 
 import Dyno.NlpSolver ( NlpSolverStuff(..), Opt(..) )
 
-ipoptSolver :: NlpSolverStuff IS.IpoptSolver
+ipoptSolver :: NlpSolverStuff
 ipoptSolver =
   NlpSolverStuff
-  { nlpConstructor = IS.ipoptSolver__0
+  { solverName = "ipopt"
   , defaultOptions = [ ("max_iter", Opt (3000 :: Int))
                      , ("tol", Opt (1e-9 :: Double))
 --                     , ("hessian_approximation", Opt "limited-memory")

@@ -37,7 +37,7 @@ library
                        Dyno.Interface.Types
                        Dyno.NlpSolver
                        Dyno.Ipopt
---                       Dyno.Snopt
+                       Dyno.Snopt
                        Dyno.Casadi.SharedObject
                        Dyno.Casadi.Callback
                        Dyno.Casadi.Option
@@ -72,9 +72,7 @@ library
                        hmatrix,
                        unordered-containers >=0.2,
                        casadi-bindings-internal,
-                       casadi-bindings-core >= 1.9.0.3,
-                       casadi-bindings-ipopt-interface,
---                       casadi-bindings-snopt-interface,
+                       casadi-bindings-core >= 1.9.0.4,
                        transformers >=0.3,
                        primitive >=0.5 && <0.6,
                        ghc-prim >=0.3 && <0.4,

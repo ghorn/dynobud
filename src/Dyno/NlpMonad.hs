@@ -43,7 +43,7 @@ import Dyno.View.View
 import qualified Dyno.TypeVecs as TV
 import Dyno.Interface.LogsAndErrors
 import Dyno.Interface.Types
-import Dyno.NlpSolver ( NLPSolverClass, NlpSolverStuff, solveNlp' )
+import Dyno.NlpSolver ( NlpSolverStuff, solveNlp' )
 import Dyno.Nlp ( Nlp'(..), NlpOut'(..), Bounds)
 
 withEllipse :: Int -> String -> String
@@ -200,8 +200,7 @@ reifyNlp nlpmonad cb x0map f = do
 
 
 solveStaticNlp ::
-  NLPSolverClass nlp
-  => NlpSolverStuff nlp
+  NlpSolverStuff
   -> NlpMonad () -> [(String,Double)] -> Maybe (Vector Double -> IO Bool)
   -> IO (Either String String, Double, [(String,Double)])
 solveStaticNlp solverStuff nlp x0' callback = reifyNlp nlp callback x0 foo
