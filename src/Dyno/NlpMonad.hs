@@ -18,7 +18,7 @@ module Dyno.NlpMonad
 import Control.Applicative ( Applicative )
 import Control.Monad ( when )
 import "mtl" Control.Monad.Reader ( MonadIO(..) )
-import "mtl" Control.Monad.Error ( ErrorT, MonadError, runErrorT )
+import "mtl" Control.Monad.Except ( ExceptT, MonadError, runExceptT )
 import "mtl" Control.Monad.State ( StateT, MonadState, runStateT, get, put )
 import "mtl" Control.Monad.Writer ( WriterT, MonadWriter, runWriterT )
 import qualified Data.Foldable as F
@@ -53,7 +53,7 @@ withEllipse n blah
 
 newtype NlpMonad a =
   NlpMonad
-  { runNlp :: ErrorT ErrorMessage (WriterT [LogMessage] (StateT NlpMonadState IO)) a
+  { runNlp :: ExceptT ErrorMessage (WriterT [LogMessage] (StateT NlpMonadState IO)) a
   } deriving ( Functor
              , Applicative
              , Monad
@@ -71,7 +71,7 @@ build = build' emptySymbolicNlp
   where
     build' :: NlpMonadState -> NlpMonad a -> IO (Either ErrorMessage a, [LogMessage], NlpMonadState)
     build' nlp0 builder = do
-      ((result,logs),state) <- flip runStateT nlp0 . runWriterT . runErrorT . runNlp $ builder
+      ((result,logs),state) <- flip runStateT nlp0 . runWriterT . runExceptT . runNlp $ builder
       return (result, logs, state)
 
 designVar :: String -> NlpMonad SXElement

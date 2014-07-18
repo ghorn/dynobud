@@ -6,7 +6,6 @@
 {-# Language GeneralizedNewtypeDeriving #-}
 {-# Language FlexibleContexts #-}
 {-# Language RankNTypes #-}
-{-# Language FlexibleInstances #-}
 
 module Dyno.OcpMonad
        ( OcpMonad
@@ -30,7 +29,7 @@ import qualified "mtl" Control.Monad.State as State
 import "mtl" Control.Monad.Reader ( MonadIO(..) )
 import "mtl" Control.Monad.Writer ( WriterT, Writer, MonadWriter, runWriterT, runWriter )
 import "mtl" Control.Monad.State ( StateT, MonadState, runStateT )
-import "mtl" Control.Monad.Error ( ErrorT, MonadError, runErrorT )
+import "mtl" Control.Monad.Except ( ExceptT, MonadError, runExceptT )
 import qualified Data.Foldable as F
 import qualified Data.HashSet as HS
 import qualified Data.Sequence as S
@@ -67,7 +66,7 @@ withEllipse n blah
 
 newtype OcpMonad a =
   OcpMonad
-  { runOcp :: ErrorT ErrorMessage (WriterT [LogMessage] (StateT OcpState IO)) a
+  { runOcp :: ExceptT ErrorMessage (WriterT [LogMessage] (StateT OcpState IO)) a
   } deriving ( Functor
              , Applicative
              , Monad
@@ -79,7 +78,7 @@ newtype OcpMonad a =
 
 newtype BCMonad a =
   BCMonad
-  { runBc :: ErrorT ErrorMessage (WriterT [LogMessage] (StateT (S.Seq (Constraint SXElement)) IO)) a
+  { runBc :: ExceptT ErrorMessage (WriterT [LogMessage] (StateT (S.Seq (Constraint SXElement)) IO)) a
   } deriving ( Functor
              , Applicative
              , Monad
@@ -91,7 +90,7 @@ newtype BCMonad a =
 
 newtype DaeMonad a =
   DaeMonad
-  { runDae :: ErrorT ErrorMessage (WriterT [LogMessage] (StateT DaeState IO)) a
+  { runDae :: ExceptT ErrorMessage (WriterT [LogMessage] (StateT DaeState IO)) a
   } deriving ( Functor
              , Applicative
              , Monad
@@ -109,7 +108,7 @@ buildDae = buildDae' emptySymbolicDae
   where
     buildDae' :: DaeState -> DaeMonad a -> IO (Either ErrorMessage a, [LogMessage], DaeState)
     buildDae' nlp0 builder = do
-      ((result,logs),state) <- flip runStateT nlp0 . runWriterT . runErrorT . runDae $ builder
+      ((result,logs),state) <- flip runStateT nlp0 . runWriterT . runExceptT . runDae $ builder
       return (result, logs, state)
 
 newDaeVariable ::
@@ -291,7 +290,7 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
                    , V.zip onames os
                    ]
 
-  ocp' <- flip runStateT emptySymbolicOcp $ runWriterT $ runErrorT (runOcp (ocpMonad time lookupThingy))
+  ocp' <- flip runStateT emptySymbolicOcp $ runWriterT $ runExceptT (runOcp (ocpMonad time lookupThingy))
   let ocp :: OcpState
       ocp = case ocp' of
         ((Left errmsg, logs),_) ->
@@ -326,7 +325,7 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
   xFs <- mapM (sxElement_sym . (++ "_F")) (F.toList xnames)
   endT <- sxElement_sym "T"
   let lookupState :: M.Map String SXElement -> String
-                     -> ErrorT ErrorMessage (Writer [LogMessage]) SXElement
+                     -> ExceptT ErrorMessage (Writer [LogMessage]) SXElement
       lookupState xmap name = do
         debug $ "mayer monad: looking up \"" ++ name ++ "\""
         case M.lookup name xmap of
@@ -342,7 +341,7 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
       xmapF = M.fromList $ zip (F.toList xnames) xFs
 
       mayerObj :: SXElement
-      mayerObj = case runWriter (runErrorT (mayerMonad endT (lookupState xmap0) (lookupState xmapF))) of
+      mayerObj = case runWriter (runExceptT (mayerMonad endT (lookupState xmap0) (lookupState xmapF))) of
           (Left errmsg, logs) ->
             error $ unlines $ ("" : map show logs) ++ ["","mayer monad failure: " ++ show errmsg]
           (Right ret, _) -> ret
@@ -369,7 +368,7 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
           Just expr -> do
             debug $ "boundary condition monad: found \"" ++ name ++ "\""
             return expr
-  bcs' <- flip runStateT S.empty $ runWriterT (runErrorT (runBc $ bcMonad lookupState0 lookupStateF))
+  bcs' <- flip runStateT S.empty $ runWriterT (runExceptT (runBc $ bcMonad lookupState0 lookupStateF))
   let bcs :: Vector SXElement
       bcbnds :: Vector Bounds
       (bcs,bcbnds) = case bcs' of

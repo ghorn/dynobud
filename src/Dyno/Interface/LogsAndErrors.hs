@@ -1,7 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language GeneralizedNewtypeDeriving #-}
-{-# Language FlexibleContexts #-}
 {-# Language PackageImports #-}
+{-# Language FlexibleContexts #-}
 
 module Dyno.Interface.LogsAndErrors
        ( ErrorMessage (..)
@@ -13,7 +12,7 @@ module Dyno.Interface.LogsAndErrors
        , impossible
        ) where
 
-import "mtl" Control.Monad.Error ( Error, MonadError, throwError )
+import "mtl" Control.Monad.Except ( MonadError, throwError )
 import "mtl" Control.Monad.Writer ( MonadWriter, tell )
 
 data LogMessage = Debug String
@@ -37,7 +36,7 @@ countLogs' (a,b,c,d) (Impossible _:xs) = countLogs' (  a,   b,   c, d+1) xs
 countLogs :: [LogMessage] -> (Int,Int,Int,Int)
 countLogs = countLogs' (0,0,0,0)
 
-newtype ErrorMessage = ErrorMessage String deriving Error
+newtype ErrorMessage = ErrorMessage String -- deriving Error
 instance Show ErrorMessage where
   show (ErrorMessage msg) = msg
 
