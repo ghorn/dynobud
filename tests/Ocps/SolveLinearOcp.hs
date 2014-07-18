@@ -96,23 +96,23 @@ toOcpPhase myOcp' =
     myOcp = getLinearOcp myOcp'
 
 
-solveLinearOcp :: forall n m a nlp . (IsLinearOcp a n m, Dim n, Dim m, NLPSolverClass nlp)
-                  => NlpSolverStuff nlp -> a -> IO (Either String String)
+solveLinearOcp :: forall n m a . (IsLinearOcp a n m, Dim n, Dim m)
+                  => NlpSolverStuff -> a -> IO (Either String String)
 solveLinearOcp solver ocp = do
   let guess = jfill 0 :: J (CollTraj (X n) None (U m) None JNone D10 D2) (Vector Double)
   nlp <- makeCollNlp (toOcpPhase (getLinearOcp ocp))
   fmap fst $ solveNlp' solver (nlp { nlpX0' = guess }) Nothing
 
-feasibleOcpIsFeasible :: (Dim n, Dim m, NLPSolverClass nlp)
-                         => NlpSolverStuff nlp -> FeasibleLinearOcp n m -> Property
+feasibleOcpIsFeasible :: (Dim n, Dim m)
+                         => NlpSolverStuff -> FeasibleLinearOcp n m -> Property
 feasibleOcpIsFeasible solver (FeasibleLinearOcp ocp) = monadicIO $ do
   ret <- run $ solveLinearOcp solver ocp
   case ret of
     Right msg -> stop (succeeded {reason = msg})
     Left msg -> stop (failed {reason = msg})
 
-infeasibleOcpIsInfeasible :: (Dim n, Dim m, NLPSolverClass nlp)
-                             => NlpSolverStuff nlp -> InfeasibleLinearOcp n m -> Property
+infeasibleOcpIsInfeasible :: (Dim n, Dim m)
+                             => NlpSolverStuff -> InfeasibleLinearOcp n m -> Property
 infeasibleOcpIsInfeasible solver (InfeasibleLinearOcp ocp) = monadicIO $ do
   ret <- run $ solveLinearOcp solver ocp
   case ret of

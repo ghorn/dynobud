@@ -10,7 +10,7 @@ import Test.Framework ( Test, ColorMode(..), RunnerOptions'(..), TestOptions'(..
                       )
 import Test.Framework.Providers.QuickCheck2 ( testProperty )
 
-import Dyno.Ipopt ( IpoptSolver, ipoptSolver )
+import Dyno.Ipopt ( ipoptSolver )
 import Dyno.Nats
 import Dyno.NlpSolver
 
@@ -19,7 +19,7 @@ import Ocps.SolveLinearOcp ( feasibleOcpIsFeasible )
 import Ocps.LinearOcp ( FeasibleLinearOcp )
 import Qps.Lp ( FLp, ILp, glpkSolved, glpkUnsolved, ipoptSolved, ipoptUnsolved, matchesGlpk' )
 
-quietIpoptSolver :: Double -> NlpSolverStuff IpoptSolver
+quietIpoptSolver :: Double -> NlpSolverStuff
 quietIpoptSolver tol =
   ipoptSolver { options = [ ("max_iter", Opt (100 :: Int))
                           , ("print_time", Opt False)

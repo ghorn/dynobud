@@ -1,10 +1,10 @@
 {-# OPTIONS_GHC -Wall -fno-warn-orphans #-}
 {-# Language ScopedTypeVariables #-}
-{-# Language DeriveFunctor #-}
-{-# Language FlexibleInstances #-}
 {-# Language MultiWayIf #-}
 {-# Language MultiParamTypeClasses #-}
 {-# Language FunctionalDependencies #-}
+{-# Language FlexibleInstances #-}
+{-# Language DeriveFunctor #-}
 
 module Qps.Lp
        ( Lp(..), FLp(..), ILp(..), Coef(..)
@@ -413,8 +413,7 @@ glpkSolved lp = monadicIO $ do
     GLPK.Optimal _ -> stop (succeeded {reason = "Optimal !"})
   return ()
 
-ipoptSolved :: (Dim nx, Dim ng, NLPSolverClass nlp)
-                => NlpSolverStuff nlp -> FLp nx ng -> Property
+ipoptSolved :: (Dim nx, Dim ng) => NlpSolverStuff -> FLp nx ng -> Property
 ipoptSolved solver lp = monadicIO $ do
   let LpNlp nlp = nlpOfLp (getLp lp)
   (ret,_) <- run $ solveNlp solver nlp Nothing
@@ -425,8 +424,7 @@ ipoptSolved solver lp = monadicIO $ do
     Right "Solve_Succeeded" -> stop (succeeded {reason = "Optimal !"})
     Right _ -> stop (failed {reason = "feasible but not optimal !"})
 
-ipoptUnsolved :: (Dim nx, Dim ng, NLPSolverClass nlp)
-                => NlpSolverStuff nlp -> ILp nx ng -> Property
+ipoptUnsolved :: (Dim nx, Dim ng) => NlpSolverStuff -> ILp nx ng -> Property
 ipoptUnsolved solver lp = monadicIO $ do
   let LpNlp nlp = nlpOfLp (getLp lp)
   (ret,_) <- run $ solveNlp solver nlp Nothing
@@ -437,13 +435,11 @@ ipoptUnsolved solver lp = monadicIO $ do
     Right "Solve_Succeeded" -> stop (failed {reason = "Optimal ?!"})
     Right _ -> stop (failed {reason = "feasible but not optimal ?!"})
 
-matchesGlpk' :: (Dim nx, Dim ng, NLPSolverClass nlp)
-               => NlpSolverStuff nlp -> FLp nx ng -> Property
+matchesGlpk' :: (Dim nx, Dim ng) => NlpSolverStuff -> FLp nx ng -> Property
 matchesGlpk' solver flp = matchesGlpk solver (getLp flp)
 
 
-matchesGlpk :: (Dim nx, Dim ng, NLPSolverClass nlp)
-               => NlpSolverStuff nlp -> Lp nx ng -> Property
+matchesGlpk :: (Dim nx, Dim ng) => NlpSolverStuff -> Lp nx ng -> Property
 matchesGlpk solver lp = monadicIO $ do
   let LpNlp nlp = nlpOfLp lp
   (fopt,xopt) <- case solveWithGlpk lp of
