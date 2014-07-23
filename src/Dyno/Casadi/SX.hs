@@ -213,7 +213,7 @@ instance ArcTan2 SX where
 instance SymOrd SX where
   x `leq` y = unsafePerformIO (sx___le__ x y)
   {-# NOINLINE leq #-}
-  x `geq` y = unsafePerformIO (sx___ge__ x y)
+  x `geq` y = unsafePerformIO (sx___ge____0 x y)
   {-# NOINLINE geq #-}
   x  `eq` y = unsafePerformIO (sx___eq__ x y)
   {-# NOINLINE eq #-}

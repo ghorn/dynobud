@@ -51,7 +51,7 @@ import qualified Data.Vector as V
 
 import Casadi.Core.Enums ( InputOutputScheme(..) )
 import qualified Casadi.Core.Classes.Function as C
-import qualified Casadi.Core.Classes.NLPSolver as C
+import qualified Casadi.Core.Classes.NlpSolver as C
 import Casadi.Core.Classes.PrintableObject ( printableObject_getDescription )
 import Casadi.Core.Classes.GenericType
 import Casadi.Core.Classes.IOInterfaceFunction
@@ -216,7 +216,7 @@ solve' = do
 data NlpState = NlpState { isNx :: Int
                          , isNg :: Int
                          , isNp :: Int
-                         , isSolver :: C.NLPSolver
+                         , isSolver :: C.NlpSolver
                          , isInterrupt :: IO ()
                          , isSuccessCodes :: [String]
                          }

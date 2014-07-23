@@ -169,7 +169,7 @@ instance ArcTan2 DMatrix where
 instance SymOrd DMatrix where
   x `leq` y = unsafePerformIO (dmatrix___le__ x y)
   {-# NOINLINE leq #-}
-  x `geq` y = unsafePerformIO (dmatrix___ge__ x y)
+  x `geq` y = unsafePerformIO (dmatrix___ge____0 x y)
   {-# NOINLINE geq #-}
   x  `eq` y = unsafePerformIO (dmatrix___eq__ x y)
   {-# NOINLINE eq #-}
