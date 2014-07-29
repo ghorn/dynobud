@@ -17,7 +17,7 @@ import Dyno.NlpSolver ( NlpSolverStuff, solveNlp' )
 import Dyno.Nlp ( Nlp'(..) )
 import Dyno.DirectCollocation.Formulate ( makeCollNlp )
 import Dyno.DirectCollocation.Types ( CollTraj(..) )
-import Dyno.DirectCollocation.Dynamic ( DynCollTraj, ctToDynamic )
+import Dyno.DirectCollocation.Dynamic ( DynCollTraj )
 import qualified Dyno.TypeVecs as TV
 
 solveOcp ::
@@ -27,13 +27,17 @@ solveOcp ::
   => NlpSolverStuff -> Int -> Int -> Maybe (DynCollTraj (Vector Double) -> IO Bool)
   -> OcpPhase x z u p r o c h s sh sc
   -> IO (Either String String)
-solveOcp solverStuff n deg cb ocp =
+solveOcp solverStuff n deg cb0 ocp =
   TV.reifyDim n $ \(Proxy :: Proxy n) ->
   TV.reifyDim deg $ \(Proxy :: Proxy deg) -> do
     let guess :: J (CollTraj x z u p s n deg) (Vector Double)
         guess = jfill 1
-    nlp <- makeCollNlp ocp
+    (nlp, toDynamic) <- makeCollNlp ocp
     --_ <- solveNlp' solverStuff (nlp {nlpX0' = guess}) (fmap (. ctToDynamic) cb)
-    --return ()
-    (res, _) <- solveNlp' solverStuff (nlp {nlpX0' = guess}) (fmap (. ctToDynamic) cb)
+    let cb = case cb0 of
+          Nothing -> Nothing
+          Just cb' -> Just $ \x -> do
+            (dyn,_) <- toDynamic x
+            cb' dyn
+    (res, _) <- solveNlp' solverStuff (nlp {nlpX0' = guess}) cb
     return res

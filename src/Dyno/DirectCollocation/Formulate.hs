@@ -21,21 +21,21 @@ import qualified Numeric.LinearAlgebra.Algorithms as LA
 import Linear.Matrix hiding ( trace )
 import Linear.V
 
-import JacobiRoots ( shiftedLegendreRoots )
-
 import Dyno.Cov
 import Dyno.View
 import Dyno.Vectorize ( Vectorize(..), fill, vlength, vzipWith )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
-import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs , lagrangeXis )
+import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs )
 import Dyno.Nlp ( Nlp'(..), Bounds )
 import Dyno.Ocp ( OcpPhase(..) )
 import Dyno.DirectCollocation.Types ( CollTraj(..), CollStage(..), CollPoint(..), CollOcpConstraints(..), ctN )
+import Dyno.DirectCollocation.Dynamic ( DynCollTraj, ctToDynamic )
+import Dyno.DirectCollocation.Quadratures ( mkTaus, interpolate )
 import Dyno.Casadi.MX ( solve, mm, trans, d2m )
 import Dyno.Casadi.SXElement ( SXElement )
 import Dyno.Casadi.SX ( sdata, sdense, svector )
-import Dyno.Casadi.DMatrix ( dvector )
+import Dyno.Casadi.DMatrix ( dvector, ddata, ddense )
 
 --data RorL = Radau | Legendre deriving (Eq, Show)
 
@@ -57,7 +57,10 @@ makeCollNlp ::
   (Dim deg, Dim n, Vectorize x, Vectorize p, Vectorize u, Vectorize z,
    Vectorize r, Vectorize o, Vectorize h, Vectorize c, View s, View sh, View sc) =>
   OcpPhase x z u p r o c h s sh sc ->
-  IO (Nlp' (CollTraj x z u p s n deg) JNone (CollOcpConstraints n deg x r c h sh sc) MX)
+  IO ( Nlp' (CollTraj x z u p s n deg) JNone (CollOcpConstraints n deg x r c h sh sc) MX
+     , J (CollTraj x z u p s n deg) (Vector Double)
+       -> IO (DynCollTraj (Vector Double), Vec n (Vec deg (o Double)))
+     )
 makeCollNlp ocp = do
   let -- the collocation points
       taus :: Vec deg Double
@@ -100,7 +103,50 @@ makeCollNlp ocp = do
 --  let callStageFun = callMXFun stageFun
   callStageFun <- fmap callSXFun (expandMXFun stageFun)
 
-  return Nlp' {
+  outputFun <- toMXFun "stageOutputs" $ outputFunction cijs taus dynFun
+
+  -- prepare callbacks
+  let nlpX0 = jfill 0 :: J (CollTraj x z u p s n deg) (Vector Double)
+
+      f :: J (JV o) DMatrix -> J (JV o) (Vector Double)
+      f o' = mkJ (ddata (ddense (unJ o')))
+
+      n = reflectDim (Proxy :: Proxy n)
+
+      dmToDv :: J a (Vector Double) -> J a DMatrix
+      dmToDv (UnsafeJ v) = UnsafeJ (dvector v)
+
+      callOutputFun :: J (JV p) (Vector Double)
+                       -> J S (Vector Double)
+                       -> J (CollStage (JV x) (JV z) (JV u) deg) (Vector Double)
+                       -> J S (Vector Double)
+                       -> IO (Vec deg (J (JV o) (Vector Double)))
+      callOutputFun p tf stage k = do
+        (_ :*: out) <- evalMXFun outputFun $
+                       (dmToDv stage) :*: (dmToDv p) :*: (dmToDv tf) :*: (dmToDv k)
+        let outs0 = unJVec (split out) :: Vec deg (J (JV o) DMatrix)
+        return (fmap f outs0)
+
+      mapOutputFun :: J (CollTraj x z u p s n deg) (Vector Double) -> IO (Vec n (Vec deg (J (JV o) (Vector Double))))
+      mapOutputFun ct = do
+        let CollTraj tf _ p stages _ = split ct
+            vstages = unJVec (split stages)
+                :: Vec n (J (CollStage (JV x) (JV z) (JV u) deg) (Vector Double))
+            ks :: Vec n (J S (Vector Double))
+            ks = TV.mkVec' $ map (mkJ . V.singleton . realToFrac) (take n [(0::Int)..])
+
+        T.sequence $ TV.tvzipWith (callOutputFun p tf) vstages ks
+
+      callback :: J (CollTraj x z u p s n deg) (Vector Double)
+                  -> IO (DynCollTraj (Vector Double), Vec n (Vec deg (o Double)))
+      callback traj = do
+        outputs <- mapOutputFun traj
+        let -- devectorize outputs
+            devec :: J (JV o) (Vector Double) -> o Double
+            devec (UnsafeJ os) = devectorize os
+        return (ctToDynamic traj outputs, fmap (fmap devec) outputs)
+
+  return (Nlp' {
     nlpFG' =
        getFg taus
        (ocpSq ocp :: J (Cov s) DMatrix)
@@ -116,15 +162,10 @@ makeCollNlp ocp = do
                         -> J (Cov s) MX)
     , nlpBX' = cat (getBx ocp)
     , nlpBG' = cat (getBg ocp)
-    , nlpX0' = jfill 0 :: J (CollTraj x z u p s n deg) (Vector Double)
+    , nlpX0' = nlpX0
     , nlpP' = cat JNone
-    }
+    }, callback)
 
-
-mkTaus :: Fractional a => Int -> Vec deg a
-mkTaus deg = case shiftedLegendreRoots deg of
-  Just taus -> TV.mkVec $ V.map (fromRational . toRational) taus
-  Nothing -> error "makeTaus: too high degree"
 
 getFg ::
   forall z x u p r o c h s sh sc n deg .
@@ -424,6 +465,42 @@ dynStageConstraints' cijs taus dynFun (x0 :*: xzs' :*: us' :*: UnsafeJ h :*: p :
     xs = fmap (\(JTuple x _) -> x) xzs
 
 
+-- outputs
+outputFunction ::
+  forall x z u p r o deg . (Dim deg, View x, View z, View u, View p, View r, View o)
+  => Vec (TV.Succ deg) (Vec (TV.Succ deg) Double) -> Vec deg Double
+  -> SXFun (J S :*: J p :*: J x :*: J (CollPoint x z u))
+           (J r :*: J o)
+  -> (J (CollStage x z u deg) :*: J p :*: J S :*: J S) MX
+  -> (J (JVec deg r) :*: J (JVec deg o)) MX
+outputFunction cijs taus dynFun (collStage :*: p :*: h'@(UnsafeJ h) :*: k) =
+  cat (JVec dynConstrs) :*: cat (JVec outputs)
+  where
+    xzus = unJVec (split xzus') :: Vec deg (J (CollPoint x z u) MX)
+    CollStage x0 xzus' = split collStage
+    -- times at each collocation point
+    stageTimes :: Vec deg (J S MX)
+    stageTimes = fmap (\tau -> t0 + realToFrac tau * h') taus
+    t0 = k*h'
+
+    -- dae constraints (dynamics)
+    dynConstrs :: Vec deg (J r MX)
+    outputs :: Vec deg (J o MX)
+    (dynConstrs, outputs) = TV.tvunzip $ TV.tvzipWith3 applyDae xdots xzus stageTimes
+
+    applyDae :: J x MX -> J (CollPoint x z u) MX -> J S MX -> (J r MX, J o MX)
+    applyDae x' xzu t = (r, o)
+      where
+        r :*: o = callSXFun dynFun (t :*: p :*: x' :*: xzu)
+
+    -- state derivatives, maybe these could be useful as outputs
+    xdots :: Vec deg (J x MX)
+    xdots = fmap (/ UnsafeJ h) $ interpolateXDots cijs (x0 TV.<| xs)
+
+    xs :: Vec deg (J x MX)
+    xs = fmap ((\(CollPoint x _ _) -> x) . split) xzus
+
+
 
 
 -- return dynamics constraints, outputs, and interpolated state
@@ -510,14 +587,6 @@ covStageFunction dynStageConJac
     -- supress casadi zero size matrix error
     p1 :: J (Cov s) MX
     p1 = if size (Proxy :: Proxy s) == 0 then p0' else fromMatrix' p1'
-
-
-interpolate :: (Dim deg, Real b, Fractional b, Fractional (J x a), View x) =>
-               Vec deg b -> J x a -> Vec deg (J x a) -> J x a
-interpolate taus x0 xs = dot (TV.mkVec' xis) (x0 TV.<| xs)
-  where
-    xis = map (lagrangeXis (0 : F.toList taus) 1) [0..deg]
-    deg = TV.tvlength taus
 
 
 -- | make an initial guess

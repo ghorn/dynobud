@@ -17,7 +17,7 @@ import Dyno.NlpSolver
 import Dyno.Ocp
 import Dyno.DirectCollocation
 import Dyno.Cov
-import Dyno.DirectCollocation.Dynamic ( toMeta, ctToDynamic )
+import Dyno.DirectCollocation.Dynamic ( toMeta )
 
 import Dyno.Models.Aircraft
 import Dyno.Models.AeroCoeffs
@@ -111,12 +111,14 @@ main = do
   putStrLn $ "using ip \""++gliderUrl++"\""
   putStrLn $ "using channel \""++gliderChannelName++"\""
 
-  nlp <- makeCollNlp ocp
+  (nlp,toDyn) <- makeCollNlp ocp
   withCallback gliderUrl gliderChannelName $ \cb -> do
     let guess = jfill 1
 
         cb' :: J (CollTraj AcX None AcU None JNone NCollStages CollDeg) (Vector Double) -> IO Bool
-        cb' traj = cb (ctToDynamic traj, toMeta traj)
+        cb' traj = do
+          (dyn,_) <- toDyn traj
+          cb (dyn, toMeta (Proxy :: Proxy None) traj)
 
     (msg,opt') <- solveNlp' ipoptSolver (nlp { nlpX0' = guess }) (Just cb')
     opt <- case msg of Left msg' -> error msg'

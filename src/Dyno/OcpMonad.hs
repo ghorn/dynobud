@@ -380,18 +380,21 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
   setOption bcFunSX "name" "boundaryConditions"
   soInit bcFunSX
 
-  let meta = CollTrajMeta { ctmX = NameTreeNode ("", "") (zip (F.toList xnames) (map NameTreeLeaf [0..]))
-                          , ctmZ = NameTreeNode ("", "") (zip (F.toList znames) (map NameTreeLeaf [0..]))
-                          , ctmU = NameTreeNode ("", "") (zip (F.toList unames) (map NameTreeLeaf [0..]))
-                          , ctmP = NameTreeNode ("", "") (zip (F.toList pnames) (map NameTreeLeaf [0..]))
-                          , ctmN = n
-                          , ctmDeg = deg
-                          , ctmNx = V.length xnames
-                          , ctmNz = V.length znames
-                          , ctmNu = V.length unames
-                          , ctmNp = V.length pnames
-                          , ctmNs = 0
-                          }
+  let meta = CollTrajMeta
+             { ctmX = NameTreeNode ("", "") (zip (F.toList xnames) (map NameTreeLeaf [0..]))
+             , ctmZ = NameTreeNode ("", "") (zip (F.toList znames) (map NameTreeLeaf [0..]))
+             , ctmU = NameTreeNode ("", "") (zip (F.toList unames) (map NameTreeLeaf [0..]))
+             , ctmP = NameTreeNode ("", "") (zip (F.toList pnames) (map NameTreeLeaf [0..]))
+             , ctmO = NameTreeNode ("", "") (zip (F.toList onames) (map NameTreeLeaf [0..]))
+             , ctmN = n
+             , ctmDeg = deg
+             , ctmNx = V.length xnames
+             , ctmNz = V.length znames
+             , ctmNu = V.length unames
+             , ctmNp = V.length pnames
+             , ctmNo = V.length onames
+             , ctmNs = 0
+             }
   TV.reifyDim (ctmNx meta) $ \(Proxy :: Proxy nx) ->
     TV.reifyDim (ctmNz meta) $ \(Proxy :: Proxy nz) ->
     TV.reifyDim (ctmNu meta) $ \(Proxy :: Proxy nu) ->

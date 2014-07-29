@@ -61,7 +61,8 @@ import Data.Distributive ( Distributive(..) )
 import Dyno.Vectorize
 
 -- length-indexed vectors using phantom types
-newtype Vec n a = MkVec {unSeq :: S.Seq a} deriving (Eq, Ord, Functor, Foldable, Traversable, Generic, Generic1, Monad)
+newtype Vec n a = MkVec {unSeq :: S.Seq a}
+                deriving (Eq, Ord, Functor, Foldable, Traversable, Generic, Generic1, Monad)
 instance Serialize a => Serialize (Vec n a)
 
 instance Dim n => Distributive (Vec n) where

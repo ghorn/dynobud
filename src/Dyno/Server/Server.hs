@@ -33,6 +33,7 @@ sameMeta (Just ctm0) (Just ctm1) =
       , ctmZ ctm0 == ctmZ ctm1
       , ctmU ctm0 == ctmU ctm1
       , ctmP ctm0 == ctmP ctm1
+      , ctmO ctm0 == ctmO ctm1
       ]
 sameMeta _ _ = False
 
