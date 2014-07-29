@@ -7,8 +7,7 @@ import Control.Monad ( void )
 
 import Dyno.Casadi.SXElement ( SXElement )
 import Dyno.OcpMonad
-import Dyno.Ipopt
---import Dyno.Snopt
+import Dyno.Solvers
 
 import ServerSender
 import GliderShared

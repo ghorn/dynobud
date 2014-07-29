@@ -11,8 +11,7 @@ import Dyno.Vectorize
 import Dyno.Nlp
 import Dyno.NlpSolver
 import Dyno.Casadi.SXElement
-import Dyno.Ipopt
-import Dyno.Snopt
+import Dyno.Solvers
 
 data X a = X a a deriving (Functor, Generic1, Show)
 data G a = G a deriving (Functor, Generic1, Show)
@@ -45,8 +44,8 @@ myNlp = Nlp { nlpFG = fg
         g = G x
 
 solver :: NlpSolverStuff
---solver = ipoptSolver { options = [("linear_solver",Opt "mumps")] }
-solver = snoptSolver
+solver = ipoptSolver { options = [("linear_solver",Opt "mumps")] }
+--solver = snoptSolver
 
 main :: IO ()
 main = do

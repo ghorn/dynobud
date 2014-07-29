@@ -5,8 +5,7 @@ module Main ( main ) where
 import Control.Monad ( void )
 
 import Dyno.OcpMonad
-import Dyno.Ipopt
---import Dyno.Snopt
+import Dyno.Solvers
 import Dyno.Casadi.SXElement ( SXElement )
 import ServerSender
 import GliderShared

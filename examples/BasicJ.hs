@@ -13,7 +13,7 @@ import qualified Data.Vector as V
 import Dyno.View
 import Dyno.Nlp
 import Dyno.NlpSolver
-import Dyno.Ipopt
+import Dyno.Solvers
 
 
 data X a = X (J S a) (J S a) deriving (Generic, Show)

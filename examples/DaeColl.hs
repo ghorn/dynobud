@@ -11,8 +11,7 @@ import Dyno.Vectorize
 import Dyno.View
 import Dyno.TypeVecs
 import Dyno.Nats
-import Dyno.Ipopt
---import Dyno.Snopt
+import Dyno.Solvers
 --import Dyno.Sqp.Sqp
 --import Dyno.Sqp.LineSearch
 import Dyno.Nlp

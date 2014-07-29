@@ -37,8 +37,7 @@ library
                        Dyno.Interface.LogsAndErrors
                        Dyno.Interface.Types
                        Dyno.NlpSolver
-                       Dyno.Ipopt
-                       Dyno.Snopt
+                       Dyno.Solvers
                        Dyno.Casadi.SharedObject
                        Dyno.Casadi.Callback
                        Dyno.Casadi.Option

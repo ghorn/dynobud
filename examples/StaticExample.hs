@@ -3,8 +3,7 @@
 module Main where
 
 import Dyno.NlpMonad
-import Dyno.Ipopt
---import Dyno.Snopt
+import Dyno.Solvers
 
 rosen :: NlpMonad ()
 rosen = do
