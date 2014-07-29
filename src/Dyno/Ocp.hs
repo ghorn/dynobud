@@ -14,7 +14,7 @@ import Dyno.Casadi.DMatrix ( DMatrix )
 -- | fully implicit differential-algebraic equation of the form:
 --
 -- > f(x'(t), x(t), z(t), u(t), p, t) == 0
-type Dae x z u p r o a = x a -> x a -> z a -> u a -> p a -> a -> (r a,  o a)
+type Dae x z u p r o a = x a -> x a -> z a -> u a -> p a -> a -> (r a, o a)
 
 -- | One stage of an optimal control problem, solvable as a stand-alone optimal control problem.
 --
@@ -53,7 +53,7 @@ data OcpPhase x z u p r o c h s sh sc =
   OcpPhase { -- | the Mayer term @Jm(T, x(0), x(T), P(0), P(t))@
              ocpMayer :: Sxe -> x Sxe -> x Sxe -> Sx (Cov s) -> Sx (Cov s) -> Sxe
              -- | the Lagrange term @Jl(x(t),z(t),u(t),p,o,t)@
-           , ocpLagrange :: x Sxe -> z Sxe -> u Sxe -> p Sxe ->  o Sxe -> Sxe -> Sxe
+           , ocpLagrange :: x Sxe -> z Sxe -> u Sxe -> p Sxe -> o Sxe -> Sxe -> Sxe
              -- | the system dynamics of the stage: @f(x'(t), x(t), z(t), u(t), p, t)@
            , ocpDae :: Dae x z u p r o SXElement
              -- | the boundary conditions @clb <= c(x(0), x(T)) <= cub@
