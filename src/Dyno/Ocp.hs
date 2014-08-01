@@ -105,8 +105,8 @@ data OcpPhaseWithCov ocp sx sz sw sr sh sc =
   , ocpCovLagrange :: Sxe -> X ocp Sxe -> Sx (Cov (JV sx)) -> Sxe -> Sxe
     -- | the system dynamics of the stage: @f(x'(t), x(t), z(t), u(t), p, t)@
   , ocpCovDae :: X ocp Sxe -> X ocp Sxe -> Z ocp Sxe -> U ocp Sxe -> P ocp Sxe -> Sxe
-                   -> sx Sxe -> sx Sxe -> sz Sxe -> sw Sxe
-                   -> sr Sxe
+                 -> sx Sxe -> sx Sxe -> sz Sxe -> sw Sxe
+                 -> sr Sxe
     -- | the projection from covariance state to full state
   , ocpCovProjection :: X ocp Sxe -> sx Sxe -> X ocp Sxe
     -- | covariance injection
