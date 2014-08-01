@@ -47,8 +47,6 @@ import Dyno.Casadi.Function ( callSX )
 import Dyno.Casadi.SharedObject ( soInit )
 import Dyno.Ocp ( OcpPhase(..) )
 import Dyno.Nlp ( Bounds )
-import Dyno.Cov ( Cov, diag'' )
-import Dyno.View ( View(..), J, JNone(..), jfill )
 import Dyno.Vectorize ( Vectorize(..), fill )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
@@ -237,7 +235,7 @@ reifyOcpPhase ::
   -> Int -> Int
   -> (forall x z u p r o c h .
       (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize r, Vectorize o, Vectorize c, Vectorize h)
-      => OcpPhase x z u p r o c h JNone JNone JNone -> CollTrajMeta -> IO ret)
+      => OcpPhase x z u p r o c h -> CollTrajMeta -> IO ret)
   -> IO ret
 reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
   time <- sxElement_sym "_t"
@@ -393,7 +391,7 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
              , ctmNu = V.length unames
              , ctmNp = V.length pnames
              , ctmNo = V.length onames
-             , ctmNs = 0
+             , ctmNsx = 0
              }
   TV.reifyDim (ctmNx meta) $ \(Proxy :: Proxy nx) ->
     TV.reifyDim (ctmNz meta) $ \(Proxy :: Proxy nz) ->
@@ -406,14 +404,14 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
   --  TV.reifyDim ncov $ \(Proxy :: Proxy ncov) -> do
   --  TV.reifyDim nsh $ \(Proxy :: Proxy nsh) -> do
   --  TV.reifyDim nsc $ \(Proxy :: Proxy nsc) -> do
-  
+
     let daeFun :: Vec nx SXElement -> Vec nx SXElement -> Vec nz SXElement -> Vec nu SXElement
                   -> Vec np SXElement -> SXElement
                    -> (Vec nr SXElement, Vec no SXElement)
         daeFun x' x z u p t = (devec (rets V.! 0), devec (rets V.! 1))
           where
             rets = callSX daeFunSX (V.fromList [vec x', vec x, vec z, vec u, vec p, vec' t])
-  
+
         lagrangeFun :: Vec nx SXElement -> Vec nz SXElement -> Vec nu SXElement -> Vec np SXElement -> Vec no SXElement -> SXElement -> SXElement
         lagrangeFun x z u p o t =
           devec' $ V.head $ callSX lagFunSX (V.fromList [vec x, vec z, vec u, vec p, vec o, vec' t])
@@ -424,20 +422,19 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
           --  "\nnumeric inputs u: " ++ show (V.length u) ++
           --  "\nnumeric inputs p: " ++ show (V.length p) ++
           --  "\nnumeric inputs o: " ++ show (V.length o)
-  
+
         pathConstraintFun :: Vec nx SXElement -> Vec nz SXElement -> Vec nu SXElement
                              -> Vec np SXElement -> Vec no SXElement -> SXElement -> Vec nh SXElement
         pathConstraintFun x z u p o t =
           devec $ V.head $ callSX pathcFunSX (V.fromList [vec x, vec z, vec u, vec p, vec o, vec' t])
-  
+
         mayerFun :: SXElement -> Vec nx SXElement -> Vec nx SXElement
-                    -> J (Cov JNone) SX -> J (Cov JNone) SX
                     -> SXElement
-        mayerFun endT'' x0 xF _ _ = devec' $ V.head $ callSX mayerFunSX (V.fromList [vec' endT'', vec x0, vec xF])
-  
+        mayerFun endT'' x0 xF = devec' $ V.head $ callSX mayerFunSX (V.fromList [vec' endT'', vec x0, vec xF])
+
         bcFun :: Vec nx SXElement -> Vec nx SXElement -> Vec nc SXElement
         bcFun x0 xF = devec $ V.head $ callSX bcFunSX (V.fromList [vec x0, vec xF])
-  
+
         ocpPhase =
           OcpPhase { ocpMayer = mayerFun
                    , ocpLagrange = lagrangeFun
@@ -451,13 +448,6 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
                    , ocpUbnd = fill (Nothing, Nothing)
                    , ocpPbnd = fill (Nothing, Nothing)
                    , ocpTbnd = tbnds
-  
-                   , ocpSq = diag'' (cat JNone)
-                   , ocpSbnd = jfill (Nothing, Nothing)
-                   , ocpSbc = \_ _ -> cat JNone
-                   , ocpSbcBnds = cat JNone
-                   , ocpSh = \_ _ -> cat JNone
-                   , ocpShBnds = cat JNone
                    }
     f ocpPhase meta
 

@@ -44,7 +44,7 @@ myNlp = Nlp { nlpFG = fg
         g = G x
 
 solver :: NlpSolverStuff
-solver = ipoptSolver { options = [("linear_solver",Opt "mumps")] }
+solver = ipoptSolver
 --solver = snoptSolver
 
 main :: IO ()

@@ -28,6 +28,8 @@ module Dyno.TypeVecs
        , tvzipWith
        , tvzipWith3
        , tvzipWith4
+       , tvzipWith5
+       , tvzipWith6
        , tvunzip
        , tvunzip3
        , tvunzip4
@@ -158,6 +160,31 @@ tvzipWith3 f x y z = mkSeq (S.zipWith3 f (unSeq x) (unSeq y) (unSeq z))
 
 tvzipWith4 :: (a -> b -> c -> d -> e) -> Vec n a -> Vec n b -> Vec n c -> Vec n d -> Vec n e
 tvzipWith4 f x y z u = mkSeq (S.zipWith4 f (unSeq x) (unSeq y) (unSeq z) (unSeq u))
+
+tvzipWith5 :: (a -> b -> c -> d -> e -> f)
+              -> Vec n a -> Vec n b -> Vec n c -> Vec n d -> Vec n e -> Vec n f
+tvzipWith5 f x0 x1 x2 x3 x4 =
+  mkSeq (szipWith5 f (unSeq x0) (unSeq x1) (unSeq x2) (unSeq x3) (unSeq x4))
+  where
+    szipWith5 :: (a -> b -> c -> d -> e -> f)
+                 -> S.Seq a -> S.Seq b -> S.Seq c -> S.Seq d -> S.Seq e -> S.Seq f
+    szipWith5 f' s1 s2 s3 s4 s5 =
+      S.zipWith ($) (S.zipWith ($) (S.zipWith ($) (S.zipWith f' s1 s2) s3) s4) s5
+
+tvzipWith6 :: (a -> b -> c -> d -> e -> f -> g)
+              -> Vec n a -> Vec n b -> Vec n c -> Vec n d -> Vec n e -> Vec n f -> Vec n g
+tvzipWith6 f x0 x1 x2 x3 x4 x5 =
+  mkSeq (szipWith6 f (unSeq x0) (unSeq x1) (unSeq x2) (unSeq x3) (unSeq x4) (unSeq x5))
+  where
+    szipWith6 :: (a -> b -> c -> d -> e -> f -> g)
+                 -> S.Seq a -> S.Seq b -> S.Seq c -> S.Seq d -> S.Seq e -> S.Seq f -> S.Seq g
+    szipWith6 f' s1 s2 s3 s4 s5 s6 =
+      S.zipWith ($) (S.zipWith ($) (S.zipWith ($) (S.zipWith ($) (S.zipWith f' s1 s2) s3) s4) s5) s6
+
+
+
+
+
 
 tvunzip :: Vec n (a,b) -> (Vec n a, Vec n b)
 tvunzip v = (mkVec v1, mkVec v2)

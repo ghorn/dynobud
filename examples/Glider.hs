@@ -29,8 +29,8 @@ import ServerSender ( withCallback )
 type NCollStages = D100
 type CollDeg = D2
 
-mayer :: Floating a => a -> AcX a -> AcX a -> J (Cov JNone) SX -> J (Cov JNone) SX -> a
-mayer _ _ _ _ _ = 0
+mayer :: Floating a => a -> AcX a -> AcX a -> a
+mayer _ _ _ = 0
 
 lagrange :: Floating a => AcX a -> None a -> AcU a -> None a -> None a -> a -> a
 lagrange (AcX _ _ _ _ (AcU surfs)) _ (AcU surfs') _ _ _ =
@@ -47,7 +47,7 @@ lagrange (AcX _ _ _ _ (AcU surfs)) _ (AcU surfs') _ _ _ =
     ail' = csElev surfs'
     flaps' = csFlaps surfs'
 
-dae :: Floating a => Dae AcX None AcU None AcX None a
+dae :: Floating a => AcX a -> AcX a -> None a -> AcU a -> None a -> a -> (AcX a, None a)
 dae x' x _ u _ _ = (aircraftDae (mass, inertia) fcs mcs refs x' x u, None)
   where
     mass = bettyMass
@@ -56,7 +56,7 @@ dae x' x _ u _ _ = (aircraftDae (mass, inertia) fcs mcs refs x' x u, None)
     mcs = bettyMc
     refs = bettyRefs
 
-ocp :: OcpPhase AcX None AcU None AcX None AcX None JNone JNone JNone
+ocp :: OcpPhase AcX None AcU None AcX None AcX None
 ocp = OcpPhase { ocpMayer = mayer
                , ocpLagrange = lagrange
                , ocpDae = dae
@@ -70,13 +70,6 @@ ocp = OcpPhase { ocpMayer = mayer
                , ocpPbnd = None
                , ocpTbnd = (Just 0.5, Just 0.5)
 --               , ocpTbnd = (Just 4, Just 4)
-
-               , ocpSq = 0
-               , ocpSbnd = jfill (Nothing,Nothing)
-               , ocpSbc = \_ _ -> cat JNone
-               , ocpSbcBnds = cat JNone
-               , ocpSh = \_ _ -> cat JNone
-               , ocpShBnds = cat JNone
                }
 
 pathc :: x a -> z a -> u a -> p a -> None a -> a -> None a
@@ -114,10 +107,12 @@ main = do
   withCallback gliderUrl gliderChannelName $ \cb -> do
     let guess = jfill 1
 
-        cb' :: J (CollTraj AcX None AcU None JNone NCollStages CollDeg) (Vector Double) -> IO Bool
+        cb' :: J (CollTraj AcX None AcU None NCollStages CollDeg) (Vector Double) -> IO Bool
         cb' traj = do
           (dyn,_) <- toDyn traj
-          cb (dyn, toMeta (Proxy :: Proxy None) traj)
+          let proxy :: Proxy (CollTraj AcX None AcU None NCollStages CollDeg)
+              proxy = Proxy
+          cb (dyn, toMeta (Proxy :: Proxy None) proxy)
 
     (msg,opt') <- solveNlp' ipoptSolver (nlp { nlpX0' = guess }) (Just cb')
     opt <- case msg of Left msg' -> error msg'

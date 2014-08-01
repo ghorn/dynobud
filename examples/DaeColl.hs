@@ -43,8 +43,8 @@ instance Lookup (PendX ())
 instance Lookup (PendZ ())
 instance Lookup (PendU ())
 
-mayer :: (Num a) => t -> PendX a -> PendX a -> b -> b -> a
-mayer _ _ _ _ _ = 0
+mayer :: Num a => t -> PendX a -> PendX a -> a
+mayer _ _ _ = 0
 
 lagrange :: Floating a => PendX a -> PendZ a -> PendU a -> PendP a -> PendO a -> a -> a
 lagrange x _ u _ _ _ = vx*vx + vy*vy + 1e-4*torque**2
@@ -55,7 +55,7 @@ lagrange x _ u _ _ _ = vx*vx + vy*vy + 1e-4*torque**2
 r :: Floating a => a
 r = 0.3
 
-pendDae :: Floating a => Dae PendX PendZ PendU PendP PendR PendO a
+pendDae :: Floating a => PendX a -> PendX a -> PendZ a -> PendU a -> PendP a -> a -> (PendR a, PendO a)
 pendDae (PendX x' y' vx' vy') (PendX x y vx vy) (PendZ tau) (PendU torque) (PendP m) _ =
   (PendR (x' - vx) (y' - vy)
    (m*vx' + x*tau - fx)
@@ -67,7 +67,7 @@ pendDae (PendX x' y' vx' vy') (PendX x y vx vy) (PendZ tau) (PendU torque) (Pend
     fx =  torque*y
     fy = -torque*x + m*9.8
 
-pendOcp :: OcpPhase PendX PendZ PendU PendP PendR PendO (Vec D8) None JNone JNone JNone
+pendOcp :: OcpPhase PendX PendZ PendU PendP PendR PendO (Vec D8) None
 pendOcp = OcpPhase { ocpMayer = mayer
                    , ocpLagrange = lagrange
                    , ocpDae = pendDae
@@ -80,13 +80,6 @@ pendOcp = OcpPhase { ocpMayer = mayer
                    , ocpZbnd = fill (Nothing, Nothing)
                    , ocpPbnd = PendP (Just 0.3, Just 0.3)
                    , ocpTbnd = (Just 4, Just 10)
-
-                   , ocpSq = 0
-                   , ocpSbnd = jfill (Nothing,Nothing)
-                   , ocpSbc = \_ _ -> cat JNone
-                   , ocpSbcBnds = cat JNone
-                   , ocpSh = \_ _ -> cat JNone
-                   , ocpShBnds = cat JNone
                    }
 
 pathc :: Floating a => PendX a -> PendZ a -> PendU a -> PendP a -> PendO a -> a -> None a
@@ -118,7 +111,7 @@ bc (PendX x0 y0 vx0 vy0) (PendX xf yf vxf vyf) =
 type NCollStages = D80
 type CollDeg = D3
 
-guess :: J (CollTraj PendX PendZ PendU PendP JNone NCollStages CollDeg) (Vector Double)
+guess :: J (CollTraj PendX PendZ PendU PendP NCollStages CollDeg) (Vector Double)
 guess = jfill 1
 
 solver :: NlpSolverStuff

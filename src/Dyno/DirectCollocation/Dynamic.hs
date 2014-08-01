@@ -9,6 +9,7 @@ module Dyno.DirectCollocation.Dynamic
        , MetaTree
        , forestFromMeta
        , toMeta
+       , toMetaCov
        , ctToDynamic
        , dynPlotPoints
 --       , toPlotTree
@@ -28,7 +29,6 @@ import Linear.V
 import Dyno.Server.Accessors ( AccessorTree(..), Lookup(..), accessors )
 import Dyno.Vectorize
 import Dyno.View.View
-import Dyno.View.Viewable
 import qualified Dyno.TypeVecs as TV
 import Dyno.TypeVecs ( Vec )
 
@@ -45,28 +45,28 @@ data DynPlotPoints a = DynPlotPoints
                      deriving Show
 
 data D a
-data DynCollTraj a = DynCollTraj (J (CollTraj D D D D D () ()) a) (Vec () (Vec () (J D a)))
+data DynCollTraj a = DynCollTraj (J (CollTraj D D D D () ()) a) (Vec () (Vec () (J D a)))
                       deriving (Generic, Show)
 instance Serialize a => Serialize (DynCollTraj a)
 instance Serialize a => Serialize (V.Vector a) where
   put = put . V.toList
   get = fmap V.fromList get
 
-dynPlotPoints :: forall a . (Real a, Fractional a, Show a) => DynCollTraj (Vector a) -> CollTrajMeta -> DynPlotPoints a
+dynPlotPoints :: forall a . (Real a, Fractional a, Show a)
+                 => DynCollTraj (Vector a) -> CollTrajMeta -> DynPlotPoints a
 dynPlotPoints (DynCollTraj traj outputs) meta =
-  reifyCollTraj (nx,nz,nu,np,no,ns,n,deg) traj outputs foo
+  reifyCollTraj (nx,nz,nu,np,no,n,deg) traj outputs foo
   where
     nx  = ctmNx meta
     nz  = ctmNz meta
     nu  = ctmNu meta
     np  = ctmNp meta
     no  = ctmNo meta
-    ns  = ctmNs meta
     n   = ctmN meta
     deg = ctmDeg meta
-    
-    foo :: (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize o, View s, Dim deg, Dim n)
-           => J (CollTraj x z u p s n deg) (Vector a)
+
+    foo :: (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize o, Dim deg, Dim n)
+           => J (CollTraj x z u p n deg) (Vector a)
            -> Vec n (Vec deg (J (JV o) (Vector a)))
            -> DynPlotPoints a
     foo ct outs = plotPoints (split ct) outs
@@ -75,19 +75,21 @@ dynPlotPoints (DynCollTraj traj outputs) meta =
 -- a safe, point maker which is difficult to work with
 -- first stage in making a list
 plotPoints ::
-  forall x z u p o s n deg a .
-  (Dim n, Dim deg, Real a, Fractional a, Show a, Vectorize x, Vectorize z, Vectorize u, Vectorize o)
-  => CollTraj x z u p s n deg (Vector a)
+  forall x z u p o n deg a .
+  (Dim n, Dim deg, Real a, Fractional a, Show a,
+   Vectorize x, Vectorize z, Vectorize u, Vectorize o, Vectorize p)
+  => CollTraj x z u p n deg (Vector a)
   -> Vec n (Vec deg (J (JV o) (Vector a)))
   -> DynPlotPoints a
-plotPoints ct@(CollTraj (UnsafeJ tf') _ _ stages' xf) outputs = DynPlotPoints (xss++[[(tf,unJ xf)]]) zss uss oss
+plotPoints (CollTraj (UnsafeJ tf') _ stages' xf) outputs =
+  DynPlotPoints (xss++[[(tf,unJ xf)]]) zss uss oss
   where
     nStages = size (Proxy :: Proxy (JVec n S))
     tf,h :: a
     tf = V.head tf'
     h = tf / fromIntegral nStages
     --taus :: Vec deg Double
-    taus = mkTaus (ctDeg ct)
+    taus = mkTaus (reflectDim (Proxy :: Proxy deg))
 
     stages = fmap split (unJVec (split stages')) :: Vec n (CollStage (JV x) (JV z) (JV u) deg (Vector a))
     (xss,zss,uss,oss) = unzip4 $ f 0 $ zip (F.toList stages) (F.toList outputs)
@@ -95,7 +97,7 @@ plotPoints ct@(CollTraj (UnsafeJ tf') _ _ stages' xf) outputs = DynPlotPoints (x
     -- todo: check this final time against expected tf
     f :: a
          -> [(CollStage (JV x) (JV z) (JV u) deg (Vector a), Vec deg (J (JV o) (Vector a)))]
-         -> [([(a,Vector a)], [(a,Vector a)], [(a,Vector a)], [(a,Vector a)])] 
+         -> [([(a,Vector a)], [(a,Vector a)], [(a,Vector a)], [(a,Vector a)])]
     f _ [] = []
     f t0 ((CollStage x0 xzus', os') : css) = (xs,zs,us,os) : f tnext css
       where
@@ -150,7 +152,7 @@ data CollTrajMeta = CollTrajMeta { ctmX :: NameTree
                                  , ctmNu :: Int
                                  , ctmNp :: Int
                                  , ctmNo :: Int
-                                 , ctmNs :: Int
+                                 , ctmNsx :: Int
                                  , ctmN :: Int
                                  , ctmDeg :: Int
                                  } deriving (Eq, Generic, Show)
@@ -185,13 +187,12 @@ forestFromMeta meta = [xTree,zTree,uTree,oTree]
         woo = map (map (\(t,x) -> (t, x V.! k)))
 
 
-toMeta :: forall x z u p o s n deg a .
+toMeta :: forall x z u p o n deg .
           (Lookup (x ()), Lookup (z ()), Lookup (u ()), Lookup (p ()), Lookup (o ()),
            Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize o,
-           View s, Viewable a,
            Dim n, Dim deg)
-          => Proxy o -> J (CollTraj x z u p s n deg) a -> CollTrajMeta
-toMeta _ ct =
+          => Proxy o -> Proxy (CollTraj x z u p n deg) -> CollTrajMeta
+toMeta _ _ =
   CollTrajMeta { ctmX = namesFromAccTree $ accessors (jfill () :: J (JV x) (Vector ()))
                , ctmZ = namesFromAccTree $ accessors (jfill () :: J (JV z) (Vector ()))
                , ctmU = namesFromAccTree $ accessors (jfill () :: J (JV u) (Vector ()))
@@ -202,16 +203,24 @@ toMeta _ ct =
                , ctmNu = size (Proxy :: Proxy (JV u))
                , ctmNp = size (Proxy :: Proxy (JV p))
                , ctmNo = size (Proxy :: Proxy (JV o))
-               , ctmNs = size (Proxy :: Proxy s)
-               , ctmN = ctN ct'
-               , ctmDeg = ctDeg ct'
+               , ctmNsx = 0
+               , ctmN = reflectDim (Proxy :: Proxy n)
+               , ctmDeg = reflectDim (Proxy :: Proxy deg)
                }
-  where
-    ct' = split ct
 
-ctToDynamic :: forall x z u p o s n deg a .
-  (Vectorize x, Vectorize z, Vectorize u, Vectorize p, View s) =>
-  J (CollTraj x z u p s n deg) a -> Vec n (Vec deg (J (JV o) a)) -> DynCollTraj a
+toMetaCov :: forall sx x z u p o n deg .
+          (Lookup (x ()), Lookup (z ()), Lookup (u ()), Lookup (p ()), Lookup (o ()),
+           Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize o,
+           Vectorize sx,
+           Dim n, Dim deg)
+          => Proxy o -> Proxy (CollTrajCov sx x z u p n deg) -> CollTrajMeta
+toMetaCov _ _ = meta0 { ctmNsx = size (Proxy :: Proxy (JV sx)) }
+  where
+    meta0 = toMeta (Proxy :: Proxy o) (Proxy :: Proxy (CollTraj x z u p n deg))
+
+ctToDynamic :: forall x z u p o n deg a .
+  (Vectorize x, Vectorize z, Vectorize u, Vectorize p) =>
+  J (CollTraj x z u p n deg) a -> Vec n (Vec deg (J (JV o) a)) -> DynCollTraj a
 ctToDynamic (UnsafeJ x) os = DynCollTraj (UnsafeJ x) (castO os) -- this should be totally safe
   where
     castO :: Vec n (Vec deg (J (JV o) a)) -> Vec () (Vec () (J D a))
