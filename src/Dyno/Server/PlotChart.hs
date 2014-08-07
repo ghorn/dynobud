@@ -12,7 +12,7 @@ import Data.Default.Class ( def )
 --import qualified Data.Sequence as S
 import qualified Graphics.UI.Gtk as Gtk
 import qualified Graphics.Rendering.Chart as Chart
-import qualified Graphics.Rendering.Chart.Gtk as ChartGtk
+import Graphics.Rendering.Chart.Backend.Cairo ( runBackend, defaultEnv )
 
 import Dyno.Server.PlotTypes ( GraphInfo(..), AxisScaling(..) )
 
@@ -43,7 +43,19 @@ updateCanvas graphInfoMVar canvas = do
             f (name,getter) = (name, getter datalog :: [[(Double,Double)]])
 
   let myGraph = displayChart (giXScaling gi, giYScaling gi) (giXRange gi, giYRange gi) namePcs
-  ChartGtk.updateCanvas myGraph canvas
+  chartGtkUpdateCanvas myGraph canvas
+
+chartGtkUpdateCanvas :: Chart.Renderable a -> Gtk.DrawingArea  -> IO Bool
+chartGtkUpdateCanvas chart canvas = do
+    win <- Gtk.widgetGetDrawWindow canvas
+    (width, height) <- Gtk.widgetGetSize canvas
+    regio <- Gtk.regionRectangle $ Gtk.Rectangle 0 0 width height
+    let sz = (fromIntegral width,fromIntegral height)
+    Gtk.drawWindowBeginPaintRegion win regio
+    _ <- Gtk.renderWithDrawable win $ runBackend (defaultEnv Chart.bitmapAlignmentFns) (Chart.render chart sz) 
+    Gtk.drawWindowEndPaint win
+    return True
+
 
 displayChart :: (Chart.PlotValue a, Show a, RealFloat a) =>
                 (AxisScaling, AxisScaling) -> (Maybe (a,a),Maybe (a,a)) ->

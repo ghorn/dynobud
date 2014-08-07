@@ -85,7 +85,7 @@ library
                        time,
                        stm,
                        gtk,
-                       Chart-gtk,
+                       Chart-cairo,
                        Chart,
                        data-default-class,
                        distributive
