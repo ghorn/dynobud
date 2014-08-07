@@ -46,3 +46,10 @@ you may need to do something like this on Debian/Ubuntu:
     >> sudo apt-get install libpango1.0-dev
     >> sudo apt-get install libgtk2.0-dev
     >> sudo apt-get install libgsl0-dev
+
+
+"user error: out of memory"
+If you get this ^ error on OSX while using the plotting tools, your
+cairo/pango/gtk may be linked to an XQuartz library.
+Add "extra-lib-dirs=/usr/local/lib" (or wherever the correct libraries are)
+to your .cabal/config
