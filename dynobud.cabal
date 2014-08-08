@@ -28,6 +28,7 @@ library
                        Dyno.DirectCollocation.Reify
                        Dyno.DirectCollocation.Dynamic
                        Dyno.DirectCollocation.Quadratures
+                       Dyno.DirectCollocation.Profile
                        Dyno.Cov
                        Dyno.View
                        Dyno.Vectorize
