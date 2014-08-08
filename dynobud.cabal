@@ -6,7 +6,7 @@ license:             LGPL-3
 license-file:        LICENSE
 author:              Greg Horn
 maintainer:          gregmainland@gmail.com
-copyright:           (c) Greg Horn 2013
+copyright:           (c) Greg Horn 2013-2014
 category:            Science
 build-type:          Simple
 -- extra-source-files:
