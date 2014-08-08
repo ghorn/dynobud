@@ -4,7 +4,8 @@
 {-# Language FlexibleContexts #-}
 
 module Dyno.DirectCollocation.Formulate
-       ( makeCollNlp
+       ( CovTraj(..)
+       , makeCollNlp
        , makeCollCovNlp
        , mkTaus
        , interpolate
@@ -165,7 +166,9 @@ makeCollCovNlp ::
   -> OcpPhaseWithCov (OcpPhase x z u p r o c h) sx sz sw sr sh sc
   -> IO ( Nlp' (CollTrajCov sx x z u p n deg) JNone (CollOcpCovConstraints n deg x r c h sh sc) MX
         , J (CollTrajCov sx x z u p n deg) (Vector Double)
-          -> IO (DynCollTraj (Vector Double), Vec n (Vec deg (o Double)))
+          -> IO (DynCollTraj (Vector Double), Vec n (Vec deg (o Double))
+                , Vec n (J (Cov (JV sx)) (Vector Double)), J (Cov (JV sx)) (Vector Double)
+                )
         )
 makeCollCovNlp ocp ocpCov = do
   let -- the collocation points
@@ -200,8 +203,8 @@ makeCollCovNlp ocp ocpCov = do
   callCovStageFun <- fmap callSXFun (expandMXFun covStageFun)
 
   (nlp0, callback0) <- makeCollNlp ocp
-
-  let fg :: J (CollTrajCov sx x z u p n deg) MX
+  let -- the NLP
+      fg :: J (CollTrajCov sx x z u p n deg) MX
             -> J JNone MX
             -> (J S MX, J (CollOcpCovConstraints n deg x r c h sh sc) MX)
       fg = getFgCov taus
@@ -214,10 +217,27 @@ makeCollCovNlp ocp ocpCov = do
                  -> J (Cov (JV sx)) MX)
         (nlpFG' nlp0)
 
-  let callback collTrajCov = do
+  -- callbacks
+  getCov <- toMXFun "getCovariances" $ getCovariances taus (ocpCovSq ocpCov) callCovStageFun
+    :: IO
+       (MXFun
+        (J (CollTrajCov sx x z u p n deg))
+        (J (JVec n (Cov (JV sx))) :*: J (Cov (JV sx))))
+
+  let dmToDv :: J a (Vector Double) -> J a DMatrix
+      dmToDv (UnsafeJ v) = UnsafeJ (dvector v)
+
+      --dvToDm :: View a => J a DMatrix -> J a (Vector Double)
+      --dvToDm v = mkJ (ddata (ddense (unJ v)))
+      dvToDm :: J a DMatrix -> J a (Vector Double)
+      dvToDm (UnsafeJ v) = UnsafeJ (ddata (ddense v))
+
+      callback collTrajCov = do
         let CollTrajCov _ collTraj = split collTrajCov
         (dynCollTraj, outputs) <- callback0 collTraj
-        return (dynCollTraj, outputs)
+        covs' :*: pF <- evalMXFun getCov (dmToDv collTrajCov)
+        let covs = unJVec (split covs') :: Vec n (J (Cov (JV sx)) DMatrix)
+        return (dynCollTraj, outputs, fmap dvToDm covs, dvToDm pF)
 
   return (Nlp' {
     nlpFG' = fg
@@ -404,6 +424,66 @@ getFgCov taus sq sbcFun shFun lagrangeFun mayerFun covStageFun
 
     covPathConstraints :: Vec n (J sh MX)
     covPathConstraints = TV.tvzipWith (\xk pk -> callSXFun shFun (xk:*:pk)) x0s covs
+
+    covs :: Vec n (J (Cov (JV sx)) MX) -- all but last covariances
+    pF :: J (Cov (JV sx)) MX -- last covariances
+    (pF, covs) = T.mapAccumL ff p0 $ TV.tvzip3 spstages times' covInjections
+
+    ff :: J (Cov (JV sx)) MX
+          -> (CollStage (JV x) (JV z) (JV u) deg MX, J (JVec deg S) MX, J (Cov (JV sw)) MX)
+          -> (J (Cov (JV sx)) MX, J (Cov (JV sx)) MX)
+    ff cov0 (CollStage x0' xzus, stageTimes, covInj) = (cov1, cov0)
+      where
+        cov1 = covStageFun (cov0 :*: dt :*: parm :*: stageTimes :*: x0' :*: xzus :*: covInj)
+
+data CovTraj sx n a =
+  CovTraj
+  { ctAllButLast :: Vec n (J (Cov (JV sx)) a)
+  , ctLast :: J (Cov (JV sx)) a
+  }
+
+getCovariances ::
+  forall z x u p sx sw n deg .
+  (Dim deg, Dim n, Vectorize x, Vectorize z, Vectorize u, Vectorize p,
+   Vectorize sx, Vectorize sw)
+   -- taus
+  => Vec deg Double
+   -- sq
+  -> J (Cov (JV sw)) DMatrix
+   -- covStageFun
+  -> ((J (Cov (JV sx)) :*: J S :*: J (JV p) :*: J (JVec deg S)
+      :*: J (JV x) :*: J (JVec deg (CollPoint (JV x) (JV z) (JV u))) :*: J (Cov (JV sw))) MX
+      -> J (Cov (JV sx)) MX)
+  -> J (CollTrajCov sx x z u p n deg) MX
+  -> (((J (JVec n (Cov (JV sx)))) :*: J (Cov (JV sx))) MX)
+getCovariances taus sq covStageFun
+  collTrajCov = cat (JVec covs) :*: pF
+  where
+    CollTrajCov p0 collTraj = split collTrajCov
+
+    -- split up the design vars
+    CollTraj tf parm stages' _ = split collTraj
+    stages = unJVec (split stages') :: Vec n (J (CollStage (JV x) (JV z) (JV u) deg) MX)
+    spstages = fmap split stages :: Vec n (CollStage (JV x) (JV z) (JV u) deg MX)
+
+    -- timestep
+    dt = tf / fromIntegral n
+    n = reflectDim (Proxy :: Proxy n)
+
+    -- initial time at each collocation stage
+    t0s :: Vec n (J S MX)
+    t0s = TV.mkVec' $ take n [dt * fromIntegral k | k <- [(0::Int)..]]
+
+    -- times at each collocation point
+    times :: Vec n (Vec deg (J S MX))
+    times = fmap (\t0 -> fmap (\tau -> t0 + realToFrac tau * dt) taus) t0s
+
+    times' :: Vec n (J (JVec deg S) MX)
+    times' = fmap (cat . JVec) times
+
+    -- Q
+    covInjections :: Vec n (J (Cov (JV sw)) MX)
+    covInjections = fill (mkJ (d2m (unJ sq)))
 
     covs :: Vec n (J (Cov (JV sx)) MX) -- all but last covariances
     pF :: J (Cov (JV sx)) MX -- last covariances

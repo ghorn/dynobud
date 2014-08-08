@@ -8,6 +8,8 @@ module Dyno.Cov
        , toMatrix
        , toMatrix'
        , toMatrix''
+       , toHMatrix
+       , toHMatrix'
        , fromMatrix
        , fromMatrix'
        , fromMatrix''
@@ -25,6 +27,8 @@ import qualified Data.Vector as V
 import qualified Data.Sequence as Seq
 import Data.Serialize
 import System.IO.Unsafe ( unsafePerformIO )
+import qualified Data.Packed.Matrix as Mat
+
 import Casadi.Core.Classes.Sparsity ( sparsity_triu )
 import Casadi.Core.Classes.SX --( sx''''''''' )
 import Casadi.Core.Classes.MX --( mx'''''''''' )
@@ -115,6 +119,16 @@ toMatrix'' c = unsafePerformIO $ do
   triu <- dmatrix__6 sp xs'
   C.triu2symm__2 triu
 {-# NOINLINE toMatrix'' #-}
+
+toHMatrix :: forall f . View f => J (Cov f) DMatrix -> Mat.Matrix Double
+toHMatrix m = (n Mat.>< n) (V.toList v)
+  where
+    v = DMatrix.ddata $ DMatrix.ddense $ toMatrix'' m
+    n = size (Proxy :: Proxy f)
+
+toHMatrix' :: forall f . View f => J (Cov f) (Vector Double) -> Mat.Matrix Double
+toHMatrix' (UnsafeJ v) = toHMatrix $ (UnsafeJ (DMatrix.dvector v) :: J (Cov f) DMatrix)
+
 
 diag :: View f => J f SX -> J (Cov f) SX
 diag = fromMatrix . S.diag . unJ
