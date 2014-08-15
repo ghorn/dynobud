@@ -141,15 +141,27 @@ sbDae
     f = fDa + fLa + fDw + fLw
 
 
-data SbBc a  = SbBc (SbX a) deriving (Functor, Generic, Generic1, Show)
-bc :: SbX a -> SbX a -> SbBc a
-bc x0 _ = SbBc x0
-
-bcbnd :: SbBc Double
-bcbnd = SbBc (SbX 0 (V2 0 0) (V2 3 3))
+data SbBc a  = SbBc { bcPeriodicGamma :: a
+                    , bcPeriodicPz :: a
+                    , bcPeriodicVx :: a
+                    , bcPeriodicVz :: a
+                    , bcP0 :: V2 a
+                    }
+                    deriving (Functor, Generic, Generic1, Show)
+bc :: Num a => SbX a -> SbX a -> SbBc a
+bc
+  (SbX gamma0 p0@(V2 px0 pz0) (V2 vx0 vz0))
+  (SbX gammaF (V2 pxF pzF) (V2 vxF vzF))
+  = SbBc
+    { bcPeriodicGamma = gamma0 + gammaF
+    , bcPeriodicPz = pz0 - pzF
+    , bcPeriodicVx = vx0 - vxF
+    , bcPeriodicVz = vz0 + vzF
+    , bcP0 = p0
+    }
 
 mayer :: Floating a => a -> SbX a -> SbX a -> a
-mayer _ _ (SbX _ (V2 pxF _) _) = - pxF
+mayer tf _ (SbX _ (V2 pxF _) _) = - pxF / tf
 
 lagrange :: Floating a => SbX a -> SbZ a -> SbU a -> SbP a -> SbO a -> a -> a
 lagrange _ _ (SbU omega alpha) _ _ _ = 1e-3*omega*omega + 1e-3*alpha*alpha
@@ -164,7 +176,7 @@ xbnd = SbX
        (Just (-12*pi/180), Just (12*pi/180))
        (V2
        (Just (-1000), Just 1000)
-       (Just (-1000), Just 1000))
+       (Just (-30), Just 30))
        (V2
        (Just (-100), Just 100)
        (Just (-100), Just 100))
@@ -179,12 +191,12 @@ ocp = OcpPhase { ocpMayer = mayer
                , ocpBc = bc
                , ocpPathC = pathc
                , ocpPathCBnds = None
-               , ocpBcBnds = fmap (\x -> (Just x, Just x)) bcbnd
+               , ocpBcBnds = fill (Just 0, Just 0)
                , ocpXbnd = xbnd
                , ocpUbnd = ubnd
                , ocpZbnd = SbZ
                , ocpPbnd = SbP
-               , ocpTbnd = (Just 1, Just 20)
+               , ocpTbnd = (Just 1, Just 50)
                }
 
 
@@ -207,17 +219,20 @@ withPublisher context url f =
                                                ])
     f send
 
-
 initialGuess :: CollTraj SbX SbZ SbU SbP NCollStages CollDeg (Vector Double)
 initialGuess = makeGuess tf guessX (const SbZ) guessU SbP
   where
     tf = 20
-    guessU _ = SbU 0 0
-    guessX t = SbX 0 (v0 ^* t) v0
-      where
-        v0 = V2 3 3
+    r = 30
 
-type NCollStages = D100
+    guessU _ = SbU 0 0
+    guessX t = SbX 0
+               (V2 (r - r*cos(w*t)) (r*sin(w*t)))
+               (V2 (w*r*sin(w*t)) (w*r*cos(w*t)))
+      where
+        w = pi/tf
+
+type NCollStages = D200
 type CollDeg = D2
 
 solver :: NlpSolverStuff
