@@ -42,6 +42,7 @@ library
                        Dyno.Casadi.SharedObject
                        Dyno.Casadi.Callback
                        Dyno.Casadi.Option
+                       Dyno.Casadi.GenericC
                        Dyno.Casadi.IOSchemes
                        Dyno.Casadi.Overloading
                        Dyno.Casadi.MX
