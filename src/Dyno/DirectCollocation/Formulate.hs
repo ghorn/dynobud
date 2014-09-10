@@ -24,15 +24,20 @@ import Linear.V
 
 import Dyno.Cov
 import Dyno.View
+import Dyno.View.HList
+import Dyno.View.FunJac
+import Dyno.View.Scheme
 import Dyno.Vectorize ( Vectorize(..), fill, vlength, vzipWith )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs )
 import Dyno.Nlp ( Nlp'(..), Bounds )
 import Dyno.Ocp ( OcpPhase(..), OcpPhaseWithCov(..) )
+
 import Dyno.DirectCollocation.Types
 import Dyno.DirectCollocation.Dynamic ( DynCollTraj, ctToDynamic )
 import Dyno.DirectCollocation.Quadratures ( mkTaus, interpolate )
+
 import Dyno.Casadi.MX ( solve, mm, trans, d2m, zeros )
 import Dyno.Casadi.SXElement ( SXElement )
 import Dyno.Casadi.SX ( sdata, sdense, svector )
@@ -52,6 +57,20 @@ re = mkJ . svector . vectorize
 re' :: SXElement -> J S SX
 re' = mkJ . svector . V.singleton
 
+
+toFunJac'' :: Fun (JacIn xj x) (JacOut fj f) -> IO (Fun (JacIn xj x) (Jac xj fj f))
+toFunJac'' = undefined
+
+--mut :: JacIn
+--       ((J sx :*: J sw :*: J (JVec deg (JTuple sx sz))))
+--       ((J x :*: J (JVec deg (CollPoint x z u)) :*: J S :*: J p :*: J (JVec deg S)))
+--       MX
+--    -> (J (JVec deg sr) :*: J sx) MX
+--mut = undefined
+
+--hsplit :: M (x :*: y) (z :*: w) MX -> M x (z :*: w) MX :*: M y (z :*: w) MX
+--hsplit :: M (Tuple x y) (z :*: w) MX -> Tuple (M x (z :*: w) MX :*: M y (z :*: w) MX
+--hsplit :: M ()
 
 makeCollNlp ::
   forall x z u p r o c h deg n .
@@ -155,6 +174,8 @@ makeCollNlp ocp = do
     , nlpP' = cat JNone
     }, callback)
 
+toFunJac' :: String -> ((x MX, y MX) -> f MX) -> IO ((x MX, y MX) -> Vector (Vector MX))
+toFunJac' = error "toFunJac' not defined"
 
 makeCollCovNlp ::
   forall x z u p r o c h sx sz sw sr sh sc deg n .

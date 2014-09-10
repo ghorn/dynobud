@@ -1,35 +1,30 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts #-}
 
 module Dyno.View.Fun
        ( MXFun
        , SXFun
        , Fun
-       , (:*:)(..)
        , toMXFun
        , toSXFun
-       , toFunJac
-       , toFunJac'
        , callFun
        , callMXFun
        , callSXFun
        , callSXFunSX
        , evalMXFun
+       , evalSXFun
        , expandMXFun
+       , toFunJac
        ) where
 
+import Control.Monad ( zipWithM )
 import Data.Proxy
-import qualified Data.Foldable as F
-import qualified Data.Sequence as Seq
 import qualified Data.Vector as V
 import Data.Vector ( Vector )
 
-import Dyno.Casadi.MX ( symV )
+import Dyno.Casadi.MX ( symM )
+import Dyno.Casadi.SX ( ssymM )
 import Dyno.Casadi.Function ( Function, callMX, callSX, evalDMatrix, jacobian )
 import Dyno.Casadi.MXFunction ( MXFunction, mxFunction )
 import Dyno.Casadi.SXFunction ( SXFunction, sxFunction )
@@ -38,100 +33,51 @@ import Dyno.Casadi.SharedObject
 
 import qualified Casadi.Core.Classes.MXFunction as M
 import qualified Casadi.Core.Classes.SharedObject as C
+import qualified Casadi.Core.Classes.OptionsFunctionality as C
 
-import Dyno.View.Symbolic ( Symbolic(..) )
-import Dyno.View.View
-import Dyno.View.Viewable -- ( Viewable )
+import Dyno.View.CasadiMat
+import Dyno.View.Scheme
+import Dyno.View.FunJac
 
 newtype MXFun (f :: * -> *) (g :: * -> *) = MXFun MXFunction deriving Show
 newtype SXFun (f :: * -> *) (g :: * -> *) = SXFun SXFunction deriving Show
 newtype Fun (f :: * -> *) (g :: * -> *) = Fun Function deriving Show
 
-infixr 6 :*:
-data (:*:) f g a = (:*:) (f a) (g a)
+mkSym :: forall a f .
+         (Scheme f, CasadiMat a)
+         => (String -> Int -> Int -> IO a)
+         -> String -> Proxy f -> IO (f a)
+mkSym mk name _ = do
+  let sizes :: [(Int,Int)]
+      sizes = sizeList (Proxy :: Proxy f)
+      f :: (Int, Int) -> Int -> IO a
+      f (nrow,ncol) k = mk (name ++ show k) nrow ncol
+  ms <- zipWithM f sizes [(0::Int)..]
+  return $ fromVector (V.fromList ms)
 
-class FunArgs f a where -- | f -> a where
-  vectorize :: f a -> Vector a
-  devectorize :: Vector a -> f a
-  numElems :: Proxy (f a) -> Int
-  sizeList ::Int ->  Proxy (f a) -> Seq.Seq Int
+mkFun :: forall f g fun fun' a
+         . (Scheme f, Scheme g, C.SharedObjectClass fun, C.OptionsFunctionalityClass fun)
+         => (Vector a -> Vector a -> IO fun)
+         -> (String -> Proxy f -> IO (f a))
+         -> (fun -> fun' f g)
+         -> String
+         -> (f a -> g a)
+         -> IO (fun' f g)
+mkFun mkfun mksym con name userf = do
+  inputs <- mksym "x" (Proxy :: Proxy f)
+  fun <- mkfun (toVector inputs) (toVector (userf inputs))
+  setOption fun "name" name
+  soInit fun
+  return (con fun)
 
-instance View f => FunArgs (J f) a where
-  vectorize = V.singleton . unsafeUnJ
-  devectorize = UnsafeJ . V.head
-  numElems = const 1
-  sizeList = const . Seq.singleton . (n +)
-    where
-      n = size (Proxy :: Proxy f)
-
---instance View f => FunArgs f a where
---  vectorize = V.singleton . unsafeUnJ
---  devectorize = UnsafeJ . V.head
---  numElems = const 1
---  sizeList = const (Seq.singleton (size (Proxy :: Proxy f)))
-
-instance (FunArgs f a, FunArgs g a) => FunArgs (f :*: g) a where
-  vectorize (x :*: y) = vectorize x V.++ vectorize y
-  devectorize xy = devectorize x :*: devectorize y
-    where
-      x :: Vector a
-      y :: Vector a
-      (x,y)
-        | V.length x' /= nx = error "splitting HList in casadi Fun got length mismatch"
-        | V.length y' /= ny = error "splitting HList in casadi Fun got length mismatch"
-        | otherwise = (x',y')
-      (x',y')= V.splitAt nx xy
-      nx = numElems (Proxy :: Proxy (f a))
-      ny = numElems (Proxy :: Proxy (g a))
-  numElems = const $ numElems (Proxy :: Proxy (f a)) + numElems (Proxy :: Proxy (g a))
-  sizeList k0 pxy = xs Seq.>< ys
-    where
-      xs = sizeList k0 px
-      ys = sizeList k1 py
-      k1 = case Seq.viewr xs of
-        Seq.EmptyR -> k0
-        _ Seq.:> k1' -> k1'
-
-      reproxy :: Proxy ((x :*: y) p) -> (Proxy (x p), Proxy (y p))
-      reproxy = const (Proxy,Proxy)
-      (px, py) = reproxy pxy
-
-
-class FunArgs f a => SymInputs f a where -- | f -> a where
-  sym' :: Int -> Proxy (f a) -> IO (f a, Int)
-
-instance (View f, Symbolic a) => SymInputs (J f) a where
-  sym' k = const $ do
-    x <- sym ('x' : show k)
-    return (x,k+1)
---instance (View f, Symbolic a) => SymInputs f a where
---  sym' k0 = const $ do
---    (x,k1) <- sym' k0 (Proxy :: Proxy (J f a))
---    return (split x, k1)
-
-instance (SymInputs f a, SymInputs g a) => SymInputs ((:*:) f g) a where
-  sym' k0 = const $ do
-    (x,k1) <- sym' k0 (Proxy :: Proxy (f a))
-    (y,k2) <- sym' k1 (Proxy :: Proxy (g a))
-    return (x :*: y, k2)
 
 -- | make an MXFunction
-toMXFun :: forall f g . (SymInputs f MX, FunArgs g MX) => String -> (f MX -> g MX) -> IO (MXFun f g)
-toMXFun name fun = do
-  (inputs,_) <- sym' 0 (Proxy :: Proxy (f MX))
-  mxf <- mxFunction (vectorize inputs) (vectorize (fun inputs))
-  setOption mxf "name" name
-  soInit mxf
-  return (MXFun mxf)
+toMXFun :: forall f g . (Scheme f, Scheme g) => String -> (f MX -> g MX) -> IO (MXFun f g)
+toMXFun name fun = mkFun mxFunction (mkSym symM) MXFun name fun
 
--- | make an SXFunction
-toSXFun :: forall f g . (SymInputs f SX, FunArgs g SX) => String -> (f SX -> g SX) -> IO (SXFun f g)
-toSXFun name f = do
-  (inputs,_) <- sym' 0 (Proxy :: Proxy (f SX))
-  sxf <- sxFunction (vectorize inputs) (vectorize (f inputs))
-  setOption sxf "name" name
-  soInit sxf
-  return (SXFun sxf)
+-- | make an MXFunction
+toSXFun :: forall f g . (Scheme f, Scheme g) => String -> (f SX -> g SX) -> IO (SXFun f g)
+toSXFun name fun = mkFun sxFunction (mkSym ssymM) SXFun name fun
 
 -- | expand an MXFunction
 expandMXFun :: MXFun f g -> IO (SXFun f g)
@@ -141,128 +87,90 @@ expandMXFun (MXFun mxf) = do
   return (SXFun sxf)
 
 -- | call an MXFunction on symbolic inputs, getting symbolic outputs
-callMXFun :: (FunArgs f MX, FunArgs g MX) => MXFun f g -> f MX -> g MX
-callMXFun (MXFun mxf) = devectorize . callMX mxf . vectorize
+callMXFun :: (Scheme f, Scheme g) => MXFun f g -> f MX -> g MX
+callMXFun (MXFun mxf) = fromVector . callMX mxf . toVector
 
 -- | call an MXFunction on symbolic inputs, getting symbolic outputs
-callFun :: (FunArgs f MX, FunArgs g MX) => Fun f g -> f MX -> g MX
-callFun (Fun mxf) = devectorize . callMX mxf . vectorize
+callFun :: (Scheme f, Scheme g) => Fun f g -> f MX -> g MX
+callFun (Fun mxf) = fromVector . callMX mxf . toVector
 
 -- | call an SXFunction on symbolic inputs, getting symbolic outputs
-callSXFun :: (FunArgs f MX, FunArgs g MX) => SXFun f g -> f MX -> g MX
-callSXFun (SXFun mxf) = devectorize . callMX mxf . vectorize
+callSXFun :: (Scheme f, Scheme g) => SXFun f g -> f MX -> g MX
+callSXFun (SXFun mxf) = fromVector . callMX mxf . toVector
 
 -- | call an MXFunction on symbolic inputs, getting symbolic outputs
-callSXFunSX :: (FunArgs f SX, FunArgs g SX) => SXFun f g -> f SX -> g SX
-callSXFunSX (SXFun sxf) = devectorize . callSX sxf . vectorize
+callSXFunSX :: (Scheme f, Scheme g) => SXFun f g -> f SX -> g SX
+callSXFunSX (SXFun sxf) = fromVector . callSX sxf . toVector
 
 -- | evaluate an MXFunction
-evalMXFun :: (FunArgs f DMatrix, FunArgs g DMatrix) => MXFun f g -> f DMatrix -> IO (g DMatrix)
-evalMXFun (MXFun mxf) = fmap devectorize . evalDMatrix mxf . vectorize
+evalMXFun :: (Scheme f, Scheme g) => MXFun f g -> f DMatrix -> IO (g DMatrix)
+evalMXFun (MXFun mxf) = fmap fromVector . evalDMatrix mxf . toVector
 
+-- | evaluate an SXFunction
+evalSXFun :: (Scheme f, Scheme g) => SXFun f g -> f DMatrix -> IO (g DMatrix)
+evalSXFun (SXFun sxf) = fmap fromVector . evalDMatrix sxf . toVector
 
-
-toFunJac ::
-  forall x y f g . (SymInputs x MX, SymInputs y MX, FunArgs f MX, FunArgs g MX, FunArgs f (J x MX))
-  => String -> ((x MX, y MX) -> (f MX, g MX)) -> IO ((x MX, y MX) -> (Vector (Vector MX), f MX, g MX))
-toFunJac name f0 = do
-  (diffInputs',_) <- sym' 0 (Proxy :: Proxy (x MX))
-  let nsyms = F.sum $ fmap vsize1 (vectorize diffInputs')
-  diffInputsCat <- symV "dx" nsyms
-  let inputSizes = V.fromList ((0:) $ F.toList (sizeList 0 (Proxy :: Proxy (x MX))))
-      diffInputs = vvertsplit diffInputsCat inputSizes
-
-  (inputs,_) <- sym' 0 (Proxy :: Proxy (y MX))
-  let (diffOutputs, outputs) = f0 (devectorize diffInputs, inputs)
-      diffOutputsCat = vveccat (vectorize diffOutputs)
-
-      allInputs = V.cons diffInputsCat (vectorize inputs)
-      allOutputs = V.cons diffOutputsCat (vectorize outputs)
-
-  mxf <- mxFunction allInputs allOutputs
-  setOption mxf "name" name
-  soInit mxf
+-- | make a function which also contains a jacobian
+toFunJac :: Fun (JacIn xj x) (JacOut fj f) -> IO (Fun (JacIn xj x) (Jac xj fj f))
+toFunJac (Fun fun) = do
+  maybeName <- getOption fun "name"
+  let name = case maybeName of Nothing -> "no_name"
+                               Just n -> n
   let compact = False
       symmetric = False
-  mxfJac <- jacobian mxf 0 0 compact symmetric
-  soInit mxfJac
+  funJac <- jacobian fun 0 0 compact symmetric
+  setOption funJac "name" (name ++ "_dynobudJac")
+  soInit funJac
 
-  let callMe :: (x MX, y MX) -> (Vector (Vector MX), f MX, g MX)
-      callMe (x',y')
-        | 2 + ng /= V.length vouts =
-          error "toFunJac: bad number of outputs :("
-        | ng /= V.length g = error "toFunJac: g: bad split"
-        | otherwise = (rows, devectorize fs, devectorize g)
-        where
-          --retJac :: f (J x MX)
-          --retJac = devectorize retJac'
-          --retJac' :: Vector (J x MX)
-          --retJac' = fmap devectorize rows
-          rows :: Vector (Vector MX)
-          rows = fmap (`vhorzsplit` horzsizes) $ vvertsplit jac vertsizes
-          vertsizes = V.fromList ((0:) $ F.toList (sizeList 0 (Proxy :: Proxy (f MX))))
-          horzsizes = V.fromList ((0:) $ F.toList (sizeList 0 (Proxy :: Proxy (x MX))))
-
-          fs = vvertsplit f vertsizes
-          x = vveccat (vectorize x')
-
-          jac = vouts V.! 0
-          f = vouts V.! 1
-          g = V.drop 2 vouts
-
-          ng = numElems (Proxy :: Proxy (g MX))
-          vouts = callMX mxfJac $ V.cons x (vectorize y')
-
-  return callMe
+  return (Fun funJac)
 
 
-
-toFunJac' ::
-  forall x y f . (SymInputs x MX, SymInputs y MX, FunArgs f MX, FunArgs f (J x MX))
-  => String -> ((x MX, y MX) -> f MX) -> IO ((x MX, y MX) -> Vector (Vector MX))
-toFunJac' name f0 = do
-  (diffInputs',_) <- sym' 0 (Proxy :: Proxy (x MX))
-  let nsyms = F.sum $ fmap vsize1 (vectorize diffInputs')
-  diffInputsCat <- symV "dx" nsyms
-  let inputSizes = V.fromList ((0:) $ F.toList (sizeList 0 (Proxy :: Proxy (x MX))))
-      diffInputs = vvertsplit diffInputsCat inputSizes
-
-  (inputs,_) <- sym' 0 (Proxy :: Proxy (y MX))
-  let diffOutputs = f0 (devectorize diffInputs, inputs)
-      diffOutputsCat = vveccat (vectorize diffOutputs)
-
-      allInputs = V.cons diffInputsCat (vectorize inputs)
-      allOutputs = V.singleton diffOutputsCat
-
-  mxf <- mxFunction allInputs allOutputs
-  setOption mxf "name" name
-  soInit mxf
-  let compact = False
-      symmetric = False
-  mxfJac <- jacobian mxf 0 0 compact symmetric
-  soInit mxfJac
-
-  let callMe :: (x MX, y MX) -> Vector (Vector MX) -- , f MX)
-      callMe (x',y')
-        | 2 /= V.length vouts =
-          error "toFunJac': bad number of outputs :("
-        | otherwise = rows -- , devectorize fs)
-        where
-          --retJac :: f (J x MX)
-          --retJac = devectorize retJac'
-          --retJac' :: Vector (J x MX)
-          --retJac' = fmap devectorize rows
-          rows :: Vector (Vector MX)
-          rows = fmap (`vhorzsplit` horzsizes) $ vvertsplit jac vertsizes
-          vertsizes = V.fromList ((0:) $ F.toList (sizeList 0 (Proxy :: Proxy (f MX))))
-          horzsizes = V.fromList ((0:) $ F.toList (sizeList 0 (Proxy :: Proxy (x MX))))
-
-          --fs = vvertsplit f vertsizes
-          x = vveccat (vectorize x')
-
-          jac = vouts V.! 0
-          --f = vouts V.! 1
-
-          vouts = callMX mxfJac $ V.cons x (vectorize y')
-
-  return callMe
+--toFunJac' ::
+--  forall x y f . (SymInputs x MX, SymInputs y MX, FunArgs f MX, FunArgs f (J x MX))
+--  => String -> ((x MX, y MX) -> f MX) -> IO ((x MX, y MX) -> Vector (Vector MX))
+--toFunJac' name f0 = do
+--  (diffInputs',_) <- sym' 0 (Proxy :: Proxy (x MX))
+--  let nsyms = F.sum $ fmap vsize1 (vectorize diffInputs')
+--  diffInputsCat <- symV "dx" nsyms
+--  let inputSizes = V.fromList ((0:) $ F.toList (sizeList 0 (Proxy :: Proxy (x MX))))
+--      diffInputs = vvertsplit diffInputsCat inputSizes
+--
+--  (inputs,_) <- sym' 0 (Proxy :: Proxy (y MX))
+--  let diffOutputs = f0 (devectorize diffInputs, inputs)
+--      diffOutputsCat = vveccat (vectorize diffOutputs)
+--
+--      allInputs = V.cons diffInputsCat (vectorize inputs)
+--      allOutputs = V.singleton diffOutputsCat
+--
+--  mxf <- mxFunction allInputs allOutputs
+--  setOption mxf "name" name
+--  soInit mxf
+--  let compact = False
+--      symmetric = False
+--  mxfJac <- jacobian mxf 0 0 compact symmetric
+--  soInit mxfJac
+--
+--  let callMe :: (x MX, y MX) -> Vector (Vector MX) -- , f MX)
+--      callMe (x',y')
+--        | 2 /= V.length vouts =
+--          error "toFunJac': bad number of outputs :("
+--        | otherwise = rows -- , devectorize fs)
+--        where
+--          --retJac :: f (J x MX)
+--          --retJac = devectorize retJac'
+--          --retJac' :: Vector (J x MX)
+--          --retJac' = fmap devectorize rows
+--          rows :: Vector (Vector MX)
+--          rows = fmap (`vhorzsplit` horzsizes) $ vvertsplit jac vertsizes
+--          vertsizes = V.fromList ((0:) $ F.toList (sizeList 0 (Proxy :: Proxy (f MX))))
+--          horzsizes = V.fromList ((0:) $ F.toList (sizeList 0 (Proxy :: Proxy (x MX))))
+--
+--          --fs = vvertsplit f vertsizes
+--          x = vveccat (vectorize x')
+--
+--          jac = vouts V.! 0
+--          --f = vouts V.! 1
+--
+--          vouts = callMX mxfJac $ V.cons x (vectorize y')
+-- 
+--  return callMe

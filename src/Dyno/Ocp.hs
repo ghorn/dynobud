@@ -109,6 +109,8 @@ data OcpPhaseWithCov ocp sx sz sw sr sh sc =
                  -> sr Sxe
     -- | the projection from covariance state to full state
   , ocpCovProjection :: X ocp Sxe -> sx Sxe -> X ocp Sxe
+--    -- | constraints which will autmatically be robustified
+--  , ocpCovEasyRobustConstraints :: X ocp Sxe -> Sxe -> sh2 Sxe
     -- | covariance injection
   , ocpCovSq :: J (Cov (JV sw)) DMatrix
     -- | bounds on the initial convariance
