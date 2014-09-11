@@ -32,8 +32,8 @@ type CollDeg = D2
 mayer :: Floating a => a -> AcX a -> AcX a -> a
 mayer _ _ _ = 0
 
-lagrange :: Floating a => AcX a -> None a -> AcU a -> None a -> None a -> a -> a
-lagrange (AcX _ _ _ _ (AcU surfs)) _ (AcU surfs') _ _ _ =
+lagrange :: Floating a => AcX a -> None a -> AcU a -> None a -> None a -> a -> a -> a
+lagrange (AcX _ _ _ _ (AcU surfs)) _ (AcU surfs') _ _ _ _ =
   elev**2 + rudd**2 + ail**2 + flaps**2 +
   100*(elev'**2 + rudd'**2 + ail'**2 + flaps'**2)
   where

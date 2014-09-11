@@ -87,6 +87,7 @@ makeCollNlp ocp = do
       taus = mkTaus deg
 
       deg = reflectDim (Proxy :: Proxy deg)
+      n = reflectDim (Proxy :: Proxy n)
 
       -- coefficients for getting xdot by lagrange interpolating polynomials
       cijs :: Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
@@ -95,9 +96,9 @@ makeCollNlp ocp = do
   bcFun <- toSXFun "bc" $ \(x0:*:x1) -> re $ ocpBc ocp (de x0) (de x1)
   mayerFun <- toSXFun "mayer" $ \(x0:*:x1:*:x2) ->
     re' $ ocpMayer ocp (de' x0) (de x1) (de x2)
-  lagrangeFun <- toSXFun "lagrange" $ \(x0:*:x1:*:x2:*:x3:*:x4:*:x5) ->
-    re' $ ocpLagrange ocp (de x0) (de x1) (de x2) (de x3) (de x4) (de' x5)
-  quadFun <- toMXFun "quadratures" $ evaluateQuadraturesFunction lagrangeFun cijs taus
+  lagrangeFun <- toSXFun "lagrange" $ \(x0:*:x1:*:x2:*:x3:*:x4:*:x5:*:x6) ->
+    re' $ ocpLagrange ocp (de x0) (de x1) (de x2) (de x3) (de x4) (de' x5) (de' x6)
+  quadFun <- toMXFun "quadratures" $ evaluateQuadraturesFunction lagrangeFun cijs taus n
 --  let callQuadFun = callMXFun quadFun
   callQuadFun <- fmap callSXFun (expandMXFun quadFun)
 
@@ -123,8 +124,6 @@ makeCollNlp ocp = do
 
       f :: J (JV o) DMatrix -> J (JV o) (Vector Double)
       f o' = mkJ (ddata (ddense (unJ o')))
-
-      n = reflectDim (Proxy :: Proxy n)
 
       dmToDv :: J a (Vector Double) -> J a DMatrix
       dmToDv (UnsafeJ v) = UnsafeJ (dvector v)
@@ -555,14 +554,17 @@ getBg ocp =
 evaluateQuadraturesFunction ::
   forall x z u p o deg .
   (Dim deg, View x, View z, View u, View o, View p)
-  => SXFun (J x :*: J z :*: J u :*: J p :*: J o :*: J S) (J S)
+  => SXFun (J x :*: J z :*: J u :*: J p :*: J o :*: J S :*: J S) (J S)
   -> Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
   -> Vec deg Double
+  -> Int
   -> (J p :*: J (JVec deg (CollPoint x z u)) :*: J (JVec deg o) :*: J S :*: J (JVec deg S)) MX
   -> J S MX
-evaluateQuadraturesFunction f cijs' taus (p :*: stage' :*: outputs' :*: dt :*: stageTimes') =
+evaluateQuadraturesFunction f cijs' taus n (p :*: stage' :*: outputs' :*: dt :*: stageTimes') =
   dt * qnext
   where
+    tf = dt * fromIntegral n
+
     stage :: Vec deg (CollPoint x z u MX)
     stage = fmap split $ unJVec $ split stage'
 
@@ -576,7 +578,7 @@ evaluateQuadraturesFunction f cijs' taus (p :*: stage' :*: outputs' :*: dt :*: s
     qnext = interpolate taus 0 qs
 
     qdots :: Vec deg (J S MX)
-    qdots = TV.tvzipWith3 (\(CollPoint x z u) o t -> callSXFun f (x:*:z:*:u:*:p:*:o:*:t)) stage outputs stageTimes
+    qdots = TV.tvzipWith3 (\(CollPoint x z u) o t -> callSXFun f (x:*:z:*:u:*:p:*:o:*:t:*:tf)) stage outputs stageTimes
 
     qs = cijInvFr !* qdots
 

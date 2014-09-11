@@ -71,8 +71,8 @@ data OcpPhase x z u p r o c h =
   OcpPhase
   { -- | the Mayer term @Jm(T, x(0), x(T))@
     ocpMayer :: Sxe -> x Sxe -> x Sxe -> Sxe
-    -- | the Lagrange term @Jl(x(t),z(t),u(t),p,o,t)@
-  , ocpLagrange :: x Sxe -> z Sxe -> u Sxe -> p Sxe -> o Sxe -> Sxe -> Sxe
+    -- | the Lagrange term @Jl(x(t),z(t),u(t),p,o,t,T)@
+  , ocpLagrange :: x Sxe -> z Sxe -> u Sxe -> p Sxe -> o Sxe -> Sxe -> Sxe -> Sxe
     -- | fully implicit differential-algebraic equation of the form:
     --
     -- > f(x'(t), x(t), z(t), u(t), p, t) == 0

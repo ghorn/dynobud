@@ -46,8 +46,8 @@ instance Lookup (PendU ())
 mayer :: Num a => t -> PendX a -> PendX a -> a
 mayer _ _ _ = 0
 
-lagrange :: Floating a => PendX a -> PendZ a -> PendU a -> PendP a -> PendO a -> a -> a
-lagrange x _ u _ _ _ = vx*vx + vy*vy + 1e-4*torque**2
+lagrange :: Floating a => PendX a -> PendZ a -> PendU a -> PendP a -> PendO a -> a -> a -> a
+lagrange x _ u _ _ _ _ = vx*vx + vy*vy + 1e-4*torque**2
   where
     PendX _ _ vx vy = x
     PendU torque = u

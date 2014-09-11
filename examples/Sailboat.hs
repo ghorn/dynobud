@@ -163,8 +163,8 @@ bc
 mayer :: Floating a => a -> SbX a -> SbX a -> a
 mayer tf _ (SbX _ (V2 pxF _) _) = - pxF / tf
 
-lagrange :: Floating a => SbX a -> SbZ a -> SbU a -> SbP a -> SbO a -> a -> a
-lagrange _ _ (SbU omega alpha) _ _ _ = 1e-3*omega*omega + 1e-3*alpha*alpha
+lagrange :: Floating a => SbX a -> SbZ a -> SbU a -> SbP a -> SbO a -> a -> a -> a
+lagrange _ _ (SbU omega alpha) _ _ _ _ = 1e-3*omega*omega + 1e-3*alpha*alpha
 
 ubnd :: SbU (Maybe Double, Maybe Double)
 ubnd = SbU

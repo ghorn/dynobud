@@ -239,7 +239,9 @@ reifyOcpPhase ::
   -> IO ret
 reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
   time <- sxElement_sym "_t"
+  endT <- sxElement_sym "T"
   let time' = svector (V.singleton time) :: SX
+      endT' = svector (V.singleton endT) :: SX
   dae' <- buildDae (daeMonad time)
   let dae :: DaeState
       dae = case dae' of
@@ -299,7 +301,7 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
         ObjectiveUnset -> 0
         Objective obj' -> obj'
 
-  lagFunSX <- sxFunction (V.fromList [xs',zs',us',ps',os',time']) (V.fromList [svector (V.singleton obj)])
+  lagFunSX <- sxFunction (V.fromList [xs',zs',us',ps',os',time',endT']) (V.fromList [svector (V.singleton obj)])
   setOption lagFunSX "name" "lagrange"
   soInit lagFunSX
 
@@ -321,7 +323,6 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
   -- run the mayer function
   x0s <- mapM (sxElement_sym . (++ "_0")) (F.toList xnames)
   xFs <- mapM (sxElement_sym . (++ "_F")) (F.toList xnames)
-  endT <- sxElement_sym "T"
   let lookupState :: M.Map String SXElement -> String
                      -> ExceptT ErrorMessage (Writer [LogMessage]) SXElement
       lookupState xmap name = do
@@ -412,9 +413,10 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
           where
             rets = callSX daeFunSX (V.fromList [vec x', vec x, vec z, vec u, vec p, vec' t])
 
-        lagrangeFun :: Vec nx SXElement -> Vec nz SXElement -> Vec nu SXElement -> Vec np SXElement -> Vec no SXElement -> SXElement -> SXElement
-        lagrangeFun x z u p o t =
-          devec' $ V.head $ callSX lagFunSX (V.fromList [vec x, vec z, vec u, vec p, vec o, vec' t])
+        lagrangeFun :: Vec nx SXElement -> Vec nz SXElement -> Vec nu SXElement -> Vec np SXElement -> Vec no SXElement -> SXElement -> SXElement -> SXElement
+        lagrangeFun x z u p o t tf =
+          devec' $ V.head $ callSX lagFunSX $
+                 (V.fromList [vec x, vec z, vec u, vec p, vec o, vec' t, vec' tf])
           --Left errmsg -> error $ "toOcpPhase: lagrangeFun: " ++ errmsg ++
           --  "\ninputs: " ++ show (xnames ++ znames ++ unames ++ pnames) ++ show onames ++
           --  "\nnumeric inputs x: " ++ show (V.length x) ++
