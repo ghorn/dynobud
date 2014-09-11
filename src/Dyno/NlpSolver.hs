@@ -10,6 +10,7 @@ module Dyno.NlpSolver
          -- * solve
        , solveNlp
        , solveNlp'
+       , solveNlpHomotopy'
        , solve
        , solve'
          -- * inputs
@@ -53,8 +54,8 @@ import Casadi.Core.Enums ( InputOutputScheme(..) )
 import qualified Casadi.Core.Classes.Function as C
 import qualified Casadi.Core.Classes.NlpSolver as C
 import Casadi.Core.Classes.PrintableObject ( printableObject_getDescription )
-import Casadi.Core.Classes.GenericType
-import Casadi.Core.Classes.IOInterfaceFunction
+import qualified Casadi.Core.Classes.GenericType as C
+import qualified Casadi.Core.Classes.IOInterfaceFunction as C
 --import Casadi.Wrappers.Classes.CasadiOptions
 
 import Dyno.Casadi.Callback ( makeCallback )
@@ -63,6 +64,7 @@ import Dyno.Casadi.SX
 import Dyno.Casadi.SXElement ( SXElement )
 --import Dyno.Casadi.Function
 import qualified Dyno.Casadi.Option as Op
+import qualified Dyno.Casadi.GenericC as Gen
 import Dyno.Casadi.SharedObject ( soInit )
 
 import Dyno.Vectorize ( Vectorize(..) )
@@ -82,13 +84,18 @@ data NlpSolverStuff =
   , successCodes :: [String]
   }
 
+getStat :: String -> NlpSolver x p g C.GenericType
+getStat name = do
+  nlpState <- ask
+  liftIO $ C.function_getStat (isSolver nlpState) name
+
 setInput :: (NlpState -> Int) -> String -> Vector Double -> NlpSolver x p g ()
 setInput getLen name x = do
   nlpState <- ask
   let nx' = V.length x
       nx = getLen nlpState
   when (nx /= nx') $ error $ name ++ " dimension mismatch, " ++ show nx ++ " (true) /= " ++ show nx' ++ " (given)"
-  liftIO $ ioInterfaceFunction_setInput__3 (isSolver nlpState) x name
+  liftIO $ C.ioInterfaceFunction_setInput__3 (isSolver nlpState) x name
   return ()
 
 setX0 :: forall x p g. View x => VD x -> NlpSolver x p g ()
@@ -113,7 +120,7 @@ setP = setInput isNp "p" . unJ
 getInput :: String -> NlpSolver x p g (Vector Double)
 getInput name = do
   nlpState <- ask
-  liftIO $ fmap ddata $ ioInterfaceFunction_input__0 (isSolver nlpState) name
+  liftIO $ fmap ddata $ C.ioInterfaceFunction_input__0 (isSolver nlpState) name
 
 getX0 :: View x => NlpSolver x p g (VD x)
 getX0 = liftM mkJ $ getInput "x0"
@@ -136,7 +143,7 @@ getP = liftM mkJ $ getInput "p"
 getOutput :: String -> NlpSolver x p g (Vector Double)
 getOutput name = do
   nlpState <- ask
-  liftIO $ fmap ddata $ ioInterfaceFunction_output__0 (isSolver nlpState) name
+  liftIO $ fmap ddata $ C.ioInterfaceFunction_output__0 (isSolver nlpState) name
 
 getF :: NlpSolver x p g (VD S)
 getF = liftM mkJ $ getOutput "f"
@@ -154,7 +161,7 @@ getLamG :: View g => NlpSolver x p g (VD g)
 getLamG = liftM mkJ $ getOutput "lam_g"
 
 
-setOption :: Op.Option a => String -> a -> NlpSolver x p g ()
+setOption :: Gen.GenericC a => String -> a -> NlpSolver x p g ()
 setOption name val = do
   nlpState <- ask
   let nlp = isSolver nlpState
@@ -194,7 +201,11 @@ solve = do
 solve' :: (View x, View g) => NlpSolver x p g (Either String String, NlpOut' x g (Vector Double))
 solve' = do
   solveStatus <- solve
+  nlpOut <- getNlpOut'
+  return (solveStatus, nlpOut)
 
+getNlpOut' :: (View x, View g) => NlpSolver x p g (NlpOut' x g (Vector Double))
+getNlpOut' = do
   fopt <- getF
   xopt <- getX
   gopt <- getG
@@ -209,8 +220,7 @@ solve' = do
                        , lambdaOpt' = lambdaOut
                        }
 
-  --liftIO $ putStrLn $ "solve status: " ++ show solveStatus
-  return (solveStatus, nlpOut)
+  return nlpOut
 
 
 data NlpState = NlpState { isNx :: Int
@@ -289,11 +299,11 @@ runNlpSolver solverStuff nlpFun callback' (NlpSolver nlpMonad) = do
         callbackRet <- case callback' of
           Nothing -> return True
           Just callback -> do
-            xval <- fmap (mkJ . ddata . ddense) $ ioInterfaceFunction_output__2 function' 0
+            xval <- fmap (mkJ . ddata . ddense) $ C.ioInterfaceFunction_output__2 function' 0
             callback xval
         interrupt <- readIORef intref
         return $ if callbackRet && not interrupt then 0 else fromIntegral (solverInterruptCode solverStuff)
-  casadiCallback <- makeCallback cb >>= genericType__0
+  casadiCallback <- makeCallback cb >>= C.genericType__0
   Op.setOption solver "iteration_callback" casadiCallback
 --  grad_f <- gradient nlp 0 0
 --  soInit grad_f
@@ -331,7 +341,7 @@ runNlpSolver solverStuff nlpFun callback' (NlpSolver nlpMonad) = do
 proxy :: J a b -> Proxy a
 proxy = const Proxy
 
--- | convenience function to solve a pure Nlp'
+-- | convenience function to solve a pure Nlp
 solveNlp :: forall x p g .
   (Vectorize x, Vectorize p, Vectorize g)
   => NlpSolverStuff
@@ -389,6 +399,92 @@ solveNlp' solverStuff nlp callback =
     setUbg ubg
 
     solve'
+
+---- | solve a homotopy nlp
+--solveNlpHomotopy ::
+--  forall x p g a .
+--  (Vectorize x, Vectorize p, Vectorize g)
+--  => NlpSolverStuff
+--  -> Nlp x p g a -> p Double -> Maybe (x Double -> IO Bool)
+--  -> IO (Either String String, NlpOut x g Double)
+--solveNlpHomotopy solverStuff nlp pF callback = undefined
+
+-- | solve a homotopy nlp
+solveNlpHomotopy' ::
+  forall x p g a .
+  (View x, View p, View g, Symbolic a)
+  => NlpSolverStuff
+  -> Nlp' x p g a -> J p (Vector Double) -> Maybe (J (JTuple x p) (Vector Double) -> IO Bool)
+  -> Maybe (J x (Vector Double) -> J p (Vector Double) -> Double -> IO ())
+  -> IO (Either String String, NlpOut' (JTuple x p) g (Vector Double))
+solveNlpHomotopy' solverStuff nlp (UnsafeJ pF) callback callbackP = do
+  let fg :: J (JTuple x p) a -> J JNone a -> (J S a, J g a)
+      fg xp _ = nlpFG' nlp x p
+        where
+          JTuple x p = split xp
+  runNlpSolver solverStuff fg callback $ do
+    let (lbx,ubx) = toBnds (nlpBX' nlp)
+        (lbg,ubg) = toBnds (nlpBG' nlp)
+        UnsafeJ p0 = nlpP' nlp
+
+        setAlpha :: Double -> NlpSolver (JTuple x p) JNone g ()
+        setAlpha alpha = do
+          let p = mkJ $ V.zipWith (+) p0 (V.map (alpha*) (V.zipWith (-) pF p0))
+          setLbx $ cat (JTuple lbx p)
+          setUbx $ cat (JTuple ubx p)
+
+    -- initial solve
+    setX0 $ cat $ JTuple (nlpX0' nlp) (nlpP' nlp)
+    setP $ cat JNone
+    setAlpha 0
+    setLbg lbg
+    setUbg ubg
+    _ <- solve'
+
+    -- run the homotopy
+    let runCallback alphaTrial = case callbackP of
+          Nothing -> return ()
+          Just cbp -> do
+            xp <- getX
+            let JTuple x p = split xp
+            liftIO $ void (cbp x p alphaTrial)
+
+        tryStep :: Double -> Double
+                   -> NlpSolver (JTuple x p) JNone g
+                      (Either String String, NlpOut' (JTuple x p) g (Vector Double))
+        tryStep alpha0 step
+          | step < 1e-6 = do no <- getNlpOut'
+                             return (Left "step size too small", no)
+          | otherwise = do
+            --liftIO $ putStrLn $ "alpha: " ++ show alpha0 ++ ", step: " ++ show step
+            let (alphaTrial, alphaIsOne)
+                  | alpha0 + step >= 1 = (1, True)
+                  | otherwise = (alpha0 + step, False)
+            setAlpha alphaTrial
+            ret <- solve'
+            case ret of
+              (Left msg,_) -> do
+                liftIO $ putStrLn $ "step failed to solve: " ++ msg
+                tryStep alpha0 (0.5*step)
+              (Right _,_) -> do
+                iters <- getStat "iter_count"
+                mk <- liftIO (Gen.fromGeneric iters)
+                case mk of
+                  Nothing ->
+                    liftIO (Gen.getDescription iters) >>=
+                    error . ("homotopy solver: iters is not an Int, it is: " ++) . show
+                  Just k ->
+                    if k > (5 :: Int)
+                    then do liftIO $ putStrLn $ "too many iterations (" ++ show k ++ ") reducing step"
+                            tryStep alpha0 (0.6*step)
+                    else do liftIO $ putStrLn $ "step successful (" ++ show k ++ ") iterations"
+                            runCallback alphaTrial
+                            if alphaIsOne
+                              then return ret
+                              else getX >>= setX0 >> tryStep alphaTrial (step*2)
+
+    tryStep 0 0.1
+
 
 inf :: Double
 inf = read "Infinity"
