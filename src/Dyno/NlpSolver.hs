@@ -413,11 +413,13 @@ solveNlp' solverStuff nlp callback =
 solveNlpHomotopy' ::
   forall x p g a .
   (View x, View p, View g, Symbolic a)
-  => NlpSolverStuff
+  => Int
+  -> Double
+  -> NlpSolverStuff
   -> Nlp' x p g a -> J p (Vector Double) -> Maybe (J (JTuple x p) (Vector Double) -> IO Bool)
   -> Maybe (J x (Vector Double) -> J p (Vector Double) -> Double -> IO ())
   -> IO (Either String String, NlpOut' (JTuple x p) g (Vector Double))
-solveNlpHomotopy' solverStuff nlp (UnsafeJ pF) callback callbackP = do
+solveNlpHomotopy' maxIters userStep solverStuff nlp (UnsafeJ pF) callback callbackP = do
   let fg :: J (JTuple x p) a -> J JNone a -> (J S a, J g a)
       fg xp _ = nlpFG' nlp x p
         where
@@ -474,7 +476,7 @@ solveNlpHomotopy' solverStuff nlp (UnsafeJ pF) callback callbackP = do
                     liftIO (Gen.getDescription iters) >>=
                     error . ("homotopy solver: iters is not an Int, it is: " ++) . show
                   Just k ->
-                    if k > (5 :: Int)
+                    if k > maxIters
                     then do liftIO $ putStrLn $ "too many iterations (" ++ show k ++ ") reducing step"
                             tryStep alpha0 (0.6*step)
                     else do liftIO $ putStrLn $ "step successful (" ++ show k ++ ") iterations"
@@ -483,7 +485,7 @@ solveNlpHomotopy' solverStuff nlp (UnsafeJ pF) callback callbackP = do
                               then return ret
                               else getX >>= setX0 >> tryStep alphaTrial (step*2)
 
-    tryStep 0 0.1
+    tryStep 0 userStep
 
 
 inf :: Double
