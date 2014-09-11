@@ -3,6 +3,7 @@
 
 module Dyno.Casadi.GenericC
        ( GenericC(..)
+       , getDescription
        ) where
 
 import Data.Vector ( Vector )
@@ -12,6 +13,9 @@ import Casadi.Core.Classes.GenericType
 class GenericC a where
   mkGeneric :: a -> IO GenericType
   fromGeneric :: GenericType -> IO (Maybe a)
+
+getDescription :: GenericType -> IO String
+getDescription = genericType_get_description
 
 instance GenericC Bool where
   mkGeneric = genericType__11
