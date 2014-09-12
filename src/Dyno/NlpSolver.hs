@@ -491,7 +491,7 @@ solveNlpHomotopy' userStep (reduction, increase) solverStuff nlp (UnsafeJ pF) ca
                     liftIO (Gen.getDescription iters) >>=
                     error . ("homotopy solver: iters is not an Int, it is: " ++) . show
                   Just k' -> return k'
-                liftIO $ putStrLn $ "step successful (" ++ show k ++ ") iterations"
+                liftIO $ putStrLn $ "step successful (" ++ show k ++ " iterations)"
                 runCallback alphaTrial
                 if alphaIsOne
                   then return ret
