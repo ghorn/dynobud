@@ -146,6 +146,8 @@ myNlp = Nlp { nlpFG = fg
             , nlpBG = bg
             , nlpX0 = guess
             , nlpP = None
+            , nlpLamX0 = Nothing
+            , nlpLamG0 = Nothing
             }
   where
     

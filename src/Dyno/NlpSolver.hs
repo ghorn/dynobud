@@ -20,6 +20,8 @@ module Dyno.NlpSolver
        , setUbx
        , setLbg
        , setUbg
+       , setLamX0
+       , setLamG0
        , getX0
        , getP
        , getLbx
@@ -70,7 +72,7 @@ import Dyno.Casadi.SharedObject ( soInit )
 import Dyno.Vectorize ( Vectorize(..) )
 import Dyno.View.View
 import Dyno.View.Symbolic
-import Dyno.Nlp ( Nlp(..), NlpOut(..), Multipliers(..), Nlp'(..), NlpOut'(..), Multipliers'(..), Bounds )
+import Dyno.Nlp ( Nlp(..), NlpOut(..), Nlp'(..), NlpOut'(..), Bounds )
 import Data.Proxy
 
 type VD a = J a (Vector Double)
@@ -94,7 +96,7 @@ setInput getLen name x = do
   nlpState <- ask
   let nx' = V.length x
       nx = getLen nlpState
-  when (nx /= nx') $ error $ name ++ " dimension mismatch, " ++ show nx ++ " (true) /= " ++ show nx' ++ " (given)"
+  when (nx /= nx') $ error $ name ++ " dimension mismatch, " ++ show nx ++ " (type-level) /= " ++ show nx' ++ " (given)"
   liftIO $ C.ioInterfaceFunction_setInput__3 (isSolver nlpState) x name
   return ()
 
@@ -116,6 +118,11 @@ setUbg = setInput isNg "ubg" . unJ
 setP :: View p => VD p -> NlpSolver x p g ()
 setP = setInput isNp "p" . unJ
 
+setLamX0 :: View x => VD x -> NlpSolver x p g ()
+setLamX0 = setInput isNx "lam_x0" . unJ
+
+setLamG0 :: View g => VD g -> NlpSolver x p g ()
+setLamG0 = setInput isNg "lam_g0" . unJ
 
 getInput :: String -> NlpSolver x p g (Vector Double)
 getInput name = do
@@ -211,15 +218,12 @@ getNlpOut' = do
   gopt <- getG
   lamXOpt <- getLamX
   lamGOpt <- getLamG
-  let lambdaOut = Multipliers' { lambdaX' = lamXOpt
-                               , lambdaG' = lamGOpt
-                               }
-      nlpOut = NlpOut' { fOpt' = fopt
+  let nlpOut = NlpOut' { fOpt' = fopt
                        , xOpt' = xopt
                        , gOpt' = gopt
-                       , lambdaOpt' = lambdaOut
+                       , lambdaXOpt' = lamXOpt
+                       , lambdaGOpt' = lamGOpt
                        }
-
   return nlpOut
 
 
@@ -359,6 +363,10 @@ solveNlp solverStuff nlp callback = do
                   , nlpBG' = mkJ $ vectorize (nlpBG nlp) :: J (JV g) (V.Vector Bounds)
                   , nlpX0' = mkJ $ vectorize (nlpX0 nlp) :: J (JV x) (V.Vector Double)
                   , nlpP'  = mkJ $ vectorize (nlpP  nlp) :: J (JV p) (V.Vector Double)
+                  , nlpLamX0' = fmap (mkJ . vectorize) (nlpLamX0 nlp)
+                                :: Maybe (J (JV x) (V.Vector Double))
+                  , nlpLamG0' = fmap (mkJ . vectorize) (nlpLamG0 nlp)
+                                :: Maybe (J (JV g) (V.Vector Double))
                   }
 
       callback' :: Maybe (J (JV x) (Vector Double) -> IO Bool)
@@ -366,15 +374,12 @@ solveNlp solverStuff nlp callback = do
 
   (r0, r1') <- solveNlp' solverStuff nlp' callback'
 
-  let lambda :: Multipliers x g Double
-      lambda = Multipliers { lambdaX = devectorize $ unJ $ lambdaX' $ lambdaOpt' r1'
-                           , lambdaG = devectorize $ unJ $ lambdaG' $ lambdaOpt' r1'
-                           }
-      r1 :: NlpOut x g Double
+  let r1 :: NlpOut x g Double
       r1 = NlpOut { fOpt = V.head $ unJ (fOpt' r1')
                   , xOpt = devectorize $ unJ (xOpt' r1')
                   , gOpt = devectorize $ unJ (gOpt' r1')
-                  , lambdaOpt = lambda
+                  , lambdaXOpt = devectorize $ unJ $ lambdaXOpt' r1'
+                  , lambdaGOpt = devectorize $ unJ $ lambdaGOpt' r1'
                   }
 
   return (r0, r1)

@@ -3,8 +3,8 @@
 
 module Dyno.Nlp
        ( Bounds
-       , Nlp(..), NlpOut(..), Multipliers(..)
-       , Nlp'(..), NlpOut'(..), Multipliers'(..)
+       , Nlp(..),  NlpOut(..)
+       , Nlp'(..), NlpOut'(..)
        ) where
 
 import GHC.Generics ( Generic )
@@ -31,6 +31,8 @@ data Nlp x p g a =
   , nlpBG :: g Bounds
   , nlpX0 :: x Double
   , nlpP  :: p Double
+  , nlpLamX0 :: Maybe (x Double)
+  , nlpLamG0 :: Maybe (g Double)
   }
 
 data NlpOut x g a =
@@ -38,15 +40,9 @@ data NlpOut x g a =
   { fOpt :: a
   , xOpt :: x a
   , gOpt :: g a
-  , lambdaOpt :: Multipliers x g a
+  , lambdaXOpt :: x a
+  , lambdaGOpt :: g a
   } deriving (Eq, Show, Generic)
-
-data Multipliers x g a =
-  Multipliers
-  { lambdaX :: x a
-  , lambdaG :: g a
-  } deriving (Eq, Show, Generic)
-
 
 -- | NLP using Views
 data NlpOut' x g a =
@@ -54,13 +50,8 @@ data NlpOut' x g a =
   { fOpt' :: J S a
   , xOpt' :: J x a
   , gOpt' :: J g a
-  , lambdaOpt' :: Multipliers' x g a
-  } deriving (Eq, Show, Generic)
-
-data Multipliers' x g a =
-  Multipliers'
-  { lambdaX' :: J x a
-  , lambdaG' :: J g a
+  , lambdaXOpt' :: J x a
+  , lambdaGOpt' :: J g a
   } deriving (Eq, Show, Generic)
 
 data Nlp' x p g a =
@@ -70,4 +61,6 @@ data Nlp' x p g a =
   , nlpBG' :: J g (V.Vector Bounds)
   , nlpX0' :: J x (V.Vector Double)
   , nlpP'  :: J p (V.Vector Double)
+  , nlpLamX0' :: Maybe (J x (V.Vector Double))
+  , nlpLamG0' :: Maybe (J g (V.Vector Double))
   }

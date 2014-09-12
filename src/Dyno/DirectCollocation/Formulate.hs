@@ -171,6 +171,8 @@ makeCollNlp ocp = do
     , nlpBG' = cat (getBg ocp)
     , nlpX0' = nlpX0
     , nlpP' = cat JNone
+    , nlpLamX0' = Nothing
+    , nlpLamG0' = Nothing
     }, callback)
 
 toFunJac' :: String -> ((x MX, y MX) -> f MX) -> IO ((x MX, y MX) -> Vector (Vector MX))
@@ -269,6 +271,8 @@ makeCollCovNlp ocp ocpCov = do
                }
     , nlpX0' = cat $ CollTrajCov (jfill 0) (nlpX0' nlp0)
     , nlpP' = cat JNone
+    , nlpLamX0' = Nothing
+    , nlpLamG0' = Nothing
     }
     , callback
     )

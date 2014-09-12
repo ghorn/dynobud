@@ -28,6 +28,8 @@ myNlp = Nlp' { nlpFG' = fg
              , nlpBG' = bg
              , nlpX0' = x0
              , nlpP' = cat JNone
+             , nlpLamX0' = Nothing
+             , nlpLamG0' = Nothing
              }
   where
     x0 :: J X (V.Vector Double)

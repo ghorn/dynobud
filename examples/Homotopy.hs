@@ -32,6 +32,8 @@ myNlp = Nlp' { nlpFG' = fg
              , nlpBG' = bg
              , nlpX0' = x0
              , nlpP' = cat $ P (-2) 0
+             , nlpLamX0' = Nothing
+             , nlpLamG0' = Nothing
              }
   where
     x0 :: J X (V.Vector Double)
