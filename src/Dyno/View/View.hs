@@ -15,7 +15,7 @@
 {-# LANGUAGE InstanceSigs #-}
 
 module Dyno.View.View
-       ( J(..), mkJ, unJ, unJ', View(..), JVec(..), JNone(..), S(..)
+       ( J(..), mkJ, mkJ', unJ, unJ', View(..), JVec(..), JNone(..), S(..)
        , JV(..)
        , JTuple(..)
        , jreplicate, jreplicate'
@@ -50,9 +50,14 @@ newtype J (f :: * -> *) (a :: *) = UnsafeJ { unsafeUnJ :: a } deriving (Eq, Func
 
 
 mkJ :: forall f a . (View f, Viewable a) => a -> J f a
-mkJ x
-  | nx == nx' = UnsafeJ x
-  | otherwise = error $ "mkJ length mismatch: typed size: " ++ show nx ++
+mkJ x = case mkJ' x of
+  Right x' -> x'
+  Left msg -> error msg
+
+mkJ' :: forall f a . (View f, Viewable a) => a -> Either String (J f a)
+mkJ' x
+  | nx == nx' = Right (UnsafeJ x)
+  | otherwise = Left $ "mkJ length mismatch: typed size: " ++ show nx ++
                 ", actual size: " ++ show nx'
   where
     nx = size (Proxy :: Proxy f)
