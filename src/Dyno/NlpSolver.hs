@@ -402,29 +402,27 @@ solveNlp' solverStuff nlp callback =
     setUbx ubx
     setLbg lbg
     setUbg ubg
+    case nlpLamX0' nlp of
+      Just lam -> setLamX0 lam
+      Nothing -> return ()
+    case nlpLamG0' nlp of
+      Just lam -> setLamG0 lam
+      Nothing -> return ()
 
     solve'
-
----- | solve a homotopy nlp
---solveNlpHomotopy ::
---  forall x p g a .
---  (Vectorize x, Vectorize p, Vectorize g)
---  => NlpSolverStuff
---  -> Nlp x p g a -> p Double -> Maybe (x Double -> IO Bool)
---  -> IO (Either String String, NlpOut x g Double)
---solveNlpHomotopy solverStuff nlp pF callback = undefined
 
 -- | solve a homotopy nlp
 solveNlpHomotopy' ::
   forall x p g a .
   (View x, View p, View g, Symbolic a)
-  => Int
-  -> Double
+  => Double -> (Double, Double)
   -> NlpSolverStuff
   -> Nlp' x p g a -> J p (Vector Double) -> Maybe (J (JTuple x p) (Vector Double) -> IO Bool)
   -> Maybe (J x (Vector Double) -> J p (Vector Double) -> Double -> IO ())
   -> IO (Either String String, NlpOut' (JTuple x p) g (Vector Double))
-solveNlpHomotopy' maxIters userStep solverStuff nlp (UnsafeJ pF) callback callbackP = do
+solveNlpHomotopy' userStep (reduction, increase) solverStuff nlp (UnsafeJ pF) callback callbackP = do
+  when (reduction >= 1) $ error $ "homotopy reduction factor " ++ show reduction ++ " >= 1"
+  when (increase  <= 1) $ error $ "homotopy increase factor "  ++ show increase  ++ " <= 1"
   let fg :: J (JTuple x p) a -> J JNone a -> (J S a, J g a)
       fg xp _ = nlpFG' nlp x p
         where
@@ -446,7 +444,19 @@ solveNlpHomotopy' maxIters userStep solverStuff nlp (UnsafeJ pF) callback callba
     setAlpha 0
     setLbg lbg
     setUbg ubg
-    _ <- solve'
+    case nlpLamX0' nlp of
+      Just lam -> setLamX0 $ cat (JTuple lam (jfill 0))
+      Nothing -> return ()
+    case nlpLamG0' nlp of
+      Just lam -> setLamG0 lam
+      Nothing -> return ()
+    (ret0, _) <- solve'
+    case ret0 of
+      Right _ -> return ()
+      Left msg -> error $ "error: homotopy solver initial guess not good enough\n" ++ msg
+    getX >>= setX0
+    getLamX >>= setLamX0
+    getLamG >>= setLamG0
 
     -- run the homotopy
     let runCallback alphaTrial = case callbackP of
@@ -460,10 +470,10 @@ solveNlpHomotopy' maxIters userStep solverStuff nlp (UnsafeJ pF) callback callba
                    -> NlpSolver (JTuple x p) JNone g
                       (Either String String, NlpOut' (JTuple x p) g (Vector Double))
         tryStep alpha0 step
-          | step < 1e-6 = do no <- getNlpOut'
-                             return (Left "step size too small", no)
+          | step < 1e-12 = do no <- getNlpOut'
+                              return (Left "step size too small", no)
           | otherwise = do
-            --liftIO $ putStrLn $ "alpha: " ++ show alpha0 ++ ", step: " ++ show step
+            liftIO $ putStrLn $ "alpha: " ++ show alpha0 ++ ", step: " ++ show step
             let (alphaTrial, alphaIsOne)
                   | alpha0 + step >= 1 = (1, True)
                   | otherwise = (alpha0 + step, False)
@@ -472,26 +482,27 @@ solveNlpHomotopy' maxIters userStep solverStuff nlp (UnsafeJ pF) callback callba
             case ret of
               (Left msg,_) -> do
                 liftIO $ putStrLn $ "step failed to solve: " ++ msg
-                tryStep alpha0 (0.5*step)
+                tryStep alpha0 (reduction*step)
               (Right _,_) -> do
                 iters <- getStat "iter_count"
-                mk <- liftIO (Gen.fromGeneric iters)
-                case mk of
+                mk <- liftIO (Gen.fromGeneric iters :: IO (Maybe Int))
+                k <- case mk of
                   Nothing ->
                     liftIO (Gen.getDescription iters) >>=
                     error . ("homotopy solver: iters is not an Int, it is: " ++) . show
-                  Just k ->
-                    if k > maxIters
-                    then do liftIO $ putStrLn $ "too many iterations (" ++ show k ++ ") reducing step"
-                            tryStep alpha0 (0.6*step)
-                    else do liftIO $ putStrLn $ "step successful (" ++ show k ++ ") iterations"
-                            runCallback alphaTrial
-                            if alphaIsOne
-                              then return ret
-                              else getX >>= setX0 >> tryStep alphaTrial (step*2)
+                  Just k' -> return k'
+                liftIO $ putStrLn $ "step successful (" ++ show k ++ ") iterations"
+                runCallback alphaTrial
+                if alphaIsOne
+                  then return ret
+                  else do getX >>= setX0
+                          getLamX >>= setLamX0
+                          getLamG >>= setLamG0
+                          tryStep alphaTrial (step*increase)
 
-    tryStep 0 userStep
-
+    ret <- tryStep 0 userStep
+    liftIO $ putStrLn "homotopy successful"
+    return ret
 
 inf :: Double
 inf = read "Infinity"

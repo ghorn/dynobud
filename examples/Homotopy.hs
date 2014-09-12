@@ -76,5 +76,5 @@ main = do
         --printf "X: (%.3f,%.3f), P: (%.3f, %.3f), a: %.4f\n"
         -- (V.head (unJ x)) (V.head (unJ y)) (V.head (unJ px)) (V.head (unJ py)) alpha
         return ()
-  opt <- solveNlpHomotopy' 5 1e-3 solver myNlp (cat (P (2) (0))) Nothing (Just cbp)
+  opt <- solveNlpHomotopy' 1e-3 (0.6, 2) solver myNlp (cat (P (2) (0))) Nothing (Just cbp)
   print opt
