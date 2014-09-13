@@ -21,7 +21,8 @@ import qualified GHC.Stats
 
 import Dyno.Server.PlotTypes ( Channel(..) )
 import Dyno.Server.GraphWidget ( newGraph )
-import Dyno.DirectCollocation.Dynamic ( DynCollTraj(..), CollTrajMeta(..), dynPlotPoints, forestFromMeta )
+import Dyno.DirectCollocation.Dynamic ( DynCollTraj(..), CollTrajMeta(..)
+                                      , dynPlotPoints, catDynPlotPoints, forestFromMeta )
 
 -- This only concerns if we should rebuild the plot tree or not.
 -- The devectorization won't break because we always use the
@@ -38,7 +39,7 @@ sameMeta (Just ctm0) (Just ctm1) =
 sameMeta _ _ = False
 
 newChannel ::
-  String -> IO (Channel, (DynCollTraj (Vector Double), CollTrajMeta) -> IO ())
+  String -> IO (Channel, ([DynCollTraj (Vector Double)], CollTrajMeta) -> IO ())
 newChannel name = do
   time0 <- getCurrentTime
 
@@ -57,7 +58,7 @@ newChannel name = do
   let serverLoop :: Maybe CollTrajMeta -> Int -> IO ()
       serverLoop oldMeta k = do
         -- wait until a new message is written to the Chan
-        (newTraj, newMeta) <- getLastValue
+        (newTrajs, newMeta) <- getLastValue
 
         -- grab the timestamp
         time <- getCurrentTime
@@ -72,7 +73,8 @@ newChannel name = do
               else Gtk.listStoreSetValue metaStore 0 (forestFromMeta newMeta)
 
           -- write to the mvar
-          _ <- CC.swapMVar trajMv (Just (dynPlotPoints newTraj newMeta, k, diffUTCTime time time0))
+          let pps = catDynPlotPoints $ map (flip dynPlotPoints newMeta) newTrajs
+          _ <- CC.swapMVar trajMv (Just (pps, k, diffUTCTime time time0))
           return ()
 
         -- loop forever

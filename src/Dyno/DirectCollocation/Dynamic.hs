@@ -12,6 +12,7 @@ module Dyno.DirectCollocation.Dynamic
        , toMetaCov
        , ctToDynamic
        , dynPlotPoints
+       , catDynPlotPoints
 --       , toPlotTree
        , NameTree(..)
        ) where
@@ -43,6 +44,14 @@ data DynPlotPoints a = DynPlotPoints
                        [[(a, Vector a)]]
                        [[(a, Vector a)]]
                      deriving Show
+
+catDynPlotPoints :: [DynPlotPoints a] -> DynPlotPoints a
+catDynPlotPoints pps =
+  DynPlotPoints
+  (concatMap (\(DynPlotPoints x _ _ _) -> x) pps)
+  (concatMap (\(DynPlotPoints _ x _ _) -> x) pps)
+  (concatMap (\(DynPlotPoints _ _ x _) -> x) pps)
+  (concatMap (\(DynPlotPoints _ _ _ x) -> x) pps)
 
 data D a
 data DynCollTraj a = DynCollTraj (J (CollTraj D D D D () ()) a) (Vec () (Vec () (J D a)))
