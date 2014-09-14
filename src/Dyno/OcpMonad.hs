@@ -474,7 +474,7 @@ solveStaticOcp ::
   -> (SXElement -> (String -> OcpMonad SXElement) -> OcpMonad ())
   -> (Maybe Double, Maybe Double)
   -> Int -> Int
-  -> Maybe (CollTrajMeta -> DynCollTraj (Vector Double) -> IO Bool)
+  -> Maybe (CollTrajMeta -> [DynCollTraj (Vector Double)] -> IO Bool)
   -> IO (Either String String)
 solveStaticOcp solverStuff dae mayer bc ocp tbnds n deg cb =
   reifyOcpPhase dae mayer bc ocp tbnds n deg woo

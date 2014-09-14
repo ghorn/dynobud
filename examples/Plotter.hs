@@ -17,7 +17,7 @@ import Dyno.DirectCollocation.Dynamic
 
 import GliderShared ( gliderUrl, gliderChannelName )
 
-sub :: String -> ((DynCollTraj (Vector Double), CollTrajMeta) -> IO ()) -> String -> IO ()
+sub :: String -> (([DynCollTraj (Vector Double)], CollTrajMeta) -> IO ()) -> String -> IO ()
 sub ip' writeChan name = ZMQ.withContext $ \context ->
   ZMQ.withSocket context ZMQ.Sub $ \subscriber -> do
     ZMQ.connect subscriber ip'
@@ -27,7 +27,7 @@ sub ip' writeChan name = ZMQ.withContext $ \context ->
       mre <- ZMQ.moreToReceive subscriber
       when mre $ do
         msg <- ZMQ.receive subscriber
-        let decoded :: (DynCollTraj (Vector Double), CollTrajMeta)
+        let decoded :: ([DynCollTraj (Vector Double)], CollTrajMeta)
             decoded = case decode msg of
               Left err -> error err
               Right t -> t

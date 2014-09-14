@@ -112,7 +112,7 @@ main = do
           (dyn,_) <- toDyn traj
           let proxy :: Proxy (CollTraj AcX None AcU None NCollStages CollDeg)
               proxy = Proxy
-          cb (dyn, toMeta (Proxy :: Proxy None) proxy)
+          cb ([dyn], toMeta (Proxy :: Proxy None) proxy)
 
     (msg,opt') <- solveNlp' ipoptSolver (nlp { nlpX0' = guess }) (Just cb')
     opt <- case msg of Left msg' -> error msg'

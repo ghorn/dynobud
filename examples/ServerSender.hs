@@ -16,7 +16,7 @@ callback publisher chanName stuff = do
   ZMQ.send publisher [] bs
   return True
 
-withCallback :: (Serialize a) => String -> String -> (((DynCollTraj a, CollTrajMeta) -> IO Bool) -> IO b) -> IO b
+withCallback :: (Serialize a) => String -> String -> ((([DynCollTraj a], CollTrajMeta) -> IO Bool) -> IO b) -> IO b
 withCallback url channelName userFun =
   ZMQ.withContext $ \context ->
     ZMQ.withSocket context ZMQ.Pub $ \publisher ->

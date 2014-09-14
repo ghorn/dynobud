@@ -24,7 +24,7 @@ solveOcp ::
   forall x z u p r o c h .
   (Vectorize x, Vectorize z, Vectorize u, Vectorize p,
    Vectorize r, Vectorize o, Vectorize c, Vectorize h)
-  => NlpSolverStuff -> Int -> Int -> Maybe (DynCollTraj (Vector Double) -> IO Bool)
+  => NlpSolverStuff -> Int -> Int -> Maybe ([DynCollTraj (Vector Double)] -> IO Bool)
   -> OcpPhase x z u p r o c h
   -> IO (Either String String)
 solveOcp solverStuff n deg cb0 ocp =
@@ -38,6 +38,6 @@ solveOcp solverStuff n deg cb0 ocp =
           Nothing -> Nothing
           Just cb' -> Just $ \x -> do
             (dyn,_) <- toDynamic x
-            cb' dyn
+            cb' [dyn]
     (res, _) <- solveNlp' solverStuff (nlp {nlpX0' = guess}) cb
     return res
