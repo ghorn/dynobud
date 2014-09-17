@@ -4,6 +4,7 @@
 
 module Dyno.Server.PlotTypes
        ( Channel(..)
+       , Message(..)
        , GraphInfo(..)
        , ListViewInfo(..)
        , AxisScaling(..)
@@ -11,11 +12,10 @@ module Dyno.Server.PlotTypes
 --       , XAxisType(..)
        ) where
 
-import Control.Concurrent ( MVar, ThreadId )
 import Data.Time ( NominalDiffTime )
 import qualified Graphics.UI.Gtk as Gtk
 
-import Dyno.DirectCollocation.Dynamic ( DynPlotPoints, MetaTree )
+import Dyno.DirectCollocation.Dynamic ( DynPlotPoints, CollTrajMeta, MetaTree )
 
 data ListViewInfo a = ListViewInfo { lviName :: String
                                    , lviType :: String
@@ -33,17 +33,15 @@ data AxisScaling = LogScaling
 
 -- what the graph should draw
 data GraphInfo =
-  GraphInfo { giData :: MVar (Maybe (DynPlotPoints Double, Int, NominalDiffTime))
-            , giXScaling :: AxisScaling
+  GraphInfo { giXScaling :: AxisScaling
             , giYScaling :: AxisScaling
             , giXRange :: Maybe (Double,Double)
             , giYRange :: Maybe (Double,Double)
             , giGetters :: [(String, DynPlotPoints Double -> [[(Double,Double)]])]
             }
 
+data Message = Message (DynPlotPoints Double) Int NominalDiffTime CollTrajMeta
 data Channel =
   Channel { chanName :: String
-          , chanTraj :: MVar (Maybe (DynPlotPoints Double, Int, NominalDiffTime))
-          , chanMetaStore :: Gtk.ListStore (MetaTree Double)
-          , chanServerThreadId :: ThreadId
+          , chanMsgStore :: Gtk.ListStore Message
           }

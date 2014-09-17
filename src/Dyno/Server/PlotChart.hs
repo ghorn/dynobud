@@ -2,10 +2,10 @@
 
 module Dyno.Server.PlotChart
        ( AxisScaling(..)
-       , newChartCanvas
+       , displayChart
+       , chartGtkUpdateCanvas
        ) where
 
-import qualified Control.Concurrent as CC
 import Control.Lens ( (.~) )
 import Data.Default.Class ( def )
 --import qualified Data.Foldable as F
@@ -13,49 +13,34 @@ import Data.Default.Class ( def )
 import qualified Graphics.UI.Gtk as Gtk
 import qualified Graphics.Rendering.Chart as Chart
 import Graphics.Rendering.Chart.Backend.Cairo ( runBackend, defaultEnv )
+import Graphics.Rendering.Cairo hiding (width, height)
+  --( Render, Format(..)
+  --, renderWith, setSourceSurface, withImageSurface )
 
-import Dyno.Server.PlotTypes ( GraphInfo(..), AxisScaling(..) )
+import Dyno.Server.PlotTypes ( AxisScaling(..) )
 
--- milliseconds for draw time
-animationWaitTime :: Int
-animationWaitTime = 33
-
-newChartCanvas :: CC.MVar GraphInfo -> IO Gtk.DrawingArea
-newChartCanvas graphInfoMVar = do
-  -- chart drawing area
-  chartCanvas <- Gtk.drawingAreaNew
-  _ <- Gtk.widgetSetSizeRequest chartCanvas 250 250
-  _ <- Gtk.onExpose chartCanvas $ const (updateCanvas graphInfoMVar chartCanvas)
-  _ <- Gtk.timeoutAddFull
-       (Gtk.widgetQueueDraw chartCanvas >> return True)
-       Gtk.priorityDefaultIdle animationWaitTime
-  return chartCanvas
-
-updateCanvas :: CC.MVar GraphInfo -> Gtk.DrawingArea -> IO Bool
-updateCanvas graphInfoMVar canvas = do
-  gi <- CC.readMVar graphInfoMVar
-  maybeData <- CC.readMVar (giData gi)
-  let namePcs = case maybeData of
-        Nothing -> []
-        -- convert to list of (name,S.Seq PbPrim)
-        Just (datalog,_,_) -> map f (giGetters gi) :: [(String, [[(Double,Double)]])]
-          where
-            f (name,getter) = (name, getter datalog :: [[(Double,Double)]])
-
-  let myGraph = displayChart (giXScaling gi, giYScaling gi) (giXRange gi, giYRange gi) namePcs
-  chartGtkUpdateCanvas myGraph canvas
-
-chartGtkUpdateCanvas :: Chart.Renderable a -> Gtk.DrawingArea  -> IO Bool
+chartGtkUpdateCanvas :: Chart.Renderable () -> Gtk.DrawingArea  -> IO ()
 chartGtkUpdateCanvas chart canvas = do
-    win <- Gtk.widgetGetDrawWindow canvas
-    (width, height) <- Gtk.widgetGetSize canvas
-    regio <- Gtk.regionRectangle $ Gtk.Rectangle 0 0 width height
-    let sz = (fromIntegral width,fromIntegral height)
-    Gtk.drawWindowBeginPaintRegion win regio
-    _ <- Gtk.renderWithDrawable win $ runBackend (defaultEnv Chart.bitmapAlignmentFns) (Chart.render chart sz) 
-    Gtk.drawWindowEndPaint win
-    return True
+    Gtk.threadsEnter
+    maybeWin <- Gtk.widgetGetWindow canvas
+    case maybeWin of
+      Nothing -> Gtk.threadsLeave >> return ()
+      Just win -> do
+        (width, height) <- Gtk.widgetGetSize canvas
+        regio <- Gtk.regionRectangle $ Gtk.Rectangle 0 0 width height
+        Gtk.threadsLeave
+        let sz = (fromIntegral width,fromIntegral height)
+        let render0 :: Render (Chart.PickFn ())
+            render0 = runBackend (defaultEnv Chart.bitmapAlignmentFns) (Chart.render chart sz)
 
+        withImageSurface FormatARGB32 width height $ \surface -> do
+          _ <- renderWith surface render0
+          let render1 = setSourceSurface surface 0 0 >> paint
+          Gtk.threadsEnter
+          Gtk.drawWindowBeginPaintRegion win regio
+          _ <- Gtk.renderWithDrawable win render1
+          Gtk.drawWindowEndPaint win
+          Gtk.threadsLeave
 
 displayChart :: (Chart.PlotValue a, Show a, RealFloat a) =>
                 (AxisScaling, AxisScaling) -> (Maybe (a,a),Maybe (a,a)) ->

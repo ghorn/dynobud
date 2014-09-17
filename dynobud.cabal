@@ -92,6 +92,7 @@ library
                        stm,
                        gtk >= 0.13,
                        Chart-cairo,
+                       cairo,
                        Chart,
                        data-default-class,
                        distributive,

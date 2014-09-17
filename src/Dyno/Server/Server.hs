@@ -8,8 +8,7 @@ module Dyno.Server.Server
 
 import Data.Vector ( Vector )
 import qualified Control.Concurrent as CC
-import qualified Control.Concurrent.STM as STM
-import Control.Monad ( unless )
+import qualified Data.IORef as IORef
 import Data.Time ( getCurrentTime, diffUTCTime )
 import Graphics.UI.Gtk ( AttrOp( (:=) ) )
 import qualified Graphics.UI.Gtk as Gtk
@@ -19,75 +18,38 @@ import System.Glib.Signals ( on )
 
 import qualified GHC.Stats
 
-import Dyno.Server.PlotTypes ( Channel(..) )
+import Dyno.Server.PlotTypes ( Channel(..), Message(..) )
 import Dyno.Server.GraphWidget ( newGraph )
 import Dyno.DirectCollocation.Dynamic ( DynCollTraj(..), CollTrajMeta(..)
-                                      , dynPlotPoints, catDynPlotPoints, forestFromMeta )
-
--- This only concerns if we should rebuild the plot tree or not.
--- The devectorization won't break because we always use the
--- new meta to get the plot points
-sameMeta :: Maybe CollTrajMeta -> Maybe CollTrajMeta -> Bool
-sameMeta Nothing Nothing = True
-sameMeta (Just ctm0) (Just ctm1) =
-  and [ ctmX ctm0 == ctmX ctm1
-      , ctmZ ctm0 == ctmZ ctm1
-      , ctmU ctm0 == ctmU ctm1
-      , ctmP ctm0 == ctmP ctm1
-      , ctmO ctm0 == ctmO ctm1
-      ]
-sameMeta _ _ = False
+                                      , dynPlotPoints, catDynPlotPoints )
 
 newChannel ::
   String -> IO (Channel, ([DynCollTraj (Vector Double)], CollTrajMeta) -> IO ())
 newChannel name = do
   time0 <- getCurrentTime
 
-  trajChan <- STM.atomically STM.newTQueue
-  trajMv <- CC.newMVar Nothing
+  msgStore <- Gtk.listStoreNew []
+  counter <- IORef.newIORef 0
 
-  metaStore <- Gtk.listStoreNew []
-
-  let getLastValue = do
-        val <- STM.atomically (STM.readTQueue trajChan)
-        empty <- STM.atomically (STM.isEmptyTQueue trajChan)
-        if empty then return val else getLastValue
-
-
-  -- this is the loop that reads new messages and stores them
-  let serverLoop :: Maybe CollTrajMeta -> Int -> IO ()
-      serverLoop oldMeta k = do
-        -- wait until a new message is written to the Chan
-        (newTrajs, newMeta) <- getLastValue
-
-        -- grab the timestamp
+  let newMessage :: ([DynCollTraj (Vector Double)], CollTrajMeta) -> IO ()
+      newMessage (newTrajs, newMeta) = do
+        -- grab the time and counter
         time <- getCurrentTime
-
-        Gtk.postGUISync $ do
-          -- if new meta is different, rebuild the tree store
-          unless (sameMeta (Just newMeta) oldMeta) $ do
-            putStrLn $ "meta-information changed on message " ++ show k
-            size <- Gtk.listStoreGetSize metaStore
-            if size == 0
-              then Gtk.listStorePrepend metaStore (forestFromMeta newMeta)
-              else Gtk.listStoreSetValue metaStore 0 (forestFromMeta newMeta)
-
-          -- write to the mvar
+        k <- IORef.readIORef counter
+        IORef.writeIORef counter (k+1)
+        Gtk.postGUIAsync $ do
           let pps = catDynPlotPoints $ map (flip dynPlotPoints newMeta) newTrajs
-          _ <- CC.swapMVar trajMv (Just (pps, k, diffUTCTime time time0))
-          return ()
+              val = Message pps k (diffUTCTime time time0) newMeta
+          size <- Gtk.listStoreGetSize msgStore
+          if size == 0
+            then Gtk.listStorePrepend msgStore val
+            else Gtk.listStoreSetValue msgStore 0 val
 
-        -- loop forever
-        serverLoop (Just newMeta) (k+1)
-
-  serverTid <- CC.forkIO $ serverLoop Nothing 0
   let retChan = Channel { chanName = name
-                        , chanTraj = trajMv
-                        , chanMetaStore = metaStore
-                        , chanServerThreadId = serverTid
+                        , chanMsgStore = msgStore
                         }
 
-  return (retChan, STM.atomically . STM.writeTQueue trajChan)
+  return (retChan, newMessage)
 
 runPlotter :: Channel -> [CC.ThreadId] -> IO ()
 runPlotter channel backgroundThreadsToKill = do
@@ -99,6 +61,7 @@ runPlotter channel backgroundThreadsToKill = do
     else putStrLn "stats not enabled"
 
   _ <- Gtk.initGUI
+  _ <- Gtk.timeoutAddFull (CC.yield >> return True) Gtk.priorityDefault 50
 
   -- start the main window
   win <- Gtk.windowNew
@@ -112,7 +75,6 @@ runPlotter channel backgroundThreadsToKill = do
         gws <- CC.readMVar graphWindowsToBeKilled
         mapM_ Gtk.widgetDestroy gws
         mapM_ CC.killThread backgroundThreadsToKill
-        CC.killThread (chanServerThreadId channel)
         Gtk.mainQuit
   _ <- Gtk.onDestroy win killEverything
 
@@ -182,7 +144,7 @@ newChannelWidget channel graphWindowsToBeKilled = do
   _ <- on renderer2 Gtk.cellToggled $ \pathStr -> do
     let (i:_) = Gtk.stringToTreePath pathStr
     lv <- Gtk.listStoreGetValue model i
-    graphWin <- newGraph (chanName lv) (chanMetaStore lv) (chanTraj lv)
+    graphWin <- newGraph (chanName lv) (chanMsgStore lv)
 
     -- add this window to the list to be killed on exit
     CC.modifyMVar_ graphWindowsToBeKilled (return . (graphWin:))

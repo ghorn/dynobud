@@ -6,44 +6,79 @@ module Dyno.Server.GraphWidget
 
 import qualified Control.Concurrent as CC
 import Control.Monad ( when, unless )
+import qualified Data.IORef as IORef
 import Data.Maybe ( isJust, fromJust )
 import qualified Data.Tree as Tree
 import Graphics.UI.Gtk ( AttrOp( (:=) ) )
 import qualified Graphics.UI.Gtk as Gtk
-import Data.Time ( NominalDiffTime )
 import System.Glib.Signals ( on )
 import Text.Read ( readMaybe )
 import qualified Data.Text as T
+import qualified Graphics.Rendering.Chart as Chart
 
-import Dyno.Server.PlotChart ( AxisScaling(..), newChartCanvas )
-import Dyno.Server.PlotTypes ( GraphInfo(..), ListViewInfo(..) )
-import Dyno.DirectCollocation.Dynamic ( DynPlotPoints, MetaTree )
+import Dyno.Server.PlotChart ( AxisScaling(..), displayChart, chartGtkUpdateCanvas )
+import Dyno.Server.PlotTypes ( GraphInfo(..), ListViewInfo(..), Message(..) )
+import Dyno.DirectCollocation.Dynamic ( CollTrajMeta(..), DynPlotPoints, MetaTree, forestFromMeta )
+
+-- This only concerns if we should rebuild the plot tree or not.
+-- The devectorization won't break because we always use the
+-- new meta to get the plot points
+sameMeta :: Maybe CollTrajMeta -> Maybe CollTrajMeta -> Bool
+sameMeta Nothing Nothing = True
+sameMeta (Just ctm0) (Just ctm1) =
+  and [ ctmX ctm0 == ctmX ctm1
+      , ctmZ ctm0 == ctmZ ctm1
+      , ctmU ctm0 == ctmU ctm1
+      , ctmP ctm0 == ctmP ctm1
+      , ctmO ctm0 == ctmO ctm1
+      ]
+sameMeta _ _ = False
 
 
 -- make a new graph window
-newGraph ::
-  String ->
-  Gtk.ListStore (MetaTree Double) ->
-  CC.MVar (Maybe (DynPlotPoints Double, Int, NominalDiffTime)) ->
-  IO Gtk.Window
-newGraph channame metaStore chanseq = do
+newGraph :: String -> Gtk.ListStore Message -> IO Gtk.Window
+newGraph channame msgStore = do
   win <- Gtk.windowNew
 
   _ <- Gtk.set win [ Gtk.containerBorderWidth := 8
                    , Gtk.windowTitle := channame
                    ]
 
-  -- mvar with everything the graphs need to plot
-  graphInfoMVar <- CC.newMVar GraphInfo { giData = chanseq
-                                        , giXScaling = LinearScaling
+  -- mvar with all the user input
+  graphInfoMVar <- CC.newMVar GraphInfo { giXScaling = LinearScaling
                                         , giYScaling = LinearScaling
                                         , giXRange = Nothing
                                         , giYRange = Nothing
                                         , giGetters = []
                                         }
 
+  let makeRenderable :: IO (Chart.Renderable ())
+      makeRenderable = do
+        gi <- CC.readMVar graphInfoMVar
+        size <- Gtk.listStoreGetSize msgStore
+
+        namePcs <- if size == 0
+                   then return []
+                   else do
+                     Message datalog _ _ _ <- Gtk.listStoreGetValue msgStore 0
+                     let f (name,getter) = (name, getter datalog :: [[(Double,Double)]])
+                     return (map f (giGetters gi) :: [(String, [[(Double,Double)]])])
+        return $ displayChart (giXScaling gi, giYScaling gi) (giXRange gi, giYRange gi) namePcs
+
+  -- chart drawing area
+  chartCanvas <- Gtk.drawingAreaNew
+  _ <- Gtk.widgetSetSizeRequest chartCanvas 250 250
+
+  let redraw :: IO ()
+      redraw = do
+        renderable <- makeRenderable
+        chartGtkUpdateCanvas renderable chartCanvas
+
+  _ <- Gtk.onExpose chartCanvas $ const (redraw >> return True)
+
+
   -- the options widget
-  optionsWidget <- makeOptionsWidget graphInfoMVar
+  optionsWidget <- makeOptionsWidget graphInfoMVar redraw
   options <- Gtk.expanderNew "options"
   Gtk.set options [ Gtk.containerChild := optionsWidget
                   , Gtk.expanderExpanded := False
@@ -51,7 +86,7 @@ newGraph channame metaStore chanseq = do
 
 
   -- the signal selector
-  treeview' <- newSignalSelectorArea graphInfoMVar metaStore
+  treeview' <- newSignalSelectorArea graphInfoMVar msgStore redraw
   treeview <- Gtk.expanderNew "signals"
   Gtk.set treeview [ Gtk.containerChild := treeview'
                    , Gtk.expanderExpanded := True
@@ -65,9 +100,6 @@ newGraph channame metaStore chanseq = do
     , Gtk.containerChild := treeview
     , Gtk.boxChildPacking treeview := Gtk.PackGrow
     ]
-
-  -- chart drawing area
-  chartCanvas <- newChartCanvas graphInfoMVar
 
   -- hbox to hold eveything
   hboxEverything <- Gtk.hBoxNew False 4
@@ -84,8 +116,8 @@ newGraph channame metaStore chanseq = do
 
 
 newSignalSelectorArea ::
-  CC.MVar GraphInfo -> Gtk.ListStore (MetaTree Double) -> IO Gtk.ScrolledWindow
-newSignalSelectorArea graphInfoMVar metaStore = do
+  CC.MVar GraphInfo -> Gtk.ListStore Message -> IO () -> IO Gtk.ScrolledWindow
+newSignalSelectorArea graphInfoMVar msgStore redraw = do
   treeStore <- Gtk.treeStoreNew []
   treeview <- Gtk.treeViewNewWithModel treeStore
 
@@ -141,6 +173,7 @@ newSignalSelectorArea graphInfoMVar metaStore = do
     ret <- Gtk.treeStoreChange treeStore treePath g
     unless ret $ putStrLn "treeStoreChange fail"
     updateGraphInfo
+    redraw
 
 
   -- rebuild the signal tree
@@ -153,19 +186,26 @@ newSignalSelectorArea graphInfoMVar metaStore = do
         Gtk.treeStoreInsertForest treeStore [] 0 newTrees
         updateGraphInfo
 
+  oldMetaRef <- IORef.newIORef Nothing
+  let maybeRebuildSignalTree newMeta = do
+        oldMeta <- IORef.readIORef oldMetaRef
+        unless (sameMeta oldMeta (Just newMeta)) $ do
+          IORef.writeIORef oldMetaRef (Just newMeta)
+          rebuildSignalTree (forestFromMeta newMeta)
+
   -- on insert or change, rebuild the signal tree
-  _ <- on metaStore Gtk.rowChanged $ \_ changedPath -> do
-    newMeta <- Gtk.listStoreGetValue metaStore (Gtk.listStoreIterToIndex changedPath)
-    rebuildSignalTree newMeta
-  _ <- on metaStore Gtk.rowInserted $ \_ changedPath -> do
-    newMeta <- Gtk.listStoreGetValue metaStore (Gtk.listStoreIterToIndex changedPath)
-    rebuildSignalTree newMeta
+  _ <- on msgStore Gtk.rowChanged $ \_ changedPath -> do
+    Message _ _ _ newMeta <- Gtk.listStoreGetValue msgStore (Gtk.listStoreIterToIndex changedPath)
+    maybeRebuildSignalTree newMeta >> redraw
+  _ <- on msgStore Gtk.rowInserted $ \_ changedPath -> do
+    Message _ _ _ newMeta <- Gtk.listStoreGetValue msgStore (Gtk.listStoreIterToIndex changedPath)
+    maybeRebuildSignalTree newMeta >> redraw
 
   -- rebuild the signal tree right now if it exists
-  size <- Gtk.listStoreGetSize metaStore
+  size <- Gtk.listStoreGetSize msgStore
   when (size > 0) $ do
-    newMeta <- Gtk.listStoreGetValue metaStore 0
-    rebuildSignalTree newMeta
+    Message _ _ _ newMeta <- Gtk.listStoreGetValue msgStore 0
+    maybeRebuildSignalTree newMeta >> redraw
 
 
   scroll <- Gtk.scrolledWindowNew Nothing Nothing
@@ -177,8 +217,8 @@ newSignalSelectorArea graphInfoMVar metaStore = do
 
 
 
-makeOptionsWidget :: CC.MVar GraphInfo -> IO Gtk.VBox
-makeOptionsWidget graphInfoMVar = do
+makeOptionsWidget :: CC.MVar GraphInfo -> IO () -> IO Gtk.VBox
+makeOptionsWidget graphInfoMVar redraw = do
   -- user selectable range
   xRange <- Gtk.entryNew
   yRange <- Gtk.entryNew
@@ -209,7 +249,7 @@ makeOptionsWidget graphInfoMVar = do
                       return ()
                     else do
                       _ <- CC.swapMVar graphInfoMVar (gi {giXRange = Just (z0,z1)})
-                      return ()
+                      redraw
   let updateYRange = do
         Gtk.set yRange [ Gtk.entryEditable := True
                        , Gtk.widgetSensitive := True
@@ -227,7 +267,7 @@ makeOptionsWidget graphInfoMVar = do
                       return ()
                     else do
                       _ <- CC.swapMVar graphInfoMVar (gi {giYRange = Just (z0,z1)})
-                      return ()
+                      redraw
   _ <- on xRange Gtk.entryActivate updateXRange
   _ <- on yRange Gtk.entryActivate updateYRange
 
@@ -262,7 +302,7 @@ makeOptionsWidget graphInfoMVar = do
             CC.modifyMVar_ graphInfoMVar $
               \gi -> return $ gi {giXScaling = LogScaling, giXRange = Nothing}
           _ -> error "the \"impossible\" happened: x scaling comboBox index should be < 3"
-        return ()
+        redraw
   let updateYScaling = do
         k <- Gtk.comboBoxGetActive yScalingSelector
         _ <- case k of
@@ -283,7 +323,7 @@ makeOptionsWidget graphInfoMVar = do
             CC.modifyMVar_ graphInfoMVar $
               \gi -> return $ gi {giYScaling = LogScaling, giYRange = Nothing}
           _ -> error "the \"impossible\" happened: y scaling comboBox index should be < 3"
-        return ()
+        redraw
   updateXScaling
   updateYScaling
   _ <- on xScalingSelector Gtk.changed updateXScaling
