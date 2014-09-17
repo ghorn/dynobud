@@ -18,13 +18,13 @@ module Dyno.View.HList
        ( (:*:)(..)
        ) where
 
-import qualified Data.Sequence as Seq
+--import qualified Data.Sequence as Seq
 import Data.Proxy
 import qualified Data.Vector as V
 
 import Dyno.View.Scheme
 --import Dyno.View.View
-import Dyno.View.Viewable ( Viewable(..) )
+--import Dyno.View.Viewable ( Viewable(..) )
 
 infixr 6 :*:
 data (:*:) f g a = (:*:) (f a) (g a)

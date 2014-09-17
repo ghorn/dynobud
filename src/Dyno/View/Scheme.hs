@@ -29,11 +29,11 @@ import Dyno.View.CasadiMat
 data MyScheme a = MyScheme (J (JVec D3 S) a) (J (JVec D2 S) a) deriving (Generic, Generic1, Show)
 instance Scheme MyScheme
 
-go :: MyScheme MX
-go = fromVector (V.fromList [400,500])
-
-og :: V.Vector MX
-og = toVector go
+--go :: MyScheme MX
+--go = fromVector (V.fromList [400,500])
+--
+--og :: V.Vector MX
+--og = toVector go
 
 newtype M (f :: * -> *) (g :: * -> *) (a :: *) =
   UnsafeM { unM :: a } deriving (Eq, Functor, Generic)
