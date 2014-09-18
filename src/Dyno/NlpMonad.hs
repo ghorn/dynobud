@@ -170,6 +170,8 @@ buildNlp state = do
               , nlpBG' = mkJ (TV.unVec gbnd)
               , nlpX0' = jfill 0
               , nlpP' = cat JNone
+              , nlpLamX0' = Nothing
+              , nlpLamG0' = Nothing
               }
 
 
