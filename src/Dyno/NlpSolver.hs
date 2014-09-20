@@ -464,12 +464,13 @@ solveNlp' solverStuff nlp callback =
 solveNlpHomotopy' ::
   forall x p g a .
   (View x, View p, View g, Symbolic a)
-  => Double -> (Double, Double)
+  => Double -> (Double, Double, Int, Int)
   -> NlpSolverStuff
   -> Nlp' x p g a -> J p (Vector Double) -> Maybe (J (JTuple x p) (Vector Double) -> IO Bool)
   -> Maybe (J x (Vector Double) -> J p (Vector Double) -> Double -> IO ())
   -> IO (Either String String, NlpOut' (JTuple x p) g (Vector Double))
-solveNlpHomotopy' userStep (reduction, increase) solverStuff nlp (UnsafeJ pF) callback callbackP = do
+solveNlpHomotopy' userStep (reduction, increase, iterIncrease, iterDecrease)
+  solverStuff nlp (UnsafeJ pF) callback callbackP = do
   when (reduction >= 1) $ error $ "homotopy reduction factor " ++ show reduction ++ " >= 1"
   when (increase  <= 1) $ error $ "homotopy increase factor "  ++ show increase  ++ " <= 1"
   let fg :: J (JTuple x p) a -> J JNone a -> (J S a, J g a)
@@ -515,14 +516,15 @@ solveNlpHomotopy' userStep (reduction, increase) solverStuff nlp (UnsafeJ pF) ca
             let JTuple x p = split xp
             liftIO $ void (cbp x p alphaTrial)
 
-        tryStep :: Double -> Double
+        tryStep :: Int -> Double -> Double
                    -> NlpSolver (JTuple x p) JNone g
                       (Either String String, NlpOut' (JTuple x p) g (Vector Double))
-        tryStep alpha0 step
+        tryStep majorIter alpha0 step
           | step < 1e-12 = do no <- getNlpOut'
                               return (Left "step size too small", no)
           | otherwise = do
-            liftIO $ putStrLn $ "alpha: " ++ show alpha0 ++ ", step: " ++ show step
+            liftIO $ printf "%4d, alpha: %.2e, step: %.2e " majorIter alpha0 step
+            liftIO $ hFlush stdout
             let (alphaTrial, alphaIsOne)
                   | alpha0 + step >= 1 = (1, True)
                   | otherwise = (alpha0 + step, False)
@@ -531,25 +533,27 @@ solveNlpHomotopy' userStep (reduction, increase) solverStuff nlp (UnsafeJ pF) ca
             case ret of
               (Left msg,_) -> do
                 liftIO $ putStrLn $ "step failed to solve: " ++ msg
-                tryStep alpha0 (reduction*step)
+                tryStep (majorIter+1) alpha0 (reduction*step)
               (Right _,_) -> do
-                iters <- getStat "iter_count"
-                mk <- liftIO (Gen.fromGeneric iters :: IO (Maybe Int))
-                k <- case mk of
+                itersStat <- getStat "iter_count"
+                mk <- liftIO (Gen.fromGeneric itersStat :: IO (Maybe Int))
+                iters <- case mk of
                   Nothing ->
-                    liftIO (Gen.getDescription iters) >>=
+                    liftIO (Gen.getDescription itersStat) >>=
                     error . ("homotopy solver: iters is not an Int, it is: " ++) . show
                   Just k' -> return k'
-                liftIO $ putStrLn $ "step successful (" ++ show k ++ " iterations)"
+                liftIO $ putStrLn $ "step successful (" ++ show iters ++ " iterations)"
                 runCallback alphaTrial
                 if alphaIsOne
                   then return ret
                   else do getX >>= setX0
                           getLamX >>= setLamX0
                           getLamG >>= setLamG0
-                          tryStep alphaTrial (step*increase)
+                          if | iters < iterIncrease -> tryStep (majorIter + 1) alphaTrial (step*increase)
+                             | iters < iterDecrease -> tryStep (majorIter + 1) alphaTrial step
+                             | otherwise            -> tryStep (majorIter + 1) alphaTrial (step*reduction)
 
-    ret <- tryStep 0 userStep
+    ret <- tryStep 0 0 userStep
     liftIO $ putStrLn "homotopy successful"
     return ret
 
