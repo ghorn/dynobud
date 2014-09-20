@@ -23,6 +23,7 @@ class (Floating a, Show a) => CasadiMat a where
   diag :: a -> a
   ones :: (Int,Int) -> a
   zeros :: (Int,Int) -> a
+  fromDVector :: V.Vector Double -> a
 
 instance CasadiMat SX.SX where
   veccat = SX.sveccat
@@ -37,6 +38,7 @@ instance CasadiMat SX.SX where
   diag = SX.sdiag
   ones = SX.sones
   zeros = SX.szeros
+  fromDVector = SX.d2s . fromDVector
 
 instance CasadiMat MX.MX where
   veccat = MX.veccat
@@ -51,6 +53,7 @@ instance CasadiMat MX.MX where
   diag = MX.diag
   ones = MX.ones
   zeros = MX.zeros
+  fromDVector = MX.d2m . fromDVector
 
 instance CasadiMat DMatrix.DMatrix where
   veccat = DMatrix.dveccat
@@ -65,3 +68,4 @@ instance CasadiMat DMatrix.DMatrix where
   diag = DMatrix.ddiag
   ones = DMatrix.dones
   zeros = DMatrix.dzeros
+  fromDVector = DMatrix.dvector

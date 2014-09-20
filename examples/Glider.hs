@@ -70,6 +70,15 @@ ocp = OcpPhase { ocpMayer = mayer
                , ocpPbnd = None
                , ocpTbnd = (Just 0.5, Just 0.5)
 --               , ocpTbnd = (Just 4, Just 4)
+               , ocpObjScale      = Nothing
+               , ocpTScale        = Nothing
+               , ocpXScale        = Nothing
+               , ocpZScale        = Nothing
+               , ocpUScale        = Nothing
+               , ocpPScale        = Nothing
+               , ocpResidualScale = Nothing
+               , ocpBcScale       = Nothing
+               , ocpPathCScale    = Nothing
                }
 
 pathc :: x a -> z a -> u a -> p a -> None a -> a -> None a

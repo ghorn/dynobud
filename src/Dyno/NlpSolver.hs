@@ -3,6 +3,7 @@
 {-# Language PackageImports #-}
 {-# Language KindSignatures #-}
 {-# Language GeneralizedNewtypeDeriving #-}
+{-# Language MultiWayIf #-}
 
 module Dyno.NlpSolver
        ( NlpSolver
@@ -28,6 +29,8 @@ module Dyno.NlpSolver
        , getUbx
        , getLbg
        , getUbg
+       , getLamX0
+       , getLamG0
          -- * outputs
        , getF
        , getX
@@ -45,12 +48,14 @@ module Dyno.NlpSolver
 import Control.Exception ( AsyncException( UserInterrupt ), try )
 import Control.Concurrent ( forkIO, newEmptyMVar, takeMVar, putMVar )
 import Control.Applicative ( Applicative(..) )
-import Control.Monad ( liftM, when, void )
+import Control.Monad ( when, void )
 import "mtl" Control.Monad.Reader ( MonadIO(..), MonadReader(..), ReaderT(..) )
 import Data.Maybe ( fromMaybe )
 import Data.IORef ( newIORef, readIORef, writeIORef )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
+import System.IO ( hFlush, stdout )
+import Text.Printf ( printf )
 
 import Casadi.Core.Enums ( InputOutputScheme(..) )
 import qualified Casadi.Core.Classes.Function as C
@@ -72,7 +77,10 @@ import Dyno.Casadi.SharedObject ( soInit )
 import Dyno.Vectorize ( Vectorize(..) )
 import Dyno.View.View
 import Dyno.View.Symbolic
+import Dyno.View.Viewable ( Viewable )
+import Dyno.View.CasadiMat ( CasadiMat(..) )
 import Dyno.Nlp ( Nlp(..), NlpOut(..), Nlp'(..), NlpOut'(..), Bounds )
+import Dyno.NlpScaling ( ScaleFuns(..), scaledFG, mkScaleFuns )
 import Data.Proxy
 
 type VD a = J a (Vector Double)
@@ -91,81 +99,106 @@ getStat name = do
   nlpState <- ask
   liftIO $ C.function_getStat (isSolver nlpState) name
 
-setInput :: (NlpState -> Int) -> String -> Vector Double -> NlpSolver x p g ()
-setInput getLen name x = do
+setInput ::
+  View xg
+  => (ScaleFuns x g DMatrix -> (J xg DMatrix -> J xg DMatrix))
+  -> (NlpState x g -> Int)
+  -> String
+  -> J xg (V.Vector Double)
+  -> NlpSolver x p g ()
+setInput scaleFun getLen name x0 = do
   nlpState <- ask
-  let nx' = V.length x
-      nx = getLen nlpState
-  when (nx /= nx') $ error $ name ++ " dimension mismatch, " ++ show nx ++ " (type-level) /= " ++ show nx' ++ " (given)"
-  liftIO $ C.ioInterfaceFunction_setInput__3 (isSolver nlpState) x name
+  let x = unJ $ scaleFun (isScale nlpState) $ mkJ $ fromDVector (unJ x0)
+  let nActual = (dsize1 x, dsize2 x)
+      nTypeLevel = (getLen nlpState, 1)
+  when (nTypeLevel /= nActual) $ error $
+    name ++ " dimension mismatch, " ++ show nTypeLevel ++
+    " (type-level) /= " ++ show nActual ++ " (given)"
+  liftIO $ C.ioInterfaceFunction_setInput__0 (isSolver nlpState) x name
   return ()
 
 setX0 :: forall x p g. View x => VD x -> NlpSolver x p g ()
-setX0 = setInput isNx "x0" . unJ
+setX0 = setInput xToXBar isNx "x0"
 
 setLbx :: View x => VD x -> NlpSolver x p g ()
-setLbx = setInput isNx "lbx" . unJ
+setLbx = setInput xToXBar isNx "lbx"
 
 setUbx :: View x => VD x -> NlpSolver x p g ()
-setUbx = setInput isNx "ubx" . unJ
+setUbx = setInput xToXBar isNx "ubx"
 
 setLbg :: View g => VD g -> NlpSolver x p g ()
-setLbg = setInput isNg "lbg" . unJ
+setLbg = setInput gToGBar isNg "lbg"
 
 setUbg :: View g => VD g -> NlpSolver x p g ()
-setUbg = setInput isNg "ubg" . unJ
+setUbg = setInput gToGBar isNg "ubg"
 
 setP :: View p => VD p -> NlpSolver x p g ()
-setP = setInput isNp "p" . unJ
+setP = setInput (const id) isNp "p"
 
 setLamX0 :: View x => VD x -> NlpSolver x p g ()
-setLamX0 = setInput isNx "lam_x0" . unJ
+setLamX0 = setInput lamXToLamXBar isNx "lam_x0"
 
 setLamG0 :: View g => VD g -> NlpSolver x p g ()
-setLamG0 = setInput isNg "lam_g0" . unJ
+setLamG0 = setInput lamGToLamGBar isNg "lam_g0"
 
-getInput :: String -> NlpSolver x p g (Vector Double)
-getInput name = do
+getInput ::
+  View xg
+  => (ScaleFuns x g DMatrix -> (J xg DMatrix -> J xg DMatrix))
+  -> String -> NlpSolver x p g (J xg (Vector Double))
+getInput scaleFun name = do
   nlpState <- ask
-  liftIO $ fmap ddata $ C.ioInterfaceFunction_input__0 (isSolver nlpState) name
+  dmat <- liftIO $ C.ioInterfaceFunction_input__0 (isSolver nlpState) name
+  let scale = scaleFun (isScale nlpState)
+  return (mkJ $ ddata $ unJ $ scale (mkJ dmat))
 
 getX0 :: View x => NlpSolver x p g (VD x)
-getX0 = liftM mkJ $ getInput "x0"
+getX0 = getInput xbarToX "x0"
 
 getLbx :: View x => NlpSolver x p g (VD x)
-getLbx = liftM mkJ $ getInput "lbx"
+getLbx = getInput xbarToX "lbx"
 
 getUbx :: View x => NlpSolver x p g (VD x)
-getUbx = liftM mkJ $ getInput "ubx"
+getUbx = getInput xbarToX "ubx"
 
 getLbg :: View g => NlpSolver x p g (VD g)
-getLbg = liftM mkJ $ getInput "lbg"
+getLbg = getInput gbarToG "lbg"
 
 getUbg :: View g => NlpSolver x p g (VD g)
-getUbg = liftM mkJ $ getInput "ubg"
+getUbg = getInput gbarToG "ubg"
 
 getP :: View p => NlpSolver x p g (VD p)
-getP = liftM mkJ $ getInput "p"
+getP = getInput (const id) "p"
 
-getOutput :: String -> NlpSolver x p g (Vector Double)
-getOutput name = do
+getLamX0 :: View x => NlpSolver x p g (VD x)
+getLamX0 = getInput lamXBarToLamX "lam_x0"
+
+getLamG0 :: View g => NlpSolver x p g (VD g)
+getLamG0 = getInput lamGBarToLamG "lam_g0"
+
+getOutput ::
+  View xg
+  => (ScaleFuns x g DMatrix -> (J xg DMatrix -> J xg DMatrix))
+  -> String -> NlpSolver x p g (J xg (Vector Double))
+getOutput scaleFun name = do
   nlpState <- ask
-  liftIO $ fmap ddata $ C.ioInterfaceFunction_output__0 (isSolver nlpState) name
+  dmat <- liftIO $ C.ioInterfaceFunction_output__0 (isSolver nlpState) name
+  let scale = scaleFun (isScale nlpState)
+  return (mkJ $ ddata $ unJ $ scale (mkJ dmat))
 
 getF :: NlpSolver x p g (VD S)
-getF = liftM mkJ $ getOutput "f"
+getF = getOutput fbarToF "f"
 
 getX :: View x => NlpSolver x p g (VD x)
-getX = liftM mkJ $ getOutput "x"
+getX = getOutput xbarToX "x"
 
 getG :: View g => NlpSolver x p g (VD g)
-getG = liftM mkJ $ getOutput "g"
+getG = getOutput gbarToG "g"
 
 getLamX :: View x => NlpSolver x p g (VD x)
-getLamX = liftM mkJ $ getOutput "lam_x"
+getLamX = getOutput lamXBarToLamX "lam_x"
 
 getLamG :: View g => NlpSolver x p g (VD g)
-getLamG = liftM mkJ $ getOutput "lam_g"
+getLamG = getOutput lamGBarToLamG "lam_g"
 
 
 setOption :: Gen.GenericC a => String -> a -> NlpSolver x p g ()
@@ -227,19 +260,22 @@ getNlpOut' = do
   return nlpOut
 
 
-data NlpState = NlpState { isNx :: Int
-                         , isNg :: Int
-                         , isNp :: Int
-                         , isSolver :: C.NlpSolver
-                         , isInterrupt :: IO ()
-                         , isSuccessCodes :: [String]
-                         }
+data NlpState (x :: * -> *) (g :: * -> *) =
+  NlpState
+  { isNx :: Int
+  , isNg :: Int
+  , isNp :: Int
+  , isSolver :: C.NlpSolver
+  , isInterrupt :: IO ()
+  , isSuccessCodes :: [String]
+  , isScale :: ScaleFuns x g DMatrix
+  }
 newtype NlpSolver (x :: * -> *) (p :: * -> *) (g :: * -> *) a =
-  NlpSolver (ReaderT NlpState IO a)
+  NlpSolver (ReaderT (NlpState x g) IO a)
   deriving ( Functor
            , Applicative
            , Monad
-           , MonadReader NlpState
+           , MonadReader (NlpState x g)
            , MonadIO
            )
 
@@ -257,16 +293,21 @@ runNlpSolver ::
   (View x, View p, View g, Symbolic s)
   => NlpSolverStuff
   -> (J x s -> J p s -> (J S s, J g s))
---  -> (J x (Vector Double))
+  -> Maybe (J x (Vector Double))
+  -> Maybe (J g (Vector Double))
+  -> Maybe Double
   -> Maybe (J x (Vector Double) -> IO Bool)
   -> NlpSolver x p g a
   -> IO a
 --runNlpSolver solverStuff nlpFun nlpX0' callback' (NlpSolver nlpMonad) = do
-runNlpSolver solverStuff nlpFun callback' (NlpSolver nlpMonad) = do
+runNlpSolver solverStuff nlpFun scaleX scaleG scaleF callback' (NlpSolver nlpMonad) = do
   inputsX <- sym "x"
   inputsP <- sym "p"
 
-  let (obj, g) = nlpFun inputsX inputsP
+  let scale :: forall sfa . (CasadiMat sfa, Viewable sfa) => ScaleFuns x g sfa
+      scale = mkScaleFuns scaleX scaleG scaleF
+
+  let (obj, g) = scaledFG scale nlpFun inputsX inputsP
 
   let inputsXMat = unJ inputsX
       inputsPMat = unJ inputsP
@@ -303,7 +344,8 @@ runNlpSolver solverStuff nlpFun callback' (NlpSolver nlpMonad) = do
         callbackRet <- case callback' of
           Nothing -> return True
           Just callback -> do
-            xval <- fmap (mkJ . ddata . ddense) $ C.ioInterfaceFunction_output__2 function' 0
+            xval <- fmap (mkJ . ddata . unJ . xbarToX scale . mkJ . ddense) $
+                    C.ioInterfaceFunction_output__2 function' 0
             callback xval
         interrupt <- readIORef intref
         return $ if callbackRet && not interrupt then 0 else fromIntegral (solverInterruptCode solverStuff)
@@ -340,6 +382,7 @@ runNlpSolver solverStuff nlpFun callback' (NlpSolver nlpMonad) = do
                           , isSolver = solver
                           , isInterrupt = writeIORef intref True
                           , isSuccessCodes = successCodes solverStuff
+                          , isScale = scale
                           }
   liftIO $ runReaderT nlpMonad nlpState
 proxy :: J a b -> Proxy a
@@ -367,6 +410,11 @@ solveNlp solverStuff nlp callback = do
                                 :: Maybe (J (JV x) (V.Vector Double))
                   , nlpLamG0' = fmap (mkJ . vectorize) (nlpLamG0 nlp)
                                 :: Maybe (J (JV g) (V.Vector Double))
+                  , nlpScaleF' = nlpScaleF nlp
+                  , nlpScaleX' = fmap (mkJ . vectorize) (nlpScaleX nlp)
+                                :: Maybe (J (JV x) (V.Vector Double))
+                  , nlpScaleG' = fmap (mkJ . vectorize) (nlpScaleG nlp)
+                                :: Maybe (J (JV g) (V.Vector Double))
                   }
 
       callback' :: Maybe (J (JV x) (Vector Double) -> IO Bool)
@@ -384,6 +432,7 @@ solveNlp solverStuff nlp callback = do
 
   return (r0, r1)
 
+
 -- | convenience function to solve a pure Nlp'
 solveNlp' ::
   (View x, View p, View g, Symbolic a)
@@ -392,7 +441,7 @@ solveNlp' ::
   -> IO (Either String String, NlpOut' x g (Vector Double))
 solveNlp' solverStuff nlp callback =
 --  runNlpSolver solverStuff (nlpFG' nlp) (nlpX0' nlp) callback $ do
-  runNlpSolver solverStuff (nlpFG' nlp) callback $ do
+  runNlpSolver solverStuff (nlpFG' nlp) (nlpScaleX' nlp) (nlpScaleG' nlp) (nlpScaleF' nlp) callback $ do
     let (lbx,ubx) = toBnds (nlpBX' nlp)
         (lbg,ubg) = toBnds (nlpBG' nlp)
 
@@ -427,7 +476,7 @@ solveNlpHomotopy' userStep (reduction, increase) solverStuff nlp (UnsafeJ pF) ca
       fg xp _ = nlpFG' nlp x p
         where
           JTuple x p = split xp
-  runNlpSolver solverStuff fg callback $ do
+  runNlpSolver solverStuff fg Nothing (nlpScaleG' nlp) (nlpScaleF' nlp) callback $ do
     let (lbx,ubx) = toBnds (nlpBX' nlp)
         (lbg,ubg) = toBnds (nlpBG' nlp)
         UnsafeJ p0 = nlpP' nlp

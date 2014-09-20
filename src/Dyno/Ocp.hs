@@ -8,6 +8,8 @@ module Dyno.Ocp
        ) where
 
 import Data.Vector ( Vector )
+
+import Dyno.Vectorize ( Vectorize, None(..), fill )
 import Dyno.View.View
 import Dyno.Cov
 import Dyno.Nlp ( Bounds )
@@ -95,6 +97,16 @@ data OcpPhase x z u p r o c h =
   , ocpPbnd :: p Bounds
     -- | time bounds @(Tlb, Tub)@
   , ocpTbnd :: Bounds
+    -- | scaling
+  , ocpObjScale      :: Maybe Double
+  , ocpTScale        :: Maybe Double
+  , ocpXScale        :: Maybe (x Double)
+  , ocpZScale        :: Maybe (z Double)
+  , ocpUScale        :: Maybe (u Double)
+  , ocpPScale        :: Maybe (p Double)
+  , ocpResidualScale :: Maybe (r Double)
+  , ocpBcScale       :: Maybe (c Double)
+  , ocpPathCScale    :: Maybe (h Double)
   }
 
 data OcpPhaseWithCov ocp sx sz sw sr sh sc =
@@ -121,4 +133,8 @@ data OcpPhaseWithCov ocp sx sz sw sr sh sc =
     -- | the covariance path constraints @h(s)@, only applied to first n Ss
   , ocpCovSh :: X ocp SXElement -> Sx (Cov (JV sx)) -> Sx sh
   , ocpCovShBnds :: J sh (Vector Bounds)
+    -- | scaling
+  , ocpCovSScale :: Maybe (J (Cov (JV sx)) (Vector Double))
+  , ocpCovPathCScale :: Maybe (J sh (Vector Double))
+  , ocpCovSbcScale :: Maybe (J sc (Vector Double))
   }

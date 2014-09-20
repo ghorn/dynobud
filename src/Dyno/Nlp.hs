@@ -33,6 +33,9 @@ data Nlp x p g a =
   , nlpP  :: p Double
   , nlpLamX0 :: Maybe (x Double)
   , nlpLamG0 :: Maybe (g Double)
+  , nlpScaleF :: Maybe Double
+  , nlpScaleX :: Maybe (x Double)
+  , nlpScaleG :: Maybe (g Double)
   }
 
 data NlpOut x g a =
@@ -63,4 +66,7 @@ data Nlp' x p g a =
   , nlpP'  :: J p (V.Vector Double)
   , nlpLamX0' :: Maybe (J x (V.Vector Double))
   , nlpLamG0' :: Maybe (J g (V.Vector Double))
+  , nlpScaleF' :: Maybe Double
+  , nlpScaleX' :: Maybe (J x (V.Vector Double))
+  , nlpScaleG' :: Maybe (J g (V.Vector Double))
   }

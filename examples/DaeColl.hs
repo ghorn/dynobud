@@ -80,6 +80,15 @@ pendOcp = OcpPhase { ocpMayer = mayer
                    , ocpZbnd = fill (Nothing, Nothing)
                    , ocpPbnd = PendP (Just 0.3, Just 0.3)
                    , ocpTbnd = (Just 4, Just 10)
+                   , ocpObjScale      = Nothing
+                   , ocpTScale        = Nothing
+                   , ocpXScale        = Nothing
+                   , ocpZScale        = Nothing
+                   , ocpUScale        = Nothing
+                   , ocpPScale        = Nothing
+                   , ocpResidualScale = Nothing
+                   , ocpBcScale       = Nothing
+                   , ocpPathCScale    = Nothing
                    }
 
 pathc :: Floating a => PendX a -> PendZ a -> PendU a -> PendP a -> PendO a -> a -> None a

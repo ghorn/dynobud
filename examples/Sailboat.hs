@@ -197,6 +197,15 @@ ocp = OcpPhase { ocpMayer = mayer
                , ocpZbnd = SbZ
                , ocpPbnd = SbP
                , ocpTbnd = (Just 1, Just 50)
+               , ocpObjScale      = Nothing
+               , ocpTScale        = Nothing
+               , ocpXScale        = Nothing
+               , ocpZScale        = Nothing
+               , ocpUScale        = Nothing
+               , ocpPScale        = Nothing
+               , ocpResidualScale = Nothing
+               , ocpBcScale       = Nothing
+               , ocpPathCScale    = Nothing
                }
 
 

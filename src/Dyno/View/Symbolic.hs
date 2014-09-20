@@ -20,6 +20,7 @@ import Casadi.Core.Enums ( InputOutputScheme(..) )
 
 import Dyno.View.View ( View(..), J, mkJ )
 import Dyno.View.Viewable ( Viewable(..) )
+import Dyno.View.CasadiMat ( CasadiMat )
 import Dyno.Casadi.SX ( SX, ssymV )
 import Dyno.Casadi.Option ( setOption )
 import Dyno.Casadi.MX ( MX, symV )
@@ -29,7 +30,7 @@ import qualified Dyno.Casadi.DMatrix as DMatrix
 import Dyno.Casadi.IOSchemes
 
 
-class (Show a, Viewable a) => Symbolic a where
+class (Show a, Viewable a, CasadiMat a) => Symbolic a where
   -- | creating symbolics
   sym :: View f => String -> IO (J f a)
   mkScheme :: InputOutputScheme -> [(String,a)] -> IO (Vector a)

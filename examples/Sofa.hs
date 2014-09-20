@@ -148,6 +148,9 @@ myNlp = Nlp { nlpFG = fg
             , nlpP = None
             , nlpLamX0 = Nothing
             , nlpLamG0 = Nothing
+            , nlpScaleF = Nothing
+            , nlpScaleX = Nothing
+            , nlpScaleG = Nothing
             }
   where
     

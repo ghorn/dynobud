@@ -34,10 +34,11 @@ library
                        Dyno.Vectorize
                        Dyno.Nlp
                        Dyno.NlpMonad
+                       Dyno.NlpScaling
+                       Dyno.NlpSolver
                        Dyno.OcpMonad
                        Dyno.Interface.LogsAndErrors
                        Dyno.Interface.Types
-                       Dyno.NlpSolver
                        Dyno.Solvers
                        Dyno.Casadi.SharedObject
                        Dyno.Casadi.Callback

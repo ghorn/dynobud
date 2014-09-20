@@ -450,6 +450,15 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
                    , ocpUbnd = fill (Nothing, Nothing)
                    , ocpPbnd = fill (Nothing, Nothing)
                    , ocpTbnd = tbnds
+                   , ocpObjScale = Nothing
+                   , ocpTScale = Nothing
+                   , ocpXScale = Nothing
+                   , ocpZScale = Nothing
+                   , ocpUScale = Nothing
+                   , ocpPScale = Nothing
+                   , ocpResidualScale = Nothing
+                   , ocpBcScale = Nothing
+                   , ocpPathCScale = Nothing
                    }
     f ocpPhase meta
 

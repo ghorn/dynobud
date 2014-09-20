@@ -12,6 +12,7 @@ module Dyno.DirectCollocation.Formulate
        , makeGuess
        ) where
 
+import Data.Maybe ( fromMaybe )
 import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
@@ -24,9 +25,9 @@ import Linear.V
 
 import Dyno.Cov
 import Dyno.View
-import Dyno.View.HList
-import Dyno.View.FunJac
-import Dyno.View.Scheme
+--import Dyno.View.HList
+--import Dyno.View.FunJac
+--import Dyno.View.Scheme
 import Dyno.Vectorize ( Vectorize(..), fill, vlength, vzipWith )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
@@ -58,9 +59,9 @@ re' :: SXElement -> J S SX
 re' = mkJ . svector . V.singleton
 
 
-toFunJac'' :: Fun (JacIn xj x) (JacOut fj f) -> IO (Fun (JacIn xj x) (Jac xj fj f))
-toFunJac'' = undefined
-
+--toFunJac'' :: Fun (JacIn xj x) (JacOut fj f) -> IO (Fun (JacIn xj x) (Jac xj fj f))
+--toFunJac'' = undefined
+--
 --mut :: JacIn
 --       ((J sx :*: J sw :*: J (JVec deg (JTuple sx sz))))
 --       ((J x :*: J (JVec deg (CollPoint x z u)) :*: J S :*: J p :*: J (JVec deg S)))
@@ -167,12 +168,30 @@ makeCollNlp ocp = do
                     -> J S MX)
        (callStageFun :: (J S :*: J (JV p) :*: J (JVec deg S) :*: J (JV x) :*: J (JVec deg (JTuple (JV x) (JV z))) :*: J (JVec deg (JV u))) MX
                   -> (J (JVec deg (JV r)) :*: J (JVec deg (JV o)) :*: J (JVec deg (JV h)) :*: J (JV x)) MX)
-    , nlpBX' = cat (getBx ocp)
+    , nlpBX' = cat $ fillCollTraj
+               (ocpXbnd ocp)
+               (ocpZbnd ocp)
+               (ocpUbnd ocp)
+               (ocpPbnd ocp)
+               (ocpTbnd ocp)
     , nlpBG' = cat (getBg ocp)
     , nlpX0' = nlpX0
     , nlpP' = cat JNone
     , nlpLamX0' = Nothing
     , nlpLamG0' = Nothing
+    , nlpScaleF' = ocpObjScale ocp
+    , nlpScaleX' = Just $ cat $ fillCollTraj
+                   (fromMaybe (fill 1) (ocpXScale ocp))
+                   (fromMaybe (fill 1) (ocpZScale ocp))
+                   (fromMaybe (fill 1) (ocpUScale ocp))
+                   (fromMaybe (fill 1) (ocpPScale ocp))
+                   (fromMaybe       1  (ocpTScale ocp))
+
+    , nlpScaleG' = Just $ cat $ fillCollConstraints
+                   (fromMaybe (fill 1) (ocpXScale ocp))
+                   (fromMaybe (fill 1) (ocpResidualScale ocp))
+                   (fromMaybe (fill 1) (ocpBcScale ocp))
+                   (fromMaybe (fill 1) (ocpPathCScale ocp))
     }, callback)
 
 toFunJac' :: String -> ((x MX, y MX) -> f MX) -> IO ((x MX, y MX) -> Vector (Vector MX))
@@ -273,6 +292,25 @@ makeCollCovNlp ocp ocpCov = do
     , nlpP' = cat JNone
     , nlpLamX0' = Nothing
     , nlpLamG0' = Nothing
+    , nlpScaleF' = ocpObjScale ocp
+    , nlpScaleX' = Just $ cat $
+                   CollTrajCov (fromMaybe (jfill 1) (ocpCovSScale ocpCov)) $
+                   cat $ fillCollTraj
+                   (fromMaybe (fill 1) (ocpXScale ocp))
+                   (fromMaybe (fill 1) (ocpZScale ocp))
+                   (fromMaybe (fill 1) (ocpUScale ocp))
+                   (fromMaybe (fill 1) (ocpPScale ocp))
+                   (fromMaybe       1  (ocpTScale ocp))
+
+    , nlpScaleG' = Just $ cat $ CollOcpCovConstraints
+                   { cocNormal = cat $ fillCollConstraints
+                                 (fromMaybe (fill 1) (ocpXScale ocp))
+                                 (fromMaybe (fill 1) (ocpResidualScale ocp))
+                                 (fromMaybe (fill 1) (ocpBcScale ocp))
+                                 (fromMaybe (fill 1) (ocpPathCScale ocp))
+                   , cocCovPathC = jreplicate (fromMaybe (jfill 1) (ocpCovPathCScale ocpCov))
+                   , cocSbc = fromMaybe (jfill 1) (ocpCovSbcScale ocpCov)
+                   }
     }
     , callback
     )
@@ -520,26 +558,6 @@ getCovariances taus sq covStageFun
       where
         cov1 = covStageFun (cov0 :*: dt :*: parm :*: stageTimes :*: x0' :*: xzus :*: covInj)
 
-
-getBx :: forall x z u p r o c h n deg .
-         (Dim n, Dim deg, Vectorize x, Vectorize z, Vectorize u, Vectorize p)
-         => OcpPhase x z u p r o c h
-         -> CollTraj x z u p n deg (Vector Bounds)
-getBx ocp = ct
-  where
-    ct :: CollTraj x z u p n deg (Vector Bounds)
-    ct = CollTraj (mkJ (V.singleton tb)) pb (jreplicate (cat cs)) xb
-
-    cs :: CollStage (JV x) (JV z) (JV u) deg (Vector Bounds)
-    cs = CollStage xb (jreplicate (cat cp))
-
-    cp :: CollPoint (JV x) (JV z) (JV u) (Vector Bounds)
-    cp = CollPoint xb zb ub
-    xb = mkJ $ vectorize $ ocpXbnd ocp
-    ub = mkJ $ vectorize $ ocpUbnd ocp
-    zb = mkJ $ vectorize $ ocpZbnd ocp
-    pb = mkJ $ vectorize $ ocpPbnd ocp
-    tb = ocpTbnd ocp
 
 getBg :: forall x z u p r o c h deg n .
   (Dim n, Dim deg, Vectorize x, Vectorize r, Vectorize c, Vectorize h)
