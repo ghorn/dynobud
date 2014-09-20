@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language TypeFamilies #-}
+{-# Language FlexibleInstances #-}
 
 module Dyno.Ocp
        ( OcpPhase(..)
@@ -7,6 +8,7 @@ module Dyno.Ocp
        , OcpPhaseClass(..)
        ) where
 
+import Data.Default ( Default(..) )
 import Data.Vector ( Vector )
 
 import Dyno.Vectorize ( Vectorize, None(..), fill )
@@ -108,6 +110,32 @@ data OcpPhase x z u p r o c h =
   , ocpBcScale       :: Maybe (c Double)
   , ocpPathCScale    :: Maybe (h Double)
   }
+instance (Vectorize x, Vectorize z, Vectorize u, Vectorize p)
+         => Default (OcpPhase x z u p r o None None) where
+  def =
+    OcpPhase
+    { ocpMayer = \_ _ _ -> 0
+    , ocpLagrange = \_ _ _ _ _ _ _ -> 0
+    , ocpDae = error "no default dae in OcpPhase"
+    , ocpBc = \_ _ -> None
+    , ocpPathC = \_ _ _ _ _ _ -> None
+    , ocpBcBnds = None
+    , ocpPathCBnds = None
+    , ocpXbnd = fill (Nothing, Nothing)
+    , ocpZbnd = fill (Nothing, Nothing)
+    , ocpUbnd = fill (Nothing, Nothing)
+    , ocpPbnd = fill (Nothing, Nothing)
+    , ocpTbnd = (Nothing, Nothing)
+    , ocpObjScale      = Nothing
+    , ocpTScale        = Nothing
+    , ocpXScale        = Nothing
+    , ocpZScale        = Nothing
+    , ocpUScale        = Nothing
+    , ocpPScale        = Nothing
+    , ocpResidualScale = Nothing
+    , ocpBcScale       = Nothing
+    , ocpPathCScale    = Nothing
+    }
 
 data OcpPhaseWithCov ocp sx sz sw sr sh sc =
   OcpPhaseWithCov
