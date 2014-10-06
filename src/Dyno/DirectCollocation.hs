@@ -3,7 +3,7 @@
 
 module Dyno.DirectCollocation
        ( CollTraj(..)
-       , makeCollNlp
+       , makeCollProblem
        , solveOcp
        ) where
 
@@ -15,7 +15,7 @@ import Dyno.Vectorize ( Vectorize )
 import Dyno.Ocp ( OcpPhase )
 import Dyno.NlpSolver ( NlpSolverStuff, solveNlp' )
 import Dyno.Nlp ( Nlp'(..) )
-import Dyno.DirectCollocation.Formulate ( makeCollNlp )
+import Dyno.DirectCollocation.Formulate ( CollProblem(..), makeCollProblem )
 import Dyno.DirectCollocation.Types ( CollTraj(..) )
 import Dyno.DirectCollocation.Dynamic ( DynCollTraj )
 import qualified Dyno.TypeVecs as TV
@@ -32,7 +32,9 @@ solveOcp solverStuff n deg cb0 ocp =
   TV.reifyDim deg $ \(Proxy :: Proxy deg) -> do
     let guess :: J (CollTraj x z u p n deg) (Vector Double)
         guess = jfill 1
-    (nlp, toDynamic) <- makeCollNlp ocp
+    cp <- makeCollProblem ocp
+    let nlp = cpNlp cp
+        toDynamic = cpCallback cp
     --_ <- solveNlp' solverStuff (nlp {nlpX0' = guess}) (fmap (. ctToDynamic) cb)
     let cb = case cb0 of
           Nothing -> Nothing

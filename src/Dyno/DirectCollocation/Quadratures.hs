@@ -5,8 +5,10 @@
 module Dyno.DirectCollocation.Quadratures
        ( mkTaus
        , interpolate
+       , timesFromTaus
        ) where
 
+import Data.Proxy ( Proxy(..) )
 import qualified Data.Vector as V
 import qualified Data.Foldable as F
 import Linear.V
@@ -42,3 +44,20 @@ interpolate taus x0 xs = dot (TV.mkVec' xis) (x0 TV.<| xs)
   where
     xis = map (lagrangeXis (0 : F.toList taus) 1) [0..deg]
     deg = TV.tvlength taus
+
+
+timesFromTaus ::
+  forall n deg a
+  . (Num a, Dim n, Dim deg)
+  => Vec deg a -> Proxy n -> a -> Vec n (a, Vec deg a)
+timesFromTaus taus n' dt = times
+  where
+    n = reflectDim n'
+
+    -- initial time at each collocation stage
+    t0s :: Vec n a
+    t0s = TV.mkVec' $ take n [dt * fromIntegral k | k <- [(0::Int)..]]
+
+    -- times at each collocation point
+    times :: Vec n (a, Vec deg a)
+    times = fmap (\t0 -> (t0, fmap (\tau -> t0 + tau * dt) taus)) t0s

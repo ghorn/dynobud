@@ -11,7 +11,6 @@ module Dyno.DirectCollocation.Types
        , CollOcpConstraints(..)
        , CollTrajCov(..)
        , CollOcpCovConstraints(..)
-       , getX
        , fillCollTraj
        , fmapCollTraj
        , fmapStage
@@ -89,9 +88,6 @@ instance (Vectorize x, Vectorize r, Dim n, Dim deg, Vectorize c, Vectorize h) =>
 instance (Vectorize x, Vectorize r, Dim n, Dim deg, Vectorize c, Vectorize h, View sh, View sc) =>
          View (CollOcpCovConstraints n deg x r c h sh sc)
 
--- getters
-getX :: CollPoint x z u a -> J x a
-getX (CollPoint x _ _) = x
 
 
 fillCollConstraints ::

@@ -114,6 +114,8 @@ plotPoints (CollTraj (UnsafeJ tf') _ stages' xf) outputs =
         xzus0 = fmap split (unJVec (split xzus')) :: Vec deg (CollPoint (JV x) (JV z) (JV u) (Vector a))
         xnext = interpolate taus x0 (fmap getX xzus0)
 
+        getX (CollPoint x _ _) = x
+
         xs :: [(a,Vector a)]
         xs = (t0,unJ x0):xs'++[(tnext,unJ xnext)]
 

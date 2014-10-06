@@ -20,6 +20,7 @@ module Dyno.View.View
        , JTuple(..)
        , jreplicate, jreplicate'
        , reifyJVec, jfill
+       , splitJV
        ) where
 
 import GHC.Generics hiding ( S )
@@ -158,6 +159,8 @@ instance Vectorize f => View (JV f) where
       ks = V.fromList (take (n+1) [0..])
       n = size (Proxy :: Proxy (JV f))
 
+splitJV :: (Show a, Vectorize f) => J (JV f) (Vector a) -> f a
+splitJV = devectorize . unJ
 
 -- | Type-save "views" into vectors, which can access subvectors
 --   without splitting then concatenating everything.

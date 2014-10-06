@@ -5,7 +5,8 @@
 
 module Dyno.DirectCollocation.Formulate
        ( CovTraj(..)
-       , makeCollNlp
+       , CollProblem(..)
+       , makeCollProblem
        , makeCollCovNlp
        , mkTaus
        , interpolate
@@ -37,7 +38,7 @@ import Dyno.Ocp ( OcpPhase(..), OcpPhaseWithCov(..) )
 
 import Dyno.DirectCollocation.Types
 import Dyno.DirectCollocation.Dynamic ( DynCollTraj, ctToDynamic )
-import Dyno.DirectCollocation.Quadratures ( mkTaus, interpolate )
+import Dyno.DirectCollocation.Quadratures ( mkTaus, interpolate, timesFromTaus )
 
 import Dyno.Casadi.MX ( solve, mm, trans, d2m, zeros )
 import Dyno.Casadi.SXElement ( SXElement )
@@ -73,16 +74,21 @@ re' = mkJ . svector . V.singleton
 --hsplit :: M (Tuple x y) (z :*: w) MX -> Tuple (M x (z :*: w) MX :*: M y (z :*: w) MX
 --hsplit :: M ()
 
-makeCollNlp ::
+data CollProblem x z u p r c h o n deg =
+  CollProblem
+  { cpNlp :: Nlp' (CollTraj x z u p n deg) JNone (CollOcpConstraints n deg x r c h) MX
+  , cpCallback :: J (CollTraj x z u p n deg) (Vector Double)
+                  -> IO (DynCollTraj (Vector Double), Vec n (Vec deg (o Double)))
+  , cpTaus :: Vec deg Double
+  }
+
+makeCollProblem ::
   forall x z u p r o c h deg n .
   (Dim deg, Dim n, Vectorize x, Vectorize p, Vectorize u, Vectorize z,
    Vectorize r, Vectorize o, Vectorize h, Vectorize c)
   => OcpPhase x z u p r o c h
-  -> IO ( Nlp' (CollTraj x z u p n deg) JNone (CollOcpConstraints n deg x r c h) MX
-        , J (CollTraj x z u p n deg) (Vector Double)
-          -> IO (DynCollTraj (Vector Double), Vec n (Vec deg (o Double)))
-        )
-makeCollNlp ocp = do
+  -> IO (CollProblem x z u p r c h o n deg)
+makeCollProblem ocp = do
   let -- the collocation points
       taus :: Vec deg Double
       taus = mkTaus deg
@@ -159,40 +165,45 @@ makeCollNlp ocp = do
             devec (UnsafeJ os) = devectorize os
         return (ctToDynamic traj outputs, fmap (fmap devec) outputs)
 
-  return (Nlp' {
-    nlpFG' =
-       getFg taus
-       (bcFun :: SXFun (J (JV x) :*: J (JV x)) (J (JV c)))
-       (mayerFun :: SXFun (J S :*: (J (JV x) :*: (J (JV x)))) (J S))
-       (callQuadFun :: (J (JV p) :*: J (JVec deg (CollPoint (JV x) (JV z) (JV u))) :*: J (JVec deg (JV o)) :*: J S :*: J (JVec deg S)) MX
-                    -> J S MX)
-       (callStageFun :: (J S :*: J (JV p) :*: J (JVec deg S) :*: J (JV x) :*: J (JVec deg (JTuple (JV x) (JV z))) :*: J (JVec deg (JV u))) MX
-                  -> (J (JVec deg (JV r)) :*: J (JVec deg (JV o)) :*: J (JVec deg (JV h)) :*: J (JV x)) MX)
-    , nlpBX' = cat $ fillCollTraj
-               (ocpXbnd ocp)
-               (ocpZbnd ocp)
-               (ocpUbnd ocp)
-               (ocpPbnd ocp)
-               (ocpTbnd ocp)
-    , nlpBG' = cat (getBg ocp)
-    , nlpX0' = nlpX0
-    , nlpP' = cat JNone
-    , nlpLamX0' = Nothing
-    , nlpLamG0' = Nothing
-    , nlpScaleF' = ocpObjScale ocp
-    , nlpScaleX' = Just $ cat $ fillCollTraj
-                   (fromMaybe (fill 1) (ocpXScale ocp))
-                   (fromMaybe (fill 1) (ocpZScale ocp))
-                   (fromMaybe (fill 1) (ocpUScale ocp))
-                   (fromMaybe (fill 1) (ocpPScale ocp))
-                   (fromMaybe       1  (ocpTScale ocp))
+  let nlp = Nlp' {
+        nlpFG' =
+           getFg taus
+           (bcFun :: SXFun (J (JV x) :*: J (JV x)) (J (JV c)))
+           (mayerFun :: SXFun (J S :*: (J (JV x) :*: (J (JV x)))) (J S))
+           (callQuadFun :: (J (JV p) :*: J (JVec deg (CollPoint (JV x) (JV z) (JV u))) :*: J (JVec deg (JV o)) :*: J S :*: J (JVec deg S)) MX
+                        -> J S MX)
+           (callStageFun :: (J S :*: J (JV p) :*: J (JVec deg S) :*: J (JV x) :*: J (JVec deg (JTuple (JV x) (JV z))) :*: J (JVec deg (JV u))) MX
+                      -> (J (JVec deg (JV r)) :*: J (JVec deg (JV o)) :*: J (JVec deg (JV h)) :*: J (JV x)) MX)
+        , nlpBX' = cat $ fillCollTraj
+                   (ocpXbnd ocp)
+                   (ocpZbnd ocp)
+                   (ocpUbnd ocp)
+                   (ocpPbnd ocp)
+                   (ocpTbnd ocp)
+        , nlpBG' = cat (getBg ocp)
+        , nlpX0' = nlpX0
+        , nlpP' = cat JNone
+        , nlpLamX0' = Nothing
+        , nlpLamG0' = Nothing
+        , nlpScaleF' = ocpObjScale ocp
+        , nlpScaleX' = Just $ cat $ fillCollTraj
+                       (fromMaybe (fill 1) (ocpXScale ocp))
+                       (fromMaybe (fill 1) (ocpZScale ocp))
+                       (fromMaybe (fill 1) (ocpUScale ocp))
+                       (fromMaybe (fill 1) (ocpPScale ocp))
+                       (fromMaybe       1  (ocpTScale ocp))
 
-    , nlpScaleG' = Just $ cat $ fillCollConstraints
-                   (fromMaybe (fill 1) (ocpXScale ocp))
-                   (fromMaybe (fill 1) (ocpResidualScale ocp))
-                   (fromMaybe (fill 1) (ocpBcScale ocp))
-                   (fromMaybe (fill 1) (ocpPathCScale ocp))
-    }, callback)
+        , nlpScaleG' = Just $ cat $ fillCollConstraints
+                       (fromMaybe (fill 1) (ocpXScale ocp))
+                       (fromMaybe (fill 1) (ocpResidualScale ocp))
+                       (fromMaybe (fill 1) (ocpBcScale ocp))
+                       (fromMaybe (fill 1) (ocpPathCScale ocp))
+        }
+  return $ CollProblem { cpNlp = nlp
+                       , cpCallback = callback
+                       , cpTaus = taus
+                       }
+
 
 toFunJac' :: String -> ((x MX, y MX) -> f MX) -> IO ((x MX, y MX) -> Vector (Vector MX))
 toFunJac' = error "toFunJac' not defined"
@@ -243,8 +254,11 @@ makeCollCovNlp ocp ocpCov = do
 --  let callCovStageFun = callMXFun covStageFun
   callCovStageFun <- fmap callSXFun (expandMXFun covStageFun)
 
-  (nlp0, callback0) <- makeCollNlp ocp
-  let -- the NLP
+  cp0 <- makeCollProblem ocp
+  let nlp0 = cpNlp cp0
+      callback0 = cpCallback cp0
+
+      -- the NLP
       fg :: J (CollTrajCov sx x z u p n deg) MX
             -> J JNone MX
             -> (J S MX, J (CollOcpCovConstraints n deg x r c h sh sc) MX)
@@ -354,13 +368,9 @@ getFg taus bcFun mayerFun quadFun stageFun collTraj _ = (obj, cat g)
     dt = tf / fromIntegral n
     n = reflectDim (Proxy :: Proxy n)
 
-    -- initial time at each collocation stage
-    t0s :: Vec n (J S MX)
-    t0s = TV.mkVec' $ take n [dt * fromIntegral k | k <- [(0::Int)..]]
-
     -- times at each collocation point
     times :: Vec n (Vec deg (J S MX))
-    times = fmap (\t0 -> fmap (\tau -> t0 + realToFrac tau * dt) taus) t0s
+    times = fmap snd $ timesFromTaus (fmap realToFrac taus) Proxy dt
 
     times' :: Vec n (J (JVec deg S) MX)
     times' = fmap (cat . JVec) times
@@ -455,13 +465,10 @@ getFgCov taus sq sbcFun shFun lagrangeFun mayerFun covStageFun
     dt = tf / fromIntegral n
     n = reflectDim (Proxy :: Proxy n)
 
-    -- initial time at each collocation stage
-    t0s :: Vec n (J S MX)
-    t0s = TV.mkVec' $ take n [dt * fromIntegral k | k <- [(0::Int)..]]
-
     -- times at each collocation point
+    t0s :: Vec n (J S MX)
     times :: Vec n (Vec deg (J S MX))
-    times = fmap (\t0 -> fmap (\tau -> t0 + realToFrac tau * dt) taus) t0s
+    (t0s, times) = TV.tvunzip $ timesFromTaus (fmap realToFrac taus) Proxy dt
 
     times' :: Vec n (J (JVec deg S) MX)
     times' = fmap (cat . JVec) times

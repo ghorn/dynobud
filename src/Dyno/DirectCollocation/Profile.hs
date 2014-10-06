@@ -15,7 +15,7 @@ import Dyno.Vectorize ( Vectorize, Proxy(..) )
 import Dyno.Ocp ( OcpPhase )
 import Dyno.Solvers ( NlpSolverStuff )
 import Dyno.DirectCollocation.Types ( CollTraj, CollOcpConstraints )
-import Dyno.DirectCollocation.Formulate ( makeCollNlp )
+import Dyno.DirectCollocation.Formulate ( CollProblem(..), makeCollProblem )
 import qualified Dyno.TypeVecs as TV
 import Dyno.NlpSolver ( solveNlp' )
 import Dyno.Nlp ( Nlp'(..), NlpOut'(..) )
@@ -57,6 +57,7 @@ profileOne ::
   -> NlpSolverStuff
   -> IO ProfileReport
 profileOne ocp guess solver = do
-  (nlp,_) <- makeCollNlp ocp
+  cp <- makeCollProblem ocp
+  let nlp = cpNlp cp
   x <- solveNlp' solver (nlp { nlpX0' = guess }) Nothing
   uncurry toProfileReport x
