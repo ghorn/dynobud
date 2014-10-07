@@ -112,7 +112,9 @@ main = do
   putStrLn $ "using ip \""++gliderUrl++"\""
   putStrLn $ "using channel \""++gliderChannelName++"\""
 
-  (nlp,toDyn) <- makeCollNlp ocp
+  cp <- makeCollProblem ocp
+  let nlp = cpNlp cp
+      toDyn = cpCallback cp
   withCallback gliderUrl gliderChannelName $ \cb -> do
     let guess = jfill 1
 

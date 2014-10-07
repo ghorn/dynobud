@@ -132,7 +132,8 @@ solver2 = ipoptSolver { options = [("expand", Opt True)] }
 
 main :: IO ()
 main = do
-  (nlp,_) <- makeCollNlp pendOcp
+  cp  <- makeCollProblem pendOcp
+  let nlp = cpNlp cp
   _ <- solveNlp' solver (nlp { nlpX0' = guess }) Nothing
 --  _ <- solveNlp solver2 (nlp { nlpX0' = guess }) Nothing
   return ()

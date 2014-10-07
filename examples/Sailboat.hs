@@ -250,7 +250,9 @@ solver = ipoptSolver
 
 main :: IO ()
 main = do
-  (nlp,toDyn) <- makeCollNlp ocp
+  cp <- makeCollProblem ocp
+  let nlp = cpNlp cp
+      toDyn = cpCallback cp
   ZMQ.withContext $ \context ->
     withPublisher context urlDynoPlot $ \sendDynoPlotMsg -> do
 --    withPublisher context urlOptTelem $ \sendOptTelemMsg -> do

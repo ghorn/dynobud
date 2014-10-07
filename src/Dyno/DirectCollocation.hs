@@ -3,6 +3,7 @@
 
 module Dyno.DirectCollocation
        ( CollTraj(..)
+       , CollProblem(..)
        , makeCollProblem
        , solveOcp
        ) where
