@@ -35,10 +35,11 @@ import Casadi.Core.Classes.MX --( mx'''''''''' )
 import Casadi.Core.Classes.DMatrix
 import qualified Casadi.Core.Tools as C
 
-import qualified Dyno.Casadi.SX as SX
-import qualified Dyno.Casadi.MX as MX
-import qualified Dyno.Casadi.DMatrix as DMatrix
-import Dyno.Casadi.SXElement
+import qualified Casadi.SX as SX
+import qualified Casadi.MX as MX
+import qualified Casadi.DMatrix as DMatrix
+import Casadi.SXElement
+
 import Dyno.View
 import qualified Dyno.View.Symbolic as S
 

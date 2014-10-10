@@ -41,19 +41,6 @@ library
                        Dyno.Interface.LogsAndErrors
                        Dyno.Interface.Types
                        Dyno.Solvers
-                       Dyno.Casadi.SharedObject
-                       Dyno.Casadi.Callback
-                       Dyno.Casadi.Option
-                       Dyno.Casadi.GenericC
-                       Dyno.Casadi.IOSchemes
-                       Dyno.Casadi.Overloading
-                       Dyno.Casadi.MX
-                       Dyno.Casadi.SX
-                       Dyno.Casadi.MXFunction
-                       Dyno.Casadi.SXFunction
-                       Dyno.Casadi.Function
-                       Dyno.Casadi.SXElement
-                       Dyno.Casadi.DMatrix
 --                       Dyno.Sqp.Sqp
 --                       Dyno.Sqp.LineSearch
                        Dyno.Server.Accessors
@@ -81,7 +68,8 @@ library
                        hmatrix,
                        unordered-containers >=0.2,
                        casadi-bindings-internal,
-                       casadi-bindings-core >= 2.0.0,
+                       casadi-bindings-core >= 2.1.0,
+                       casadi-bindings >= 2.1.0,
                        transformers >=0.3,
                        primitive >=0.5 && <0.6,
                        ghc-prim >=0.3 && <0.4,

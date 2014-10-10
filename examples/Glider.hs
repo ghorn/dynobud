@@ -15,7 +15,6 @@ import Dyno.NlpSolver
 
 import Dyno.Ocp
 import Dyno.DirectCollocation
-import Dyno.Cov
 import Dyno.DirectCollocation.Dynamic ( toMeta )
 
 import Dyno.Models.Aircraft

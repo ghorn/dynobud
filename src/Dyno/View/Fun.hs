@@ -23,13 +23,13 @@ import Data.Proxy
 import qualified Data.Vector as V
 import Data.Vector ( Vector )
 
-import Dyno.Casadi.MX ( symM )
-import Dyno.Casadi.SX ( ssymM )
-import Dyno.Casadi.Function ( Function, callMX, callSX, evalDMatrix, jacobian )
-import Dyno.Casadi.MXFunction ( MXFunction, mxFunction )
-import Dyno.Casadi.SXFunction ( SXFunction, sxFunction )
-import Dyno.Casadi.Option
-import Dyno.Casadi.SharedObject
+import Casadi.MX ( symM )
+import Casadi.SX ( ssymM )
+import Casadi.Function ( Function, callMX, callSX, evalDMatrix, jacobian )
+import Casadi.MXFunction ( MXFunction, mxFunction )
+import Casadi.SXFunction ( SXFunction, sxFunction )
+import Casadi.Option
+import Casadi.SharedObject
 
 import qualified Casadi.Core.Classes.MXFunction as M
 import qualified Casadi.Core.Classes.SharedObject as C
@@ -39,9 +39,9 @@ import Dyno.View.CasadiMat
 import Dyno.View.Scheme
 import Dyno.View.FunJac
 
-newtype MXFun (f :: * -> *) (g :: * -> *) = MXFun MXFunction deriving Show
-newtype SXFun (f :: * -> *) (g :: * -> *) = SXFun SXFunction deriving Show
-newtype Fun (f :: * -> *) (g :: * -> *) = Fun Function deriving Show
+newtype MXFun (f :: * -> *) (g :: * -> *) = MXFun MXFunction --deriving Show
+newtype SXFun (f :: * -> *) (g :: * -> *) = SXFun SXFunction --deriving Show
+newtype Fun (f :: * -> *) (g :: * -> *) = Fun Function --deriving Show
 
 mkSym :: forall a f .
          (Scheme f, CasadiMat a)

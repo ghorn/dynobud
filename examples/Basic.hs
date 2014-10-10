@@ -10,7 +10,6 @@ module Main where
 import Dyno.Vectorize
 import Dyno.Nlp
 import Dyno.NlpSolver
-import Dyno.Casadi.SXElement
 import Dyno.Solvers
 
 data X a = X a a deriving (Functor, Generic1, Show)

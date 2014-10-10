@@ -31,12 +31,13 @@ import qualified Data.Vector as V
 import Linear.V ( Dim(..) )
 import Data.Proxy
 
-import Dyno.Casadi.SXElement ( SXElement, sxElement_sym )
-import Dyno.Casadi.SX ( svector )
-import Dyno.Casadi.SharedObject ( soInit )
-import Dyno.Casadi.MX ( MX )
-import Dyno.Casadi.SXFunction
-import Dyno.Casadi.Function
+import Casadi.SXElement ( SXElement, sxElement_sym )
+import Casadi.SX ( svector )
+import Casadi.SharedObject ( soInit )
+import Casadi.MX ( MX )
+import Casadi.SXFunction
+import Casadi.Function
+
 import Dyno.Vectorize
 import Dyno.TypeVecs ( Vec )
 import Dyno.View.View

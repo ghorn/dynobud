@@ -6,9 +6,9 @@ module Dyno.View.CasadiMat
 
 import qualified Data.Vector as V
 
-import qualified Dyno.Casadi.SX as SX
-import qualified Dyno.Casadi.MX as MX
-import qualified Dyno.Casadi.DMatrix as DMatrix
+import qualified Casadi.SX as SX
+import qualified Casadi.MX as MX
+import qualified Casadi.DMatrix as DMatrix
 
 class Floating a => CasadiMat a where
   vertsplit :: a -> V.Vector Int -> V.Vector a

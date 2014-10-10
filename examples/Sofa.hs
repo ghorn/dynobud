@@ -9,19 +9,17 @@ module Main where
 
 import Data.IORef ( newIORef, readIORef, writeIORef )
 import qualified Data.Foldable as F
+import Data.Serialize
+import qualified System.ZMQ4 as ZMQ
+import Data.ByteString.Char8 ( pack )
+
 import Dyno.Vectorize
 import Dyno.Nlp
 import Dyno.NlpSolver
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
-import Dyno.Casadi.SXElement
 import Dyno.Solvers
 import Dyno.Nats
-
-import Data.Serialize
-import qualified System.ZMQ4 as ZMQ
-import Data.ByteString.Char8 ( pack )
-
 
 import SofaShared
 

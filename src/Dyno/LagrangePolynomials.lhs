@@ -109,11 +109,11 @@ module Dyno.LagrangePolynomials ( lagrangeDerivCoeffs, lagrangeXis, runCompariso
 
 import qualified Data.Vector as V
 
-import Dyno.Casadi.SXFunction ( sxFunction )
-import Dyno.Casadi.Function ( evalDMatrix )
-import Dyno.Casadi.SharedObject ( soInit )
-import Dyno.Casadi.SX ( SX, ssym, sgradient )
-import Dyno.Casadi.DMatrix ( DMatrix, ddata, ddense )
+import Casadi.SXFunction ( sxFunction )
+import Casadi.Function ( evalDMatrix )
+import Casadi.SharedObject ( soInit )
+import Casadi.SX ( SX, ssym, sgradient )
+import Casadi.DMatrix ( DMatrix, ddata, ddense )
 
 import Dyno.TypeVecs
 

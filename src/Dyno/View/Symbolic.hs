@@ -18,16 +18,18 @@ import Casadi.Core.Classes.SXFunction
 import Casadi.Core.Classes.MXFunction
 import Casadi.Core.Enums ( InputOutputScheme(..) )
 
+import Casadi.SX ( SX, ssymV )
+import Casadi.Option ( setOption )
+import Casadi.MX ( MX, symV )
+import qualified Casadi.SX as SX
+import qualified Casadi.MX as MX
+import qualified Casadi.DMatrix as DMatrix
+import Casadi.IOSchemes
+
+
 import Dyno.View.View ( View(..), J, mkJ )
 import Dyno.View.Viewable ( Viewable(..) )
 import Dyno.View.CasadiMat ( CasadiMat )
-import Dyno.Casadi.SX ( SX, ssymV )
-import Dyno.Casadi.Option ( setOption )
-import Dyno.Casadi.MX ( MX, symV )
-import qualified Dyno.Casadi.SX as SX
-import qualified Dyno.Casadi.MX as MX
-import qualified Dyno.Casadi.DMatrix as DMatrix
-import Dyno.Casadi.IOSchemes
 
 
 class (Viewable a, CasadiMat a) => Symbolic a where

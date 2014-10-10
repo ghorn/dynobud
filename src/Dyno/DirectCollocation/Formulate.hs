@@ -24,6 +24,11 @@ import qualified Numeric.LinearAlgebra.Algorithms as LA
 import Linear.Matrix hiding ( trace )
 import Linear.V
 
+import Casadi.MX ( solve, mm, trans, d2m, zeros )
+import Casadi.SXElement ( SXElement )
+import Casadi.SX ( sdata, sdense, svector )
+import Casadi.DMatrix ( dvector, ddata, ddense )
+
 import Dyno.Cov
 import Dyno.View
 --import Dyno.View.HList
@@ -39,11 +44,6 @@ import Dyno.Ocp ( OcpPhase(..), OcpPhaseWithCov(..) )
 import Dyno.DirectCollocation.Types
 import Dyno.DirectCollocation.Dynamic ( DynCollTraj, ctToDynamic )
 import Dyno.DirectCollocation.Quadratures ( mkTaus, interpolate, timesFromTaus )
-
-import Dyno.Casadi.MX ( solve, mm, trans, d2m, zeros )
-import Dyno.Casadi.SXElement ( SXElement )
-import Dyno.Casadi.SX ( sdata, sdense, svector )
-import Dyno.Casadi.DMatrix ( dvector, ddata, ddense )
 
 --data RorL = Radau | Legendre deriving (Eq, Show)
 

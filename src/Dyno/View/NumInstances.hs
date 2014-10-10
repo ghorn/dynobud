@@ -11,9 +11,9 @@ import Data.Vector ( Vector )
 import qualified Data.Vector as V
 
 import Dyno.View.Viewable ( CasadiMat(..) )
-import Dyno.Casadi.MX ( MX )
-import Dyno.Casadi.SX ( SX )
-import Dyno.Casadi.DMatrix ( DMatrix )
+import Casadi.MX ( MX )
+import Casadi.SX ( SX )
+import Casadi.DMatrix ( DMatrix )
 
 import Dyno.View.View
 

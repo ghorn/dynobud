@@ -7,6 +7,7 @@
 
 module Dyno.NlpSolver
        ( NlpSolver
+       , SXElement
        , runNlpSolver
          -- * solve
        , solveNlp
@@ -60,19 +61,18 @@ import Text.Printf ( printf )
 import Casadi.Core.Enums ( InputOutputScheme(..) )
 import qualified Casadi.Core.Classes.Function as C
 import qualified Casadi.Core.Classes.NlpSolver as C
-import Casadi.Core.Classes.PrintableObject ( printableObject_getDescription )
 import qualified Casadi.Core.Classes.GenericType as C
 import qualified Casadi.Core.Classes.IOInterfaceFunction as C
 --import Casadi.Wrappers.Classes.CasadiOptions
 
-import Dyno.Casadi.Callback ( makeCallback )
-import Dyno.Casadi.DMatrix
-import Dyno.Casadi.SX
-import Dyno.Casadi.SXElement ( SXElement )
+import Casadi.Callback ( makeCallback )
+import Casadi.DMatrix
+import Casadi.SX
+import Casadi.SXElement ( SXElement )
 --import Dyno.Casadi.Function
-import qualified Dyno.Casadi.Option as Op
-import qualified Dyno.Casadi.GenericC as Gen
-import Dyno.Casadi.SharedObject ( soInit )
+import qualified Casadi.Option as Op
+import qualified Casadi.GenericC as Gen
+import Casadi.SharedObject ( soInit )
 
 import Dyno.Vectorize ( Vectorize(..) )
 import Dyno.View.View
@@ -231,7 +231,9 @@ solve = do
                   _ <- takeMVar stop -- wait for nlp to return
                   return ()
                 Left _ -> void (takeMVar stop) -- don't handle this one
-    C.function_getStat nlp "return_status"  >>= printableObject_getDescription
+    st <- C.function_getStat nlp "return_status"  >>= Gen.fromGeneric
+    case st of Just st' -> return st'
+               Nothing -> error "nlp solver error: return status is not a string"
 
   return $ if solveStatus `elem` isSuccessCodes nlpState
     then Right solveStatus

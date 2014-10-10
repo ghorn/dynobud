@@ -15,9 +15,10 @@ import Dyno.Vectorize ( Vectorize, None(..), fill )
 import Dyno.View.View
 import Dyno.Cov
 import Dyno.Nlp ( Bounds )
-import Dyno.Casadi.SX ( SX )
-import Dyno.Casadi.SXElement ( SXElement )
-import Dyno.Casadi.DMatrix ( DMatrix )
+
+import Casadi.SX ( SX )
+import Casadi.SXElement ( SXElement )
+import Casadi.DMatrix ( DMatrix )
 
 type Sx a = J a SX
 type Sxe = SXElement

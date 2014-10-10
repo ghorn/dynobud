@@ -13,6 +13,7 @@ module Dyno.OcpMonad
        , LeqMonad(..)
        , DaeMonad
        , BCMonad
+       , SXElement
        , diffState
        , algVar
        , control
@@ -39,12 +40,13 @@ import Data.Vector ( Vector )
 import qualified Data.Vector as V
 import Data.Proxy ( Proxy(..) )
 
-import Dyno.Casadi.Option ( setOption )
-import Dyno.Casadi.SXElement ( SXElement, sxElement_sym )
-import Dyno.Casadi.SXFunction ( sxFunction )
-import Dyno.Casadi.SX ( SX, sdata, sdense, svector )
-import Dyno.Casadi.Function ( callSX )
-import Dyno.Casadi.SharedObject ( soInit )
+import Casadi.Option ( setOption )
+import Casadi.SXElement ( SXElement, sxElement_sym )
+import Casadi.SXFunction ( sxFunction )
+import Casadi.SX ( SX, sdata, sdense, svector )
+import Casadi.Function ( callSX )
+import Casadi.SharedObject ( soInit )
+
 import Dyno.Ocp ( OcpPhase(..) )
 import Dyno.Nlp ( Bounds )
 import Dyno.Vectorize ( Vectorize(..), fill )

@@ -5,7 +5,6 @@ module Main ( main ) where
 import Control.Monad ( void )
 --import Control.Concurrent ( threadDelay )
 
-import Dyno.Casadi.SXElement ( SXElement )
 import Dyno.OcpMonad
 import Dyno.Solvers
 

@@ -6,7 +6,6 @@ import Control.Monad ( void )
 
 import Dyno.OcpMonad
 import Dyno.Solvers
-import Dyno.Casadi.SXElement ( SXElement )
 import ServerSender
 import GliderShared
 
