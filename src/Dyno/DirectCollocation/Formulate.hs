@@ -149,12 +149,14 @@ makeCollProblem ocp = do
       mapOutputFun :: J (CollTraj x z u p n deg) (Vector Double) -> IO (Vec n (Vec deg (J (JV o) (Vector Double))))
       mapOutputFun ct = do
         let CollTraj tf p stages _ = split ct
+            h = tf / fromIntegral n
+
             vstages = unJVec (split stages)
                 :: Vec n (J (CollStage (JV x) (JV z) (JV u) deg) (Vector Double))
             ks :: Vec n (J S (Vector Double))
             ks = TV.mkVec' $ map (mkJ . V.singleton . realToFrac) (take n [(0::Int)..])
 
-        T.sequence $ TV.tvzipWith (callOutputFun p tf) vstages ks
+        T.sequence $ TV.tvzipWith (callOutputFun p h) vstages ks
 
       callback :: J (CollTraj x z u p n deg) (Vector Double)
                   -> IO (DynCollTraj (Vector Double), Vec n (Vec deg (o Double)))
