@@ -78,7 +78,7 @@ data CollProblem x z u p r c h o n deg =
   CollProblem
   { cpNlp :: Nlp' (CollTraj x z u p n deg) JNone (CollOcpConstraints n deg x r c h) MX
   , cpCallback :: J (CollTraj x z u p n deg) (Vector Double)
-                  -> IO (DynCollTraj (Vector Double), Vec n (Vec deg (o Double)))
+                  -> IO (DynCollTraj (Vector Double), Vec n (Vec deg (o Double, x Double)))
   , cpTaus :: Vec deg Double
   }
 
@@ -129,8 +129,9 @@ makeCollProblem ocp = do
   -- prepare callbacks
   let nlpX0 = jfill 0 :: J (CollTraj x z u p n deg) (Vector Double)
 
-      f :: J (JV o) DMatrix -> J (JV o) (Vector Double)
-      f o' = mkJ (ddata (ddense (unJ o')))
+      f :: J (JV o) DMatrix ->  J (JV x) DMatrix
+           -> (J (JV o) (Vector Double), J (JV x) (Vector Double))
+      f o' x' = (mkJ (ddata (ddense (unJ o'))), mkJ (ddata (ddense (unJ x'))))
 
       dmToDv :: J a (Vector Double) -> J a DMatrix
       dmToDv (UnsafeJ v) = UnsafeJ (dvector v)
@@ -139,14 +140,16 @@ makeCollProblem ocp = do
                        -> J S (Vector Double)
                        -> J (CollStage (JV x) (JV z) (JV u) deg) (Vector Double)
                        -> J S (Vector Double)
-                       -> IO (Vec deg (J (JV o) (Vector Double)))
-      callOutputFun p tf stage k = do
-        (_ :*: out) <- evalMXFun outputFun $
-                       (dmToDv stage) :*: (dmToDv p) :*: (dmToDv tf) :*: (dmToDv k)
+                       -> IO (Vec deg (J (JV o) (Vector Double), J (JV x) (Vector Double)))
+      callOutputFun p h stage k = do
+        (_ :*: xdot :*: out) <- evalMXFun outputFun $
+                       (dmToDv stage) :*: (dmToDv p) :*: (dmToDv h) :*: (dmToDv k)
         let outs0 = unJVec (split out) :: Vec deg (J (JV o) DMatrix)
-        return (fmap f outs0)
+            xdots0 = unJVec (split xdot) :: Vec deg (J (JV x) DMatrix)
+        return (TV.tvzipWith f outs0 xdots0)
 
-      mapOutputFun :: J (CollTraj x z u p n deg) (Vector Double) -> IO (Vec n (Vec deg (J (JV o) (Vector Double))))
+      mapOutputFun :: J (CollTraj x z u p n deg) (Vector Double)
+                      -> IO (Vec n (Vec deg (J (JV o) (Vector Double), J (JV x) (Vector Double))))
       mapOutputFun ct = do
         let CollTraj tf p stages _ = split ct
             h = tf / fromIntegral n
@@ -159,12 +162,12 @@ makeCollProblem ocp = do
         T.sequence $ TV.tvzipWith (callOutputFun p h) vstages ks
 
       callback :: J (CollTraj x z u p n deg) (Vector Double)
-                  -> IO (DynCollTraj (Vector Double), Vec n (Vec deg (o Double)))
+                  -> IO (DynCollTraj (Vector Double), Vec n (Vec deg (o Double, x Double)))
       callback traj = do
         outputs <- mapOutputFun traj
         let -- devectorize outputs
-            devec :: J (JV o) (Vector Double) -> o Double
-            devec (UnsafeJ os) = devectorize os
+            devec :: (J (JV o) (Vector Double), J (JV x) (Vector Double)) -> (o Double, x Double)
+            devec (UnsafeJ os, UnsafeJ xds) = (devectorize os, devectorize xds)
         return (ctToDynamic traj outputs, fmap (fmap devec) outputs)
 
   let nlp = Nlp' {
@@ -220,7 +223,7 @@ makeCollCovNlp ::
   -> OcpPhaseWithCov (OcpPhase x z u p r o c h) sx sz sw sr sh sc
   -> IO ( Nlp' (CollTrajCov sx x z u p n deg) JNone (CollOcpCovConstraints n deg x r c h sh sc) MX
         , J (CollTrajCov sx x z u p n deg) (Vector Double)
-          -> IO (DynCollTraj (Vector Double), Vec n (Vec deg (o Double))
+          -> IO (DynCollTraj (Vector Double), Vec n (Vec deg (o Double, x Double))
                 , Vec n (J (Cov (JV sx)) (Vector Double)), J (Cov (JV sx)) (Vector Double)
                 )
         )
@@ -791,9 +794,9 @@ outputFunction ::
   -> SXFun (J S :*: J p :*: J x :*: J (CollPoint x z u))
            (J r :*: J o)
   -> (J (CollStage x z u deg) :*: J p :*: J S :*: J S) MX
-  -> (J (JVec deg r) :*: J (JVec deg o)) MX
+  -> (J (JVec deg r) :*: J (JVec deg x) :*: J (JVec deg o)) MX
 outputFunction cijs taus dynFun (collStage :*: p :*: h'@(UnsafeJ h) :*: k) =
-  cat (JVec dynConstrs) :*: cat (JVec outputs)
+  cat (JVec dynConstrs) :*: cat (JVec xdots) :*: cat (JVec outputs)
   where
     xzus = unJVec (split xzus') :: Vec deg (J (CollPoint x z u) MX)
     CollStage x0 xzus' = split collStage

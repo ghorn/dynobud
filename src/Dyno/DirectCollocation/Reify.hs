@@ -22,10 +22,10 @@ reifyCollTraj
      Viewable a
   => (Int,Int,Int,Int,Int,Int,Int)
   -> J (CollTraj x' z' u' p' () ()) a
-  -> Vec () (Vec () (J o' a))
+  -> Vec () (Vec () (J o' a, J x' a))
   -> (forall x z u p o n deg .
       (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize o, Dim n, Dim deg)
-      => J (CollTraj x z u p n deg) a -> Vec n (Vec deg (J (JV o) a)) -> r)
+      => J (CollTraj x z u p n deg) a -> Vec n (Vec deg (J (JV o) a, J (JV x) a)) -> r)
   -> r
 reifyCollTraj (nx,nz,nu,np,no,n,deg) (UnsafeJ x) outputs f
   | ntotal /= ntotal' =
@@ -46,8 +46,8 @@ reifyCollTraj (nx,nz,nu,np,no,n,deg) (UnsafeJ x) outputs f
   TV.reifyDim deg $ \(Proxy :: Proxy deg) ->
   f
   (mkJ x :: J (CollTraj (Vec nx) (Vec nz) (Vec nu) (Vec np) n deg) a)
-  (unsafeCastDim (fmap (unsafeCastDim . fmap unsafeToVec) outputs)
-   :: Vec n (Vec deg (J (JV (Vec no)) a)))
+  (unsafeCastDim (fmap (unsafeCastDim . fmap (\(o,x') -> (unsafeToVec o, unsafeToVec x'))) outputs)
+   :: Vec n (Vec deg (J (JV (Vec no)) a, J (JV (Vec nx)) a)))
   where
     ntotal = 1 + np + n*(nx + deg*(nx + nz + nu)) + nx
     ntotal' = vsize1 x
@@ -61,10 +61,10 @@ reifyCollTrajCov
      Viewable a
   => (Int,Int,Int,Int,Int,Int,Int,Int)
   -> J (CollTrajCov sx' x' z' u' p' () ()) a
-  -> Vec () (Vec () (J o' a))
+  -> Vec () (Vec () (J o' a, J x' a))
   -> (forall x z u p o sx n deg .
       (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize o, Vectorize sx, Dim n, Dim deg)
-      => J (CollTrajCov sx x z u p n deg) a -> Vec n (Vec deg (J (JV o) a)) -> r)
+      => J (CollTrajCov sx x z u p n deg) a -> Vec n (Vec deg (J (JV o) a, J (JV x) a)) -> r)
   -> r
 reifyCollTrajCov (nsx,nx,nz,nu,np,no,n,deg) (UnsafeJ x) outputs f
   | ntotal /= ntotal' =
@@ -86,8 +86,8 @@ reifyCollTrajCov (nsx,nx,nz,nu,np,no,n,deg) (UnsafeJ x) outputs f
   TV.reifyDim deg $ \(Proxy :: Proxy deg) ->
   f
   (mkJ x :: J (CollTrajCov (Vec nsx) (Vec nx) (Vec nz) (Vec nu) (Vec np) n deg) a)
-  (unsafeCastDim (fmap (unsafeCastDim . fmap unsafeToVec) outputs)
-   :: Vec n (Vec deg (J (JV (Vec no)) a)))
+  (unsafeCastDim (fmap (unsafeCastDim . fmap (\(o,x') -> (unsafeToVec o, unsafeToVec x'))) outputs)
+   :: Vec n (Vec deg (J (JV (Vec no)) a, J (JV (Vec nx)) a)))
   where
     ncov = (nsx*nsx + nsx) `div` 2
     ntotal = 1 + ncov + np + n*(nx + deg*(nx + nz + nu)) + nx
