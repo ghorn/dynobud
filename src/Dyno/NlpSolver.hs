@@ -231,9 +231,16 @@ solve = do
                   _ <- takeMVar stop -- wait for nlp to return
                   return ()
                 Left _ -> void (takeMVar stop) -- don't handle this one
-    st <- C.function_getStat nlp "return_status"  >>= Gen.fromGeneric
-    case st of Just st' -> return st'
-               Nothing -> error "nlp solver error: return status is not a string"
+    genericStat <- C.function_getStat nlp "return_status"
+    strStat <- Gen.fromGeneric genericStat :: IO (Maybe String)
+    intStat <- Gen.fromGeneric genericStat :: IO (Maybe Int)
+    statDescription <- Gen.getDescription genericStat
+    case strStat of
+      Just strStat' -> return strStat'
+      Nothing -> case intStat of
+        Just intStat' -> return (show intStat')
+        Nothing -> error $ "nlp solver error: return status is not {string,int}, it's " ++
+                   statDescription
 
   return $ if solveStatus `elem` isSuccessCodes nlpState
     then Right solveStatus
