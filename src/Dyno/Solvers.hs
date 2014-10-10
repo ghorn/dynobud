@@ -10,7 +10,7 @@ snoptSolver :: NlpSolverStuff
 snoptSolver =
   NlpSolverStuff
   { solverName = "snopt"
-  , defaultOptions = [ ("_iprint", Opt (0::Int))
+  , defaultOptions = [ -- ("_iprint", Opt (0::Int))
 --                       , ("_isumm", Opt (6::Int))
 --                       , ("_scale_option", Opt (0::Int))
 --                       , ("_major_iteration_limit", Opt (3 :: Int))
