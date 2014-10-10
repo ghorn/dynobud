@@ -57,10 +57,10 @@ import Dyno.DirectCollocation ( solveOcp )
 import Dyno.Interface.LogsAndErrors
 import Dyno.Interface.Types
 
-withEllipse :: Int -> String -> String
-withEllipse n blah
-  | length blah <= n = blah
-  | otherwise = take n blah ++ "..."
+--withEllipse :: Int -> String -> String
+--withEllipse n blah
+--  | length blah <= n = blah
+--  | otherwise = take n blah ++ "..."
 
 newtype OcpMonad a =
   OcpMonad
@@ -145,7 +145,8 @@ parameter = newDaeVariable "parameter" daeP
 
 output :: String -> SXElement -> DaeMonad ()
 output name expr = do
-  debug $ "adding output \""++name++"\": " ++ withEllipse 30 (show expr)
+  debug $ "adding output \""++name++"\""
+--  debug $ "adding output \""++name++"\": " ++ withEllipse 30 (show expr)
   state0 <- State.get
   let nameSet0 = daeNameSet state0
       outputs0 = _daeO state0
@@ -162,15 +163,15 @@ class EqMonad m a | m -> a where
 
 instance EqMonad DaeMonad SXElement where
   (===) lhs rhs = do
-    debug $ "adding equality constraint: " ++
-      withEllipse 30 (show lhs) ++ " == " ++ withEllipse 30 (show rhs)
+    debug $ "adding equality constraint: "
+--     ++ withEllipse 30 (show lhs) ++ " == " ++ withEllipse 30 (show rhs)
     state0 <- State.get
     State.put $ state0 { daeConstraints = daeConstraints state0 |> (lhs, rhs) }
 
 instance EqMonad OcpMonad SXElement where
   (===) lhs rhs = do
-    debug $ "adding equality constraint: " ++
-      withEllipse 30 (show lhs) ++ " == " ++ withEllipse 30 (show rhs)
+    debug $ "adding equality constraint: "
+--     ++ withEllipse 30 (show lhs) ++ " == " ++ withEllipse 30 (show rhs)
     state0 <- State.get
     State.put $ state0 { ocpPathConstraints = ocpPathConstraints state0 |> Eq2 lhs rhs }
 
@@ -181,22 +182,22 @@ class LeqMonad m where
 
 instance LeqMonad OcpMonad where
   (<==) lhs rhs = do
-    debug $ "adding inequality constraint: " ++
-      withEllipse 30 (show lhs) ++ " <= " ++ withEllipse 30 (show rhs)
+    debug $ "adding inequality constraint: "
+--     ++ withEllipse 30 (show lhs) ++ " <= " ++ withEllipse 30 (show rhs)
     state0 <- State.get
     State.put $ state0 { ocpPathConstraints = ocpPathConstraints state0 |> Ineq2 lhs rhs }
 
 instance EqMonad BCMonad SXElement where
   (===) lhs rhs = do
-    debug $ "adding inequality constraint: " ++
-      withEllipse 30 (show lhs) ++ " == " ++ withEllipse 30 (show rhs)
+    debug $ "adding inequality constraint: "
+      -- ++ withEllipse 30 (show lhs) ++ " == " ++ withEllipse 30 (show rhs)
     state0 <- State.get
     State.put $ state0 |> Eq2 lhs rhs
 
 instance LeqMonad BCMonad where
   (<==) lhs rhs = do
-    debug $ "adding inequality constraint: " ++
-      withEllipse 30 (show lhs) ++ " <= " ++ withEllipse 30 (show rhs)
+    debug $ "adding inequality constraint: "
+--      ++ withEllipse 30 (show lhs) ++ " <= " ++ withEllipse 30 (show rhs)
     state0 <- State.get
     State.put $ state0 |> Ineq2 lhs rhs
 
@@ -210,13 +211,14 @@ constr (Ineq3 x (lhs,rhs)) = (x, (Just lhs, Just rhs))
 
 lagrangeTerm :: SXElement -> OcpMonad ()
 lagrangeTerm obj = do
-  debug $ "setting lagrange term: " ++ withEllipse 30 (show obj)
+  debug "setting lagrange term"
+  --debug $ "setting lagrange term: " ++ withEllipse 30 (show obj)
   state0 <- State.get
   case ocpLagrangeObj state0 of
-    Objective x -> err $ init $ unlines
+    Objective _x -> err $ init $ unlines
                    [ "you set the lagrange objective function twice"
-                   , "    old val: " ++ withEllipse 30 (show x)
-                   , "    new val: " ++ withEllipse 30 (show obj)
+--                   , "    old val: " ++ withEllipse 30 (show x)
+--                   , "    new val: " ++ withEllipse 30 (show obj)
                    ]
     ObjectiveUnset -> State.put $ state0 { ocpLagrangeObj = Objective obj }
 
@@ -277,7 +279,8 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
         case M.lookup name varmap of
           Nothing -> err $ "ocp monad: nothing named \"" ++ name ++ "\""
           Just expr -> do
-            debug $ "ocp monad: found \"" ++ name ++ "\": " ++ show expr
+            debug $ "ocp monad: found \"" ++ name ++ "\""
+            --debug $ "ocp monad: found \"" ++ name ++ "\": " ++ show expr
             return expr
         where
           varmap :: M.Map String SXElement

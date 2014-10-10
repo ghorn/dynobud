@@ -46,10 +46,10 @@ import Dyno.Interface.Types
 import Dyno.NlpSolver ( NlpSolverStuff, solveNlp' )
 import Dyno.Nlp ( Nlp'(..), NlpOut'(..), Bounds)
 
-withEllipse :: Int -> String -> String
-withEllipse n blah
-  | length blah <= n = blah
-  | otherwise = take n blah ++ "..."
+--withEllipse :: Int -> String -> String
+--withEllipse n blah
+--  | length blah <= n = blah
+--  | otherwise = take n blah ++ "..."
 
 newtype NlpMonad a =
   NlpMonad
@@ -90,45 +90,45 @@ designVar name = do
 infix 4 ===
 (===) :: SXElement -> SXElement -> NlpMonad ()
 (===) lhs rhs = do
-  debug $ "adding equality constraint: " ++
-    withEllipse 30 (show lhs) ++ " == " ++ withEllipse 30 (show rhs)
+  debug $ "adding equality constraint: "
+--    ++ withEllipse 30 (show lhs) ++ " == " ++ withEllipse 30 (show rhs)
   state0 <- get
   put $ state0 { nlpConstraints = nlpConstraints state0 |> Eq2 lhs rhs }
 
 infix 4 <==
 (<==) :: SXElement -> SXElement -> NlpMonad ()
 (<==) lhs rhs = do
-  debug $ "adding inequality constraint: " ++
-     withEllipse 30 (show lhs) ++ " <= " ++ withEllipse 30 (show rhs)
+  debug $ "adding inequality constraint: "
+--    ++ withEllipse 30 (show lhs) ++ " <= " ++ withEllipse 30 (show rhs)
   state0 <- get
   put $ state0 { nlpConstraints = nlpConstraints state0 |> Ineq2 lhs rhs }
 
 infix 4 >==
 (>==) :: SXElement -> SXElement -> NlpMonad ()
 (>==) lhs rhs = do
-  debug $ "adding inequality constraint: " ++
-     withEllipse 30 (show lhs) ++ " >= " ++ withEllipse 30 (show rhs)
+  debug $ "adding inequality constraint: "
+--    ++ withEllipse 30 (show lhs) ++ " >= " ++ withEllipse 30 (show rhs)
   state0 <- get
   put $ state0 { nlpConstraints = nlpConstraints state0 |> Ineq2 rhs lhs }
 
 bound :: SXElement -> (Double,Double) -> NlpMonad ()
 bound mid (lhs, rhs) = do
-  debug $ "adding inequality bound: " ++
-    withEllipse 30 (show lhs) ++ " <= " ++
-    withEllipse 30 (show mid) ++ " <= " ++
-    withEllipse 30 (show rhs)
+  debug $ "adding inequality bound: " -- ++
+--    withEllipse 30 (show lhs) ++ " <= " ++
+--    withEllipse 30 (show mid) ++ " <= " ++
+--    withEllipse 30 (show rhs)
   state0 <- get
   put $ state0 { nlpConstraints = nlpConstraints state0 |> Ineq3 mid (lhs, rhs) }
 
 minimize :: SXElement -> NlpMonad ()
 minimize obj = do
-  debug $ "setting objective function: " ++ withEllipse 30 (show obj)
+  debug $ "setting objective function: " -- ++ withEllipse 30 (show obj)
   state0 <- get
   case nlpObj state0 of
-    Objective x -> err $ init $ unlines
+    Objective _x -> err $ init $ unlines
                    [ "you set the objective function twice"
-                   , "    old val: " ++ show x
-                   , "    new val: " ++ show obj
+--                   , "    old val: " ++ show x
+--                   , "    new val: " ++ show obj
                    ]
     ObjectiveUnset -> put $ state0 { nlpObj = Objective obj }
 

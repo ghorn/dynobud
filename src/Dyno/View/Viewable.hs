@@ -11,7 +11,7 @@ import qualified Dyno.Casadi.SX as SX
 import qualified Dyno.Casadi.MX as MX
 import qualified Dyno.Casadi.DMatrix as DMatrix
 
-class Show a => Viewable a where
+class Viewable a where
   vvertsplit :: a -> V.Vector Int -> V.Vector a
   vhorzsplit :: a -> V.Vector Int -> V.Vector a
   vveccat :: V.Vector a -> a
@@ -43,7 +43,7 @@ instance CasadiMat SX.SX where ones = SX.sones
 instance CasadiMat MX.MX where ones = MX.ones
 
 
-instance Show a => Viewable (V.Vector a) where
+instance Viewable (V.Vector a) where
   vsize1 = V.length
   vveccat = V.concat . V.toList
   vvertsplit x ks = V.fromList (split x (V.toList ks))

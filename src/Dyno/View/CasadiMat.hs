@@ -10,7 +10,7 @@ import qualified Dyno.Casadi.SX as SX
 import qualified Dyno.Casadi.MX as MX
 import qualified Dyno.Casadi.DMatrix as DMatrix
 
-class (Floating a, Show a) => CasadiMat a where
+class Floating a => CasadiMat a where
   vertsplit :: a -> V.Vector Int -> V.Vector a
   vertcat :: V.Vector a -> a
   horzsplit :: a -> V.Vector Int -> V.Vector a

@@ -85,7 +85,7 @@ unJ' msg (UnsafeJ x)
 instance Serialize a => Serialize (J f a)
 instance Show a => Show (J f a) where
   showsPrec p (UnsafeJ x) = showsPrec p x
-instance (Show a, Lookup a) => Lookup (J S (Vector a)) where
+instance Lookup a => Lookup (J S (Vector a)) where
   toAccessorTree :: J S (Vector a) -> (b -> J S (Vector a)) -> AccessorTree b
   toAccessorTree (UnsafeJ x) f =
     toAccessorTree (V.head x) (V.head . unJ . f)
@@ -120,7 +120,7 @@ jreplicate' el =  ret
 jreplicate :: forall a n f . (Dim n, View f, Viewable a) => J f a -> J (JVec n f) a
 jreplicate = cat . jreplicate'
 
-jfill :: forall a f . (View f, Show a) => a -> J f (Vector a)
+jfill :: forall a f . View f => a -> J f (Vector a)
 jfill x = mkJ (V.replicate n x)
   where
     n = size (Proxy :: Proxy f)
@@ -144,7 +144,7 @@ instance View S where
   split :: forall a . Viewable a => J S a -> S a
   split = S . unJ
 
-instance (Vectorize f, Lookup (f a), Show a) => Lookup (J (JV f) (Vector a)) where
+instance (Vectorize f, Lookup (f a)) => Lookup (J (JV f) (Vector a)) where
   toAccessorTree x g = toAccessorTree (devectorize (unJ x) :: f a) (devectorize . unJ . g)
 
 newtype JV f a = JV { unJV :: f a } deriving Generic
@@ -159,7 +159,7 @@ instance Vectorize f => View (JV f) where
       ks = V.fromList (take (n+1) [0..])
       n = size (Proxy :: Proxy (JV f))
 
-splitJV :: (Show a, Vectorize f) => J (JV f) (Vector a) -> f a
+splitJV :: Vectorize f => J (JV f) (Vector a) -> f a
 splitJV = devectorize . unJ
 
 -- | Type-save "views" into vectors, which can access subvectors
@@ -190,9 +190,9 @@ class View f where
     | otherwise = error $ unlines
                   [ "split got " ++ show (length leftovers) ++ " leftover fields"
                   , "ns: " ++ show ns ++ "\n" ++ show (map vsize1 leftovers)
-                  , "x: " ++ show x'
+                  --, "x: " ++ show x'
                   , "size1(x): " ++ show (vsize1 (unJ x'))
-                  , "leftovers: " ++ show leftovers
+                  --, "leftovers: " ++ show leftovers
                   , "errors: " ++ show (reverse errors)
                   ]
     where

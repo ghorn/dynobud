@@ -30,7 +30,7 @@ import qualified Dyno.Casadi.DMatrix as DMatrix
 import Dyno.Casadi.IOSchemes
 
 
-class (Show a, Viewable a, CasadiMat a) => Symbolic a where
+class (Viewable a, CasadiMat a) => Symbolic a where
   -- | creating symbolics
   sym :: View f => String -> IO (J f a)
   mkScheme :: InputOutputScheme -> [(String,a)] -> IO (Vector a)
