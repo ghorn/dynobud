@@ -1,31 +1,40 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language ScopedTypeVariables #-}
 {-# Language FlexibleContexts #-}
+{-# Language DeriveGeneric #-}
 
 module Dyno.DirectCollocation.Quadratures
-       ( mkTaus
+       ( QuadratureRoots(..)
+       , mkTaus
        , interpolate
        , timesFromTaus
        ) where
 
+import GHC.Generics ( Generic )
 import Data.Proxy ( Proxy(..) )
 import qualified Data.Vector as V
 import qualified Data.Foldable as F
+import Data.Serialize ( Serialize(..) )
 import Linear.V
 
-import JacobiRoots ( shiftedLegendreRoots )
+import JacobiRoots ( shiftedLegendreRoots ) --, shiftedRadauRoots )
 
 import Dyno.View
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeXis )
 
---data RorL = Radau | Legendre deriving (Eq, Show)
+data QuadratureRoots = Legendre | Radau deriving (Show, Eq, Ord, Enum, Generic)
+instance Serialize QuadratureRoots
 
-mkTaus :: Fractional a => Int -> Vec deg a
-mkTaus deg = case shiftedLegendreRoots deg of
-  Just taus -> TV.mkVec $ V.map (fromRational . toRational) taus
+mkTaus :: Fractional a => QuadratureRoots -> Int -> Vec deg a
+mkTaus quadratureRoots deg = case taus of
+  Just taus' -> TV.mkVec $ V.map (fromRational . toRational) taus'
   Nothing -> error "makeTaus: too high degree"
+  where
+    taus = case quadratureRoots of
+      Legendre -> shiftedLegendreRoots deg
+      Radau -> error "radau not yet supported" -- shiftedRadauRoots (deg-1) ++ [1.0]
 
 
 dot :: forall x deg a b. (Fractional (J x a), Real b) => Vec deg b -> Vec deg (J x a) -> J x a

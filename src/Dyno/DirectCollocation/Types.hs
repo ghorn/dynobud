@@ -27,8 +27,6 @@ import Dyno.View ( View(..), J, JV, JVec(..), S, mkJ, unJ, jfill, jreplicate )
 import Dyno.Vectorize ( Vectorize(..) )
 import Dyno.Cov ( Cov )
 
---import Dvda
---data RorL = Radau | Legendre deriving (Eq, Show)
 
 -- design variables
 data CollTraj x z u p n deg a =

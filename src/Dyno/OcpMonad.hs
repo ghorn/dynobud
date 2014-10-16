@@ -53,6 +53,7 @@ import Dyno.Vectorize ( Vectorize(..), fill )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.NlpSolver ( NlpSolverStuff )
+import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..) )
 import Dyno.DirectCollocation.Dynamic ( DynCollTraj, CollTrajMeta(..), NameTree(..) )
 import Dyno.DirectCollocation ( solveOcp )
 
@@ -398,6 +399,7 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
              , ctmNp = V.length pnames
              , ctmNo = V.length onames
              , ctmNsx = 0
+             , ctmQuadRoots = Legendre -- TODO: make this an input
              }
   TV.reifyDim (ctmNx meta) $ \(Proxy :: Proxy nx) ->
     TV.reifyDim (ctmNz meta) $ \(Proxy :: Proxy nz) ->

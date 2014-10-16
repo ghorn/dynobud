@@ -21,6 +21,7 @@ import Dyno.Server.Accessors
 import Dyno.Nlp
 import Dyno.Ocp
 import Dyno.DirectCollocation
+import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..) )
 import Dyno.DirectCollocation.Formulate ( makeGuess )
 import Dyno.DirectCollocation.Dynamic
 
@@ -229,7 +230,7 @@ withPublisher context url f =
     f send
 
 initialGuess :: CollTraj SbX SbZ SbU SbP NCollStages CollDeg (Vector Double)
-initialGuess = makeGuess tf guessX (const SbZ) guessU SbP
+initialGuess = makeGuess Legendre tf guessX (const SbZ) guessU SbP
   where
     tf = 20
     r = 30
@@ -259,7 +260,7 @@ main = do
       let guess = cat initialGuess
           proxy :: Proxy (CollTraj SbX SbZ SbU SbP NCollStages CollDeg)
           proxy = Proxy
-          meta = toMeta (Proxy :: Proxy SbO) proxy
+          meta = toMeta (cpRoots cp) (Proxy :: Proxy SbO) proxy
 
           callback :: J (CollTraj SbX SbZ SbU SbP NCollStages CollDeg) (Vector Double)
                       -> IO Bool

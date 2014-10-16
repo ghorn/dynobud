@@ -34,7 +34,7 @@ import qualified Dyno.TypeVecs as TV
 import Dyno.TypeVecs ( Vec )
 
 import Dyno.DirectCollocation.Types
-import Dyno.DirectCollocation.Quadratures ( mkTaus, interpolate )
+import Dyno.DirectCollocation.Quadratures ( QuadratureRoots, mkTaus, interpolate )
 import Dyno.DirectCollocation.Reify ( reifyCollTraj )
 
 
@@ -63,11 +63,14 @@ instance Serialize a => Serialize (V.Vector a) where
   put = put . V.toList
   get = fmap V.fromList get
 
-dynPlotPoints :: forall a . (Real a, Fractional a, Show a)
-                 => DynCollTraj (Vector a) -> CollTrajMeta -> DynPlotPoints a
+dynPlotPoints ::
+  forall a .
+  (Real a, Fractional a, Show a)
+  => DynCollTraj (Vector a) -> CollTrajMeta -> DynPlotPoints a
 dynPlotPoints (DynCollTraj traj outputs) meta =
   reifyCollTraj (nx,nz,nu,np,no,n,deg) traj outputs foo
   where
+    quadratureRoots = ctmQuadRoots meta
     nx  = ctmNx meta
     nz  = ctmNz meta
     nu  = ctmNu meta
@@ -80,7 +83,7 @@ dynPlotPoints (DynCollTraj traj outputs) meta =
            => J (CollTraj x z u p n deg) (Vector a)
            -> Vec n (Vec deg (J (JV o) (Vector a), J (JV x) (Vector a)))
            -> DynPlotPoints a
-    foo ct outs = plotPoints (split ct) outs
+    foo ct outs = plotPoints quadratureRoots (split ct) outs
 
 
 -- a safe, point maker which is difficult to work with
@@ -89,10 +92,10 @@ plotPoints ::
   forall x z u p o n deg a .
   (Dim n, Dim deg, Real a, Fractional a, Show a,
    Vectorize x, Vectorize z, Vectorize u, Vectorize o, Vectorize p)
-  => CollTraj x z u p n deg (Vector a)
+  => QuadratureRoots -> CollTraj x z u p n deg (Vector a)
   -> Vec n (Vec deg (J (JV o) (Vector a), J (JV x) (Vector a)))
   -> DynPlotPoints a
-plotPoints (CollTraj (UnsafeJ tf') _ stages' xf) outputs =
+plotPoints quadratureRoots (CollTraj (UnsafeJ tf') _ stages' xf) outputs =
   DynPlotPoints (xss++[[(tf,unJ xf)]]) zss uss oss xdss
   where
     nStages = size (Proxy :: Proxy (JVec n S))
@@ -100,7 +103,7 @@ plotPoints (CollTraj (UnsafeJ tf') _ stages' xf) outputs =
     tf = V.head tf'
     h = tf / fromIntegral nStages
     --taus :: Vec deg Double
-    taus = mkTaus (reflectDim (Proxy :: Proxy deg))
+    taus = mkTaus quadratureRoots (reflectDim (Proxy :: Proxy deg))
 
     stages = fmap split (unJVec (split stages')) :: Vec n (CollStage (JV x) (JV z) (JV u) deg (Vector a))
     (xss,zss,uss,oss,xdss) = unzip5 $ f 0 $ zip (F.toList stages) (F.toList outputs)
@@ -175,6 +178,7 @@ data CollTrajMeta = CollTrajMeta { ctmX :: NameTree
                                  , ctmNsx :: Int
                                  , ctmN :: Int
                                  , ctmDeg :: Int
+                                 , ctmQuadRoots :: QuadratureRoots
                                  } deriving (Eq, Generic, Show)
 instance Serialize CollTrajMeta
 
@@ -212,8 +216,8 @@ toMeta :: forall x z u p o n deg .
           (Lookup (x ()), Lookup (z ()), Lookup (u ()), Lookup (p ()), Lookup (o ()),
            Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize o,
            Dim n, Dim deg)
-          => Proxy o -> Proxy (CollTraj x z u p n deg) -> CollTrajMeta
-toMeta _ _ =
+          => QuadratureRoots -> Proxy o -> Proxy (CollTraj x z u p n deg) -> CollTrajMeta
+toMeta roots _ _ =
   CollTrajMeta { ctmX = namesFromAccTree $ accessors (jfill () :: J (JV x) (Vector ()))
                , ctmZ = namesFromAccTree $ accessors (jfill () :: J (JV z) (Vector ()))
                , ctmU = namesFromAccTree $ accessors (jfill () :: J (JV u) (Vector ()))
@@ -227,6 +231,7 @@ toMeta _ _ =
                , ctmNsx = 0
                , ctmN = reflectDim (Proxy :: Proxy n)
                , ctmDeg = reflectDim (Proxy :: Proxy deg)
+               , ctmQuadRoots = roots
                }
 
 toMetaCov :: forall sx x z u p o n deg .
@@ -234,10 +239,10 @@ toMetaCov :: forall sx x z u p o n deg .
            Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize o,
            Vectorize sx,
            Dim n, Dim deg)
-          => Proxy o -> Proxy (CollTrajCov sx x z u p n deg) -> CollTrajMeta
-toMetaCov _ _ = meta0 { ctmNsx = size (Proxy :: Proxy (JV sx)) }
+          => QuadratureRoots -> Proxy o -> Proxy (CollTrajCov sx x z u p n deg) -> CollTrajMeta
+toMetaCov roots _ _ = meta0 { ctmNsx = size (Proxy :: Proxy (JV sx)) }
   where
-    meta0 = toMeta (Proxy :: Proxy o) (Proxy :: Proxy (CollTraj x z u p n deg))
+    meta0 = toMeta roots (Proxy :: Proxy o) (Proxy :: Proxy (CollTraj x z u p n deg))
 
 ctToDynamic :: forall x z u p o n deg a .
   (Vectorize x, Vectorize z, Vectorize u, Vectorize p) =>

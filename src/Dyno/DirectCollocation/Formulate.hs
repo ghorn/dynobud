@@ -43,9 +43,7 @@ import Dyno.Ocp ( OcpPhase(..), OcpPhaseWithCov(..) )
 
 import Dyno.DirectCollocation.Types
 import Dyno.DirectCollocation.Dynamic ( DynCollTraj, ctToDynamic )
-import Dyno.DirectCollocation.Quadratures ( mkTaus, interpolate, timesFromTaus )
-
---data RorL = Radau | Legendre deriving (Eq, Show)
+import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..), mkTaus, interpolate, timesFromTaus )
 
 de :: Vectorize v => J (JV v) SX -> v SXElement
 de = devectorize . sdata . sdense . unJ
@@ -58,7 +56,6 @@ re = mkJ . svector . vectorize
 
 re' :: SXElement -> J S SX
 re' = mkJ . svector . V.singleton
-
 
 --toFunJac'' :: Fun (JacIn xj x) (JacOut fj f) -> IO (Fun (JacIn xj x) (Jac xj fj f))
 --toFunJac'' = undefined
@@ -80,6 +77,7 @@ data CollProblem x z u p r c h o n deg =
   , cpCallback :: J (CollTraj x z u p n deg) (Vector Double)
                   -> IO (DynCollTraj (Vector Double), Vec n (Vec deg (o Double, x Double)))
   , cpTaus :: Vec deg Double
+  , cpRoots :: QuadratureRoots
   }
 
 makeCollProblem ::
@@ -90,8 +88,11 @@ makeCollProblem ::
   -> IO (CollProblem x z u p r c h o n deg)
 makeCollProblem ocp = do
   let -- the collocation points
+      roots :: QuadratureRoots
+      roots = Legendre
+
       taus :: Vec deg Double
-      taus = mkTaus deg
+      taus = mkTaus roots deg
 
       deg = reflectDim (Proxy :: Proxy deg)
       n = reflectDim (Proxy :: Proxy n)
@@ -207,6 +208,7 @@ makeCollProblem ocp = do
   return $ CollProblem { cpNlp = nlp
                        , cpCallback = callback
                        , cpTaus = taus
+                       , cpRoots = roots
                        }
 
 
@@ -229,8 +231,10 @@ makeCollCovNlp ::
         )
 makeCollCovNlp ocp ocpCov = do
   let -- the collocation points
+      roots = Legendre
+
       taus :: Vec deg Double
-      taus = mkTaus deg
+      taus = mkTaus roots deg
 
       deg = reflectDim (Proxy :: Proxy deg)
 
@@ -926,10 +930,11 @@ covStageFunction dynStageConJac
 makeGuess ::
   forall x z u p deg n .
   (Dim n, Dim deg, Vectorize x, Vectorize z, Vectorize u, Vectorize p)
-  => Double -> (Double -> x Double) -> (Double -> z Double) -> (Double -> u Double)
+  => QuadratureRoots
+  -> Double -> (Double -> x Double) -> (Double -> z Double) -> (Double -> u Double)
   -> p Double
   -> CollTraj x z u p n deg (Vector Double)
-makeGuess tf guessX guessZ guessU parm =
+makeGuess quadratureRoots tf guessX guessZ guessU parm =
   CollTraj (jfill tf) (v2j parm) guesses (v2j (guessX tf))
   where
     -- timestep
@@ -954,7 +959,7 @@ makeGuess tf guessX guessZ guessU parm =
 
     -- the collocation points
     taus :: Vec deg Double
-    taus = mkTaus deg
+    taus = mkTaus quadratureRoots deg
 
     deg = vlength (Proxy :: Proxy (Vec deg))
 
