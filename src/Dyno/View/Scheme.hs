@@ -13,6 +13,7 @@ module Dyno.View.Scheme
        ( Scheme(..)
        , M(..)
        , FunctionIO(..)
+       , blockSplit
        ) where
 
 import Data.Proxy
@@ -37,6 +38,13 @@ instance Scheme MyScheme
 
 newtype M (f :: * -> *) (g :: * -> *) (a :: *) =
   UnsafeM { unM :: a } deriving (Eq, Functor, Generic)
+
+blockSplit :: forall f g a . (View f, View g, CasadiMat a) => M f g a -> Vector (Vector a)
+blockSplit (UnsafeM m) = fmap (flip horzsplit hsizes) ms
+  where
+    vsizes = V.fromList $ 0 : (F.toList (sizes 0 (Proxy :: Proxy f)))
+    hsizes = V.fromList $ 0 : (F.toList (sizes 0 (Proxy :: Proxy g)))
+    ms = vertsplit m vsizes
 
 class FunctionIO (f :: * -> *) where
   fromMat :: CasadiMat a => a -> Either String (f a)

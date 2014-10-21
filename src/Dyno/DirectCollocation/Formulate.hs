@@ -1,4 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
+--{-# OPTIONS_GHC -fdefer-type-errors #-}
+{-# Language DeriveGeneric #-}
 {-# Language ScopedTypeVariables #-}
 {-# Language TypeOperators #-}
 {-# Language FlexibleContexts #-}
@@ -13,6 +15,7 @@ module Dyno.DirectCollocation.Formulate
        , makeGuess
        ) where
 
+import GHC.Generics ( Generic )
 import Data.Maybe ( fromMaybe )
 import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
@@ -24,15 +27,16 @@ import qualified Numeric.LinearAlgebra.Algorithms as LA
 import Linear.Matrix hiding ( trace )
 import Linear.V
 
-import Casadi.MX ( solve, mm, trans, d2m, zeros )
+import Casadi.MX ( solve, d2m )
 import Casadi.SXElement ( SXElement )
 import Casadi.SX ( sdata, sdense, svector )
 import Casadi.DMatrix ( dvector, ddata, ddense )
 
+import Dyno.View.CasadiMat
 import Dyno.Cov
 import Dyno.View
 --import Dyno.View.HList
---import Dyno.View.FunJac
+import Dyno.View.FunJac
 --import Dyno.View.Scheme
 import Dyno.Vectorize ( Vectorize(..), fill, vlength, vzipWith )
 import Dyno.TypeVecs ( Vec )
@@ -57,9 +61,6 @@ re = mkJ . svector . vectorize
 re' :: SXElement -> J S SX
 re' = mkJ . svector . V.singleton
 
---toFunJac'' :: Fun (JacIn xj x) (JacOut fj f) -> IO (Fun (JacIn xj x) (Jac xj fj f))
---toFunJac'' = undefined
---
 --mut :: JacIn
 --       ((J sx :*: J sw :*: J (JVec deg (JTuple sx sz))))
 --       ((J x :*: J (JVec deg (CollPoint x z u)) :*: J S :*: J p :*: J (JVec deg S)))
@@ -212,9 +213,6 @@ makeCollProblem ocp = do
                        }
 
 
-toFunJac' :: String -> ((x MX, y MX) -> f MX) -> IO ((x MX, y MX) -> Vector (Vector MX))
-toFunJac' = error "toFunJac' not defined"
-
 makeCollCovNlp ::
   forall x z u p r o c h sx sz sw sr sh sc deg n .
   (Dim deg, Dim n, Vectorize x, Vectorize p, Vectorize u, Vectorize z,
@@ -256,10 +254,10 @@ makeCollCovNlp ocp ocpCov = do
                     (de' x5) (de x6) (de x7) (de x8) (de x9)
             in re r
 
-  errorDynStageConFunJac <- toFunJac' "errorDynamicsStageConJac"
-                            (errorDynStageConstraints cijs taus errorDynFun)
+  edscf <- toMXFun "errorDynamicsStageCon" (errorDynStageConstraints cijs taus errorDynFun)
+  errorDynStageConFunJac <- toFunJac (castFun edscf)
 
-  covStageFun <- toMXFun "covStageFunction" $ covStageFunction errorDynStageConFunJac
+  covStageFun <- toMXFun "covStageFunction" $ covStageFunction (callFun errorDynStageConFunJac)
 --  let callCovStageFun = callMXFun covStageFun
   callCovStageFun <- fmap callSXFun (expandMXFun covStageFun)
 
@@ -732,6 +730,20 @@ dynStageConstraints cijs taus dynFun (x0 :*: xzs' :*: us' :*: UnsafeJ h :*: p :*
     xs = fmap (\(JTuple x _) -> x) xzs
 
 
+data ErrorIn0 x z u p deg a =
+  ErrorIn0 (J x a) (J (JVec deg (CollPoint x z u)) a) (J S a) (J p a) (J (JVec deg S) a)
+  deriving Generic
+data ErrorInD sx sw sz deg a =
+  ErrorInD (J sx a) (J sw a) (J (JVec deg (JTuple sx sz)) a)
+  deriving Generic
+data ErrorOut sr sx deg a =
+  ErrorOut (J (JVec deg sr) a) (J sx a)
+  deriving Generic
+
+instance (View x, View z, View u, View p, Dim deg) => Scheme (ErrorIn0 x z u p deg)
+instance (View sx, View sw, View sz, Dim deg) => View (ErrorInD sx sw sz deg)
+instance (View sr, View sx, Dim deg) => View (ErrorOut sr sx deg)
+
 -- return error dynamics constraints and interpolated state
 errorDynStageConstraints ::
   forall x z u p sx sz sw sr deg .
@@ -741,15 +753,14 @@ errorDynStageConstraints ::
   -> Vec deg Double
   -> SXFun (J S :*: J p :*: J x :*: J (CollPoint x z u) :*: J sx :*: J sx :*: J sz :*: J sw)
            (J sr)
-  -> ( (J sx :*: J sw :*: J (JVec deg (JTuple sx sz))) MX
-     , (J x :*: J (JVec deg (CollPoint x z u)) :*: J S :*: J p :*: J (JVec deg S)) MX
-     )
-  -> (J (JVec deg sr) :*: J sx) MX
+  -> JacIn (ErrorInD sx sw sz deg) (ErrorIn0 x z u p deg) MX
+  -> JacOut (ErrorOut sr sx deg) (J JNone) MX
 errorDynStageConstraints cijs taus dynFun
-  ( sx0 :*: sw0 :*: sxzs'
-  , x0 :*: xzus' :*: UnsafeJ h :*: p :*: stageTimes'
-  ) = cat (JVec dynConstrs) :*: sxnext
+  (JacIn errorInD (ErrorIn0 x0 xzus' (UnsafeJ h) p stageTimes'))
+  = JacOut (cat (ErrorOut (cat (JVec dynConstrs)) sxnext)) (cat JNone)
   where
+    ErrorInD sx0 sw0 sxzs' = split errorInD
+
     xzus = unJVec (split xzus')
 
     xs :: Vec deg (J x MX)
@@ -884,26 +895,29 @@ stageFunction pathConStageFun dynStageCon
 
 
 covStageFunction ::
-  forall x z u p sx sz sw deg . (Dim deg, View x, View z, View u, View p, View sx, View sz, View sw)
-  => (( (J sx :*: J sw :*: J (JVec deg (JTuple sx sz))) MX
-      , (J x :*: J (JVec deg (CollPoint x z u)) :*: J S :*: J p :*: J (JVec deg S)) MX
-      )
-      -> Vector (Vector MX))
+  forall x z u p sx sz sw deg sr . (Dim deg, View x, View z, View u, View p, View sx, View sz, View sw, View sr)
+  => (JacIn (ErrorInD sx sw sz deg) (ErrorIn0 x z u p deg) MX
+      -> Jac (ErrorInD sx sw sz deg) (ErrorOut sr sx deg) (J JNone) MX)
   -> (J (Cov sx) :*: J S :*: J p :*: J (JVec deg S)
       :*: J x :*: J (JVec deg (CollPoint x z u)) :*: J (Cov sw)) MX
   -> J (Cov sx) MX
 covStageFunction dynStageConJac
-  (p0' :*: dt :*: parm :*: stageTimes :*: x0' :*: xzus' :*: q0') =
-    p1
+  (p0' :*: dt :*: parm :*: stageTimes :*: x0' :*: xzus' :*: q0') = p1
   where
+    sx0 :: J sx MX
     sx0  = mkJ $ zeros (size (Proxy :: Proxy sx),                        1)
+    sw0 :: J sw MX
     sw0  = mkJ $ zeros (size (Proxy :: Proxy sw),                        1)
+    sxzs :: J (JVec deg (JTuple sx sz)) MX
     sxzs = mkJ $ zeros (size (Proxy :: Proxy (JVec deg (JTuple sx sz))), 1)
-    jac = dynStageConJac ( sx0 :*: sw0 :*: sxzs
-                         , x0' :*: xzus' :*: dt :*: parm :*: stageTimes
-                         )
 
-    ((df_dsx0, df_dsw0, df_dsxz), (dg_dsx0, dg_dsw0, dg_dsxz)) = case fmap F.toList (F.toList jac) of
+    mat :: M (ErrorOut sr sx deg) (ErrorInD sx sw sz deg) MX
+    Jac mat _ _ =
+      dynStageConJac $
+      JacIn (cat (ErrorInD sx0 sw0 sxzs)) (ErrorIn0 x0' xzus' dt parm stageTimes)
+
+    ((df_dsx0, df_dsw0, df_dsxz), (dg_dsx0, dg_dsw0, dg_dsxz)) =
+      case fmap F.toList (F.toList (blockSplit mat)) of
       [[x00,x01,x02],[x10,x11,x12]] -> ((x00,x01,x02),(x10,x11,x12))
       _ -> error "stageFunction: got wrong number of elements in jacobian"
 

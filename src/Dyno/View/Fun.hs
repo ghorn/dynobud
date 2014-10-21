@@ -8,6 +8,8 @@ module Dyno.View.Fun
        , Fun
        , toMXFun
        , toSXFun
+       , castFun
+       , castFun'
        , callFun
        , callMXFun
        , callSXFun
@@ -31,6 +33,7 @@ import Casadi.SXFunction ( SXFunction, sxFunction )
 import Casadi.Option
 import Casadi.SharedObject
 
+import qualified Casadi.Core.Classes.Function as F
 import qualified Casadi.Core.Classes.MXFunction as M
 import qualified Casadi.Core.Classes.SharedObject as C
 import qualified Casadi.Core.Classes.OptionsFunctionality as C
@@ -70,6 +73,11 @@ mkFun mkfun mksym con name userf = do
   soInit fun
   return (con fun)
 
+castFun :: MXFun f g -> Fun f g
+castFun (MXFun f) = Fun (F.castFunction f)
+
+castFun' :: SXFun f g -> Fun f g
+castFun' (SXFun f) = Fun (F.castFunction f)
 
 -- | make an MXFunction
 toMXFun :: forall f g . (Scheme f, Scheme g) => String -> (f MX -> g MX) -> IO (MXFun f g)
