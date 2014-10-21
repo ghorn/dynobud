@@ -45,7 +45,7 @@ toMatlab cp ct@(CollTraj tf' p' stages' xf) = do
           dt = tf / fromIntegral n
 
       xTimes = concatMap (\(t0,ts) -> t0 : F.toList ts) (F.toList times) ++ [tf]
-      zuoTimes = concatMap (\(t0,ts) -> t0 : F.toList ts) (F.toList times) ++ [tf]
+      zuoTimes = concatMap (\(_,ts) -> F.toList ts) (F.toList times)
 
       stages :: [CollStage (JV x) (JV z) (JV u) deg (Vector Double)]
       stages = map split $ F.toList $ unJVec $ split stages'
