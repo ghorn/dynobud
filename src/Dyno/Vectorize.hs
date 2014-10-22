@@ -24,7 +24,7 @@ module Dyno.Vectorize
        , Proxy(..)
        ) where
 
-
+import Control.Applicative ( Applicative(..) )
 import GHC.Generics
 import qualified Data.Vector as V
 import Data.Foldable ( Foldable )
@@ -38,21 +38,45 @@ import Dyno.Server.Accessors
 data None a = None
             deriving (Eq, Generic, Generic1, Functor, Foldable, Traversable, Show)
 instance Vectorize None
+instance Applicative None where
+  pure = const None
+  (<*>) = const (const None)
+instance Linear.Additive None where
+
 
 -- | a length-1 vectorizable type
 newtype Id a = Id a
              deriving (Eq, Generic, Generic1, Functor, Foldable, Traversable, Show)
 instance Vectorize Id
+instance Applicative Id where
+  pure = Id
+  Id fx <*> Id x = Id (fx x)
+instance Linear.Additive Id where
+
 
 -- | a length-2 vectorizable type
 data Tuple f g a = Tuple (f a) (g a)
                  deriving (Eq, Generic, Generic1, Functor, Foldable, Traversable, Show)
 instance (Vectorize f, Vectorize g) => Vectorize (Tuple f g)
+instance (Applicative f, Applicative g) => Applicative (Tuple f g) where
+  pure x = Tuple (pure x) (pure x)
+  Tuple fx fy <*> Tuple x y = Tuple (fx <*> x) (fy <*> y)
+instance (Vectorize f, Vectorize g, Applicative f, Applicative g) => Linear.Additive (Tuple f g) where
+  zero = Tuple (fill 0) (fill 0)
+
 
 -- | a length-3 vectorizable type
 data Triple f g h a = Triple (f a) (g a) (h a)
                     deriving (Eq, Generic, Generic1, Functor, Foldable, Traversable, Show)
 instance (Vectorize f, Vectorize g, Vectorize h) => Vectorize (Triple f g h)
+instance (Applicative f, Applicative g, Applicative h) => Applicative (Triple f g h) where
+  pure x = Triple (pure x) (pure x) (pure x)
+  Triple fx fy fz <*> Triple x y z = Triple (fx <*> x) (fy <*> y) (fz <*> z)
+instance (Vectorize f, Vectorize g, Vectorize h,
+          Applicative f, Applicative g, Applicative h)
+         => Linear.Additive (Triple f g h) where
+  zero = Triple (fill 0) (fill 0) (fill 0)
+
 
 instance Lookup (None a)
 instance (Lookup a, Generic a) => Lookup (Id a)
