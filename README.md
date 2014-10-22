@@ -21,6 +21,7 @@ The current instructions for getting started on Debian/Ubuntu:
 
     >> git clone git://github.com:ghorn/dynobud.git
     >> cd dynobud
+    >> cabal install --only-dependencies
     >> cabal configure
     >> cabal build
 
