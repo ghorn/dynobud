@@ -358,7 +358,3 @@ test-suite unit-tests
                        linear,
                        base >=4.6 && <4.8
 --  ghc-options:         -O2
-
-
---:set -isrc -iexamples -iexamples/CovSpring
---:set -i../examples -i../examples/CovSpring -i../../src
