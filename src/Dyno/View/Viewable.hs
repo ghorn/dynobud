@@ -2,7 +2,7 @@
 {-# Language TypeFamilies #-}
 
 module Dyno.View.Viewable
-       ( Viewable(..), MX.MX, SX.SX, DMatrix.DMatrix, CasadiMat(..)
+       ( Viewable(..), MX.MX, SX.SX, DMatrix.DMatrix
        ) where
 
 import qualified Data.Vector as V
@@ -10,6 +10,7 @@ import qualified Data.Vector as V
 import qualified Casadi.SX as SX
 import qualified Casadi.MX as MX
 import qualified Casadi.DMatrix as DMatrix
+--import qualified Dyno.View.CasadiMat as CM
 
 class Viewable a where
   vvertsplit :: a -> V.Vector Int -> V.Vector a
@@ -35,13 +36,13 @@ instance Viewable DMatrix.DMatrix where
   vhorzsplit = DMatrix.dhorzsplit
   vsize1 = DMatrix.dsize1
 
-class (Viewable a) => CasadiMat a where
---  zeros :: (Int,Int) -> a
-  ones :: (Int,Int) -> a
-instance CasadiMat DMatrix.DMatrix where ones = DMatrix.dones
-instance CasadiMat SX.SX where ones = SX.sones
-instance CasadiMat MX.MX where ones = MX.ones
-
+--instance CM.CasadiMat a => Viewable a where
+--  vveccat = CM.veccat
+--  vvertsplit = CM.vertsplit
+--  vhorzsplit = CM.horzsplit
+--  vsize1 x
+--    | CM.size2 x == 1 = CM.size1 x
+--    | otherwise = error "Dyno.View.Viewable(vsize1): not a column!!"
 
 instance Viewable (V.Vector a) where
   vsize1 = V.length

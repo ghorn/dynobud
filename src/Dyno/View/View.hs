@@ -16,11 +16,9 @@
 
 module Dyno.View.View
        ( J(..), mkJ, mkJ', unJ, unJ', View(..), JVec(..), JNone(..), S(..)
-       , JV(..)
        , JTuple(..)
        , jreplicate, jreplicate'
        , reifyJVec, jfill
-       , splitJV
        ) where
 
 import GHC.Generics hiding ( S )
@@ -37,7 +35,7 @@ import Data.Serialize ( Serialize(..) )
 
 import Dyno.TypeVecs ( Vec(..), unVec, mkVec, mkVec', reifyVector )
 import Dyno.View.Viewable ( Viewable(..) )
-import Dyno.Vectorize ( Vectorize(..), vlength )
+import Dyno.Vectorize ( Vectorize(..) )
 import Dyno.Server.Accessors ( Lookup(..), AccessorTree )
 
 data JTuple f g a = JTuple (J f a) (J g a) deriving ( Generic, Show )
@@ -143,24 +141,6 @@ instance View S where
   sizes = const . Seq.singleton . (1 +)
   split :: forall a . Viewable a => J S a -> S a
   split = S . unJ
-
-instance (Vectorize f, Lookup (f a)) => Lookup (J (JV f) (Vector a)) where
-  toAccessorTree x g = toAccessorTree (devectorize (unJ x) :: f a) (devectorize . unJ . g)
-
-newtype JV f a = JV { unJV :: f a } deriving Generic
-instance Vectorize f => View (JV f) where
-  cat :: forall a . Viewable a => JV f a -> J (JV f) a
-  cat = mkJ . vveccat . vectorize . unJV
-  size = const $ vlength (Proxy :: Proxy f)
-  sizes = const . Seq.singleton . (vlength (Proxy :: Proxy f) +)
-  split :: forall a . Viewable a => J (JV f) a -> JV f a
-  split = JV . devectorize . flip vvertsplit ks. unJ
-    where
-      ks = V.fromList (take (n+1) [0..])
-      n = size (Proxy :: Proxy (JV f))
-
-splitJV :: Vectorize f => J (JV f) (Vector a) -> f a
-splitJV = devectorize . unJ
 
 -- | Type-save "views" into vectors, which can access subvectors
 --   without splitting then concatenating everything.

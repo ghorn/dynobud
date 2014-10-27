@@ -41,6 +41,7 @@ import qualified Casadi.DMatrix as DMatrix
 import Casadi.SXElement
 
 import Dyno.View
+import Dyno.View.M
 import qualified Dyno.View.Symbolic as S
 
 newtype Cov (f :: * -> *) a = Cov { unCov :: Vector (J S a) } deriving (Eq, Show)

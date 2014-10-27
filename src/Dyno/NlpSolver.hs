@@ -75,6 +75,7 @@ import qualified Casadi.GenericC as Gen
 import Casadi.SharedObject ( soInit )
 
 import Dyno.Vectorize ( Vectorize(..) )
+import Dyno.View.JV
 import Dyno.View.View
 import Dyno.View.Symbolic
 import Dyno.View.Viewable ( Viewable )

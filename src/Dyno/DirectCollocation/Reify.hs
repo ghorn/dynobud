@@ -11,6 +11,7 @@ import Linear.V ( Dim )
 
 import Dyno.Vectorize
 import Dyno.TypeVecs ( Vec )
+import Dyno.View.JV
 import Dyno.View.View
 import Dyno.View.Viewable
 import qualified Dyno.TypeVecs as TV

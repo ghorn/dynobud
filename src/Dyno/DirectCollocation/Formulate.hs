@@ -33,8 +33,10 @@ import Casadi.SX ( sdata, sdense, svector )
 import Casadi.DMatrix ( dvector, ddata, ddense )
 
 import Dyno.View.CasadiMat
+import qualified Dyno.View.CasadiMat as CM
 import Dyno.Cov
 import Dyno.View
+import qualified Dyno.View.M as M
 --import Dyno.View.HList
 import Dyno.View.FunJac
 --import Dyno.View.Scheme

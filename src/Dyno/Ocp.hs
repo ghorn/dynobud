@@ -12,6 +12,7 @@ import Data.Default ( Default(..) )
 import Data.Vector ( Vector )
 
 import Dyno.Vectorize ( Vectorize, None(..), fill )
+import Dyno.View.JV
 import Dyno.View.View
 import Dyno.Cov
 import Dyno.Nlp ( Bounds )

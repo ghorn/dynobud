@@ -11,7 +11,6 @@
 
 module Dyno.View.Scheme
        ( Scheme(..)
-       , M(..)
        , FunctionIO(..)
        , blockSplit
        ) where
@@ -26,6 +25,7 @@ import GHC.Generics hiding ( S )
 import Dyno.Nats
 import Dyno.View.View
 import Dyno.View.CasadiMat
+import Dyno.View.M
 
 data MyScheme a = MyScheme (J (JVec D3 S) a) (J (JVec D2 S) a) deriving (Generic, Generic1, Show)
 instance Scheme MyScheme
@@ -36,9 +36,6 @@ instance Scheme MyScheme
 --og :: V.Vector MX
 --og = toVector go
 
-newtype M (f :: * -> *) (g :: * -> *) (a :: *) =
-  UnsafeM { unM :: a } deriving (Eq, Functor, Generic)
-
 blockSplit :: forall f g a . (View f, View g, CasadiMat a) => M f g a -> Vector (Vector a)
 blockSplit (UnsafeM m) = fmap (flip horzsplit hsizes) ms
   where
@@ -48,7 +45,7 @@ blockSplit (UnsafeM m) = fmap (flip horzsplit hsizes) ms
 
 class FunctionIO (f :: * -> *) where
   fromMat :: CasadiMat a => a -> Either String (f a)
-  toMat :: f a -> a
+  toFioMat :: f a -> a
   matSizes :: Proxy f -> (Int,Int)
 
 instance View x => Scheme (J x) where
@@ -58,11 +55,21 @@ instance View x => Scheme (J x) where
                              Right m' -> m'
     _ -> error $ "Scheme fromVector (J x) length mismatch, should be 1 but got: "
          ++ show (V.length v)
-  toVector = V.singleton . toMat
+  toVector = V.singleton . toFioMat
+  sizeList p = [matSizes p]
+
+instance (View f, View g) => Scheme (M f g) where
+  numFields = const 1
+  fromVector v = case V.toList v of
+    [m] -> case fromMat m of Left err -> error $ "Scheme fromVector M error: " ++ err
+                             Right m' -> m'
+    _ -> error $ "Scheme fromVector (M f g) length mismatch, should be 1 but got: "
+         ++ show (V.length v)
+  toVector = V.singleton . toFioMat
   sizeList p = [matSizes p]
 
 instance View f => FunctionIO (J f) where
-  toMat = unsafeUnJ
+  toFioMat = unsafeUnJ
   fromMat x
     | n1 /= n1' = mismatch
     | n1 /= 0 && n2 /= n2' = mismatch
@@ -78,7 +85,7 @@ instance View f => FunctionIO (J f) where
   matSizes = const (size (Proxy :: Proxy f), 1)
 
 instance (View f, View g) => FunctionIO (M f g) where
-  toMat = unM
+  toFioMat = unM
   fromMat x
     | n2 /= n2' = mismatch
     | n1 /= n1' = mismatch
