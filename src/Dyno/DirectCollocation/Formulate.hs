@@ -13,6 +13,7 @@ module Dyno.DirectCollocation.Formulate
        , mkTaus
        , interpolate
        , makeGuess
+       , makeGuessSim
        ) where
 
 import GHC.Generics ( Generic )
@@ -1077,3 +1078,70 @@ makeGuess quadratureRoots tf guessX guessZ guessU parm =
 
     v2j :: Vectorize v => v Double -> J (JV v) (Vector Double)
     v2j = mkJ . vectorize
+
+
+-- | make an initial guess
+makeGuessSim ::
+  forall x z u p deg n .
+  (Dim n, Dim deg, Vectorize x, Vectorize z, Vectorize u, Vectorize p)
+  => QuadratureRoots
+  -> Double
+  -> x Double
+  -> (x Double -> u Double -> x Double)
+  -> (x Double -> Double -> u Double)
+  -> p Double
+  -> CollTraj x z u p n deg (Vector Double)
+makeGuessSim quadratureRoots tf x00 ode guessU p =
+  CollTraj (jfill tf) (v2j p) (cat (JVec stages)) (v2j xf)
+  where
+    -- timestep
+    dt = tf / fromIntegral n
+    n = vlength (Proxy :: Proxy (Vec n))
+
+    -- initial time at each collocation stage
+    t0s :: Vec n Double
+    t0s = TV.mkVec' $ take n [dt * fromIntegral k | k <- [(0::Int)..]]
+
+    xf :: x Double
+    stages :: Vec n (J (CollStage (JV x) (JV z) (JV u) deg) (Vector Double))
+    (xf, stages) = T.mapAccumL stageGuess x00 t0s
+
+    stageGuess :: x Double -> Double
+                  -> (x Double, J (CollStage (JV x) (JV z) (JV u) deg) (Vector Double))
+    stageGuess x0 t0 = (integrate 1, cat (CollStage (v2j x0) points))
+      where
+        points = cat $ JVec $ fmap (toCollPoint . integrate) taus
+        u = guessU x0 t0
+        f x = ode x u
+        toCollPoint x = cat $ CollPoint (v2j x) (v2j (fill 0 :: z Double)) (v2j u)
+        integrate localTau = rk4 f (localTau * dt) x0
+
+    -- the collocation points
+    taus :: Vec deg Double
+    taus = mkTaus quadratureRoots deg
+
+    deg = vlength (Proxy :: Proxy (Vec deg))
+
+    v2j :: Vectorize v => v Double -> J (JV v) (Vector Double)
+    v2j = mkJ . vectorize
+
+
+    rk4 :: (x Double -> x Double) -> Double -> x Double -> x Double
+    rk4 f h x0 = x0 ^+^ ((k1 ^+^ (2 *^ k2) ^+^ (2 *^ k3) ^+^ k4) ^/ 6)
+      where
+        k1 = (f  x0)            ^* h
+        k2 = (f (x0 ^+^ (k1^/2))) ^* h
+        k3 = (f (x0 ^+^ (k2^/2))) ^* h
+        k4 = (f (x0 ^+^ k3))    ^* h
+
+        (^+^) :: x Double -> x Double -> x Double
+        y0 ^+^ y1 = devectorize $ V.zipWith (+) (vectorize y0) (vectorize y1)
+
+        (*^) :: Double -> x Double -> x Double
+        y0 *^ y1 = devectorize $ V.map (y0 *) (vectorize y1)
+
+        (^*) :: x Double -> Double -> x Double
+        y0 ^* y1 = devectorize $ V.map (* y1) (vectorize y0)
+
+        (^/) :: x Double -> Double -> x Double
+        y0 ^/ y1 = devectorize $ V.map (/ y1) (vectorize y0)
