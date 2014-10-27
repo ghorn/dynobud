@@ -116,7 +116,7 @@ jreplicate' :: forall a n f . (Dim n, View f) => J f a -> JVec n f a
 jreplicate' el =  ret
   where
     ret = JVec (mkVec (V.replicate nvec el))
-    nvec = size (Proxy :: Proxy (JVec n S))
+    nvec = reflectDim (Proxy :: Proxy n)
 
 jreplicate :: forall a n f . (Dim n, View f, Viewable a) => J f a -> J (JVec n f) a
 jreplicate = cat . jreplicate'
