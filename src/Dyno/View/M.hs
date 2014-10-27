@@ -47,6 +47,8 @@ mkM x = case mkM' x of
 mkM' :: forall f g a . (View f, View g, CasadiMat a) => a -> Either String (M f g a)
 mkM' x
   | nx == nx' && ny == ny' = Right (UnsafeM x)
+--  | all (== 0) [nx,nx'] && ny' == 0 =  Right (UnsafeM x)
+--  | all (== 0) [ny,ny'] && nx' == 0 =  Right (UnsafeM x)
   | otherwise = Left $ "mkM length mismatch: typed size: " ++ show (nx,ny) ++
                 ", actual size: " ++ show (nx', ny')
   where
