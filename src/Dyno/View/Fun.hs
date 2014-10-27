@@ -8,8 +8,6 @@ module Dyno.View.Fun
        , Fun
        , toMXFun
        , toSXFun
-       , castFun
-       , castFun'
        , callFun
        , callMXFun
        , callSXFun
@@ -28,8 +26,8 @@ import Data.Vector ( Vector )
 import Casadi.MX ( symM )
 import Casadi.SX ( ssymM )
 import Casadi.Function ( Function, callMX, callSX, evalDMatrix, jacobian )
-import Casadi.MXFunction ( MXFunction, mxFunction )
-import Casadi.SXFunction ( SXFunction, sxFunction )
+import Casadi.MXFunction ( MXFunction, mxFunction, mxFunctionFromFunction )
+import Casadi.SXFunction ( SXFunction, sxFunction, sxFunctionFromFunction )
 import Casadi.Option
 import Casadi.SharedObject
 
@@ -45,6 +43,26 @@ import Dyno.View.FunJac
 newtype MXFun (f :: * -> *) (g :: * -> *) = MXFun MXFunction --deriving Show
 newtype SXFun (f :: * -> *) (g :: * -> *) = SXFun SXFunction --deriving Show
 newtype Fun (f :: * -> *) (g :: * -> *) = Fun Function --deriving Show
+
+class FunClass fun where
+  fromFun :: Fun f g -> IO (fun f g)
+  toFun :: fun f g -> Fun f g
+
+instance FunClass Fun where
+  fromFun = return
+  toFun = id
+
+instance FunClass SXFun where
+  fromFun (Fun f) = do
+    sxf <- sxFunctionFromFunction f
+    return (SXFun sxf)
+  toFun (SXFun f) = Fun (F.castFunction f)
+
+instance FunClass MXFun where
+  fromFun (Fun f) = do
+    mxf <- mxFunctionFromFunction f
+    return (MXFun mxf)
+  toFun (MXFun f) = Fun (F.castFunction f)
 
 mkSym :: forall a f .
          (Scheme f, CasadiMat a)
@@ -72,12 +90,6 @@ mkFun mkfun mksym con name userf = do
   setOption fun "name" name
   soInit fun
   return (con fun)
-
-castFun :: MXFun f g -> Fun f g
-castFun (MXFun f) = Fun (F.castFunction f)
-
-castFun' :: SXFun f g -> Fun f g
-castFun' (SXFun f) = Fun (F.castFunction f)
 
 -- | make an MXFunction
 toMXFun :: forall f g . (Scheme f, Scheme g) => String -> (f MX -> g MX) -> IO (MXFun f g)
@@ -119,8 +131,11 @@ evalSXFun :: (Scheme f, Scheme g) => SXFun f g -> f DMatrix -> IO (g DMatrix)
 evalSXFun (SXFun sxf) = fmap fromVector . evalDMatrix sxf . toVector
 
 -- | make a function which also contains a jacobian
-toFunJac :: Fun (JacIn xj x) (JacOut fj f) -> IO (Fun (JacIn xj x) (Jac xj fj f))
-toFunJac (Fun fun) = do
+toFunJac ::
+  FunClass fun =>
+  fun (JacIn xj x) (JacOut fj f) -> IO (fun (JacIn xj x) (Jac xj fj f))
+toFunJac fun0 = do
+  let Fun fun = toFun fun0
   maybeName <- getOption fun "name"
   let name = case maybeName of Nothing -> "no_name"
                                Just n -> n
@@ -130,7 +145,7 @@ toFunJac (Fun fun) = do
   setOption funJac "name" (name ++ "_dynobudJac")
   soInit funJac
 
-  return (Fun funJac)
+  fromFun (Fun funJac)
 
 
 --toFunJac' ::
