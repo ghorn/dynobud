@@ -224,5 +224,8 @@ instance GToVector f a => GToVector (M1 i d f) a where
 instance View f => GToVector (Rec0 (J f a)) a where
   gtoVector = Seq.singleton . unsafeUnJ . unK1
 
+instance (View f, View g) => GToVector (Rec0 (M f g a)) a where
+  gtoVector = Seq.singleton . unM . unK1
+
 --instance GToVector U1 a where
 --  gtoVector = const Seq.empty
