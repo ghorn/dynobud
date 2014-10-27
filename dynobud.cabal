@@ -32,6 +32,7 @@ library
                        Dyno.DirectCollocation.Profile
                        Dyno.Cov
                        Dyno.View
+                       Dyno.View.M
                        Dyno.Vectorize
                        Dyno.Nlp
                        Dyno.NlpMonad
@@ -52,7 +53,6 @@ library
   other-modules:       Dyno.View.Fun
                        Dyno.View.FunJac
                        Dyno.View.JV
-                       Dyno.View.M
                        Dyno.View.Symbolic
                        Dyno.View.View
                        Dyno.View.Viewable

@@ -14,6 +14,8 @@ module Dyno.View.M
        , ones
        , vsplit
        , hsplit
+       , vcat
+       , hcat
        , row
        , col
        , unrow
@@ -68,6 +70,12 @@ vsplit (UnsafeM x) = fmap mkM $ devectorize $ CM.vertsplit x nrs
     nr = size (Proxy :: Proxy (JV f))
     nrs = V.fromList [0,1..nr+1]
 
+vcat ::
+  forall f g a .
+  (Vectorize f, View g, CasadiMat a, Viewable a)
+  => f (M (JV Id) g a) -> M (JV f) g a
+vcat x = mkM $ CM.vertcat $ V.map unM (vectorize x)
+
 hsplit ::
   forall f g a .
   (View f, Vectorize g, CasadiMat a, Viewable a)
@@ -76,6 +84,12 @@ hsplit (UnsafeM x) = fmap mkM $ devectorize $ CM.horzsplit x ncs
   where
     nc = size (Proxy :: Proxy (JV g))
     ncs = V.fromList [0,1..nc+1]
+
+hcat ::
+  forall f g a .
+  (View f, Vectorize g, CasadiMat a, Viewable a)
+  => g (M f (JV Id) a) -> M f (JV g) a
+hcat x = mkM $ CM.horzcat $ V.map unM (vectorize x)
 
 zeros :: forall f g a . (View f, View g, CasadiMat a) => M f g a
 zeros = mkM z
