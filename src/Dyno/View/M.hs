@@ -34,6 +34,9 @@ import qualified Dyno.View.CasadiMat as CM
 newtype M (f :: * -> *) (g :: * -> *) (a :: *) =
   UnsafeM { unM :: a } deriving (Eq, Functor, Generic)
 
+instance Show a => Show (M f g a) where
+  showsPrec p (UnsafeM x) = showsPrec p x
+
 mkM :: forall f g a . (View f, View g, CasadiMat a) => a -> M f g a
 mkM x = case mkM' x of
   Right x' -> x'
