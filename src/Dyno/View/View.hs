@@ -17,6 +17,7 @@
 module Dyno.View.View
        ( J(..), mkJ, mkJ', unJ, unJ', View(..), JVec(..), JNone(..), S(..)
        , JTuple(..)
+       , JTriple(..)
        , jreplicate, jreplicate'
        , reifyJVec, jfill
        ) where
@@ -40,6 +41,8 @@ import Dyno.Server.Accessors ( Lookup(..), AccessorTree )
 
 data JTuple f g a = JTuple (J f a) (J g a) deriving ( Generic, Show )
 instance (View f, View g) => View (JTuple f g)
+data JTriple f g h a = JTriple (J f a) (J g a) (J h a) deriving ( Generic, Show )
+instance (View f, View g, View h) => View (JTriple f g h)
 --instance View Id
 --instance View Xy
 --instance View Xyz
