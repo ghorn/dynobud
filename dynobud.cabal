@@ -324,24 +324,41 @@ executable dynoplot
 --                       base >=4.6 && <4.8
 --  ghc-options:         -O2
 
+--test-suite old-unit-tests
+--  type: exitcode-stdio-1.0
+--  hs-source-dirs:      tests
+--  main-is:             UnitTests.hs
+--  default-language:    Haskell2010
+--  build-depends:       dynobud,
+--                       QuickCheck >= 2,
+--                       HUnit,
+--                       test-framework,
+--                       test-framework-hunit,
+--                       test-framework-quickcheck2,
+--                       hmatrix,
+--                       hmatrix-glpk,
+--                       vector,
+--                       linear,
+--                       MemoTrie,
+--                       base >=4.6 && <4.8
+----  ghc-options:         -O2
+
 test-suite unit-tests
   type: exitcode-stdio-1.0
   hs-source-dirs:      tests
-  main-is:             UnitTests.hs
+  main-is:             NewUnitTests.hs
   default-language:    Haskell2010
   build-depends:       dynobud,
-                       QuickCheck >= 2,
+--                       QuickCheck >= 2,
                        HUnit,
                        test-framework,
                        test-framework-hunit,
-                       test-framework-quickcheck2,
-                       hmatrix,
-                       hmatrix-glpk,
+--                       test-framework-quickcheck2,
                        vector,
                        linear,
-                       MemoTrie,
                        base >=4.6 && <4.8
 --  ghc-options:         -O2
+
 
 --:set -isrc -iexamples -iexamples/CovSpring
 --:set -i../examples -i../examples/CovSpring -i../../src
