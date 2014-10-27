@@ -68,7 +68,7 @@ vsplit ::
 vsplit (UnsafeM x) = fmap mkM $ devectorize $ CM.vertsplit x nrs
   where
     nr = size (Proxy :: Proxy (JV f))
-    nrs = V.fromList [0,1..nr+1]
+    nrs = V.fromList [0,1..nr]
 
 vcat ::
   forall f g a .
@@ -83,7 +83,7 @@ hsplit ::
 hsplit (UnsafeM x) = fmap mkM $ devectorize $ CM.horzsplit x ncs
   where
     nc = size (Proxy :: Proxy (JV g))
-    ncs = V.fromList [0,1..nc+1]
+    ncs = V.fromList [0,1..nc]
 
 hcat ::
   forall f g a .
