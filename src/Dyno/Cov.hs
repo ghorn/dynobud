@@ -5,6 +5,9 @@
 
 module Dyno.Cov
        ( Cov(..)
+       , toMat
+       , toMat'
+       , toMat''
        , toMatrix
        , toMatrix'
        , toMatrix''
@@ -73,6 +76,17 @@ instance (Serialize a) => Serialize (Cov f a) where
   put = put . V.toList . unCov
   get = fmap (Cov . V.fromList) get
 
+-- TODO: CasadiMat class
+toMat :: View f => J (Cov f) SX -> M f f SX
+toMat c = mkM (toMatrix c)
+
+toMat' :: View f => J (Cov f) MX -> M f f MX
+toMat' c = mkM (toMatrix' c)
+
+toMat'' :: View f => J (Cov f) DMatrix -> M f f DMatrix
+toMat'' c = mkM (toMatrix'' c)
+
+-- TODO: CasadiMat class
 toMatrix :: forall f . View f => J (Cov f) SX -> SX
 toMatrix c = unsafePerformIO $ do
   let c'@(Cov xs) = split c
@@ -92,6 +106,7 @@ toMatrix c = unsafePerformIO $ do
   triu <- sx__9 sp xs'
   C.triu2symm__1 triu
 {-# NOINLINE toMatrix #-}
+
 
 toMatrix' :: forall f . View f => J (Cov f) MX -> MX
 toMatrix' c = unsafePerformIO $ do
@@ -131,7 +146,7 @@ toHMatrix m = (n Mat.>< n) (V.toList v)
 toHMatrix' :: forall f . View f => J (Cov f) (Vector Double) -> Mat.Matrix Double
 toHMatrix' (UnsafeJ v) = toHMatrix $ (UnsafeJ (DMatrix.dvector v) :: J (Cov f) DMatrix)
 
-
+-- TODO: CasadiMat class
 diag :: View f => J f SX -> J (Cov f) SX
 diag = fromMatrix . S.diag . unJ
 
