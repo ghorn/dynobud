@@ -59,10 +59,11 @@ data CollOcpConstraints n deg x r c h a =
   , coBc :: J (JV c) a
   } deriving (Eq, Generic, Show)
 
-data CollOcpCovConstraints n deg x r c h sh sc a =
+data CollOcpCovConstraints n deg x r c h sh shr sc a =
   CollOcpCovConstraints
   { cocNormal :: J (CollOcpConstraints n deg x r c h) a
   , cocCovPathC :: J (JVec n sh) a
+  , cocCovRobustPathC :: J (JVec n (JV shr)) a
   , cocSbc :: J sc a
   } deriving (Eq, Generic, Show)
 
@@ -83,8 +84,9 @@ instance (Vectorize sx, Vectorize x, Vectorize z, Vectorize u, Vectorize p, Dim 
 instance (Vectorize x, Vectorize r, Dim deg) => View (CollStageConstraints x deg r)
 instance (Vectorize x, Vectorize r, Dim n, Dim deg, Vectorize c, Vectorize h) =>
          View (CollOcpConstraints n deg x r c h)
-instance (Vectorize x, Vectorize r, Dim n, Dim deg, Vectorize c, Vectorize h, View sh, View sc) =>
-         View (CollOcpCovConstraints n deg x r c h sh sc)
+instance ( Vectorize x, Vectorize r, Dim n, Dim deg, Vectorize c, Vectorize h
+         , View sh, Vectorize shr, View sc
+         ) => View (CollOcpCovConstraints n deg x r c h sh shr sc)
 
 
 

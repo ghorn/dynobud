@@ -33,19 +33,18 @@ import Casadi.SX ( sdata, sdense, svector )
 import Casadi.DMatrix ( dvector, ddata, ddense )
 
 import Dyno.View.CasadiMat
-import qualified Dyno.View.CasadiMat as CM
 import Dyno.Cov
 import Dyno.View
 import qualified Dyno.View.M as M
 --import Dyno.View.HList
 import Dyno.View.FunJac
 --import Dyno.View.Scheme
-import Dyno.Vectorize ( Vectorize(..), fill, vlength, vzipWith )
+import Dyno.Vectorize ( Vectorize(..), Id, fill, vlength, vzipWith, vzipWith3 )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs )
 import Dyno.Nlp ( Nlp'(..), Bounds )
-import Dyno.Ocp ( OcpPhase(..), OcpPhaseWithCov(..) )
+import Dyno.Ocp ( OcpPhase(..), OcpPhaseWithCov(..), X(..) )
 
 import Dyno.DirectCollocation.Types
 import Dyno.DirectCollocation.Dynamic ( DynCollTraj, ctToDynamic )
@@ -62,17 +61,6 @@ re = mkJ . svector . vectorize
 
 re' :: SXElement -> J S SX
 re' = mkJ . svector . V.singleton
-
---mut :: JacIn
---       ((J sx :*: J sw :*: J (JVec deg (JTuple sx sz))))
---       ((J x :*: J (JVec deg (CollPoint x z u)) :*: J S :*: J p :*: J (JVec deg S)))
---       MX
---    -> (J (JVec deg sr) :*: J sx) MX
---mut = undefined
-
---hsplit :: M (x :*: y) (z :*: w) MX -> M x (z :*: w) MX :*: M y (z :*: w) MX
---hsplit :: M (Tuple x y) (z :*: w) MX -> Tuple (M x (z :*: w) MX :*: M y (z :*: w) MX
---hsplit :: M ()
 
 data CollProblem x z u p r c h o n deg =
   CollProblem
@@ -216,14 +204,14 @@ makeCollProblem ocp = do
 
 
 makeCollCovNlp ::
-  forall x z u p r o c h sx sz sw sr sh sc deg n .
+  forall x z u p r o c h sx sz sw sr sh shr sc deg n .
   (Dim deg, Dim n, Vectorize x, Vectorize p, Vectorize u, Vectorize z,
    Vectorize sr, Vectorize sw, Vectorize sz, Vectorize sx,
    Vectorize r, Vectorize o, Vectorize h, Vectorize c,
-   View sh, View sc)
+   View sh, Vectorize shr, View sc)
   => OcpPhase x z u p r o c h
-  -> OcpPhaseWithCov (OcpPhase x z u p r o c h) sx sz sw sr sh sc
-  -> IO ( Nlp' (CollTrajCov sx x z u p n deg) JNone (CollOcpCovConstraints n deg x r c h sh sc) MX
+  -> OcpPhaseWithCov (OcpPhase x z u p r o c h) sx sz sw sr sh shr sc
+  -> IO ( Nlp' (CollTrajCov sx x z u p n deg) JNone (CollOcpCovConstraints n deg x r c h sh shr sc) MX
         , J (CollTrajCov sx x z u p n deg) (Vector Double)
           -> IO (DynCollTraj (Vector Double), Vec n (Vec deg (o Double, x Double))
                 , Vec n (J (Cov (JV sx)) (Vector Double)), J (Cov (JV sx)) (Vector Double)
@@ -257,21 +245,36 @@ makeCollCovNlp ocp ocpCov = do
             in re r
 
   edscf <- toMXFun "errorDynamicsStageCon" (errorDynStageConstraints cijs taus errorDynFun)
-  errorDynStageConFunJac <- toFunJac (castFun edscf)
+  errorDynStageConFunJac <- toFunJac edscf
 
-  covStageFun <- toMXFun "covStageFunction" $ covStageFunction (callFun errorDynStageConFunJac)
+  covStageFun <- toMXFun "covStageFunction" $ covStageFunction (callMXFun errorDynStageConFunJac)
 --  let callCovStageFun = callMXFun covStageFun
   callCovStageFun <- fmap callSXFun (expandMXFun covStageFun)
 
   cp0 <- makeCollProblem ocp
+
+  robustify <- mkRobustifyFunction ocpCov
+
   let nlp0 = cpNlp cp0
       callback0 = cpCallback cp0
+      gammas' = ocpCovGammas ocpCov :: shr Double
+
+      gammas :: J (JV shr) MX
+      gammas = catJV' (fmap realToFrac gammas')
+
+      rpathCUb :: shr Bounds
+      rpathCUb = fill (Nothing, Just 0)
+
+      robustPathCUb :: J (JV shr) (Vector Bounds)
+      robustPathCUb = catJV rpathCUb
 
       -- the NLP
       fg :: J (CollTrajCov sx x z u p n deg) MX
             -> J JNone MX
-            -> (J S MX, J (CollOcpCovConstraints n deg x r c h sh sc) MX)
+            -> (J S MX, J (CollOcpCovConstraints n deg x r c h sh shr sc) MX)
       fg = getFgCov taus
+        gammas
+        (robustify :: (J (JV shr) MX -> J (JV x) MX -> J (Cov (JV sx)) MX -> J (JV shr) MX))
         (ocpCovSq ocpCov :: J (Cov (JV sw)) DMatrix)
         (sbcFun :: SXFun (J (Cov (JV sx)) :*: J (Cov (JV sx))) (J sc))
         (shFun :: SXFun (J (JV x) :*: J (Cov (JV sx))) (J sh))
@@ -309,6 +312,7 @@ makeCollCovNlp ocp ocpCov = do
     , nlpBG' = cat $ CollOcpCovConstraints
                { cocNormal = nlpBG' nlp0
                , cocCovPathC = jreplicate (ocpCovShBnds ocpCov)
+               , cocCovRobustPathC = jreplicate robustPathCUb
                , cocSbc = ocpCovSbcBnds ocpCov
                }
     , nlpX0' = cat $ CollTrajCov (jfill 0) (nlpX0' nlp0)
@@ -332,6 +336,9 @@ makeCollCovNlp ocp ocpCov = do
                                  (fromMaybe (fill 1) (ocpBcScale ocp))
                                  (fromMaybe (fill 1) (ocpPathCScale ocp))
                    , cocCovPathC = jreplicate (fromMaybe (jfill 1) (ocpCovPathCScale ocpCov))
+                   , cocCovRobustPathC = jreplicate $
+                                         fromMaybe (jfill 1) $
+                                         fmap catJV (ocpCovRobustPathCScale ocpCov)
                    , cocSbc = fromMaybe (jfill 1) (ocpCovSbcScale ocpCov)
                    }
     }
@@ -424,12 +431,16 @@ getFg taus bcFun mayerFun quadFun stageFun collTraj _ = (obj, cat g)
 
 
 getFgCov ::
-  forall z x u p r c h sx sw sh sc n deg .
+  forall z x u p r c h sx sw sh shr sc n deg .
   (Dim deg, Dim n, Vectorize x, Vectorize z, Vectorize u, Vectorize p,
    Vectorize h, Vectorize c, Vectorize r,
-   Vectorize sx, Vectorize sw, View sc, View sh)
-   -- taus
+   Vectorize sx, Vectorize sw, View sc, View sh, Vectorize shr)
+  -- taus
   => Vec deg Double
+  -- gammas
+  -> J (JV shr) MX
+  -- robustify
+  -> (J (JV shr) MX -> J (JV x) MX -> J (Cov (JV sx)) MX -> J (JV shr) MX)
    -- sq
   -> J (Cov (JV sw)) DMatrix
    -- sbcFun
@@ -450,8 +461,8 @@ getFgCov ::
      )
   -> J (CollTrajCov sx x z u p n deg) MX
   -> J JNone MX
-  -> (J S MX, J (CollOcpCovConstraints n deg x r c h sh sc) MX)
-getFgCov taus sq sbcFun shFun lagrangeFun mayerFun covStageFun
+  -> (J S MX, J (CollOcpCovConstraints n deg x r c h sh shr sc) MX)
+getFgCov taus gammas robustify sq sbcFun shFun lagrangeFun mayerFun covStageFun
   normalFG collTrajCov nlpParams =
   (obj0 + objectiveLagrangeCov + objectiveMayerCov, cat g)
   where
@@ -461,6 +472,7 @@ getFgCov taus sq sbcFun shFun lagrangeFun mayerFun covStageFun
     g = CollOcpCovConstraints
         { cocNormal = g0
         , cocCovPathC = cat (JVec covPathConstraints)
+        , cocCovRobustPathC = cat (JVec robustifiedPathC)
         , cocSbc = callSXFun sbcFun (p0 :*: pF)
         }
     -- split up the design vars
@@ -503,6 +515,9 @@ getFgCov taus sq sbcFun shFun lagrangeFun mayerFun covStageFun
     covPathConstraints :: Vec n (J sh MX)
     covPathConstraints = TV.tvzipWith (\xk pk -> callSXFun shFun (xk:*:pk)) x0s covs
 
+    robustifiedPathC :: Vec n (J (JV shr) MX)
+    robustifiedPathC = TV.tvzipWith (robustify gammas) x0s covs
+
     covs :: Vec n (J (Cov (JV sx)) MX) -- all but last covariances
     pF :: J (Cov (JV sx)) MX -- last covariances
     (pF, covs) = T.mapAccumL ff p0 $ TV.tvzip3 spstages times' covInjections
@@ -520,6 +535,8 @@ data CovTraj sx n a =
   , ctLast :: J (Cov (JV sx)) a
   }
 
+
+-- todo: calculate by first multiplying all the Fs
 getCovariances ::
   forall z x u p sx sw n deg .
   (Dim deg, Dim n, Vectorize x, Vectorize z, Vectorize u, Vectorize p,
@@ -573,6 +590,85 @@ getCovariances taus sq covStageFun
     ff cov0 (CollStage x0' xzus, stageTimes, covInj) = (cov1, cov0)
       where
         cov1 = covStageFun (cov0 :*: dt :*: parm :*: stageTimes :*: x0' :*: xzus :*: covInj)
+
+
+mkRobustifyFunction ::
+  forall ocp sx sz sw sr sh shr sc .
+  (Vectorize (X ocp), Vectorize sx, Vectorize shr)
+  => OcpPhaseWithCov ocp sx sz sw sr sh shr sc
+  -> IO (J (JV shr) MX -> J (JV (X ocp)) MX -> J (Cov (JV sx)) MX -> J (JV shr) MX)
+mkRobustifyFunction ocpCov = do
+  proj <- toSXFun "errorSpaceProjection" $
+          \(JacIn x0 x1) -> JacOut (re (ocpCovProjection ocpCov (de x1) (de x0))) (cat JNone)
+  let _ = proj :: SXFun
+                  (JacIn (JV sx) (J (JV (X ocp))))
+                  (JacOut (JV (X ocp)) (J JNone))
+
+  projJac <- toFunJac proj
+  let _ = projJac :: SXFun
+                     (JacIn (JV sx) (J (JV (X ocp))))
+                     (Jac (JV sx) (JV (X ocp)) (J JNone))
+
+  let zerosx = (M.uncol M.zeros) :: J (JV sx) SX
+  simplifiedJac <- toSXFun "simplified error space jacobian" $
+                   \x0 -> (\(Jac j0 _ _) -> j0) (callSXFunSX projJac (JacIn zerosx x0))
+  let _ = simplifiedJac :: SXFun
+                           (J (JV (X ocp)))
+                           (M.M (JV (X ocp)) (JV sx))
+
+
+  robustH <- toSXFun "robust constraint" $
+             \(JacIn x0 (_ :: J JNone SX)) -> JacOut (re (ocpCovRobustifyPathC ocpCov (de x0))) (cat JNone)
+  let _ = robustH :: SXFun
+                     (JacIn (JV (X ocp)) (J JNone))
+                     (JacOut (JV shr) (J JNone))
+  robustHJac <- toFunJac robustH
+  let _ = robustHJac :: SXFun
+                        (JacIn (JV (X ocp)) (J JNone))
+                        (Jac (JV (X ocp)) (JV shr) (J JNone))
+
+
+  let gogo :: J (JV shr) MX -> J (JV (X ocp)) MX -> J (Cov (JV sx)) MX -> J (JV shr) MX
+      gogo gammas' x pw' = rcs'
+          where
+            gammas = fmap mkJ (unJV (split gammas')) :: shr (J (JV Id) MX)
+
+            h0vec :: J (JV shr) MX
+            jacH :: M.M (JV shr) (JV (X ocp)) MX
+            Jac jacH h0vec _ = callSXFun robustHJac (JacIn x (cat JNone))
+
+            f :: M.M (JV (X ocp)) (JV sx) MX
+            f = callSXFun simplifiedJac x
+
+            pw :: M.M (JV sx) (JV sx) MX
+            pw = toMat' pw'
+
+            px :: M.M (JV (X ocp)) (JV (X ocp)) MX
+            px = (f `M.mm` pw) `M.mm` (M.trans f)
+
+            jacHs :: shr (M.M (JV Id) (JV (X ocp)) MX)
+            jacHs = M.vsplit jacH -- THIS IS THROWING THE vsplit ERROR
+
+            shr' = fmap mkJ (unJV (split h0vec)) :: shr (J (JV Id) MX)
+
+            rcs' :: J (JV shr) MX
+            rcs' = cat $ JV $ fmap unsafeUnJ rcs
+
+            rcs :: shr (J (JV Id) MX)
+            rcs = vzipWith3 robustify gammas shr' jacHs
+
+            robustify :: J (JV Id) MX -> J (JV Id) MX -> M.M (JV Id) (JV (X ocp)) MX -> J (JV Id) MX
+            robustify gamma h0 gradH = h0 + gamma * sqrt sigma2
+              where
+                sigma2 :: J (JV Id) MX
+                sigma2 = mkJ sigma2'
+
+                M.UnsafeM sigma2' = gradH `M.mm` px `M.mm` (M.trans gradH) :: M.M (JV Id) (JV Id) MX
+
+  retFun <- toMXFun "robust constraint violations" $
+    \(x0 :*: x1 :*: x2) -> gogo x0 x1 x2
+
+  return (\x y z -> callMXFun retFun (x :*: y :*: z))
 
 
 getBg :: forall x z u p r o c h deg n .
@@ -913,7 +1009,7 @@ covStageFunction dynStageConJac
     sxzs :: J (JVec deg (JTuple sx sz)) MX
     sxzs = mkJ $ zeros (size (Proxy :: Proxy (JVec deg (JTuple sx sz))), 1)
 
-    mat :: M (ErrorOut sr sx deg) (ErrorInD sx sw sz deg) MX
+    mat :: M.M (ErrorOut sr sx deg) (ErrorInD sx sw sz deg) MX
     Jac mat _ _ =
       dynStageConJac $
       JacIn (cat (ErrorInD sx0 sw0 sxzs)) (ErrorIn0 x0' xzus' dt parm stageTimes)

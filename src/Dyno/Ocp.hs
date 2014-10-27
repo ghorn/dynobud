@@ -139,7 +139,7 @@ instance (Vectorize x, Vectorize z, Vectorize u, Vectorize p)
     , ocpPathCScale    = Nothing
     }
 
-data OcpPhaseWithCov ocp sx sz sw sr sh sc =
+data OcpPhaseWithCov ocp sx sz sw sr sh shr sc =
   OcpPhaseWithCov
   { -- | the Mayer term @Jm(T, x(0), x(T), P(0), P(t))@
     ocpCovMayer :: Sxe -> X ocp Sxe -> X ocp Sxe -> Sx (Cov (JV sx)) -> Sx (Cov (JV sx)) -> Sxe
@@ -151,8 +151,12 @@ data OcpPhaseWithCov ocp sx sz sw sr sh sc =
                  -> sr Sxe
     -- | the projection from covariance state to full state
   , ocpCovProjection :: X ocp Sxe -> sx Sxe -> X ocp Sxe
---    -- | constraints which will autmatically be robustified
---  , ocpCovEasyRobustConstraints :: X ocp Sxe -> Sxe -> sh2 Sxe
+    -- | constraints which (g(x) <= 0) will be satisfied with some margin defined by gamma
+    -- .
+    -- TODO: user upper and lower bounds without adding another constraint, probably impossible
+  , ocpCovRobustifyPathC :: X ocp Sxe -> shr Sxe
+    -- | robust factors for the robustified constraints
+  , ocpCovGammas :: shr Double
     -- | covariance injection
   , ocpCovSq :: J (Cov (JV sw)) DMatrix
     -- | bounds on the initial convariance
@@ -166,5 +170,6 @@ data OcpPhaseWithCov ocp sx sz sw sr sh sc =
     -- | scaling
   , ocpCovSScale :: Maybe (J (Cov (JV sx)) (Vector Double))
   , ocpCovPathCScale :: Maybe (J sh (Vector Double))
+  , ocpCovRobustPathCScale :: Maybe (shr Double)
   , ocpCovSbcScale :: Maybe (J sc (Vector Double))
   }
