@@ -10,7 +10,7 @@ import qualified Casadi.SX as SX
 import qualified Casadi.MX as MX
 import qualified Casadi.DMatrix as DMatrix
 
-class Floating a => CasadiMat a where
+class (Show a, Floating a) => CasadiMat a where
   vertsplit :: a -> V.Vector Int -> V.Vector a
   vertcat :: V.Vector a -> a
   horzsplit :: a -> V.Vector Int -> V.Vector a

@@ -40,9 +40,16 @@ import Dyno.View.CasadiMat
 import Dyno.View.Scheme
 import Dyno.View.FunJac
 
-newtype MXFun (f :: * -> *) (g :: * -> *) = MXFun MXFunction --deriving Show
-newtype SXFun (f :: * -> *) (g :: * -> *) = SXFun SXFunction --deriving Show
-newtype Fun (f :: * -> *) (g :: * -> *) = Fun Function --deriving Show
+newtype MXFun (f :: * -> *) (g :: * -> *) = MXFun MXFunction
+newtype SXFun (f :: * -> *) (g :: * -> *) = SXFun SXFunction
+newtype Fun (f :: * -> *) (g :: * -> *) = Fun Function
+
+instance Show (MXFun f g) where
+  showsPrec k (MXFun f) = showsPrec k f
+instance Show (SXFun f g) where
+  showsPrec k (SXFun f) = showsPrec k f
+instance Show (Fun f g) where
+  showsPrec k (Fun f) = showsPrec k f
 
 class FunClass fun where
   fromFun :: Fun f g -> IO (fun f g)
