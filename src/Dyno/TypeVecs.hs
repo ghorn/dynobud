@@ -39,6 +39,7 @@ module Dyno.TypeVecs
        , tvlast
        , tvshiftl
        , tvshiftr
+       , tvlinspace
        , reifyVector
        , reifyDim
        , Dim
@@ -259,3 +260,9 @@ reifyDim i f = R.reify i (go f) where
 reifyVector :: forall a r. V.Vector a -> (forall (n :: *). Dim n => Vec n a -> r) -> r
 reifyVector v f = reifyDim (V.length v) $ \(Proxy :: Proxy n) -> f (MkVec (S.fromList (V.toList v)) :: Vec n a)
 {-# INLINE reifyVector #-}
+
+tvlinspace :: forall n a . (Dim n, Fractional a) => a -> a -> Vec n a
+tvlinspace x0 xf = mkVec' [x0 + h * fromIntegral k  | k <- take n [(0::Int)..]]
+  where
+    n = reflectDim (Proxy :: Proxy n)
+    h = (xf - x0) / fromIntegral (n - 1)
