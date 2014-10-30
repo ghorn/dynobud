@@ -26,6 +26,8 @@ import Data.Proxy
 import qualified Data.Vector as V
 import GHC.Generics ( Generic )
 
+import Casadi.Overloading
+
 import Dyno.Vectorize
 import Dyno.View.CasadiMat ( CasadiMat )
 import Dyno.View.JV
@@ -38,6 +40,61 @@ newtype M (f :: * -> *) (g :: * -> *) (a :: *) =
 
 instance Show a => Show (M f g a) where
   showsPrec p (UnsafeM x) = showsPrec p x
+
+over :: (View f, View g, CasadiMat a) => (a -> a) -> M f g a -> M f g a
+over f (UnsafeM x) = mkM (f x)
+
+over2 :: (View f, View g, CasadiMat a) => (a -> a -> a) -> M f g a -> M f g a -> M f g a
+over2 f (UnsafeM x) (UnsafeM y)= mkM (f x y)
+
+instance (View f, View g, CasadiMat a) => Num (M f g a) where
+  (+) = over2 (+)
+  (-) = over2 (-)
+  (*) = over2 (*)
+  negate = over negate
+  abs = over abs
+  signum = over signum
+  fromInteger k = mkM $ fromInteger k * CM.ones (nx,ny)
+    where
+      nx = size (Proxy :: Proxy f)
+      ny = size (Proxy :: Proxy f)
+instance (View f, View g, CasadiMat a) => Fractional (M f g a) where
+  (/) = over2 (/)
+  fromRational k = mkM $ fromRational k * CM.ones (nx,ny)
+    where
+      nx = size (Proxy :: Proxy f)
+      ny = size (Proxy :: Proxy f)
+instance (View f, View g, CasadiMat a) => Floating (M f g a) where
+  pi = mkM $ pi * CM.ones (nx,ny)
+    where
+      nx = size (Proxy :: Proxy f)
+      ny = size (Proxy :: Proxy f)
+  (**) = over2 (**)
+  exp   = over exp
+  log   = over log
+  sin   = over sin
+  cos   = over cos
+  tan   = over tan
+  asin  = over asin
+  atan  = over atan
+  acos  = over acos
+  sinh  = over sinh
+  cosh  = over cosh
+  tanh  = over tanh
+  asinh = over asinh
+  atanh = over atanh
+  acosh = over acosh
+
+instance (View f, View g, CasadiMat a) => Fmod (M f g a) where
+  fmod = over2 fmod
+
+instance (View f, View g, CasadiMat a) => ArcTan2 (M f g a) where
+  arctan2 = over2 arctan2
+
+instance (View f, View g, CasadiMat a) => SymOrd (M f g a) where
+  leq = over2 leq
+  geq = over2 geq
+  eq  = over2 eq
 
 mkM :: forall f g a . (View f, View g, CasadiMat a) => a -> M f g a
 mkM x = case mkM' x of

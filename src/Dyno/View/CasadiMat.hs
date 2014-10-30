@@ -6,11 +6,12 @@ module Dyno.View.CasadiMat
 
 import qualified Data.Vector as V
 
+import Casadi.Overloading ( Fmod, ArcTan2, SymOrd )
 import qualified Casadi.SX as SX
 import qualified Casadi.MX as MX
 import qualified Casadi.DMatrix as DMatrix
 
-class (Show a, Floating a) => CasadiMat a where
+class (Show a, Floating a, Fmod a, ArcTan2 a, SymOrd a) => CasadiMat a where
   vertsplit :: a -> V.Vector Int -> V.Vector a
   vertcat :: V.Vector a -> a
   horzsplit :: a -> V.Vector Int -> V.Vector a
