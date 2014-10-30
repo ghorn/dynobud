@@ -16,14 +16,17 @@ module Dyno.DirectCollocation.Types
        , fmapStage
        , fmapCollPoint
        , fillCollConstraints
+       , getXzus
        ) where
 
+import qualified Data.Foldable as F
 import Data.Serialize ( Serialize )
 import GHC.Generics ( Generic )
 import Linear.V ( Dim(..) )
 import Data.Vector ( Vector )
 
-import Dyno.View ( View(..), J, JV, JVec(..), S, mkJ, unJ, jfill, jreplicate )
+import Dyno.View ( View(..), J, JVec(..), S, mkJ, unJ, jfill, jreplicate )
+import Dyno.View.JV ( JV, splitJV )
 import Dyno.Vectorize ( Vectorize(..) )
 import Dyno.Cov ( Cov )
 
@@ -89,6 +92,19 @@ instance ( Vectorize x, Vectorize r, Dim n, Dim deg, Vectorize c, Vectorize h
          ) => View (CollOcpCovConstraints n deg x r c h sh shr sc)
 
 
+getXzus ::
+  (Vectorize x, Vectorize z, Vectorize u, Dim n, Dim deg)
+  => CollTraj x z u p n deg (Vector a) -> ([[x a]], [[z a]], [[u a]])
+getXzus (CollTraj _ _ stages xf) = (xs ++ [[splitJV xf]], zs, us)
+  where
+    (xs, zs, us) = unzip3 $ map (getXzus' . split) (F.toList (unJVec (split stages)))
+
+getXzus' :: (Vectorize x, Vectorize z, Vectorize u, Dim deg)
+            => CollStage (JV x) (JV z) (JV u) deg (Vector a) -> ([x a], [z a], [u a])
+getXzus' (CollStage x0 xzus) = (splitJV x0 : xs, zs, us)
+  where
+    (xs, zs, us) = unzip3 $ map (f . split) (F.toList (unJVec (split xzus)))
+    f (CollPoint x z u) = (splitJV x, splitJV z, splitJV u)
 
 fillCollConstraints ::
   forall x r c h n deg a .
