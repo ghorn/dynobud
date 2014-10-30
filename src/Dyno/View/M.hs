@@ -36,7 +36,7 @@ import Casadi.Overloading
 import Dyno.Vectorize
 import Dyno.View.CasadiMat ( CasadiMat )
 import Dyno.View.JV
-import qualified Dyno.TypeVecs as TV
+import Dyno.TypeVecs ( Vec, Dim )
 import Dyno.View.View
 import Dyno.View.Viewable
 import qualified Dyno.View.CasadiMat as CM
@@ -158,14 +158,14 @@ hcat x = mkM $ CM.horzcat $ V.map unM (vectorize x)
 
 vcat' ::
   forall f g n a .
-  (View f, View g, TV.Dim n, CasadiMat a)
-  => TV.Vec n (M f g a) -> M (JVec n f) g a
+  (View f, View g, Dim n, CasadiMat a)
+  => Vec n (M f g a) -> M (JVec n f) g a
 vcat' x = mkM $ CM.vertcat $ V.map unM (vectorize x)
 
 vsplit' ::
   forall f g n a .
-  (View f, View g, TV.Dim n, CasadiMat a)
-  => M (JVec n f) g a -> TV.Vec n (M f g a)
+  (View f, View g, Dim n, CasadiMat a)
+  => M (JVec n f) g a -> Vec n (M f g a)
 vsplit' (UnsafeM x) = fmap mkM $ devectorize $ CM.vertsplit x nrs
   where
     nr = size (Proxy :: Proxy f)
@@ -173,20 +173,18 @@ vsplit' (UnsafeM x) = fmap mkM $ devectorize $ CM.vertsplit x nrs
 
 hcat' ::
   forall f g n a .
-  (View f, View g, TV.Dim n, CasadiMat a)
-  => TV.Vec n (M f g a) -> M f (JVec n g) a
+  (View f, View g, Dim n, CasadiMat a)
+  => Vec n (M f g a) -> M f (JVec n g) a
 hcat' x = mkM $ CM.horzcat $ V.map unM (vectorize x)
 
 hsplit' ::
   forall f g n a .
-  (View f, View g, TV.Dim n, CasadiMat a)
-  => M f (JVec n g) a -> TV.Vec n (M f g a)
+  (View f, View g, Dim n, CasadiMat a)
+  => M f (JVec n g) a -> Vec n (M f g a)
 hsplit' (UnsafeM x) = fmap mkM $ devectorize $ CM.horzsplit x ncs
   where
     nc = size (Proxy :: Proxy g)
     ncs = V.fromList [0,1..nc]
-
-
 
 zeros :: forall f g a . (View f, View g, CasadiMat a) => M f g a
 zeros = mkM z
