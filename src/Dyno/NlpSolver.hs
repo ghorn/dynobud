@@ -79,7 +79,8 @@ import Dyno.View.JV
 import Dyno.View.View
 import Dyno.View.Symbolic
 import Dyno.View.Viewable ( Viewable )
-import Dyno.View.CasadiMat ( CasadiMat(..) )
+import Dyno.View.CasadiMat ( CasadiMat )
+import qualified Dyno.View.CasadiMat as CM
 import Dyno.Nlp ( Nlp(..), NlpOut(..), Nlp'(..), NlpOut'(..), Bounds )
 import Dyno.NlpScaling ( ScaleFuns(..), scaledFG, mkScaleFuns )
 import Data.Proxy
@@ -109,7 +110,7 @@ setInput ::
   -> NlpSolver x p g ()
 setInput scaleFun getLen name x0 = do
   nlpState <- ask
-  let x = unJ $ scaleFun (isScale nlpState) $ mkJ $ fromDVector (unJ x0)
+  let x = unJ $ scaleFun (isScale nlpState) $ mkJ $ CM.fromDVector (unJ x0)
   let nActual = (dsize1 x, dsize2 x)
       nTypeLevel = (getLen nlpState, 1)
   when (nTypeLevel /= nActual) $ error $

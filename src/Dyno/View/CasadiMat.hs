@@ -6,10 +6,12 @@ module Dyno.View.CasadiMat
 
 import qualified Data.Vector as V
 
+import System.IO.Unsafe ( unsafePerformIO )
 import Casadi.Overloading ( Fmod, ArcTan2, SymOrd )
 import qualified Casadi.SX as SX
 import qualified Casadi.MX as MX
 import qualified Casadi.DMatrix as DMatrix
+import Casadi.Core.Tools as C
 
 class (Show a, Floating a, Fmod a, ArcTan2 a, SymOrd a) => CasadiMat a where
   vertsplit :: a -> V.Vector Int -> V.Vector a
@@ -25,6 +27,7 @@ class (Show a, Floating a, Fmod a, ArcTan2 a, SymOrd a) => CasadiMat a where
   ones :: (Int,Int) -> a
   zeros :: (Int,Int) -> a
   fromDVector :: V.Vector Double -> a
+  solve :: a -> a -> a
 
 instance CasadiMat SX.SX where
   veccat = SX.sveccat
@@ -40,6 +43,7 @@ instance CasadiMat SX.SX where
   ones = SX.sones
   zeros = SX.szeros
   fromDVector = SX.d2s . fromDVector
+  solve = SX.ssolve
 
 instance CasadiMat MX.MX where
   veccat = MX.veccat
@@ -55,6 +59,7 @@ instance CasadiMat MX.MX where
   ones = MX.ones
   zeros = MX.zeros
   fromDVector = MX.d2m . fromDVector
+  solve = MX.solve
 
 instance CasadiMat DMatrix.DMatrix where
   veccat = DMatrix.dveccat
@@ -70,3 +75,4 @@ instance CasadiMat DMatrix.DMatrix where
   ones = DMatrix.dones
   zeros = DMatrix.dzeros
   fromDVector = DMatrix.dvector
+  solve x y = unsafePerformIO (C.solve__3 x y)

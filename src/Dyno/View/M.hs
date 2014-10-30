@@ -16,10 +16,15 @@ module Dyno.View.M
        , hsplit
        , vcat
        , hcat
+       , vsplit'
+       , hsplit'
+       , vcat'
+       , hcat'
        , row
        , col
        , unrow
        , uncol
+       , solve
        ) where
 
 import Data.Proxy
@@ -31,6 +36,7 @@ import Casadi.Overloading
 import Dyno.Vectorize
 import Dyno.View.CasadiMat ( CasadiMat )
 import Dyno.View.JV
+import qualified Dyno.TypeVecs as TV
 import Dyno.View.View
 import Dyno.View.Viewable
 import qualified Dyno.View.CasadiMat as CM
@@ -122,7 +128,7 @@ trans (UnsafeM m) = mkM (CM.trans m)
 
 vsplit ::
   forall f g a .
-  (Vectorize f, View g, CasadiMat a, Viewable a)
+  (Vectorize f, View g, CasadiMat a)
   => M (JV f) g a -> f (M (JV Id) g a)
 vsplit (UnsafeM x) = fmap mkM $ devectorize $ CM.vertsplit x nrs
   where
@@ -131,13 +137,13 @@ vsplit (UnsafeM x) = fmap mkM $ devectorize $ CM.vertsplit x nrs
 
 vcat ::
   forall f g a .
-  (Vectorize f, View g, CasadiMat a, Viewable a)
+  (Vectorize f, View g, CasadiMat a)
   => f (M (JV Id) g a) -> M (JV f) g a
 vcat x = mkM $ CM.vertcat $ V.map unM (vectorize x)
 
 hsplit ::
   forall f g a .
-  (View f, Vectorize g, CasadiMat a, Viewable a)
+  (View f, Vectorize g, CasadiMat a)
   => M f (JV g) a -> g (M f (JV Id) a)
 hsplit (UnsafeM x) = fmap mkM $ devectorize $ CM.horzsplit x ncs
   where
@@ -146,9 +152,41 @@ hsplit (UnsafeM x) = fmap mkM $ devectorize $ CM.horzsplit x ncs
 
 hcat ::
   forall f g a .
-  (View f, Vectorize g, CasadiMat a, Viewable a)
+  (View f, Vectorize g, CasadiMat a)
   => g (M f (JV Id) a) -> M f (JV g) a
 hcat x = mkM $ CM.horzcat $ V.map unM (vectorize x)
+
+vcat' ::
+  forall f g n a .
+  (View f, View g, TV.Dim n, CasadiMat a)
+  => TV.Vec n (M f g a) -> M (JVec n f) g a
+vcat' x = mkM $ CM.vertcat $ V.map unM (vectorize x)
+
+vsplit' ::
+  forall f g n a .
+  (View f, View g, TV.Dim n, CasadiMat a)
+  => M (JVec n f) g a -> TV.Vec n (M f g a)
+vsplit' (UnsafeM x) = fmap mkM $ devectorize $ CM.vertsplit x nrs
+  where
+    nr = size (Proxy :: Proxy f)
+    nrs = V.fromList [0,1..nr]
+
+hcat' ::
+  forall f g n a .
+  (View f, View g, TV.Dim n, CasadiMat a)
+  => TV.Vec n (M f g a) -> M f (JVec n g) a
+hcat' x = mkM $ CM.horzcat $ V.map unM (vectorize x)
+
+hsplit' ::
+  forall f g n a .
+  (View f, View g, TV.Dim n, CasadiMat a)
+  => M f (JVec n g) a -> TV.Vec n (M f g a)
+hsplit' (UnsafeM x) = fmap mkM $ devectorize $ CM.horzsplit x ncs
+  where
+    nc = size (Proxy :: Proxy g)
+    ncs = V.fromList [0,1..nc]
+
+
 
 zeros :: forall f g a . (View f, View g, CasadiMat a) => M f g a
 zeros = mkM z
@@ -175,3 +213,6 @@ unrow (UnsafeM x) = mkJ (CM.trans x)
 
 uncol :: (Viewable a, CasadiMat a, View f) => M f (JV Id) a -> J f a
 uncol (UnsafeM x) = mkJ x
+
+solve :: (View g, View h, CasadiMat a) => M f g a -> M f h a -> M g h a
+solve (UnsafeM x) (UnsafeM y) = mkM (CM.solve x y)

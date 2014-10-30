@@ -8,6 +8,9 @@ module Dyno.Cov
        , toMat
        , toMat'
        , toMat''
+       , fromMat
+       , fromMat'
+       , fromMat''
        , toMatrix
        , toMatrix'
        , toMatrix''
@@ -43,7 +46,8 @@ import qualified Casadi.MX as MX
 import qualified Casadi.DMatrix as DMatrix
 import Casadi.SXElement
 
-import Dyno.View
+import Dyno.View.View
+import Dyno.View.Viewable
 import Dyno.View.M
 import qualified Dyno.View.Symbolic as S
 
@@ -169,6 +173,16 @@ diag'' = fromMatrix'' . DMatrix.ddiag . unJ
 --
 --dd2 :: J (Cov X) DMatrix
 --dd2 = fromMatrix'' sp
+
+-- todo CasadiMat class
+fromMat :: View f => M f f SX -> J (Cov f) SX
+fromMat (UnsafeM c) = fromMatrix c
+
+fromMat' :: View f => M f f MX -> J (Cov f) MX
+fromMat' (UnsafeM c) = fromMatrix' c
+
+fromMat'' :: View f => M f f DMatrix -> J (Cov f) DMatrix
+fromMat'' (UnsafeM c) = fromMatrix'' c
 
 -- todo: this is way too dense
 fromMatrix :: View f => SX -> J (Cov f) SX

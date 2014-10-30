@@ -30,6 +30,7 @@ library
                        Dyno.DirectCollocation.Dynamic
                        Dyno.DirectCollocation.Quadratures
                        Dyno.DirectCollocation.Profile
+                       Dyno.DirectCollocation.Robust
                        Dyno.Cov
                        Dyno.View
                        Dyno.View.M
