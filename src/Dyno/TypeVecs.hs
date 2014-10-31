@@ -42,7 +42,7 @@ module Dyno.TypeVecs
        , tvlinspace
        , reifyVector
        , reifyDim
-       , Dim
+       , Dim(..)
        )
        where
 

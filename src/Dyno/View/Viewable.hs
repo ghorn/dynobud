@@ -10,31 +10,39 @@ import qualified Data.Vector as V
 import qualified Casadi.SX as SX
 import qualified Casadi.MX as MX
 import qualified Casadi.DMatrix as DMatrix
---import qualified Dyno.View.CasadiMat as CM
+import qualified Dyno.View.CasadiMat as CM
 
 class Viewable a where
   vvertsplit :: a -> V.Vector Int -> V.Vector a
   vhorzsplit :: a -> V.Vector Int -> V.Vector a
   vveccat :: V.Vector a -> a
   vsize1 :: a -> Int
+  vsize2 :: a -> Int
+  vrecoverDimension :: a -> Int -> a
 
 instance Viewable SX.SX where
   vveccat = SX.sveccat
-  vvertsplit = SX.svertsplit
-  vhorzsplit = SX.shorzsplit
-  vsize1 = SX.ssize1
+  vvertsplit = CM.vertsplit
+  vhorzsplit = CM.horzsplit
+  vsize1 = CM.size1
+  vsize2 = CM.size2
+  vrecoverDimension _ k = CM.zeros (k,1)
 
 instance Viewable MX.MX where
   vveccat = MX.veccat
-  vvertsplit = MX.vertsplit
-  vhorzsplit = MX.horzsplit
-  vsize1 = MX.size1
+  vvertsplit = CM.vertsplit
+  vhorzsplit = CM.horzsplit
+  vsize1 = CM.size1
+  vsize2 = CM.size2
+  vrecoverDimension _ k = CM.zeros (k,1)
 
 instance Viewable DMatrix.DMatrix where
   vveccat = DMatrix.dveccat
-  vvertsplit = DMatrix.dvertsplit
-  vhorzsplit = DMatrix.dhorzsplit
-  vsize1 = DMatrix.dsize1
+  vvertsplit = CM.vertsplit
+  vhorzsplit = CM.horzsplit
+  vsize1 = CM.size1
+  vsize2 = CM.size2
+  vrecoverDimension _ k = CM.zeros (k,1)
 
 --instance CM.CasadiMat a => Viewable a where
 --  vveccat = CM.veccat
@@ -46,9 +54,11 @@ instance Viewable DMatrix.DMatrix where
 
 instance Viewable (V.Vector a) where
   vsize1 = V.length
+  vsize2 = const 1
   vveccat = V.concat . V.toList
   vvertsplit x ks = V.fromList (split x (V.toList ks))
   vhorzsplit _ _ = error "vhorzsplit not defined for Vector"
+  vrecoverDimension x _ = x
 
 split :: V.Vector a -> [Int] -> [V.Vector a]
 split v xs@(0:_) = split' v xs

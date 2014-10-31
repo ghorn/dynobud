@@ -36,7 +36,7 @@ import Casadi.Overloading
 import Dyno.Vectorize
 import Dyno.View.CasadiMat ( CasadiMat )
 import Dyno.View.JV
-import Dyno.TypeVecs ( Vec, Dim )
+import Dyno.TypeVecs ( Vec, Dim(..) )
 import Dyno.View.View
 import Dyno.View.Viewable
 import qualified Dyno.View.CasadiMat as CM
@@ -110,8 +110,8 @@ mkM x = case mkM' x of
 mkM' :: forall f g a . (View f, View g, CasadiMat a) => a -> Either String (M f g a)
 mkM' x
   | nx == nx' && ny == ny' = Right (UnsafeM x)
---  | all (== 0) [nx,nx'] && ny' == 0 =  Right (UnsafeM x)
---  | all (== 0) [ny,ny'] && nx' == 0 =  Right (UnsafeM x)
+  | all (== 0) [nx,nx'] && ny' == 0 =  Right zeros
+  | all (== 0) [ny,ny'] && nx' == 0 =  Right zeros
   | otherwise = Left $ "mkM length mismatch: typed size: " ++ show (nx,ny) ++
                 ", actual size: " ++ show (nx', ny')
   where
@@ -166,10 +166,14 @@ vsplit' ::
   forall f g n a .
   (View f, View g, Dim n, CasadiMat a)
   => M (JVec n f) g a -> Vec n (M f g a)
-vsplit' (UnsafeM x) = fmap mkM $ devectorize $ CM.vertsplit x nrs
+vsplit' (UnsafeM x)
+  | n == 0 = fill zeros
+  | nr == 0 = fill zeros
+  | otherwise = fmap mkM $ devectorize $ CM.vertsplit x nrs
   where
+    n = reflectDim (Proxy :: Proxy n)
     nr = size (Proxy :: Proxy f)
-    nrs = V.fromList [0,1..nr]
+    nrs = V.fromList [0,nr..n*nr]
 
 hcat' ::
   forall f g n a .
@@ -181,10 +185,14 @@ hsplit' ::
   forall f g n a .
   (View f, View g, Dim n, CasadiMat a)
   => M f (JVec n g) a -> Vec n (M f g a)
-hsplit' (UnsafeM x) = fmap mkM $ devectorize $ CM.horzsplit x ncs
+hsplit' (UnsafeM x)
+  | n == 0 = fill zeros
+  | nc == 0 = fill zeros
+  | otherwise = fmap mkM $ devectorize $ CM.horzsplit x ncs
   where
+    n = reflectDim (Proxy :: Proxy n)
     nc = size (Proxy :: Proxy g)
-    ncs = V.fromList [0,1..nc]
+    ncs = V.fromList [0,nc..n*nc]
 
 zeros :: forall f g a . (View f, View g, CasadiMat a) => M f g a
 zeros = mkM z
