@@ -345,9 +345,12 @@ executable dynoplot
 ----  ghc-options:         -O2
 
 test-suite unit-tests
-  type: exitcode-stdio-1.0
+  type:                exitcode-stdio-1.0
   hs-source-dirs:      tests
   main-is:             NewUnitTests.hs
+  other-modules:       VectorizeTests
+                       ViewTests
+                       Utils
   default-language:    Haskell2010
   build-depends:       dynobud,
                        QuickCheck >= 2,
@@ -358,4 +361,4 @@ test-suite unit-tests
                        vector,
                        linear,
                        base >=4.6 && <4.8
---  ghc-options:         -O2
+  ghc-options:         -O2
