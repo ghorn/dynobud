@@ -2,6 +2,7 @@
 {-# Language ScopedTypeVariables #-}
 {-# Language GADTs #-}
 {-# Language DeriveGeneric #-}
+{-# Language FlexibleInstances #-}
 
 module ViewTests
        ( Views(..)
@@ -9,11 +10,16 @@ module ViewTests
        , viewTests
        ) where
 
+import qualified Data.Vector as V
 import GHC.Generics ( Generic )
-
+import System.IO.Unsafe ( unsafePerformIO )
 import Test.QuickCheck
 import Test.Framework ( Test, testGroup )
 import Test.Framework.Providers.QuickCheck2 ( testProperty )
+
+import Casadi.Function ( evalDMatrix )
+import Casadi.MXFunction ( mxFunction )
+import Casadi.SharedObject ( soInit )
 
 import Dyno.TypeVecs ( Vec, Dim )
 import Dyno.Vectorize
@@ -35,17 +41,26 @@ instance Show Views where
   show = vwName
 
 data CasadiMats where
-  CasadiMats :: (Viewable f, CasadiMat f) =>
+  CasadiMats :: (Viewable f, CasadiMat f, MyEq f) =>
                 { cmName :: String
                 , cmProxy :: Proxy f
                 } -> CasadiMats
 instance Show CasadiMats where
   show = cmName
+
+-- MX is less frequent because evalMX takes a while
 instance Arbitrary CasadiMats where
-  arbitrary = elements [ CasadiMats "MX" (Proxy :: Proxy MX)
-                       , CasadiMats "SX" (Proxy :: Proxy SX)
-                       , CasadiMats "DMatrix" (Proxy :: Proxy DMatrix)
-                       ]
+  arbitrary = frequency [ (1, return (CasadiMats "MX" (Proxy :: Proxy MX)))
+                        , (5, return (CasadiMats "SX" (Proxy :: Proxy SX)))
+                        , (5, return (CasadiMats "DMatrix" (Proxy :: Proxy DMatrix)))
+                        ]
+
+evalMX :: MX -> DMatrix
+evalMX x = unsafePerformIO $ do
+  f <- mxFunction V.empty (V.singleton x)
+  soInit f
+  ret <- evalDMatrix f V.empty
+  return (V.head ret)
 
 data JX0 f a = JX0 (J (JV f) a) (J (JV f) a) deriving (Show, Generic, Generic1)
 instance Vectorize f => View (JX0 f)
@@ -62,6 +77,22 @@ instance (View f, View g, Vectorize h) => View (JX2 f g h)
 
 maxViewSize :: Int
 maxViewSize = 200
+
+class MyEq a where
+  myEq :: a -> a -> Bool
+
+instance MyEq a => MyEq (J f a) where
+  myEq (UnsafeJ x) (UnsafeJ y) = myEq x y
+instance MyEq a => MyEq (M f g a) where
+  myEq (UnsafeM x) (UnsafeM y) = myEq x y
+instance MyEq SX where
+  myEq = (==)
+instance MyEq DMatrix where
+  myEq = (==)
+instance MyEq MX where
+  myEq x y = myEq (evalMX x) (evalMX y)
+instance (Dim n, MyEq a) => MyEq (Vec n a) where
+  myEq f g = V.and $ V.zipWith myEq (vectorize f) (vectorize g)
 
 instance Arbitrary Views where
   arbitrary = do
@@ -117,8 +148,8 @@ primitives = do
 --instance Scheme M3
 --instance Scheme M4
 
-beEqual :: (Eq a, Show a) => a -> a -> Property
-beEqual x y = counterexample (sx ++ " =/= " ++ sy) (x == y)-- || sx == sy)
+beEqual :: (MyEq a, Show a) => a -> a -> Property
+beEqual x y = counterexample (sx ++ " =/= " ++ sy) (myEq x y)
   where
     sx = show x
     sy = show y
@@ -126,10 +157,10 @@ beEqual x y = counterexample (sx ++ " =/= " ++ sy) (x == y)-- || sx == sy)
 prop_VSplitVCat :: Test
 prop_VSplitVCat =
   testProperty "vcat . vsplit" $
-  \(Vectorizes _ _ p1) (Views _ _ p2) (CasadiMats _ pm) -> test p1 p2 pm
+  \(Vectorizes _ _ p1) (Views _ _ p2) (CasadiMats {cmProxy = pm}) -> test p1 p2 pm
   where
     test :: forall f g a
-            . (Vectorize f, View g, CasadiMat a)
+            . (Vectorize f, View g, CasadiMat a, MyEq a)
             => Proxy f -> Proxy g -> Proxy a -> Property
     test _ _ _ = beEqual x0 x1
       where
@@ -142,10 +173,10 @@ prop_VSplitVCat =
 prop_HSplitHCat :: Test
 prop_HSplitHCat  =
   testProperty "hcat . hsplit" $
-  \(Views _ _ p1) (Vectorizes _ _ p2) (CasadiMats _ pm) -> test p1 p2 pm
+  \(Views _ _ p1) (Vectorizes _ _ p2) (CasadiMats {cmProxy = pm}) -> test p1 p2 pm
   where
     test :: forall f g a
-            . (View f, Vectorize g, CasadiMat a)
+            . (View f, Vectorize g, CasadiMat a, MyEq a)
             => Proxy f -> Proxy g -> Proxy a -> Property
     test _ _ _ = beEqual x0 x1
       where
@@ -158,10 +189,10 @@ prop_HSplitHCat  =
 prop_VSplitVCat' :: Test
 prop_VSplitVCat'  =
   testProperty "vsplit' . vcat'" $
-  \(Dims _ pd) (Views _ _ p1) (Views _ _ p2) (CasadiMats _ pm) -> test pd p1 p2 pm
+  \(Dims _ pd) (Views _ _ p1) (Views _ _ p2) (CasadiMats {cmProxy = pm}) -> test pd p1 p2 pm
   where
     test :: forall f g n a
-            . (View f, View g, Dim n, CasadiMat a)
+            . (View f, View g, Dim n, CasadiMat a, MyEq a)
             => Proxy n -> Proxy f -> Proxy g -> Proxy a -> Property
     test _ _ _ _ = beEqual x0 x1
       where
@@ -175,10 +206,10 @@ prop_VSplitVCat'  =
 prop_HSplitHCat' :: Test
 prop_HSplitHCat' =
   testProperty "hsplit' . hcat'" $
-  \(Dims _ pd) (Views _ _ p1) (Views _ _ p2) (CasadiMats _ pm) -> test pd p1 p2 pm
+  \(Dims _ pd) (Views _ _ p1) (Views _ _ p2) (CasadiMats {cmProxy = pm}) -> test pd p1 p2 pm
   where
     test :: forall f g n a
-            . (View f, View g, Dim n, CasadiMat a)
+            . (View f, View g, Dim n, CasadiMat a, MyEq a)
             => Proxy n -> Proxy f -> Proxy g -> Proxy a -> Property
     test _ _ _ _ = beEqual x0 x1
       where
@@ -191,10 +222,10 @@ prop_HSplitHCat' =
 prop_testSplitJ :: Test
 prop_testSplitJ  =
   testProperty "split . cat J" $
-  \(Vectorizes _ _ p) (CasadiMats _ pm) -> test p pm
+  \(Vectorizes _ _ p) (CasadiMats {cmProxy = pm}) -> test p pm
   where
     test :: forall f a
-            . (Vectorize f, CasadiMat a, Viewable a)
+            . (Vectorize f, CasadiMat a, Viewable a, MyEq a)
             => Proxy f -> Proxy a -> Property
     test _ _ = beEqual xj0 xj2
       where
