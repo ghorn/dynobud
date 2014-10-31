@@ -13,7 +13,7 @@ import qualified Casadi.MX as MX
 import qualified Casadi.DMatrix as DMatrix
 import Casadi.Core.Tools as C
 
-class (Show a, Floating a, Fmod a, ArcTan2 a, SymOrd a) => CasadiMat a where
+class (Eq a, Show a, Floating a, Fmod a, ArcTan2 a, SymOrd a) => CasadiMat a where
   vertsplit :: a -> V.Vector Int -> V.Vector a
   vertcat :: V.Vector a -> a
   horzsplit :: a -> V.Vector Int -> V.Vector a
