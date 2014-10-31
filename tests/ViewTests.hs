@@ -5,6 +5,7 @@
 
 module ViewTests
        ( Views(..)
+       , CasadiMats(..)
        , viewTests
        ) where
 
@@ -18,10 +19,33 @@ import Dyno.TypeVecs ( Vec, Dim )
 import Dyno.Vectorize
 import Dyno.View
 import Dyno.View.M
+import Dyno.View.CasadiMat ( CasadiMat )
 import Dyno.Cov
 
 import Utils
 import VectorizeTests ( Vectorizes(..), Dims(..) )
+
+data Views where
+  Views :: View f =>
+           { vwShrinks :: [Views]
+           , vwName :: String
+           , vwProxy :: Proxy f
+           } -> Views
+instance Show Views where
+  show = vwName
+
+data CasadiMats where
+  CasadiMats :: (Viewable f, CasadiMat f) =>
+                { cmName :: String
+                , cmProxy :: Proxy f
+                } -> CasadiMats
+instance Show CasadiMats where
+  show = cmName
+instance Arbitrary CasadiMats where
+  arbitrary = elements [ CasadiMats "MX" (Proxy :: Proxy MX)
+                       , CasadiMats "SX" (Proxy :: Proxy SX)
+                       , CasadiMats "DMatrix" (Proxy :: Proxy DMatrix)
+                       ]
 
 data JX0 f a = JX0 (J (JV f) a) (J (JV f) a) deriving (Show, Generic, Generic1)
 instance Vectorize f => View (JX0 f)
@@ -44,8 +68,6 @@ instance Arbitrary Views where
     x <- oneof [primitives, compound primitives, compound (compound primitives)]
     if viewSize x <= maxViewSize then return x else arbitrary
   shrink = filter ((<= maxViewSize) . viewSize) . vwShrinks
-
-type WX = DMatrix
 
 compound :: Gen Views -> Gen Views
 compound genIt = do
@@ -95,92 +117,96 @@ primitives = do
 --instance Scheme M3
 --instance Scheme M4
 
-data Views where
-  Views :: View f =>
-           { vwShrinks :: [Views]
-           , vwName :: String
-           , vwProxy :: Proxy f
-           } -> Views
-instance Show Views where
-  show = vwName
-
 beEqual :: (Eq a, Show a) => a -> a -> Property
-beEqual x y = counterexample (show x ++ " =/= " ++ show y) (x == y)
+beEqual x y = counterexample (sx ++ " =/= " ++ sy) (x == y)-- || sx == sy)
+  where
+    sx = show x
+    sy = show y
 
 prop_VSplitVCat :: Test
 prop_VSplitVCat =
   testProperty "vcat . vsplit" $
-  \(Vectorizes _ _ p1) (Views _ _ p2) -> test p1 p2
+  \(Vectorizes _ _ p1) (Views _ _ p2) (CasadiMats _ pm) -> test p1 p2 pm
   where
-    test :: forall f g . (Vectorize f, View g) => Proxy f -> Proxy g -> Property
-    test _ _ = beEqual x0 x1
+    test :: forall f g a
+            . (Vectorize f, View g, CasadiMat a)
+            => Proxy f -> Proxy g -> Proxy a -> Property
+    test _ _ _ = beEqual x0 x1
       where
-        x0 :: M (JV f) g WX
-        x0 = ones
+        x0 :: M (JV f) g a
+        x0 = countUp
 
-        x1 :: M (JV f) g WX
+        x1 :: M (JV f) g a
         x1 = vcat (vsplit x0)
 
 prop_HSplitHCat :: Test
 prop_HSplitHCat  =
   testProperty "hcat . hsplit" $
-  \(Views _ _ p1) (Vectorizes _ _ p2) -> test p1 p2
+  \(Views _ _ p1) (Vectorizes _ _ p2) (CasadiMats _ pm) -> test p1 p2 pm
   where
-    test :: forall f g . (View f, Vectorize g) => Proxy f -> Proxy g -> Property
-    test _ _ = beEqual x0 x1
+    test :: forall f g a
+            . (View f, Vectorize g, CasadiMat a)
+            => Proxy f -> Proxy g -> Proxy a -> Property
+    test _ _ _ = beEqual x0 x1
       where
-        x0 :: M f (JV g) WX
-        x0 = ones
+        x0 :: M f (JV g) a
+        x0 = countUp
 
-        x1 :: M f (JV g) WX
+        x1 :: M f (JV g) a
         x1 = hcat (hsplit x0)
 
 prop_VSplitVCat' :: Test
 prop_VSplitVCat'  =
   testProperty "vsplit' . vcat'" $
-  \(Dims _ pd) (Views _ _ p1) (Views _ _ p2) -> test pd p1 p2
+  \(Dims _ pd) (Views _ _ p1) (Views _ _ p2) (CasadiMats _ pm) -> test pd p1 p2 pm
   where
-    test :: forall f g n . (View f, View g, Dim n) => Proxy n -> Proxy f -> Proxy g -> Property
-    test _ _ _ = beEqual x0 x1
+    test :: forall f g n a
+            . (View f, View g, Dim n, CasadiMat a)
+            => Proxy n -> Proxy f -> Proxy g -> Proxy a -> Property
+    test _ _ _ _ = beEqual x0 x1
       where
-        x0 :: Vec n (M f g WX)
-        x0 = fill ones
+        x0 :: Vec n (M f g a)
+        x0 = fill countUp
 
-        x1 :: Vec n (M f g WX)
+        x1 :: Vec n (M f g a)
         x1 = vsplit' (vcat' x0)
 
 
 prop_HSplitHCat' :: Test
 prop_HSplitHCat' =
   testProperty "hsplit' . hcat'" $
-  \(Dims _ pd) (Views _ _ p1) (Views _ _ p2) -> test pd p1 p2
+  \(Dims _ pd) (Views _ _ p1) (Views _ _ p2) (CasadiMats _ pm) -> test pd p1 p2 pm
   where
-    test :: forall f g n . (View f, View g, Dim n) => Proxy n -> Proxy f -> Proxy g -> Property
-    test _ _ _ = beEqual x0 x1
+    test :: forall f g n a
+            . (View f, View g, Dim n, CasadiMat a)
+            => Proxy n -> Proxy f -> Proxy g -> Proxy a -> Property
+    test _ _ _ _ = beEqual x0 x1
       where
-        x0 :: Vec n (M f g WX)
-        x0 = fill ones
+        x0 :: Vec n (M f g a)
+        x0 = fill countUp
 
-        x1 :: Vec n (M f g WX)
+        x1 :: Vec n (M f g a)
         x1 = hsplit' (hcat' x0)
 
 prop_testSplitJ :: Test
 prop_testSplitJ  =
   testProperty "split . cat J" $
-  \(Vectorizes _ _ p) -> test p
+  \(Vectorizes _ _ p) (CasadiMats _ pm) -> test p pm
   where
-    test :: forall f . Vectorize f => Proxy f -> Property
-    test _ = beEqual xj0 xj2
+    test :: forall f a
+            . (Vectorize f, CasadiMat a, Viewable a)
+            => Proxy f -> Proxy a -> Property
+    test _ _ = beEqual xj0 xj2
       where
-        UnsafeM xm0 = ones :: M (JV f) (JV Id) WX
+        UnsafeM xm0 = ones :: M (JV f) (JV Id) a
 
-        xj0 :: J (JV f) WX
+        xj0 :: J (JV f) a
         xj0 = mkJ xm0
 
-        xj1 :: JV f WX
+        xj1 :: JV f a
         xj1 = split xj0
 
-        xj2 :: J (JV f) WX
+        xj2 :: J (JV f) a
         xj2 = cat xj1
 
 viewTests :: Test

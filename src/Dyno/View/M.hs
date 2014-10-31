@@ -12,6 +12,7 @@ module Dyno.View.M
        , trans
        , zeros
        , ones
+       , countUp
        , vsplit
        , hsplit
        , vcat
@@ -205,6 +206,18 @@ ones :: forall f g a . (View f, View g, CasadiMat a) => M f g a
 ones = mkM z
   where
     z = CM.ones (rows, cols)
+    rows = size (Proxy :: Proxy f)
+    cols = size (Proxy :: Proxy g)
+
+-- this is mainly for unit tests
+countUp :: forall f g a . (View f, View g, CasadiMat a) => M f g a
+countUp = mkM z
+  where
+    z = CM.vertcat (V.fromList [CM.horzcat (V.fromList [ fromIntegral (c + cols*r)
+                                                       | c <- [0..(cols-1)]
+                                                       ])
+                               | r <- [0..(rows-1)]
+                               ])
     rows = size (Proxy :: Proxy f)
     cols = size (Proxy :: Proxy g)
 
