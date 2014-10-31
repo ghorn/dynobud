@@ -28,7 +28,6 @@ import qualified Numeric.LinearAlgebra.Algorithms as LA
 import Linear.Matrix hiding ( trace )
 import Linear.V
 
-import Casadi.MX ( solve, d2m )
 import Casadi.SXElement ( SXElement )
 import Casadi.SX ( sdata, sdense, svector )
 import Casadi.DMatrix ( dvector, ddata, ddense )
@@ -36,8 +35,6 @@ import Casadi.DMatrix ( dvector, ddata, ddense )
 import Dyno.View.CasadiMat hiding ( solve )
 import Dyno.Cov
 import Dyno.View
-import qualified Dyno.View.M as M
-import Dyno.View.FunJac
 import Dyno.Vectorize ( Vectorize(..), fill, vlength, vzipWith )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
@@ -226,10 +223,6 @@ makeCollCovNlp ocp ocpCov = do
 
       deg = reflectDim (Proxy :: Proxy deg)
 
-      -- coefficients for getting xdot by lagrange interpolating polynomials
-      cijs :: Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
-      cijs = lagrangeDerivCoeffs (0 TV.<| taus)
-
   computeSensitivities <- mkComputeSensitivities roots (ocpCovDae ocpCov)
   computeCovariances <- mkComputeCovariances computeSensitivities (ocpCovSq ocpCov)
 
@@ -239,20 +232,6 @@ makeCollCovNlp ocp ocpCov = do
     re' $ ocpCovMayer ocpCov (de' x0) (de x1) (de x2) x3 x4
   lagrangeFun <- toSXFun "cov lagrange" $ \(x0:*:x1:*:x2:*:x3) ->
     re' $ ocpCovLagrange ocpCov (de' x0) (de x1) x2 (de' x3)
-
-  errorDynFun <- toSXFun "error dynamics" $ errorDynamicsFunction $
-            \x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 ->
-            let r = ocpCovDae ocpCov
-                    (de x0) (de x1) (de x2) (de x3) (de x4)
-                    (de' x5) (de x6) (de x7) (de x8) (de x9)
-            in re r
-
-  edscf <- toMXFun "errorDynamicsStageCon" (errorDynStageConstraints cijs taus errorDynFun)
-  errorDynStageConFunJac <- toFunJac edscf
-
-  covStageFun <- toMXFun "covStageFunction" $ covStageFunction (callMXFun errorDynStageConFunJac)
---  let callCovStageFun = callMXFun covStageFun
-  callCovStageFun <- fmap callSXFun (expandMXFun covStageFun)
 
   cp0 <- makeCollProblem ocp
 
@@ -286,12 +265,6 @@ makeCollCovNlp ocp ocpCov = do
         (nlpFG' nlp0)
 
   -- callbacks
-  getCov <- toMXFun "getCovariances" $ getCovariances taus (ocpCovSq ocpCov) callCovStageFun
-    :: IO
-       (MXFun
-        (J (CollTrajCov sx x z u p n deg))
-        (J (JVec n (Cov (JV sx))) :*: J (Cov (JV sx))))
-
   let dmToDv :: J a (Vector Double) -> J a DMatrix
       dmToDv (UnsafeJ v) = UnsafeJ (dvector v)
 
@@ -303,7 +276,9 @@ makeCollCovNlp ocp ocpCov = do
       callback collTrajCov = do
         let CollTrajCov _ collTraj = split collTrajCov
         (dynCollTraj, outputs) <- callback0 collTraj
-        covs' :*: pF <- evalMXFun getCov (dmToDv collTrajCov)
+        covTraj <- fmap split $ evalMXFun computeCovariances (dmToDv collTrajCov)
+        let covs' = ctAllButLast covTraj
+            pF = ctLast covTraj
         let covs = unJVec (split covs') :: Vec n (J (Cov (JV sx)) DMatrix)
         return (dynCollTraj, outputs, fmap dvToDm covs, dvToDm pF)
 
@@ -518,60 +493,6 @@ getFgCov
     robustifiedPathC = TV.tvzipWith (robustify gammas) x0s covs
 
 
--- todo: calculate by first multiplying all the Fs
-getCovariances ::
-  forall z x u p sx sw n deg .
-  (Dim deg, Dim n, Vectorize x, Vectorize z, Vectorize u, Vectorize p,
-   Vectorize sx, Vectorize sw)
-   -- taus
-  => Vec deg Double
-   -- sq
-  -> J (Cov (JV sw)) DMatrix
-   -- covStageFun
-  -> ((J (Cov (JV sx)) :*: J S :*: J (JV p) :*: J (JVec deg S)
-      :*: J (JV x) :*: J (JVec deg (CollPoint (JV x) (JV z) (JV u))) :*: J (Cov (JV sw))) MX
-      -> J (Cov (JV sx)) MX)
-  -> J (CollTrajCov sx x z u p n deg) MX
-  -> (((J (JVec n (Cov (JV sx)))) :*: J (Cov (JV sx))) MX)
-getCovariances taus sq covStageFun
-  collTrajCov = cat (JVec covs) :*: pF
-  where
-    CollTrajCov p0 collTraj = split collTrajCov
-
-    -- split up the design vars
-    CollTraj tf parm stages' _ = split collTraj
-    stages = unJVec (split stages') :: Vec n (J (CollStage (JV x) (JV z) (JV u) deg) MX)
-    spstages = fmap split stages :: Vec n (CollStage (JV x) (JV z) (JV u) deg MX)
-
-    -- timestep
-    dt = tf / fromIntegral n
-    n = reflectDim (Proxy :: Proxy n)
-
-    -- initial time at each collocation stage
-    t0s :: Vec n (J S MX)
-    t0s = TV.mkVec' $ take n [dt * fromIntegral k | k <- [(0::Int)..]]
-
-    -- times at each collocation point
-    times :: Vec n (Vec deg (J S MX))
-    times = fmap (\t0 -> fmap (\tau -> t0 + realToFrac tau * dt) taus) t0s
-
-    times' :: Vec n (J (JVec deg S) MX)
-    times' = fmap (cat . JVec) times
-
-    -- Q
-    covInjections :: Vec n (J (Cov (JV sw)) MX)
-    covInjections = fill (mkJ (d2m (unJ sq)))
-
-    covs :: Vec n (J (Cov (JV sx)) MX) -- all but last covariances
-    pF :: J (Cov (JV sx)) MX -- last covariances
-    (pF, covs) = T.mapAccumL ff p0 $ TV.tvzip3 spstages times' covInjections
-
-    ff :: J (Cov (JV sx)) MX
-          -> (CollStage (JV x) (JV z) (JV u) deg MX, J (JVec deg S) MX, J (Cov (JV sw)) MX)
-          -> (J (Cov (JV sx)) MX, J (Cov (JV sx)) MX)
-    ff cov0 (CollStage x0' xzus, stageTimes, covInj) = (cov1, cov0)
-      where
-        cov1 = covStageFun (cov0 :*: dt :*: parm :*: stageTimes :*: x0' :*: xzus :*: covInj)
 
 
 
@@ -668,20 +589,6 @@ dynamicsFunction dae (t :*: parm :*: x' :*: collPoint) =
     CollPoint x z u = split collPoint
     (r,o) = dae x' x z u parm t
 
--- dynamics residual and outputs
-errorDynamicsFunction ::
-  forall x z u p r sx sz sw a .
-  (View x, View z, View u, View r, View sx, View sz, View sw, Viewable a)
-  => (J x a -> J x a -> J z a -> J u a -> J p a -> J S a
-      -> J sx a -> J sx a -> J sz a -> J sw a -> J r a)
-  -> (J S :*: J p :*: J x :*: J (CollPoint x z u) :*: J sx :*: J sx :*: J sz :*: J sw) a
-  -> J r a
-errorDynamicsFunction dae (t :*: parm :*: x' :*: collPoint :*: sx' :*: sx :*: sz :*: sw) =
-  r
-  where
-    CollPoint x z u = split collPoint
-    r = dae x' x z u parm t sx' sx sz sw
-
 -- path constraints
 pathConFunction ::
   forall x z u p o h a . (View x, View z, View u, View o, View h, Viewable a)
@@ -746,62 +653,6 @@ instance (View x, View z, View u, View p, Dim deg) => Scheme (ErrorIn0 x z u p d
 instance (View sx, View sw, View sz, Dim deg) => View (ErrorInD sx sw sz deg)
 instance (View sr, View sx, Dim deg) => View (ErrorOut sr sx deg)
 
--- return error dynamics constraints and interpolated state
-errorDynStageConstraints ::
-  forall x z u p sx sz sw sr deg .
-  (Dim deg, View x, View z, View u, View p,
-   View sr, View sw, View sz, View sx)
-  => Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
-  -> Vec deg Double
-  -> SXFun (J S :*: J p :*: J x :*: J (CollPoint x z u) :*: J sx :*: J sx :*: J sz :*: J sw)
-           (J sr)
-  -> JacIn (ErrorInD sx sw sz deg) (ErrorIn0 x z u p deg) MX
-  -> JacOut (ErrorOut sr sx deg) (J JNone) MX
-errorDynStageConstraints cijs taus dynFun
-  (JacIn errorInD (ErrorIn0 x0 xzus' (UnsafeJ h) p stageTimes'))
-  = JacOut (cat (ErrorOut (cat (JVec dynConstrs)) sxnext)) (cat JNone)
-  where
-    ErrorInD sx0 sw0 sxzs' = split errorInD
-
-    xzus = unJVec (split xzus')
-
-    xs :: Vec deg (J x MX)
-    xs = fmap ((\(CollPoint x _ _) -> x) . split) xzus
-
-    xdots :: Vec deg (J x MX)
-    xdots = fmap (/ UnsafeJ h) $ interpolateXDots cijs (x0 TV.<| xs)
-
---    -- interpolated final state
---    xnext :: J x MX
---    xnext = interpolate taus x0 xs
-
-    -- interpolated final state
-    sxnext :: J sx MX
-    sxnext = interpolate taus sx0 sxs
-
-    stageTimes = unJVec $ split stageTimes'
-
-    -- dae constraints (dynamics)
-    dynConstrs :: Vec deg (J sr MX)
-    dynConstrs = TV.tvzipWith6 applyDae sxdots sxs szs xdots xzus stageTimes
-
-    applyDae
-      :: J sx MX -> J sx MX -> J sz MX
-         -> J x MX -> J (CollPoint x z u) MX -> J S MX
-         -> J sr MX
-    applyDae sx' sx sz x' xzu t =
-      callSXFun dynFun
-      (t :*: p :*: x' :*: xzu :*: sx' :*: sx :*: sz :*: sw0)
-
-    -- error state derivatives
-    sxdots :: Vec deg (J sx MX)
-    sxdots = fmap (/ UnsafeJ h) $ interpolateXDots cijs (sx0 TV.<| sxs)
-
-    sxs :: Vec deg (J sx MX)
-    szs :: Vec deg (J sz MX)
-    (sxs, szs) = TV.tvunzip
-                 $ fmap ((\(JTuple sx sz) -> (sx,sz)) . split)
-                 $ unJVec $ split sxzs'
 
 
 -- outputs
@@ -894,52 +745,6 @@ stageFunction pathConStageFun dynStageCon
 
     hs :: J (JVec deg h) MX
     hs = callMXFun pathConStageFun (parm :*: stageTimes :*: outputs :*: collPoints)
-
-
-covStageFunction ::
-  forall x z u p sx sz sw deg sr . (Dim deg, View x, View z, View u, View p, View sx, View sz, View sw, View sr)
-  => (JacIn (ErrorInD sx sw sz deg) (ErrorIn0 x z u p deg) MX
-      -> Jac (ErrorInD sx sw sz deg) (ErrorOut sr sx deg) (J JNone) MX)
-  -> (J (Cov sx) :*: J S :*: J p :*: J (JVec deg S)
-      :*: J x :*: J (JVec deg (CollPoint x z u)) :*: J (Cov sw)) MX
-  -> J (Cov sx) MX
-covStageFunction dynStageConJac
-  (p0' :*: dt :*: parm :*: stageTimes :*: x0' :*: xzus' :*: q0') = p1
-  where
-    sx0 :: J sx MX
-    sx0  = mkJ $ zeros (size (Proxy :: Proxy sx),                        1)
-    sw0 :: J sw MX
-    sw0  = mkJ $ zeros (size (Proxy :: Proxy sw),                        1)
-    sxzs :: J (JVec deg (JTuple sx sz)) MX
-    sxzs = mkJ $ zeros (size (Proxy :: Proxy (JVec deg (JTuple sx sz))), 1)
-
-    mat :: M.M (ErrorOut sr sx deg) (ErrorInD sx sw sz deg) MX
-    Jac mat _ _ =
-      dynStageConJac $
-      JacIn (cat (ErrorInD sx0 sw0 sxzs)) (ErrorIn0 x0' xzus' dt parm stageTimes)
-
-    ((df_dsx0, df_dsw0, df_dsxz), (dg_dsx0, dg_dsw0, dg_dsxz)) =
-      case fmap F.toList (F.toList (blockSplit mat)) of
-      [[x00,x01,x02],[x10,x11,x12]] -> ((x00,x01,x02),(x10,x11,x12))
-      _ -> error "stageFunction: got wrong number of elements in jacobian"
-
-    q0 = toMatrix' q0'
-    p0 = toMatrix' p0'
-
-    -- TODO: check these next 4 lines
-    dsxz_dsx0 = - (solve df_dsxz df_dsx0) :: MX
-    dsxz_dsw0 = - (solve df_dsxz df_dsw0) :: MX
-
-    dsx1_dsx0 = dg_dsx0 + dg_dsxz `mm` dsxz_dsx0
-    dsx1_dsw0 = dg_dsw0 + dg_dsxz `mm` dsxz_dsw0
-
-    p1' :: MX
-    p1' = dsx1_dsx0 `mm` p0 `mm` trans dsx1_dsx0 +
-          dsx1_dsw0 `mm` q0 `mm` trans dsx1_dsw0
-
-    -- supress casadi zero size matrix error
-    p1 :: J (Cov sx) MX
-    p1 = if size (Proxy :: Proxy sx) == 0 then p0' else fromMatrix' p1'
 
 
 -- | make an initial guess
