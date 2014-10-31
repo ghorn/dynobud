@@ -1,4 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
+{-# Language FlexibleInstances #-}
+{-# Language DeriveFunctor #-}
 {-# Language DeriveGeneric #-}
 
 module Dyno.Nlp
@@ -7,10 +9,12 @@ module Dyno.Nlp
        , Nlp'(..), NlpOut'(..)
        ) where
 
-import GHC.Generics ( Generic )
+import GHC.Generics ( Generic, Generic1 )
 import qualified Data.Vector as V
+import Data.Serialize ( Serialize(..) )
 
-import Dyno.View.View ( J, S )
+import Dyno.Vectorize ( Vectorize(..) )
+import Dyno.View.View ( View(..), J, S, unJ, mkJ )
 
 type Bounds = (Maybe Double, Maybe Double)
 
@@ -45,7 +49,11 @@ data NlpOut x g a =
   , gOpt :: g a
   , lambdaXOpt :: x a
   , lambdaGOpt :: g a
-  } deriving (Eq, Show, Generic)
+  } deriving (Eq, Show, Functor, Generic, Generic1)
+instance (Vectorize x, Vectorize g) => Vectorize (NlpOut x g)
+instance (Vectorize x, Vectorize g, Serialize a) => Serialize (NlpOut x g a) where
+  put = put . V.toList . vectorize
+  get = fmap (devectorize . V.fromList) get
 
 -- | NLP using Views
 data NlpOut' x g a =
@@ -56,6 +64,11 @@ data NlpOut' x g a =
   , lambdaXOpt' :: J x a
   , lambdaGOpt' :: J g a
   } deriving (Eq, Show, Generic)
+instance (View x, View g) => View (NlpOut' x g)
+instance (View x, View g, Serialize a) => Serialize (NlpOut' x g (V.Vector a)) where
+  put = put . V.toList . unJ . cat
+  get = fmap (split . mkJ . V.fromList) get
+
 
 data Nlp' x p g a =
   Nlp'
