@@ -22,12 +22,12 @@ module Dyno.Cov
        , diag
        , diag'
        , diag''
+       , diag'''
        , nOfVecLen
        ) where
 
 --import GHC.Generics ( Generic )
 import Control.Monad ( when )
-import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
 import qualified Data.Sequence as Seq
@@ -46,7 +46,9 @@ import qualified Casadi.MX as MX
 import qualified Casadi.DMatrix as DMatrix
 import Casadi.SXElement
 
+import Dyno.Vectorize
 import Dyno.View.View
+import Dyno.View.JV
 import Dyno.View.Viewable
 import Dyno.View.M
 import qualified Dyno.View.Symbolic as S
@@ -159,6 +161,12 @@ diag' = fromMatrix' . MX.diag . unJ
 
 diag'' :: View f => J f DMatrix -> J (Cov f) DMatrix
 diag'' = fromMatrix'' . DMatrix.ddiag . unJ
+
+diag''' :: forall f . Vectorize f => f Double -> J (Cov (JV f)) (Vector Double)
+diag''' x = mkJ $ DMatrix.ddata $ DMatrix.ddense $ unJ y
+  where
+    y :: J (Cov (JV f)) DMatrix
+    y = diag'' $ mkJ $ DMatrix.dvector $ vectorize x
 
 --data X a = X (J S a) (J S a) deriving (Generic, Show)
 --instance View X
