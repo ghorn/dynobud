@@ -96,8 +96,8 @@ makeCollProblem ocp = do
   lagrangeFun <- toSXFun "lagrange" $ \(x0:*:x1:*:x2:*:x3:*:x4:*:x5:*:x6) ->
     re' $ ocpLagrange ocp (de x0) (de x1) (de x2) (de x3) (de x4) (de' x5) (de' x6)
   quadFun <- toMXFun "quadratures" $ evaluateQuadraturesFunction lagrangeFun cijs taus n
---  let callQuadFun = callMXFun quadFun
-  callQuadFun <- fmap callSXFun (expandMXFun quadFun)
+--  let callQuadFun = call quadFun
+  callQuadFun <- fmap call (expandMXFun quadFun)
 
   dynFun <- toSXFun "dynamics" $ dynamicsFunction $
             \x0 x1 x2 x3 x4 x5 ->
@@ -110,9 +110,9 @@ makeCollProblem ocp = do
 
   dynStageConFun <- toMXFun "dynamicsStageCon" (dynStageConstraints cijs taus dynFun)
 
-  stageFun <- toMXFun "stageFunction" $ stageFunction pathStageConFun (callMXFun dynStageConFun)
---  let callStageFun = callMXFun stageFun
-  callStageFun <- fmap callSXFun (expandMXFun stageFun)
+  stageFun <- toMXFun "stageFunction" $ stageFunction pathStageConFun (call dynStageConFun)
+--  let callStageFun = call stageFun
+  callStageFun <- fmap call (expandMXFun stageFun)
 
   outputFun <- toMXFun "stageOutputs" $ outputFunction cijs taus dynFun
 
@@ -132,7 +132,7 @@ makeCollProblem ocp = do
                        -> J S (Vector Double)
                        -> IO (Vec deg (J (JV o) (Vector Double), J (JV x) (Vector Double)))
       callOutputFun p h stage k = do
-        (_ :*: xdot :*: out) <- evalMXFun outputFun $
+        (_ :*: xdot :*: out) <- eval outputFun $
                        (dmToDv stage) :*: (dmToDv p) :*: (dmToDv h) :*: (dmToDv k)
         let outs0 = unJVec (split out) :: Vec deg (J (JV o) DMatrix)
             xdots0 = unJVec (split xdot) :: Vec deg (J (JV x) DMatrix)
@@ -291,7 +291,7 @@ makeCollCovProblem ocp ocpCov = do
       callback collTrajCov = do
         let CollTrajCov _ collTraj = split collTrajCov
         (dynCollTraj, outputs) <- callback0 collTraj
-        covTraj <- fmap split $ evalMXFun computeCovariances (dmToDv collTrajCov)
+        covTraj <- fmap split $ eval computeCovariances (dmToDv collTrajCov)
         let covs' = ctAllButLast covTraj
             pF = ctLast covTraj
         let covs = unJVec (split covs') :: Vec n (J (Cov (JV sx)) DMatrix)
@@ -367,7 +367,7 @@ getFg taus bcFun mayerFun quadFun stageFun collTraj _ = (obj, cat g)
 
     obj = objLagrange + objMayer
 
-    objMayer = callSXFun mayerFun (tf :*: x0 :*: xf)
+    objMayer = call mayerFun (tf :*: x0 :*: xf)
 
     objLagrange :: J S MX
     objLagrange = F.sum $ TV.tvzipWith3 oneStage spstagesPoints outputs times'
@@ -400,7 +400,7 @@ getFg taus bcFun mayerFun quadFun stageFun collTraj _ = (obj, cat g)
         { coCollPoints = cat $ JVec dcs
         , coContinuity = cat $ JVec integratorMatchingConstraints
         , coPathC = cat $ JVec hs
-        , coBc = callSXFun bcFun (x0 :*: xf)
+        , coBc = call bcFun (x0 :*: xf)
         }
 
     integratorMatchingConstraints :: Vec n (J (JV x) MX) -- THIS SHOULD BE A NONLINEAR FUNCTION
@@ -466,14 +466,14 @@ getFgCov
         { cocNormal = g0
         , cocCovPathC = cat (JVec covPathConstraints)
         , cocCovRobustPathC = cat (JVec robustifiedPathC)
-        , cocSbc = callSXFun sbcFun (p0 :*: pF)
+        , cocSbc = call sbcFun (p0 :*: pF)
         }
     -- split up the design vars
     CollTraj tf _ stages' xf = split collTraj
     stages = unJVec (split stages') :: Vec n (J (CollStage (JV x) (JV z) (JV u) deg) MX)
     spstages = fmap split stages :: Vec n (CollStage (JV x) (JV z) (JV u) deg MX)
 
-    objectiveMayerCov = callSXFun mayerFun (tf :*: x0 :*: xf :*: p0 :*: pF)
+    objectiveMayerCov = call mayerFun (tf :*: x0 :*: xf :*: p0 :*: pF)
 
     -- timestep
     dt = tf / fromIntegral n
@@ -489,25 +489,25 @@ getFgCov
 
     x0 = (\(CollStage x0' _) -> x0') (TV.tvhead spstages)
 
---    sensitivities = callMXFun computeSensitivities collTraj
+--    sensitivities = call computeSensitivities collTraj
 
     covs :: Vec n (J (Cov (JV sx)) MX)
     covs = unJVec (split covs')
 
     covs' :: J (JVec n (Cov (JV sx))) MX -- all but last covariance
     pF :: J (Cov (JV sx)) MX -- last covariances
-    CovTraj covs' pF = split (callMXFun computeCovariances collTrajCov)
+    CovTraj covs' pF = split (call computeCovariances collTrajCov)
 
     -- lagrange term
     objectiveLagrangeCov = (lagrangeF + lagrange0s) / fromIntegral n
       where
-      lagrangeF = callSXFun lagrangeFun (tf :*: xf :*: pF :*: tf)
+      lagrangeF = call lagrangeFun (tf :*: xf :*: pF :*: tf)
       lagrange0s =
         sum $ F.toList $
-        TV.tvzipWith3 (\tk xk pk -> callSXFun lagrangeFun (tk :*: xk :*: pk :*: tf)) t0s x0s covs
+        TV.tvzipWith3 (\tk xk pk -> call lagrangeFun (tk :*: xk :*: pk :*: tf)) t0s x0s covs
 
     covPathConstraints :: Vec n (J sh MX)
-    covPathConstraints = TV.tvzipWith (\xk pk -> callSXFun shFun (xk:*:pk)) x0s covs
+    covPathConstraints = TV.tvzipWith (\xk pk -> call shFun (xk:*:pk)) x0s covs
 
     robustifiedPathC :: Vec n (J (JV shr) MX)
     robustifiedPathC = TV.tvzipWith (robustify gammas) x0s covs
@@ -557,7 +557,7 @@ evaluateQuadraturesFunction f cijs' taus n (p :*: stage' :*: outputs' :*: dt :*:
     qnext = interpolate taus 0 qs
 
     qdots :: Vec deg (J S MX)
-    qdots = TV.tvzipWith3 (\(CollPoint x z u) o t -> callSXFun f (x:*:z:*:u:*:p:*:o:*:t:*:tf)) stage outputs stageTimes
+    qdots = TV.tvzipWith3 (\(CollPoint x z u) o t -> call f (x:*:z:*:u:*:p:*:o:*:t:*:tf)) stage outputs stageTimes
 
     qs = cijInvFr !* qdots
 
@@ -648,7 +648,7 @@ dynStageConstraints cijs taus dynFun (x0 :*: xzs' :*: us' :*: UnsafeJ h :*: p :*
     applyDae :: J x MX -> JTuple x z MX -> J u MX -> J S MX -> (J r MX, J o MX)
     applyDae x' (JTuple x z) u t = (r, o)
       where
-        r :*: o = callSXFun dynFun (t :*: p :*: x' :*: collPoint)
+        r :*: o = call dynFun (t :*: p :*: x' :*: collPoint)
         collPoint = cat (CollPoint x z u)
 
     -- state derivatives, maybe these could be useful as outputs
@@ -701,7 +701,7 @@ outputFunction cijs taus dynFun (collStage :*: p :*: h'@(UnsafeJ h) :*: k) =
     applyDae :: J x MX -> J (CollPoint x z u) MX -> J S MX -> (J r MX, J o MX)
     applyDae x' xzu t = (r, o)
       where
-        r :*: o = callSXFun dynFun (t :*: p :*: x' :*: xzu)
+        r :*: o = call dynFun (t :*: p :*: x' :*: xzu)
 
     -- state derivatives, maybe these could be useful as outputs
     xdots :: Vec deg (J x MX)
@@ -734,7 +734,7 @@ pathStageConstraints pathCFun
     applyH :: CollPoint x z u MX -> J S MX -> J o MX -> J h MX
     applyH (CollPoint x z u) t o = pathc'
       where
-        pathc' = callSXFun pathCFun (t :*: p :*: o :*: collPoint)
+        pathc' = call pathCFun (t :*: p :*: o :*: collPoint)
         collPoint = cat (CollPoint x z u)
 
 
@@ -764,7 +764,7 @@ stageFunction pathConStageFun dynStageCon
       dynStageCon (x0' :*: xzs' :*: us :*: dt :*: parm :*: stageTimes)
 
     hs :: J (JVec deg h) MX
-    hs = callMXFun pathConStageFun (parm :*: stageTimes :*: outputs :*: collPoints)
+    hs = call pathConStageFun (parm :*: stageTimes :*: outputs :*: collPoints)
 
 
 -- | make an initial guess

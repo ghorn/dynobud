@@ -96,7 +96,7 @@ mkComputeSensitivities roots covDae = do
   errorDynStageConFunJac <- toFunJac edscf
 
   sensitivityStageFun <- toMXFun "sensitivity stage function" $
-                         sensitivityStageFunction (callMXFun errorDynStageConFunJac)
+                         sensitivityStageFunction (call errorDynStageConFunJac)
   let sens :: J S MX
               -> J (JV p) MX
               -> J (JVec deg S) MX
@@ -105,7 +105,7 @@ mkComputeSensitivities roots covDae = do
               -> (M (JV sx) (JV sx) MX, M (JV sx) (JV sw) MX)
       sens dt p stagetimes x0 xzus = (y0,y1)
         where
-          y0 :*: y1 = callMXFun sensitivityStageFun (dt :*: p :*: stagetimes :*: x0 :*: xzus)
+          y0 :*: y1 = call sensitivityStageFun (dt :*: p :*: stagetimes :*: x0 :*: xzus)
 
   let foo :: J (CollTraj x z u p n deg) MX
              -> CovarianceSensitivities (JV sx) (JV sw) n MX
@@ -157,7 +157,7 @@ mkComputeCovariances computeSens sq = do
         where
           CollTrajCov p0 collTraj = split collTrajCov
     
-          sensitivities = callMXFun computeSens collTraj
+          sensitivities = call computeSens collTraj
       
           covTraj =
             CovTraj
@@ -178,7 +178,7 @@ mkComputeCovariances computeSens sq = do
                 -> (J (Cov (JV sx)) MX, J (Cov (JV sx)) MX)
           ffs cov0 (f, w) = (cov1, cov0)
             where
-              cov1 = callMXFun propOneCov (f :*: w :*: cov0 :*: sq_over_t)
+              cov1 = call propOneCov (f :*: w :*: cov0 :*: sq_over_t)
       
           -- split up the design vars
           CollTraj tf _ _ _ = split collTraj
@@ -283,7 +283,7 @@ errorDynStageConstraints cijs taus dynFun
          -> J x MX -> J (CollPoint x z u) MX -> J S MX
          -> J sr MX
     applyDae sx' sx sz x' xzu t =
-      callSXFun dynFun
+      call dynFun
       (t :*: p :*: x' :*: xzu :*: sx' :*: sx :*: sz :*: sw0)
 
     -- error state derivatives
@@ -382,7 +382,7 @@ mkRobustifyFunction project robustifyPathC = do
 
   let zerosx = (M.uncol M.zeros) :: J (JV sx) SX
   simplifiedJac <- toSXFun "simplified error space jacobian" $
-                   \x0 -> (\(Jac j0 _ _) -> j0) (callSXFunSX projJac (JacIn zerosx x0))
+                   \x0 -> (\(Jac j0 _ _) -> j0) (callSX projJac (JacIn zerosx x0))
   let _ = simplifiedJac :: SXFun
                            (J (JV x))
                            (M.M (JV x) (JV sx))
@@ -406,10 +406,10 @@ mkRobustifyFunction project robustifyPathC = do
 
             h0vec :: J (JV shr) MX
             jacH :: M.M (JV shr) (JV x) MX
-            Jac jacH h0vec _ = callSXFun robustHJac (JacIn x (cat JNone))
+            Jac jacH h0vec _ = call robustHJac (JacIn x (cat JNone))
 
             f :: M.M (JV x) (JV sx) MX
-            f = callSXFun simplifiedJac x
+            f = call simplifiedJac x
 
             pw :: M.M (JV sx) (JV sx) MX
             pw = toMat' pw'
@@ -439,4 +439,4 @@ mkRobustifyFunction project robustifyPathC = do
   retFun <- toMXFun "robust constraint violations" $
     \(x0 :*: x1 :*: x2) -> gogo x0 x1 x2
 
-  return (\x y z -> callMXFun retFun (x :*: y :*: z))
+  return (\x y z -> call retFun (x :*: y :*: z))

@@ -3,17 +3,15 @@
 {-# LANGUAGE KindSignatures #-}
 
 module Dyno.View.Fun
-       ( MXFun
+       ( FunClass(..)
+       , MXFun
        , SXFun
        , Fun
        , toMXFun
        , toSXFun
-       , callFun
-       , callMXFun
-       , callSXFun
-       , callSXFunSX
-       , evalMXFun
-       , evalSXFun
+       , eval
+       , call
+       , callSX
        , expandMXFun
        , toFunJac
        ) where
@@ -25,9 +23,9 @@ import Data.Vector ( Vector )
 
 import Casadi.MX ( symM )
 import Casadi.SX ( ssymM )
-import Casadi.Function ( Function, callMX, callSX, evalDMatrix, jacobian )
-import Casadi.MXFunction ( MXFunction, mxFunction, mxFunctionFromFunction )
-import Casadi.SXFunction ( SXFunction, sxFunction, sxFunctionFromFunction )
+import qualified Casadi.Function as C
+import qualified Casadi.MXFunction as C
+import qualified Casadi.SXFunction as C
 import Casadi.Option
 import Casadi.SharedObject
 
@@ -40,9 +38,9 @@ import Dyno.View.CasadiMat
 import Dyno.View.Scheme
 import Dyno.View.FunJac
 
-newtype MXFun (f :: * -> *) (g :: * -> *) = MXFun MXFunction
-newtype SXFun (f :: * -> *) (g :: * -> *) = SXFun SXFunction
-newtype Fun (f :: * -> *) (g :: * -> *) = Fun Function
+newtype MXFun (f :: * -> *) (g :: * -> *) = MXFun C.MXFunction
+newtype SXFun (f :: * -> *) (g :: * -> *) = SXFun C.SXFunction
+newtype Fun (f :: * -> *) (g :: * -> *) = Fun C.Function
 
 instance Show (MXFun f g) where
   showsPrec k (MXFun f) = showsPrec k f
@@ -61,15 +59,32 @@ instance FunClass Fun where
 
 instance FunClass SXFun where
   fromFun (Fun f) = do
-    sxf <- sxFunctionFromFunction f
+    sxf <- C.sxFunctionFromFunction f
     return (SXFun sxf)
   toFun (SXFun f) = Fun (F.castFunction f)
 
+
 instance FunClass MXFun where
   fromFun (Fun f) = do
-    mxf <- mxFunctionFromFunction f
+    mxf <- C.mxFunctionFromFunction f
     return (MXFun mxf)
   toFun (MXFun f) = Fun (F.castFunction f)
+
+-- | call a Function on numeric inputs, getting numeric outputs
+eval :: (FunClass fun, Scheme f, Scheme g) => fun f g -> f DMatrix -> IO (g DMatrix)
+eval f' = fmap fromVector . C.evalDMatrix f . toVector
+  where
+    Fun f = toFun f'
+
+-- | call a function on MX inputs, yielding MX outputs
+call :: (FunClass fun, Scheme f, Scheme g) => fun f g -> f MX -> g MX
+call f' = fromVector . C.callMX f . toVector
+  where
+    Fun f = toFun f'
+
+-- | call an SXFunction on symbolic inputs, getting symbolic outputs
+callSX :: (Scheme f, Scheme g) => SXFun f g -> f SX -> g SX
+callSX (SXFun sxf) = fromVector . C.callSX sxf . toVector
 
 mkSym :: forall a f .
          (Scheme f, CasadiMat a)
@@ -100,11 +115,11 @@ mkFun mkfun mksym con name userf = do
 
 -- | make an MXFunction
 toMXFun :: forall f g . (Scheme f, Scheme g) => String -> (f MX -> g MX) -> IO (MXFun f g)
-toMXFun name fun = mkFun mxFunction (mkSym symM) MXFun name fun
+toMXFun name fun = mkFun C.mxFunction (mkSym symM) MXFun name fun
 
 -- | make an MXFunction
 toSXFun :: forall f g . (Scheme f, Scheme g) => String -> (f SX -> g SX) -> IO (SXFun f g)
-toSXFun name fun = mkFun sxFunction (mkSym ssymM) SXFun name fun
+toSXFun name fun = mkFun C.sxFunction (mkSym ssymM) SXFun name fun
 
 -- | expand an MXFunction
 expandMXFun :: MXFun f g -> IO (SXFun f g)
@@ -112,30 +127,6 @@ expandMXFun (MXFun mxf) = do
   sxf <- M.mxFunction_expand__0 mxf
   C.sharedObject_init__0 sxf
   return (SXFun sxf)
-
--- | call an MXFunction on symbolic inputs, getting symbolic outputs
-callMXFun :: (Scheme f, Scheme g) => MXFun f g -> f MX -> g MX
-callMXFun (MXFun mxf) = fromVector . callMX mxf . toVector
-
--- | call an MXFunction on symbolic inputs, getting symbolic outputs
-callFun :: (Scheme f, Scheme g) => Fun f g -> f MX -> g MX
-callFun (Fun mxf) = fromVector . callMX mxf . toVector
-
--- | call an SXFunction on symbolic inputs, getting symbolic outputs
-callSXFun :: (Scheme f, Scheme g) => SXFun f g -> f MX -> g MX
-callSXFun (SXFun mxf) = fromVector . callMX mxf . toVector
-
--- | call an MXFunction on symbolic inputs, getting symbolic outputs
-callSXFunSX :: (Scheme f, Scheme g) => SXFun f g -> f SX -> g SX
-callSXFunSX (SXFun sxf) = fromVector . callSX sxf . toVector
-
--- | evaluate an MXFunction
-evalMXFun :: (Scheme f, Scheme g) => MXFun f g -> f DMatrix -> IO (g DMatrix)
-evalMXFun (MXFun mxf) = fmap fromVector . evalDMatrix mxf . toVector
-
--- | evaluate an SXFunction
-evalSXFun :: (Scheme f, Scheme g) => SXFun f g -> f DMatrix -> IO (g DMatrix)
-evalSXFun (SXFun sxf) = fmap fromVector . evalDMatrix sxf . toVector
 
 -- | make a function which also contains a jacobian
 toFunJac ::
@@ -148,7 +139,7 @@ toFunJac fun0 = do
                                Just n -> n
   let compact = False
       symmetric = False
-  funJac <- jacobian fun 0 0 compact symmetric
+  funJac <- C.jacobian fun 0 0 compact symmetric
   setOption funJac "name" (name ++ "_dynobudJac")
   soInit funJac
 
