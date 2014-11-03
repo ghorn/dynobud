@@ -95,8 +95,9 @@ mkComputeSensitivities roots covDae = do
   edscf <- toMXFun "errorDynamicsStageCon" (errorDynStageConstraints cijs taus errorDynFun)
   errorDynStageConFunJac <- toFunJac edscf
 
-  sensitivityStageFun <- toMXFun "sensitivity stage function" $
-                         sensitivityStageFunction (call errorDynStageConFunJac)
+  sensitivityStageFun' <- toMXFun "sensitivity stage function" $
+                          sensitivityStageFunction (call errorDynStageConFunJac)
+  sensitivityStageFun <- expandMXFun sensitivityStageFun'
   let sens :: J S MX
               -> J (JV p) MX
               -> J (JVec deg S) MX
@@ -439,4 +440,6 @@ mkRobustifyFunction project robustifyPathC = do
   retFun <- toMXFun "robust constraint violations" $
     \(x0 :*: x1 :*: x2) -> gogo x0 x1 x2
 
-  return (\x y z -> call retFun (x :*: y :*: z))
+  retFunSX <- expandMXFun retFun
+
+  return (\x y z -> call retFunSX (x :*: y :*: z))
