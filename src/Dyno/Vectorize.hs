@@ -36,7 +36,7 @@ import Dyno.Server.Accessors
 
 -- | a length-0 vectorizable type
 data None a = None
-            deriving (Eq, Generic, Generic1, Functor, Foldable, Traversable, Show)
+            deriving (Eq, Ord, Generic, Generic1, Functor, Foldable, Traversable, Show)
 instance Vectorize None
 instance Applicative None where
   pure = const None
@@ -46,7 +46,7 @@ instance Linear.Additive None where
 
 -- | a length-1 vectorizable type
 newtype Id a = Id a
-             deriving (Eq, Generic, Generic1, Functor, Foldable, Traversable, Show)
+             deriving (Eq, Ord, Generic, Generic1, Functor, Foldable, Traversable, Show)
 instance Vectorize Id
 instance Applicative Id where
   pure = Id
@@ -56,7 +56,7 @@ instance Linear.Additive Id where
 
 -- | a length-2 vectorizable type
 data Tuple f g a = Tuple (f a) (g a)
-                 deriving (Eq, Generic, Generic1, Functor, Foldable, Traversable, Show)
+                 deriving (Eq, Ord, Generic, Generic1, Functor, Foldable, Traversable, Show)
 instance (Vectorize f, Vectorize g) => Vectorize (Tuple f g)
 instance (Applicative f, Applicative g) => Applicative (Tuple f g) where
   pure x = Tuple (pure x) (pure x)
@@ -67,7 +67,7 @@ instance (Vectorize f, Vectorize g, Applicative f, Applicative g) => Linear.Addi
 
 -- | a length-3 vectorizable type
 data Triple f g h a = Triple (f a) (g a) (h a)
-                    deriving (Eq, Generic, Generic1, Functor, Foldable, Traversable, Show)
+                    deriving (Eq, Ord, Generic, Generic1, Functor, Foldable, Traversable, Show)
 instance (Vectorize f, Vectorize g, Vectorize h) => Vectorize (Triple f g h)
 instance (Applicative f, Applicative g, Applicative h) => Applicative (Triple f g h) where
   pure x = Triple (pure x) (pure x) (pure x)
