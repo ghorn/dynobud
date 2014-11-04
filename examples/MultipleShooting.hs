@@ -138,6 +138,8 @@ makeNlp = do
       x0 :: J (Dvs X U n) (V.Vector Double)
       x0 = jfill 0
 
+      n = reflectDim (Proxy :: Proxy n)
+
       boundsx = (Just (-1), Just 1)  :: Bounds
       boundsv = (Just (-1), Just 1) :: Bounds
       boundsu = (Just (-1), Just 1) :: Bounds
@@ -155,7 +157,7 @@ makeNlp = do
       bounds_xus :: (J (JVec n (JTuple (JV X) (JV U))) (Vector Bounds))
       --test2 = jreplicate $ cat $ test
       --test2 = cat $  JVec $ mkVec' $ replicate 20 $ cat $ test
-      bounds_xus = cat $  JVec $ mkVec'  ( cat initial_xu : replicate 19 (cat bounds_xu))
+      bounds_xus = cat $  JVec $ mkVec'  ( cat initial_xu : replicate (n-1) (cat bounds_xu))
 
       bounds_dvs = Dvs bounds_xus jboundsX
 
