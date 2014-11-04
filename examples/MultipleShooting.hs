@@ -65,22 +65,22 @@ ode :: Floating a => X a -> U a -> a -> X a
 ode (X x v) (U u) _t = X v (-x -0.1*v + u)
 
 rk4 :: Floating a => Ode a -> X a -> U a -> a -> a -> X a
-rk4 ode x u t h =  x ^+^ h/6*^(k1 ^+^ 2 *^ k2 ^+^ 2 *^ k3 ^+^ k4)
+rk4 ode' x u t h =  x ^+^ h/6*^(k1 ^+^ 2 *^ k2 ^+^ 2 *^ k3 ^+^ k4)
     where
-      k1 = ode x u t
-      k2 = ode (x ^+^ h/2 *^ k1) u (t+h/2)
-      k3 = ode (x ^+^ h/2 *^ k2) u (t+h/2)
-      k4 = ode (x ^+^ h *^ k2) u (t+h)
+      k1 = ode' x u t
+      k2 = ode' (x ^+^ h/2 *^ k1) u (t+h/2)
+      k3 = ode' (x ^+^ h/2 *^ k2) u (t+h/2)
+      k4 = ode' (x ^+^ h *^ k2) u (t+h)
 
 simulate :: Floating a => Int -> Ode a -> X a -> U a -> a -> a -> X a
-simulate  n  ode x0 u t h = xf
+simulate  n  ode' x0' u t h = xf
 
     where
-      dt = h/ fromIntegral n
+      dt' = h/ fromIntegral n
 
-      xf = foldl sim x0 [ t+fromIntegral i*dt | i <- [0..(n-1)] ]
+      xf = foldl sim x0' [ t+fromIntegral i*dt' | i <- [0..(n-1)] ]
 
-      sim x0 t' = rk4 ode x0 u t' dt
+      sim x0'' t' = rk4 ode' x0'' u t' dt'
 
 
 
@@ -110,10 +110,9 @@ makeNlp = do
       boundsv = (Just (-1), Just 1) :: Bounds
       boundsu = (Just (-1), Just 1) :: Bounds
 
-      initial = (Just 1, Just 1) :: Bounds
       initialX = X (Just 1, Just 1) (Just 0, Just 0) :: X Bounds
 
-      boundsX = X boundsx boundsx :: X Bounds
+      boundsX = X boundsx boundsv :: X Bounds
       jboundsX =  catJV boundsX :: J (JV X) (Vector Bounds)
       jboundsU =  catJV (U boundsu) :: J (JV U) (Vector Bounds)
 
@@ -140,18 +139,18 @@ makeNlp = do
           Dvs xus xf = split dvs
           x1s :: Vec D20 (J (JV X) MX)
           x1s = fmap (integrate . split) $ unJVec $ split xus
-          integrate (JTuple x0 u) = x1
+          integrate (JTuple x0' u) = x1
             where
-              IntegratorOut x1 = call integrator (IntegratorIn x0 u)
+              IntegratorOut x1 = call integrator (IntegratorIn x0' u)
 
 
           us = fmap (extractU . split) $ unJVec $ split xus :: Vec D20 (J (JV U) MX)
-          extractU (JTuple x0 u) = u
+          extractU (JTuple _ u) = u
 
           reg_U = fmap square us
              where
-               square a = cat $ S $ extractU $ unJV $ split $ a *a
-               extractU (U a) = a
+               square a = cat $ S $ extractU' $ unJV $ split $ a *a
+               extractU' (U a) = a
 
           reg_X = fmap square x1s
            where
@@ -163,7 +162,7 @@ makeNlp = do
 
 
           x0s' = fmap (extractx . split) $ unJVec $ split xus :: Vec D20 (J (JV X) MX)
-          extractx (JTuple x0 u) = x0
+          extractx (JTuple x0'' _) = x0''
 
           x0s = tvtail (x0s' |> xf)  :: Vec D20 (J (JV X) MX)
 
