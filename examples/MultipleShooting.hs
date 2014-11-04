@@ -61,6 +61,32 @@ dt = 0.1
 
 type Ode a =  X a -> U a -> a -> X a
 
+-- problem specification
+data MsOcp x u =
+  MsOcp
+  { msOde :: Ode (J (JV Id) SX)
+  , msX0 :: x (Maybe Double)
+  , msXF :: x (Maybe Double)
+  , msXBnds :: x Bounds
+  , msUBnds :: x Bounds
+  } deriving (Generic, Generic1)
+
+-- design variables
+data MsDvs x u n a =
+  MsDvs
+  { dvXus :: J (JVec n (JTuple (JV x) (JV u))) a
+  , dvXf :: J (JV x) a
+  } deriving (Generic, Generic1)
+instance (Vectorize x, Vectorize u, Dim n) => View (MsDvs x u n)
+
+-- constraints
+data MsConstraints x n a =
+  MsConstraints
+  { dvContinuity :: J (JVec n (JV x)) a
+  } deriving (Generic, Generic1)
+instance (Vectorize x, Dim n) => View (MsConstraints x n)
+
+
 ode :: Floating a => X a -> U a -> a -> X a
 ode (X x v) (U u) _t = X v (-x -0.1*v + u)
 
@@ -74,15 +100,12 @@ rk4 ode' x u t h =  x ^+^ h/6*^(k1 ^+^ 2 *^ k2 ^+^ 2 *^ k3 ^+^ k4)
 
 simulate :: Floating a => Int -> Ode a -> X a -> U a -> a -> a -> X a
 simulate  n  ode' x0' u t h = xf
-
     where
       dt' = h/ fromIntegral n
 
       xf = foldl sim x0' [ t+fromIntegral i*dt' | i <- [0..(n-1)] ]
 
       sim x0'' t' = rk4 ode' x0'' u t' dt'
-
-
 
 makeNlp :: IO (Nlp' (Dvs D20) JNone (G D20) MX)
 makeNlp = do
