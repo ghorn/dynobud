@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
+{-# Language ScopedTypeVariables #-}
 {-# Language DeriveGeneric #-}
 {-# Language DeriveFunctor #-}
 
@@ -112,7 +113,10 @@ makeMsNlp :: (Vectorize x, Vectorize u, Dim n)
              => MsOcp x u -> IO (Nlp' (MsDvs x u n) JNone (MsConstraints x n) MX)
 makeMsNlp = undefined
 
-makeNlp :: IO (Nlp' (Dvs X U D20) JNone (G X D20) MX)
+makeNlp ::
+  forall n
+  . Dim n
+  => IO (Nlp' (Dvs X U n) JNone (G X n) MX)
 makeNlp = do
   integrator <- toMXFun "my integrator" $ \(IntegratorIn x0 u) -> IntegratorOut (catJV' (simulate 20 ode (splitJV' x0) (splitJV' u) 0 dt))
   let _ = integrator :: MXFun (IntegratorIn X U) (IntegratorOut X) -- just for type signature
@@ -131,7 +135,7 @@ makeNlp = do
         , nlpScaleG' = Nothing
         }
 
-      x0 :: J (Dvs X U D20) (V.Vector Double)
+      x0 :: J (Dvs X U n) (V.Vector Double)
       x0 = jfill 0
 
       boundsx = (Just (-1), Just 1)  :: Bounds
@@ -148,31 +152,31 @@ makeNlp = do
       bounds_xu = JTuple jboundsX jboundsU :: JTuple (JV X) (JV U) (Vector Bounds)
       initial_xu = JTuple (catJV initialX) jboundsU :: JTuple (JV X) (JV U) (Vector Bounds)
 
-      bounds_xus :: (J (JVec D20 (JTuple (JV X) (JV U))) (Vector Bounds))
+      bounds_xus :: (J (JVec n (JTuple (JV X) (JV U))) (Vector Bounds))
       --test2 = jreplicate $ cat $ test
       --test2 = cat $  JVec $ mkVec' $ replicate 20 $ cat $ test
       bounds_xus = cat $  JVec $ mkVec'  ( cat initial_xu : replicate 19 (cat bounds_xu))
 
       bounds_dvs = Dvs bounds_xus jboundsX
 
-      bx :: J (Dvs X U D20) (Vector Bounds)
+      bx :: J (Dvs X U n) (Vector Bounds)
       bx = cat bounds_dvs
 
-      bg :: J (G X D20) (Vector Bounds)
+      bg :: J (G X n) (Vector Bounds)
       bg = jfill (Just 0, Just 0)
 
-      fg :: J (Dvs X U D20) MX -> J JNone MX -> (J S MX, J (G X D20) MX)
+      fg :: J (Dvs X U n) MX -> J JNone MX -> (J S MX, J (G X n) MX)
       fg dvs _ = (f, cat g)
         where
           Dvs xus xf = split dvs
-          x1s :: Vec D20 (J (JV X) MX)
+          x1s :: Vec n (J (JV X) MX)
           x1s = fmap (integrate . split) $ unJVec $ split xus
           integrate (JTuple x0' u) = x1
             where
               IntegratorOut x1 = call integrator (IntegratorIn x0' u)
 
 
-          us = fmap (extractU . split) $ unJVec $ split xus :: Vec D20 (J (JV U) MX)
+          us = fmap (extractU . split) $ unJVec $ split xus :: Vec n (J (JV U) MX)
           extractU (JTuple _ u) = u
 
           reg_U = fmap square us
@@ -189,21 +193,21 @@ makeNlp = do
           f = F.sum reg_U + F.sum reg_X
 
 
-          x0s' = fmap (extractx . split) $ unJVec $ split xus :: Vec D20 (J (JV X) MX)
+          x0s' = fmap (extractx . split) $ unJVec $ split xus :: Vec n (J (JV X) MX)
           extractx (JTuple x0'' _) = x0''
 
-          x0s = tvtail (x0s' |> xf)  :: Vec D20 (J (JV X) MX)
+          x0s = tvtail (x0s' |> xf)  :: Vec n (J (JV X) MX)
 
-          gaps:: Vec D20 (J (JV X) MX)
+          gaps:: Vec n (J (JV X) MX)
           gaps = tvzipWith (-) x1s x0s
 
-          g :: G X D20 MX
+          g :: G X n MX
           g = G $ cat $ JVec gaps
 
   return nlp
 
 main :: IO ()
 main = do
-  myNlp <- makeNlp
+  myNlp <- makeNlp :: IO (Nlp' (Dvs X U D20) JNone (G X D20) MX)
   opt <- solveNlp' ipoptSolver myNlp Nothing
   print opt
