@@ -59,17 +59,17 @@ instance Scheme IntegratorOut
 dt :: Floating a => a
 dt = 0.1
 
-type Ode a =  X a -> U a -> a -> X a
+type Ode x u a = x a -> u a -> a -> x a
 
 -- problem specification
 data MsOcp x u =
   MsOcp
-  { msOde :: Ode (J (JV Id) SX)
+  { msOde :: Ode x u (J (JV Id) SX)
   , msX0 :: x (Maybe Double)
   , msXF :: x (Maybe Double)
   , msXBnds :: x Bounds
   , msUBnds :: x Bounds
-  } deriving (Generic, Generic1)
+  }
 
 -- design variables
 data MsDvs x u n a =
@@ -90,7 +90,7 @@ instance (Vectorize x, Dim n) => View (MsConstraints x n)
 ode :: Floating a => X a -> U a -> a -> X a
 ode (X x v) (U u) _t = X v (-x -0.1*v + u)
 
-rk4 :: Floating a => Ode a -> X a -> U a -> a -> a -> X a
+rk4 :: Floating a => Ode X U a -> X a -> U a -> a -> a -> X a
 rk4 ode' x u t h =  x ^+^ h/6*^(k1 ^+^ 2 *^ k2 ^+^ 2 *^ k3 ^+^ k4)
     where
       k1 = ode' x u t
@@ -98,7 +98,7 @@ rk4 ode' x u t h =  x ^+^ h/6*^(k1 ^+^ 2 *^ k2 ^+^ 2 *^ k3 ^+^ k4)
       k3 = ode' (x ^+^ h/2 *^ k2) u (t+h/2)
       k4 = ode' (x ^+^ h *^ k2) u (t+h)
 
-simulate :: Floating a => Int -> Ode a -> X a -> U a -> a -> a -> X a
+simulate :: Floating a => Int -> Ode X U a -> X a -> U a -> a -> a -> X a
 simulate  n  ode' x0' u t h = xf
     where
       dt' = h/ fromIntegral n
@@ -106,6 +106,10 @@ simulate  n  ode' x0' u t h = xf
       xf = foldl sim x0' [ t+fromIntegral i*dt' | i <- [0..(n-1)] ]
 
       sim x0'' t' = rk4 ode' x0'' u t' dt'
+
+makeMsNlp :: (Vectorize x, Vectorize u, Dim n)
+             => MsOcp x u -> IO (Nlp' (MsDvs x u n) JNone (MsConstraints x n) MX)
+makeMsNlp = undefined
 
 makeNlp :: IO (Nlp' (Dvs D20) JNone (G D20) MX)
 makeNlp = do
