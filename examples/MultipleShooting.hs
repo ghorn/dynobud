@@ -76,9 +76,9 @@ simulate :: Floating a => Int -> Ode a -> X a -> U a -> a -> a -> X a
 simulate  n  ode x0 u t h = xf
 
     where
-      dt = h/ (fromIntegral n)
+      dt = h/ fromIntegral n
 
-      xf = foldl sim x0 [ t+(fromIntegral i)*dt | i <- [0..(n-1)] ]
+      xf = foldl sim x0 [ t+fromIntegral i*dt | i <- [0..(n-1)] ]
 
       sim x0 t' = rk4 ode x0 u t' dt
 
@@ -111,9 +111,9 @@ makeNlp = do
       boundsu = (Just (-1), Just 1) :: Bounds
 
       initial = (Just 1, Just 1) :: Bounds
-      initialX = (X (Just 1, Just 1) (Just 0, Just 0) ) :: X Bounds
+      initialX = X (Just 1, Just 1) (Just 0, Just 0) :: X Bounds
 
-      boundsX = (X boundsx boundsx) :: X Bounds
+      boundsX = X boundsx boundsx :: X Bounds
       jboundsX =  catJV boundsX :: J (JV X) (Vector Bounds)
       jboundsU =  catJV (U boundsu) :: J (JV U) (Vector Bounds)
 
@@ -124,7 +124,7 @@ makeNlp = do
       bounds_xus :: (J (JVec D20 (JTuple (JV X) (JV U))) (Vector Bounds))
       --test2 = jreplicate $ cat $ test
       --test2 = cat $  JVec $ mkVec' $ replicate 20 $ cat $ test
-      bounds_xus = cat $  JVec $ mkVec' $ ( (cat initial_xu) : replicate 19 (cat bounds_xu))
+      bounds_xus = cat $  JVec $ mkVec'  ( cat initial_xu : replicate 19 (cat bounds_xu))
 
       bounds_dvs = Dvs bounds_xus jboundsX
 
@@ -139,13 +139,13 @@ makeNlp = do
         where
           Dvs xus xf = split dvs
           x1s :: Vec D20 (J (JV X) MX)
-          x1s = fmap (integrate . split) $ unJVec $ (split xus)
+          x1s = fmap (integrate . split) $ unJVec $ split xus
           integrate (JTuple x0 u) = x1
             where
               IntegratorOut x1 = call integrator (IntegratorIn x0 u)
 
 
-          us = fmap (extractU . split) $ unJVec $ (split xus) :: Vec D20 (J (JV U) MX)
+          us = fmap (extractU . split) $ unJVec $ split xus :: Vec D20 (J (JV U) MX)
           extractU (JTuple x0 u) = u
 
           reg_U = fmap square us
@@ -159,13 +159,13 @@ makeNlp = do
              sumX (X a b) = a+b
 
           f :: J S MX
-          f = (F.sum reg_U) + (F.sum reg_X)
+          f = F.sum reg_U + F.sum reg_X
 
 
-          x0s' = fmap (extractx . split) $ unJVec $ (split xus) :: Vec D20 (J (JV X) MX)
+          x0s' = fmap (extractx . split) $ unJVec $ split xus :: Vec D20 (J (JV X) MX)
           extractx (JTuple x0 u) = x0
 
-          x0s = (tvtail (x0s' |> xf))  :: Vec D20 (J (JV X) MX)
+          x0s = tvtail (x0s' |> xf)  :: Vec D20 (J (JV X) MX)
 
           gaps:: Vec D20 (J (JV X) MX)
           gaps = tvzipWith (-) x1s x0s
