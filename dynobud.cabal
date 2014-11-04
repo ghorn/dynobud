@@ -33,8 +33,17 @@ library
                        Dyno.DirectCollocation.Robust
                        Dyno.Cov
                        Dyno.View
-                       Dyno.View.M
                        Dyno.View.CasadiMat
+                       Dyno.View.Fun
+                       Dyno.View.FunJac
+                       Dyno.View.HList
+                       Dyno.View.JV
+                       Dyno.View.M
+                       Dyno.View.NumInstances
+                       Dyno.View.Scheme
+                       Dyno.View.Symbolic
+                       Dyno.View.View
+                       Dyno.View.Viewable
                        Dyno.Vectorize
                        Dyno.Nlp
                        Dyno.NlpMonad
@@ -52,16 +61,7 @@ library
                        Dyno.Server.PlotTypes
                        Dyno.Server.Server
 
-  other-modules:       Dyno.View.Fun
-                       Dyno.View.FunJac
-                       Dyno.View.JV
-                       Dyno.View.Symbolic
-                       Dyno.View.View
-                       Dyno.View.Viewable
-                       Dyno.View.NumInstances
-                       Dyno.View.HList
-                       Dyno.View.Scheme
-
+  other-modules:
   build-depends:       base >=4.6 && <4.8,
                        vector >=0.10,
                        data-default,
