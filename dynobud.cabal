@@ -102,6 +102,21 @@ flag examples
     description:    build the examples
     default:        False
 
+executable multiple_shooting
+  if flag(examples)
+    Buildable: True
+  else
+    Buildable: False
+  hs-source-dirs:      examples
+  main-is:             MultipleShooting.hs
+  default-language:    Haskell2010
+  build-depends:       dynobud
+                       , base >=4.6 && <4.8
+                       , vector
+                       , linear
+  ghc-options:         -O2
+
+
 executable plotSofa
   if flag(examples)
     Buildable: True
