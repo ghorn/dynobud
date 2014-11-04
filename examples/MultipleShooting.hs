@@ -39,15 +39,16 @@ data U a = U a deriving (Functor, Generic, Generic1, Show)
 instance Vectorize X
 instance Vectorize U
 
-data G n a = G (J (JVec n (JV X)) a) deriving (Generic, Generic1, Show)
+data G x n a = G (J (JVec n (JV x)) a) deriving (Generic, Generic1, Show)
 
-data Dvs n a = Dvs
-               (J (JVec n (JTuple (JV X) (JV U))) a)
-               (J (JV X) a)
+data Dvs x u n a = Dvs
+               (J (JVec n (JTuple (JV x) (JV u))) a)
+               (J (JV x) a)
              deriving (Generic, Generic1, Show)
 
-instance Dim n => View (Dvs n)
-instance Dim n => View (G n)
+
+instance (Vectorize x, Dim n) => View (G x n)
+instance (Vectorize x, Vectorize u, Dim n) => View (Dvs x u n)
 
 data IntegratorIn x u a = IntegratorIn (J (JV x) a) (J (JV u) a)
                         deriving (Generic, Generic1)
@@ -68,7 +69,7 @@ data MsOcp x u =
   , msX0 :: x (Maybe Double)
   , msXF :: x (Maybe Double)
   , msXBnds :: x Bounds
-  , msUBnds :: x Bounds
+  , msUBnds :: u Bounds
   }
 
 -- design variables
@@ -111,7 +112,7 @@ makeMsNlp :: (Vectorize x, Vectorize u, Dim n)
              => MsOcp x u -> IO (Nlp' (MsDvs x u n) JNone (MsConstraints x n) MX)
 makeMsNlp = undefined
 
-makeNlp :: IO (Nlp' (Dvs D20) JNone (G D20) MX)
+makeNlp :: IO (Nlp' (Dvs X U D20) JNone (G X D20) MX)
 makeNlp = do
   integrator <- toMXFun "my integrator" $ \(IntegratorIn x0 u) -> IntegratorOut (catJV' (simulate 20 ode (splitJV' x0) (splitJV' u) 0 dt))
   let _ = integrator :: MXFun (IntegratorIn X U) (IntegratorOut X) -- just for type signature
@@ -130,7 +131,7 @@ makeNlp = do
         , nlpScaleG' = Nothing
         }
 
-      x0 :: J (Dvs D20) (V.Vector Double)
+      x0 :: J (Dvs X U D20) (V.Vector Double)
       x0 = jfill 0
 
       boundsx = (Just (-1), Just 1)  :: Bounds
@@ -154,13 +155,13 @@ makeNlp = do
 
       bounds_dvs = Dvs bounds_xus jboundsX
 
-      bx :: J (Dvs D20) (Vector Bounds)
+      bx :: J (Dvs X U D20) (Vector Bounds)
       bx = cat bounds_dvs
 
-      bg :: J (G D20) (Vector Bounds)
+      bg :: J (G X D20) (Vector Bounds)
       bg = jfill (Just 0, Just 0)
 
-      fg :: J (Dvs D20) MX -> J JNone MX -> (J S MX, J (G D20) MX)
+      fg :: J (Dvs X U D20) MX -> J JNone MX -> (J S MX, J (G X D20) MX)
       fg dvs _ = (f, cat g)
         where
           Dvs xus xf = split dvs
@@ -196,7 +197,7 @@ makeNlp = do
           gaps:: Vec D20 (J (JV X) MX)
           gaps = tvzipWith (-) x1s x0s
 
-          g :: G D20 MX
+          g :: G X D20 MX
           g = G $ cat $ JVec gaps
 
   return nlp
