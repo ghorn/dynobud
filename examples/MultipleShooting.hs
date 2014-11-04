@@ -49,12 +49,12 @@ data Dvs n a = Dvs
 instance Dim n => View (Dvs n)
 instance Dim n => View (G n)
 
-data IntegratorIn a = IntegratorIn (J (JV X) a) (J (JV U) a)
-                    deriving (Generic, Generic1)
-data IntegratorOut a = IntegratorOut (J (JV X) a)
-                    deriving (Generic, Generic1)
-instance Scheme IntegratorIn
-instance Scheme IntegratorOut
+data IntegratorIn x u a = IntegratorIn (J (JV x) a) (J (JV u) a)
+                        deriving (Generic, Generic1)
+data IntegratorOut x a = IntegratorOut (J (JV x) a)
+                       deriving (Generic, Generic1)
+instance (Vectorize x, Vectorize u) => Scheme (IntegratorIn x u)
+instance Vectorize x => Scheme (IntegratorOut x)
 
 dt :: Floating a => a
 dt = 0.1
@@ -114,7 +114,7 @@ makeMsNlp = undefined
 makeNlp :: IO (Nlp' (Dvs D20) JNone (G D20) MX)
 makeNlp = do
   integrator <- toMXFun "my integrator" $ \(IntegratorIn x0 u) -> IntegratorOut (catJV' (simulate 20 ode (splitJV' x0) (splitJV' u) 0 dt))
-  let _ = integrator :: MXFun IntegratorIn IntegratorOut -- just for type signature
+  let _ = integrator :: MXFun (IntegratorIn X U) (IntegratorOut X) -- just for type signature
 
   let nlp =
         Nlp'
