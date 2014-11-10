@@ -18,6 +18,7 @@ module Dyno.Vectorize
        , vlength
        , vzipWith
        , vzipWith3
+       , vzipWith4
        , fill
        , GVectorize(..)
        , Generic1
@@ -130,6 +131,10 @@ vzipWith f x y = devectorize $ V.zipWith f (vectorize x) (vectorize y)
 
 vzipWith3 :: Vectorize f => (a -> b -> c -> d) -> f a -> f b -> f c -> f d
 vzipWith3 f x y z = devectorize $ V.zipWith3 f (vectorize x) (vectorize y) (vectorize z)
+
+vzipWith4 :: Vectorize f => (a -> b -> c -> d -> e) -> f a -> f b -> f c -> f d -> f e
+vzipWith4 f x y z w =
+  devectorize $ V.zipWith4 f (vectorize x) (vectorize y) (vectorize z) (vectorize w)
 
 -- product type (concatination)
 instance (GVectorize f, GVectorize g) => GVectorize (f :*: g) where
