@@ -21,6 +21,7 @@ module Dyno.View.M
        , hsplit'
        , vcat'
        , hcat'
+       , hsplitTup
        , row
        , col
        , unrow
@@ -150,6 +151,19 @@ hsplit (UnsafeM x) = fmap mkM $ devectorize $ CM.horzsplit x ncs
   where
     nc = size (Proxy :: Proxy (JV g))
     ncs = V.fromList [0,1..nc]
+
+hsplitTup ::
+  forall f g h a .
+  (View f, View g, View h, CasadiMat a)
+  => M f (JTuple g h) a -> (M f g a, M f h a)
+hsplitTup (UnsafeM x) =
+  case V.toList (CM.horzsplit x ncs) of
+    [g,h] -> (mkM g, mkM h)
+    n -> error $ "hsplitTup made a bad split with length " ++ show (length n)
+  where
+    ng = size (Proxy :: Proxy g)
+    nh = size (Proxy :: Proxy h)
+    ncs = V.fromList [0,ng,ng+nh]
 
 hcat ::
   forall f g a .
