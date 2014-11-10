@@ -272,7 +272,7 @@ makeCollCovProblem ocp ocpCov = do
       fg = getFgCov taus
         computeCovariances
         gammas
-        (robustify :: (J (JV shr) MX -> J (JV x) MX -> J (Cov (JV sx)) MX -> J (JV shr) MX))
+        (robustify :: (J (JV shr) MX -> J (JV p) MX -> J (JV x) MX -> J (Cov (JV sx)) MX -> J (JV shr) MX))
         (sbcFun :: SXFun (J (Cov (JV sx)) :*: J (Cov (JV sx))) (J sc))
         (shFun :: SXFun (J (JV x) :*: J (Cov (JV sx))) (J sh))
         (lagrangeFun :: SXFun (J S :*: J (JV x) :*: J (Cov (JV sx)) :*: J S) (J S))
@@ -437,7 +437,7 @@ getFgCov ::
   -- gammas
   -> J (JV shr) MX
   -- robustify
-  -> (J (JV shr) MX -> J (JV x) MX -> J (Cov (JV sx)) MX -> J (JV shr) MX)
+  -> (J (JV shr) MX -> J (JV p) MX -> J (JV x) MX -> J (Cov (JV sx)) MX -> J (JV shr) MX)
    -- sbcFun
   -> SXFun (J (Cov (JV sx)) :*: J (Cov (JV sx))) (J sc)
    -- shFun
@@ -469,7 +469,7 @@ getFgCov
         , cocSbc = call sbcFun (p0 :*: pF)
         }
     -- split up the design vars
-    CollTraj tf _ stages' xf = split collTraj
+    CollTraj tf parm stages' xf = split collTraj
     stages = unJVec (split stages') :: Vec n (J (CollStage (JV x) (JV z) (JV u) deg) MX)
     spstages = fmap split stages :: Vec n (CollStage (JV x) (JV z) (JV u) deg MX)
 
@@ -510,7 +510,7 @@ getFgCov
     covPathConstraints = TV.tvzipWith (\xk pk -> call shFun (xk:*:pk)) x0s covs
 
     robustifiedPathC :: Vec n (J (JV shr) MX)
-    robustifiedPathC = TV.tvzipWith (robustify gammas) x0s covs
+    robustifiedPathC = TV.tvzipWith (robustify gammas parm) x0s covs
 
 
 

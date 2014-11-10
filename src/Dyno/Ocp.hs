@@ -154,7 +154,7 @@ data OcpPhaseWithCov ocp sx sz sw sr sh shr sc =
     -- | constraints which (g(x) <= 0) will be satisfied with some margin defined by gamma
     -- .
     -- TODO: user upper and lower bounds without adding another constraint, probably impossible
-  , ocpCovRobustifyPathC :: X ocp Sxe -> shr Sxe
+  , ocpCovRobustifyPathC :: X ocp Sxe -> sx Sxe -> P ocp Sxe -> shr Sxe
     -- | robust factors for the robustified constraints
   , ocpCovGammas :: shr Double
     -- | covariance injection

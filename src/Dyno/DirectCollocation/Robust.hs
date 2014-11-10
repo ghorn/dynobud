@@ -31,7 +31,7 @@ import Dyno.View.M ( M )
 --import Dyno.View.HList
 import Dyno.View.FunJac
 --import Dyno.View.Scheme
-import Dyno.Vectorize ( Vectorize(..), Id, vzipWith3 )
+import Dyno.Vectorize ( Vectorize(..), Id, vzipWith4 )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs )
@@ -364,11 +364,11 @@ sensitivityStageFunction dynStageConJac
 
 
 mkRobustifyFunction ::
-  forall x sx shr .
-  (Vectorize x, Vectorize sx, Vectorize shr)
+  forall x sx shr p .
+  (Vectorize x, Vectorize sx, Vectorize shr, Vectorize p)
   => (x Sxe -> sx Sxe -> x Sxe)
-  -> (x Sxe -> shr Sxe)
-  -> IO (J (JV shr) MX -> J (JV x) MX -> J (Cov (JV sx)) MX -> J (JV shr) MX)
+  -> (x Sxe -> sx Sxe -> p Sxe -> shr Sxe)
+  -> IO (J (JV shr) MX -> J (JV p) MX -> J (JV x) MX -> J (Cov (JV sx)) MX -> J (JV shr) MX)
 mkRobustifyFunction project robustifyPathC = do
   proj <- toSXFun "errorSpaceProjection" $
           \(JacIn x0 x1) -> JacOut (re (project (de x1) (de x0))) (cat JNone)
@@ -382,44 +382,70 @@ mkRobustifyFunction project robustifyPathC = do
                      (Jac (JV sx) (JV x) (J JNone))
 
   let zerosx = (M.uncol M.zeros) :: J (JV sx) SX
-  simplifiedJac <- toSXFun "simplified error space jacobian" $
-                   \x0 -> (\(Jac j0 _ _) -> j0) (callSX projJac (JacIn zerosx x0))
-  let _ = simplifiedJac :: SXFun
-                           (J (JV x))
-                           (M.M (JV x) (JV sx))
+  simplifiedPropJac <- toSXFun "simplified error space projection jacobian" $
+                       \x0 -> (\(Jac j0 _ _) -> j0) (callSX projJac (JacIn zerosx x0))
+  let _ = simplifiedPropJac :: SXFun
+                               (J (JV x))
+                               (M.M (JV x) (JV sx))
 
-
-  robustH <- toSXFun "robust constraint" $
-             \(JacIn x0 (_ :: J JNone SX)) -> JacOut (re (robustifyPathC (de x0))) (cat JNone)
+  let rpc (JacIn xe parm) = JacOut (re lol) (cat JNone)
+        where
+          lol = robustifyPathC (de x) (de e) (de parm)
+          JTuple x e = split xe
+  robustH <- toSXFun "robust constraint" rpc
   let _ = robustH :: SXFun
-                     (JacIn (JV x) (J JNone))
+                     (JacIn (JTuple (JV x) (JV sx)) (J (JV p)))
                      (JacOut (JV shr) (J JNone))
   robustHJac <- toFunJac robustH
   let _ = robustHJac :: SXFun
-                        (JacIn (JV x) (J JNone))
-                        (Jac (JV x) (JV shr) (J JNone))
+                        (JacIn (JTuple (JV x) (JV sx)) (J (JV p)))
+                        (Jac (JTuple (JV x) (JV sx)) (JV shr) (J JNone))
 
+      srh :: (J (JV x) :*: J (JV p)) SX -> Jac (JTuple (JV x) (JV sx)) (JV shr) (J JNone) SX
+      srh (x :*: p) = ret
+        where
 
-  let gogo :: J (JV shr) MX -> J (JV x) MX -> J (Cov (JV sx)) MX -> J (JV shr) MX
-      gogo gammas' x pw' = rcs'
+          xe = M.uncol M.zeros :: J (JV sx) SX
+          xxe = cat (JTuple x xe) :: J (JTuple (JV x) (JV sx)) SX
+
+          ret :: Jac (JTuple (JV x) (JV sx)) (JV shr) (J JNone) SX
+          ret = callSX robustHJac (JacIn xxe p)
+
+  simplifiedHJac <- toSXFun "simplified robust constraint jacobian" srh
+  let _ = simplifiedHJac :: SXFun
+                            (J (JV x) :*: J (JV p))
+                            (Jac (JTuple (JV x) (JV sx)) (JV shr) (J JNone))
+
+  let gogo :: J (JV shr) MX -> J (JV p) MX -> J (JV x) MX -> J (Cov (JV sx)) MX -> J (JV shr) MX
+      gogo gammas' theta x pe' = rcs'
           where
             gammas = fmap mkJ (unJV (split gammas')) :: shr (J (JV Id) MX)
 
+            jHx :: M (JV shr) (JV x) MX
+            jHe :: M (JV shr) (JV sx) MX
+            (jHx, jHe) = M.hsplitTup jacH'
+
+            jacH' :: M (JV shr) (JTuple (JV x) (JV sx)) MX
             h0vec :: J (JV shr) MX
-            jacH :: M.M (JV shr) (JV x) MX
-            Jac jacH h0vec _ = call robustHJac (JacIn x (cat JNone))
+            Jac jacH' h0vec _ = call simplifiedHJac (x :*: theta)
 
             f :: M.M (JV x) (JV sx) MX
-            f = call simplifiedJac x
+            f = call simplifiedPropJac x
 
-            pw :: M.M (JV sx) (JV sx) MX
-            pw = toMat' pw'
+            pe :: M.M (JV sx) (JV sx) MX
+            pe = toMat' pe'
 
-            px :: M.M (JV x) (JV x) MX
-            px = (f `M.mm` pw) `M.mm` (M.trans f)
+            fpef :: M.M (JV x) (JV x) MX
+            fpef = fpe `M.mm` (M.trans f)
 
-            jacHs :: shr (M.M (JV Id) (JV x) MX)
-            jacHs = M.vsplit jacH -- THIS IS THROWING THE vsplit ERROR
+            fpe :: M.M (JV x) (JV sx) MX
+            fpe = f `M.mm` pe
+
+            jHxs :: shr (M.M (JV Id) (JV x) MX)
+            jHxs = M.vsplit jHx
+
+            jHes :: shr (M.M (JV Id) (JV sx) MX)
+            jHes = M.vsplit jHe
 
             shr' = fmap mkJ (unJV (split h0vec)) :: shr (J (JV Id) MX)
 
@@ -427,19 +453,27 @@ mkRobustifyFunction project robustifyPathC = do
             rcs' = cat $ JV $ fmap unsafeUnJ rcs
 
             rcs :: shr (J (JV Id) MX)
-            rcs = vzipWith3 robustify gammas shr' jacHs
+            rcs = vzipWith4 robustify gammas shr' jHxs jHes
 
-            robustify :: J (JV Id) MX -> J (JV Id) MX -> M.M (JV Id) (JV x) MX -> J (JV Id) MX
-            robustify gamma h0 gradH = h0 + gamma * sqrt sigma2
+            robustify :: J (JV Id) MX
+                         -> J (JV Id) MX
+                         -> M.M (JV Id) (JV x) MX
+                         -> M.M (JV Id) (JV sx) MX
+                         -> J (JV Id) MX
+            robustify gamma h0 gHx gHe = h0 + gamma * sqrt sigma2
               where
                 sigma2 :: J (JV Id) MX
                 sigma2 = mkJ sigma2'
 
-                M.UnsafeM sigma2' = gradH `M.mm` px `M.mm` (M.trans gradH) :: M.M (JV Id) (JV Id) MX
+                M.UnsafeM sigma2' =
+                  gHx `M.mm` fpef `M.mm` (M.trans gHx) +
+                  2 * gHx `M.mm` fpe `M.mm` (M.trans gHe) +
+                  gHe `M.mm` pe `M.mm` (M.trans gHe)
+                  :: M.M (JV Id) (JV Id) MX
 
   retFun <- toMXFun "robust constraint violations" $
-    \(x0 :*: x1 :*: x2) -> gogo x0 x1 x2
+    \(x0 :*: x1 :*: x2 :*: x3) -> gogo x0 x1 x2 x3
 
   retFunSX <- expandMXFun retFun
 
-  return (\x y z -> call retFunSX (x :*: y :*: z))
+  return (\x y z w -> call retFunSX (x :*: y :*: z :*: w))
