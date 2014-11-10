@@ -18,6 +18,9 @@ import Data.List ( intercalate )
 import qualified Linear
 import GHC.Generics
 
+import SpatialMath ( Euler )
+import SpatialMathT ( V3T, Rot )
+
 showAccTree :: String -> AccessorTree a -> [String]
 showAccTree spaces (Getter _) = [spaces ++ "Getter {}"]
 showAccTree spaces (Data name trees) =
@@ -115,6 +118,9 @@ instance (Lookup a, Generic a) => Lookup (Linear.Quaternion a) where
       getQ2 (Linear.Quaternion _ (Linear.V3 _ y _)) = y
       getQ3 (Linear.Quaternion _ (Linear.V3 _ _ z)) = z
 
+instance (Lookup a, Generic a) => Lookup (Rot f1 f2 a)
+instance (Lookup a, Generic a) => Lookup (V3T f a)
+instance (Lookup a, Generic a) => Lookup (Euler a)
 
 instance Lookup Float where
   toAccessorTree _ f = Getter $ realToFrac . f

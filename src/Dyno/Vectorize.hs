@@ -33,6 +33,9 @@ import Data.Traversable ( Traversable )
 import Data.Proxy ( Proxy(..) )
 import qualified Linear
 
+import SpatialMath ( Euler )
+import SpatialMathT ( V3T, Rot )
+
 import Dyno.Server.Accessors
 
 -- | a length-0 vectorizable type
@@ -92,6 +95,9 @@ instance Vectorize Linear.V2
 instance Vectorize Linear.V3
 instance Vectorize Linear.V4
 instance Vectorize Linear.Quaternion
+instance Vectorize Euler
+instance Vectorize (V3T f)
+instance Vectorize (Rot f1 f2)
 
 fill :: Vectorize f => a -> f a
 fill x = fmap (const x) empty
