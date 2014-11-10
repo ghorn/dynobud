@@ -267,7 +267,7 @@ main = do
           callback traj = do
             (dyn,_) <- toDyn traj
             -- dynoplot
-            let dynoPlotMsg = encodeSerial (dyn, meta)
+            let dynoPlotMsg = encodeSerial ([dyn], meta)
             sendDynoPlotMsg "glider" dynoPlotMsg
 --            -- 3d vis
 --            let CollTraj tf' _ _ stages' xf = split traj
