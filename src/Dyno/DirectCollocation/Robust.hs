@@ -116,22 +116,22 @@ mkComputeSensitivities roots covDae = do
           CollTraj tf parm stages' _ = split collTraj
           stages = unJVec (split stages') :: Vec n (J (CollStage (JV x) (JV z) (JV u) deg) MX)
           spstages = fmap split stages :: Vec n (CollStage (JV x) (JV z) (JV u) deg MX)
-      
+
           -- timestep
           dt = tf / fromIntegral n
           n = reflectDim (Proxy :: Proxy n)
-      
+
           -- initial time at each collocation stage
           t0s :: Vec n (J S MX)
           t0s = TV.mkVec' $ take n [dt * fromIntegral k | k <- [(0::Int)..]]
-      
+
           -- times at each collocation point
           times :: Vec n (Vec deg (J S MX))
           times = fmap (\t0 -> fmap (\tau -> t0 + realToFrac tau * dt) taus) t0s
-      
+
           times' :: Vec n (J (JVec deg S) MX)
           times' = fmap (cat . JVec) times
-      
+
           fs :: Vec n (M (JV sx) (JV sx) MX)
           ws :: Vec n (M (JV sx) (JV sw) MX)
           (fs, ws) = TV.tvunzip $ TV.tvzipWith mkFw times' spstages
@@ -153,13 +153,13 @@ mkComputeCovariances ::
         )
 mkComputeCovariances computeSens sq = do
   propOneCov <- mkPropOneCov
-  
+
   let computeCovs collTrajCov = cat covTraj
         where
           CollTrajCov p0 collTraj = split collTrajCov
-    
+
           sensitivities = call computeSens collTraj
-      
+
           covTraj =
             CovTraj
             { ctAllButLast = cat (JVec covs)
@@ -170,20 +170,20 @@ mkComputeCovariances computeSens sq = do
           pF :: J (Cov (JV sx)) MX -- last covariances
           (pF, covs) = T.mapAccumL ffs p0 $
                            TV.tvzip (M.vsplit' (csFs sensitivities)) (M.vsplit' (csWs sensitivities))
-      
+
           sq_over_t :: J (Cov (JV sw)) MX
           sq_over_t = mkJ ((unJ dt) * d2m (unJ sq))
-      
+
           ffs :: J (Cov (JV sx)) MX
                  -> (M (JV sx) (JV sx) MX, M (JV sx) (JV sw) MX)
                 -> (J (Cov (JV sx)) MX, J (Cov (JV sx)) MX)
           ffs cov0 (f, w) = (cov1, cov0)
             where
               cov1 = call propOneCov (f :*: w :*: cov0 :*: sq_over_t)
-      
+
           -- split up the design vars
           CollTraj tf _ _ _ = split collTraj
-      
+
           -- timestep
           dt = tf / fromIntegral n
           n = reflectDim (Proxy :: Proxy n)
@@ -310,11 +310,11 @@ mkPropOneCov = toMXFun "propogate one covariance" f
       where
         q0 = toMat' q0'
         p0 = toMat' p0'
-    
+
         p1' :: M sx sx MX
         p1' = dsx1_dsx0' `M.mm` p0 `M.mm` M.trans dsx1_dsx0' +
               dsx1_dsw0' `M.mm` q0 `M.mm` M.trans dsx1_dsw0'
-    
+
         p1 :: J (Cov sx) MX
         p1 = fromMat' p1'
 
