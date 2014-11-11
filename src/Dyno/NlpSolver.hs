@@ -43,6 +43,7 @@ module Dyno.NlpSolver
        , Op.Opt(..)
        , setOption
        , reinit
+       , liftIO
        ) where
 
 --import System.Process ( callProcess, showCommandForUser )
@@ -86,6 +87,7 @@ import Dyno.NlpScaling ( ScaleFuns(..), scaledFG, mkScaleFuns )
 import Data.Proxy
 
 type VD a = J a (Vector Double)
+type VMD a = J a (Vector (Maybe Double))
 
 data NlpSolverStuff =
   NlpSolverStuff
@@ -122,17 +124,26 @@ setInput scaleFun getLen name x0 = do
 setX0 :: forall x p g. View x => VD x -> NlpSolver x p g ()
 setX0 = setInput xToXBar isNx "x0"
 
-setLbx :: View x => VD x -> NlpSolver x p g ()
-setLbx = setInput xToXBar isNx "lbx"
+inf :: Double
+inf = read "Infinity"
 
-setUbx :: View x => VD x -> NlpSolver x p g ()
-setUbx = setInput xToXBar isNx "ubx"
+toLb :: View x => J x (Vector (Maybe Double)) -> J x (Vector Double)
+toLb = mkJ . V.map (fromMaybe (-inf)) . unJ
 
-setLbg :: View g => VD g -> NlpSolver x p g ()
-setLbg = setInput gToGBar isNg "lbg"
+toUb :: View x => J x (Vector (Maybe Double)) -> J x (Vector Double)
+toUb = mkJ . V.map (fromMaybe   inf ) . unJ
 
-setUbg :: View g => VD g -> NlpSolver x p g ()
-setUbg = setInput gToGBar isNg "ubg"
+setLbx :: View x => VMD x -> NlpSolver x p g ()
+setLbx = setInput xToXBar isNx "lbx" . toLb
+
+setUbx :: View x => VMD x -> NlpSolver x p g ()
+setUbx = setInput xToXBar isNx "ubx" . toUb
+
+setLbg :: View g => VMD g -> NlpSolver x p g ()
+setLbg = setInput gToGBar isNg "lbg" . toLb
+
+setUbg :: View g => VMD g -> NlpSolver x p g ()
+setUbg = setInput gToGBar isNg "ubg" . toUb
 
 setP :: View p => VD p -> NlpSolver x p g ()
 setP = setInput (const id) isNp "p"
@@ -444,6 +455,14 @@ solveNlp solverStuff nlp callback = do
   return (r0, r1)
 
 
+fmapJ :: View x => (a -> b) -> J x (Vector a) -> J x (Vector b)
+fmapJ f (UnsafeJ v) = mkJ (V.map f v)
+
+junzip :: View x => J x (Vector (a,b)) -> (J x (Vector a), J x (Vector b))
+junzip (UnsafeJ v) = (mkJ x, mkJ y)
+  where
+    (x,y) = V.unzip v
+
 -- | convenience function to solve a pure Nlp'
 solveNlp' ::
   (View x, View p, View g, Symbolic a)
@@ -453,8 +472,8 @@ solveNlp' ::
 solveNlp' solverStuff nlp callback =
 --  runNlpSolver solverStuff (nlpFG' nlp) (nlpX0' nlp) callback $ do
   runNlpSolver solverStuff (nlpFG' nlp) (nlpScaleX' nlp) (nlpScaleG' nlp) (nlpScaleF' nlp) callback $ do
-    let (lbx,ubx) = toBnds (nlpBX' nlp)
-        (lbg,ubg) = toBnds (nlpBG' nlp)
+    let (lbx,ubx) = junzip (nlpBX' nlp)
+        (lbg,ubg) = junzip (nlpBG' nlp)
 
     setX0 (nlpX0' nlp)
     setP (nlpP' nlp)
@@ -489,15 +508,15 @@ solveNlpHomotopy' userStep (reduction, increase, iterIncrease, iterDecrease)
         where
           JTuple x p = split xp
   runNlpSolver solverStuff fg Nothing (nlpScaleG' nlp) (nlpScaleF' nlp) callback $ do
-    let (lbx,ubx) = toBnds (nlpBX' nlp)
-        (lbg,ubg) = toBnds (nlpBG' nlp)
+    let (lbx,ubx) = junzip (nlpBX' nlp)
+        (lbg,ubg) = junzip (nlpBG' nlp)
         UnsafeJ p0 = nlpP' nlp
 
         setAlpha :: Double -> NlpSolver (JTuple x p) JNone g ()
         setAlpha alpha = do
           let p = mkJ $ V.zipWith (+) p0 (V.map (alpha*) (V.zipWith (-) pF p0))
-          setLbx $ cat (JTuple lbx p)
-          setUbx $ cat (JTuple ubx p)
+          setLbx $ cat (JTuple lbx (fmapJ Just p))
+          setUbx $ cat (JTuple ubx (fmapJ Just p))
 
     -- initial solve
     setX0 $ cat $ JTuple (nlpX0' nlp) (nlpP' nlp)
@@ -567,11 +586,3 @@ solveNlpHomotopy' userStep (reduction, increase, iterIncrease, iterDecrease)
     ret <- tryStep 0 0 userStep
     liftIO $ putStrLn "homotopy successful"
     return ret
-
-inf :: Double
-inf = read "Infinity"
-
-toBnds :: View f => J f (Vector Bounds) -> (VD f, VD f)
-toBnds vs = (mkJ (V.map (fromMaybe (-inf)) lbs), mkJ (V.map (fromMaybe inf) ubs))
-  where
-    (lbs, ubs) = V.unzip (unJ vs)
