@@ -8,6 +8,7 @@ module Dyno.DirectCollocation.Quadratures
        , mkTaus
        , interpolate
        , timesFromTaus
+       , collocationTimes
        ) where
 
 import GHC.Generics ( Generic )
@@ -27,11 +28,15 @@ import Dyno.LagrangePolynomials ( lagrangeXis )
 data QuadratureRoots = Legendre | Radau deriving (Show, Eq, Ord, Enum, Generic)
 instance Serialize QuadratureRoots
 
-mkTaus :: Fractional a => QuadratureRoots -> Int -> Vec deg a
-mkTaus quadratureRoots deg = case taus of
+mkTaus ::
+  forall deg a
+  . (Dim deg, Fractional a)
+  => QuadratureRoots -> Vec deg a
+mkTaus quadratureRoots = case taus of
   Just taus' -> TV.mkVec $ V.map (fromRational . toRational) taus'
   Nothing -> error "makeTaus: too high degree"
   where
+    deg = reflectDim (Proxy :: Proxy deg)
     taus = case quadratureRoots of
       Legendre -> shiftedLegendreRoots deg
       Radau -> error "radau not yet supported" -- shiftedRadauRoots (deg-1) ++ [1.0]
@@ -58,15 +63,19 @@ interpolate taus x0 xs = dot (TV.mkVec' xis) (x0 TV.<| xs)
 timesFromTaus ::
   forall n deg a
   . (Num a, Dim n, Dim deg)
-  => Vec deg a -> Proxy n -> a -> Vec n (a, Vec deg a)
-timesFromTaus taus n' dt = times
+  => a -> Vec deg a -> a -> Vec n (a, Vec deg a)
+timesFromTaus t0 taus dt = times
   where
-    n = reflectDim n'
+    n = reflectDim (Proxy :: Proxy n)
 
     -- initial time at each collocation stage
     t0s :: Vec n a
-    t0s = TV.mkVec' $ take n [dt * fromIntegral k | k <- [(0::Int)..]]
+    t0s = TV.mkVec' $ take n [t0 + (dt * fromIntegral k) | k <- [(0::Int)..]]
 
     -- times at each collocation point
     times :: Vec n (a, Vec deg a)
-    times = fmap (\t0 -> (t0, fmap (\tau -> t0 + tau * dt) taus)) t0s
+    times = fmap (\t0' -> (t0', fmap (\tau -> t0' + tau * dt) taus)) t0s
+
+collocationTimes ::
+  (Dim n, Dim deg, Fractional a) => a -> QuadratureRoots -> a -> Vec n (a, Vec deg a)
+collocationTimes t0 qr dt = timesFromTaus t0 (mkTaus qr) dt

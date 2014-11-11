@@ -77,9 +77,7 @@ mkComputeSensitivities ::
 mkComputeSensitivities roots covDae = do
   let -- the collocation points
       taus :: Vec deg Double
-      taus = mkTaus roots deg
-
-      deg = reflectDim (Proxy :: Proxy deg)
+      taus = mkTaus roots
 
       -- coefficients for getting xdot by lagrange interpolating polynomials
       cijs :: Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)

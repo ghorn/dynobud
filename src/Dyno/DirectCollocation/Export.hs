@@ -34,13 +34,14 @@ toMatlab ::
 toMatlab cp ct@(CollTraj tf' p' stages' xf) = do
   outs <- fmap snd $ cpCallback cp (cat ct)
 
-  let taus = cpTaus cp
+  let taus :: Vec deg Double
+      taus = cpTaus cp
       tf = V.head (unJ tf')
 
       n = reflectDim (Proxy :: Proxy n)
-      deg = reflectDim (Proxy :: Proxy deg)
+
       times :: Vec n (Double, Vec deg Double)
-      times = timesFromTaus taus Proxy dt
+      times = timesFromTaus 0 taus dt
         where
           dt = tf / fromIntegral n
 
@@ -99,7 +100,7 @@ toMatlab cp ct@(CollTraj tf' p' stages' xf) = do
             , "ret.tx = " ++ show xTimes
             , "ret.tzuo = " ++ show zuoTimes
             , "ret.N = " ++ show n
-            , "ret.deg = " ++ show deg
+            , "ret.deg = " ++ show (reflectDim (Proxy :: Proxy deg))
             , "ret.collocationRoots = '" ++ show (cpRoots cp) ++ "'"
             ]
   return ret

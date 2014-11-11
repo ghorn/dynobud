@@ -103,11 +103,14 @@ plotPoints quadratureRoots (CollTraj (UnsafeJ tf') _ stages' xf) outputs =
     tf,h :: a
     tf = V.head tf'
     h = tf / fromIntegral nStages
-    --taus :: Vec deg Double
-    taus = mkTaus quadratureRoots (reflectDim (Proxy :: Proxy deg))
 
-    stages = fmap split (unJVec (split stages')) :: Vec n (CollStage (JV x) (JV z) (JV u) deg (Vector a))
-    (xss,zss,uss,oss,xdss) = unzip5 $ f 0 $ zip (F.toList stages) (F.toList outputs)
+    taus :: Vec deg a
+    taus = mkTaus quadratureRoots
+
+    stages :: Vec n (CollStage (JV x) (JV z) (JV u) deg (Vector a))
+    stages = fmap split (unJVec (split stages'))
+    (xss,zss,uss,oss,xdss) = unzip5 $ F.toList $ f 0 $ zip (F.toList stages) (F.toList outputs)
+
 
     -- todo: check this final time against expected tf
     f :: a

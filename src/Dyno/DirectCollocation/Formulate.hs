@@ -81,9 +81,8 @@ makeCollProblem ocp = do
       roots = Legendre
 
       taus :: Vec deg Double
-      taus = mkTaus roots deg
+      taus = mkTaus roots
 
-      deg = reflectDim (Proxy :: Proxy deg)
       n = reflectDim (Proxy :: Proxy n)
 
       -- coefficients for getting xdot by lagrange interpolating polynomials
@@ -234,9 +233,7 @@ makeCollCovProblem ocp ocpCov = do
       roots = Legendre
 
       taus :: Vec deg Double
-      taus = mkTaus roots deg
-
-      deg = reflectDim (Proxy :: Proxy deg)
+      taus = mkTaus roots
 
   computeSensitivities <- mkComputeSensitivities roots (ocpCovDae ocpCov)
   computeCovariances <- mkComputeCovariances computeSensitivities (ocpCovSq ocpCov)
@@ -382,7 +379,7 @@ getFg taus bcFun mayerFun quadFun stageFun collTraj _ = (obj, cat g)
 
     -- times at each collocation point
     times :: Vec n (Vec deg (J S MX))
-    times = fmap snd $ timesFromTaus (fmap realToFrac taus) Proxy dt
+    times = fmap snd $ timesFromTaus 0 (fmap realToFrac taus) dt
 
     times' :: Vec n (J (JVec deg S) MX)
     times' = fmap (cat . JVec) times
@@ -481,7 +478,7 @@ getFgCov
 
     -- times at each collocation point
     t0s :: Vec n (J S MX)
-    (t0s, _) = TV.tvunzip $ timesFromTaus (fmap realToFrac taus) Proxy dt
+    (t0s, _) = TV.tvunzip $ timesFromTaus 0 (fmap realToFrac taus) dt
 
     -- initial point at each stage
     x0s :: Vec n (J (JV x) MX)
@@ -800,9 +797,8 @@ makeGuess quadratureRoots tf guessX guessZ guessU parm =
 
     -- the collocation points
     taus :: Vec deg Double
-    taus = mkTaus quadratureRoots deg
+    taus = mkTaus quadratureRoots
 
-    deg = vlength (Proxy :: Proxy (Vec deg))
 
     v2j :: Vectorize v => v Double -> J (JV v) (Vector Double)
     v2j = mkJ . vectorize
@@ -846,13 +842,10 @@ makeGuessSim quadratureRoots tf x00 ode guessU p =
 
     -- the collocation points
     taus :: Vec deg Double
-    taus = mkTaus quadratureRoots deg
-
-    deg = vlength (Proxy :: Proxy (Vec deg))
+    taus = mkTaus quadratureRoots
 
     v2j :: Vectorize v => v Double -> J (JV v) (Vector Double)
     v2j = mkJ . vectorize
-
 
     rk4 :: (x Double -> x Double) -> Double -> x Double -> x Double
     rk4 f h x0 = x0 ^+^ ((k1 ^+^ (2 *^ k2) ^+^ (2 *^ k3) ^+^ k4) ^/ 6)
