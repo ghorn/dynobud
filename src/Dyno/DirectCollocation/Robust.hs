@@ -169,15 +169,15 @@ mkComputeCovariances computeSens sq = do
           (pF, covs) = T.mapAccumL ffs p0 $
                            TV.tvzip (M.vsplit' (csFs sensitivities)) (M.vsplit' (csWs sensitivities))
 
-          sq_over_t :: J (Cov (JV sw)) MX
-          sq_over_t = mkJ ((unJ dt) * d2m (unJ sq))
+          sq_times_t :: J (Cov (JV sw)) MX
+          sq_times_t = mkJ ((unJ dt) * d2m (unJ sq))
 
           ffs :: J (Cov (JV sx)) MX
                  -> (M (JV sx) (JV sx) MX, M (JV sx) (JV sw) MX)
                 -> (J (Cov (JV sx)) MX, J (Cov (JV sx)) MX)
           ffs cov0 (f, w) = (cov1, cov0)
             where
-              cov1 = call propOneCov (f :*: w :*: cov0 :*: sq_over_t)
+              cov1 = call propOneCov (f :*: w :*: cov0 :*: sq_times_t)
 
           -- split up the design vars
           CollTraj tf _ _ _ = split collTraj
