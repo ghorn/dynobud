@@ -63,6 +63,7 @@ re' = mkJ . svector . V.singleton
 data CollProblem x z u p r c h o n deg =
   CollProblem
   { cpNlp :: Nlp' (CollTraj x z u p n deg) JNone (CollOcpConstraints n deg x r c h) MX
+  , cpOcp :: OcpPhase x z u p r o c h
   , cpCallback :: J (CollTraj x z u p n deg) (Vector Double)
                   -> IO (DynCollTraj (Vector Double), Vec n (Vec deg (o Double, x Double)))
   , cpTaus :: Vec deg Double
@@ -194,6 +195,7 @@ makeCollProblem ocp = do
                        (fromMaybe (fill 1) (ocpPathCScale ocp))
         }
   return $ CollProblem { cpNlp = nlp
+                       , cpOcp = ocp
                        , cpCallback = callback
                        , cpTaus = taus
                        , cpRoots = roots
