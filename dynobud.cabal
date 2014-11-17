@@ -23,14 +23,14 @@ library
                        Dyno.Models.Betty
                        Dyno.Ocp
                        Dyno.DirectCollocation
-                       Dyno.DirectCollocation.Types
+                       Dyno.DirectCollocation.Dynamic
                        Dyno.DirectCollocation.Export
                        Dyno.DirectCollocation.Formulate
-                       Dyno.DirectCollocation.Reify
-                       Dyno.DirectCollocation.Dynamic
-                       Dyno.DirectCollocation.Quadratures
                        Dyno.DirectCollocation.Profile
+                       Dyno.DirectCollocation.Quadratures
+                       Dyno.DirectCollocation.Reify
                        Dyno.DirectCollocation.Robust
+                       Dyno.DirectCollocation.Types
                        Dyno.Cov
                        Dyno.View
                        Dyno.View.CasadiMat
