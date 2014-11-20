@@ -2,6 +2,7 @@
 
 module Dyno.View.CasadiMat
        ( CasadiMat(..), MX.MX, SX.SX, DMatrix.DMatrix
+       , vertslice, horzslice
        ) where
 
 import qualified Data.Vector as V
@@ -11,6 +12,7 @@ import Casadi.Overloading ( Fmod, ArcTan2, SymOrd )
 import qualified Casadi.SX as SX
 import qualified Casadi.MX as MX
 import qualified Casadi.DMatrix as DMatrix
+import Casadi.Slice ( Slice, slice )
 import Casadi.Core.Tools as C
 
 class (Eq a, Show a, Floating a, Fmod a, ArcTan2 a, SymOrd a) => CasadiMat a where
@@ -28,11 +30,14 @@ class (Eq a, Show a, Floating a, Fmod a, ArcTan2 a, SymOrd a) => CasadiMat a whe
   zeros :: (Int,Int) -> a
   fromDVector :: V.Vector Double -> a
   solve :: a -> a -> a
+  indexed :: a -> Slice -> Slice -> a
 
 instance CasadiMat SX.SX where
   veccat = SX.sveccat
+--  vertsplit = vertslice
   vertsplit = SX.svertsplit
   vertcat = SX.svertcat
+--  horzsplit = horzslice
   horzsplit = SX.shorzsplit
   horzcat = SX.shorzcat
   size1 = SX.ssize1
@@ -44,11 +49,14 @@ instance CasadiMat SX.SX where
   zeros = SX.szeros
   fromDVector = SX.d2s . fromDVector
   solve = SX.ssolve
+  indexed = SX.sindexed
 
 instance CasadiMat MX.MX where
   veccat = MX.veccat
+--  vertsplit = vertslice
   vertsplit = MX.vertsplit
   vertcat = MX.vertcat
+--  horzsplit = horzslice
   horzsplit = MX.horzsplit
   horzcat = MX.horzcat
   size1 = MX.size1
@@ -60,11 +68,14 @@ instance CasadiMat MX.MX where
   zeros = MX.zeros
   fromDVector = MX.d2m . fromDVector
   solve = MX.solve
+  indexed = MX.indexed
 
 instance CasadiMat DMatrix.DMatrix where
   veccat = DMatrix.dveccat
+--  vertsplit = vertslice
   vertsplit = DMatrix.dvertsplit
   vertcat = DMatrix.dvertcat
+--  horzsplit = horzslice
   horzsplit = DMatrix.dhorzsplit
   horzcat = DMatrix.dhorzcat
   size1 = DMatrix.dsize1
@@ -76,3 +87,22 @@ instance CasadiMat DMatrix.DMatrix where
   zeros = DMatrix.dzeros
   fromDVector = DMatrix.dvector
   solve x y = unsafePerformIO (C.solve__3 x y)
+  indexed = DMatrix.dindexed
+
+vertslice :: CasadiMat a => a -> V.Vector Int -> V.Vector a
+vertslice x vs = V.fromList (f (V.toList vs))
+  where
+    cols = size2 x
+    hslice = slice 0 cols 1
+
+    f (v0:v1:others) = indexed x (slice v0 v1 1) hslice : f (v1:others)
+    f _ = []
+
+horzslice :: CasadiMat a => a -> V.Vector Int -> V.Vector a
+horzslice x vs = V.fromList (f (V.toList vs))
+  where
+    rows = size1 x
+    vslice = slice 0 rows 1
+
+    f (v0:v1:others) = indexed x vslice (slice v0 v1 1) : f (v1:others)
+    f _ = []
