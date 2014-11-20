@@ -238,7 +238,8 @@ makeCollCovProblem ocp ocpCov = do
       taus = mkTaus roots
 
   computeSensitivities <- mkComputeSensitivities roots (ocpCovDae ocpCov)
-  computeCovariances <- mkComputeCovariances computeSensitivities (ocpCovSq ocpCov)
+  computeCovariances <- mkComputeCovariances continuousToDiscreetNoiseApprox
+                        computeSensitivities (ocpCovSq ocpCov)
 
   sbcFun <- toSXFun "sbc" $ \(x0:*:x1) -> ocpCovSbc ocpCov x0 x1
   shFun <- toSXFun "sh" $ \(x0:*:x1) -> ocpCovSh ocpCov (de x0) x1

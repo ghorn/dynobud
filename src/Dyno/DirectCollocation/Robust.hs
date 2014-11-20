@@ -10,6 +10,7 @@ module Dyno.DirectCollocation.Robust
        , mkComputeSensitivities
        , mkComputeCovariances
        , mkRobustifyFunction
+       , continuousToDiscreetNoiseApprox
        ) where
 
 import GHC.Generics ( Generic, Generic1 )
@@ -143,14 +144,16 @@ mkComputeCovariances ::
   forall z x u p sx sw n deg .
   (Dim deg, Dim n, Vectorize x, Vectorize z, Vectorize u, Vectorize p,
    Vectorize sx, Vectorize sw)
-  => MXFun (J (CollTraj x z u p n deg)) (CovarianceSensitivities (JV sx) (JV sw) n)
+  => (M (JV sx) (JV sx) MX -> M (JV sx) (JV sw) MX -> J (Cov (JV sw)) MX -> J S MX
+      -> M (JV sx) (JV sx) MX)
+  -> MXFun (J (CollTraj x z u p n deg)) (CovarianceSensitivities (JV sx) (JV sw) n)
   -> J (Cov (JV sw)) DMatrix
   -> IO (MXFun
          (J (CollTrajCov sx x z u p n deg))
          (J (CovTraj sx n))
         )
-mkComputeCovariances computeSens sq = do
-  propOneCov <- mkPropOneCov
+mkComputeCovariances c2d computeSens qc' = do
+  propOneCovFun <- toMXFun "propogate one covariance" (propOneCov c2d)
 
   let computeCovs collTrajCov = cat covTraj
         where
@@ -169,15 +172,14 @@ mkComputeCovariances computeSens sq = do
           (pF, covs) = T.mapAccumL ffs p0 $
                            TV.tvzip (M.vsplit' (csFs sensitivities)) (M.vsplit' (csWs sensitivities))
 
-          sq_times_t :: J (Cov (JV sw)) MX
-          sq_times_t = mkJ ((unJ dt) * d2m (unJ sq))
+          qc = mkJ (d2m (unJ qc'))
 
           ffs :: J (Cov (JV sx)) MX
                  -> (M (JV sx) (JV sx) MX, M (JV sx) (JV sw) MX)
                 -> (J (Cov (JV sx)) MX, J (Cov (JV sx)) MX)
-          ffs cov0 (f, w) = (cov1, cov0)
+          ffs p0' (f, g) = (p1', p0')
             where
-              cov1 = call propOneCov (f :*: w :*: cov0 :*: sq_times_t)
+              p1' = call propOneCovFun (f :*: g :*: p0' :*: qc :*: dt)
 
           -- split up the design vars
           CollTraj tf _ _ _ = split collTraj
@@ -296,25 +298,30 @@ errorDynStageConstraints cijs taus dynFun
                  $ unJVec $ split sxzs'
 
 
-mkPropOneCov ::
+continuousToDiscreetNoiseApprox :: (View sx, View sw)
+       => M sx sx MX -> M sx sw MX -> J (Cov sw) MX -> J S MX -> M sx sx MX
+continuousToDiscreetNoiseApprox _dsx1_dsx0 dsx1_dsw0 qs h = qd
+  where
+    -- Qs' = G * Qs * G.T
+    qs' = dsx1_dsw0 `M.mm` (toMat' qs) `M.mm` M.trans dsx1_dsw0
+
+    qd = qs' `M.ms` h
+--         + (dsx1_dsx0 `M.mm` qs' + qs' `M.mm` (M.trans dsx1_dsx0)) `M.ms` (h*h/2)
+--         + (dsx1_dsx0 `M.mm` qs' `M.mm` (M.trans dsx1_dsx0)) `M.ms` (h*h*h/3)
+
+
+propOneCov ::
   forall sx sw
   . (View sx, View sw)
-  => IO (MXFun
-         (M sx sx :*: M sx sw :*: J (Cov sx) :*: J (Cov sw))
-         (J (Cov sx)))
-mkPropOneCov = toMXFun "propogate one covariance" f
+  => (M sx sx MX -> M sx sw MX -> J (Cov sw) MX -> J S MX -> M sx sx MX)
+  -> (M sx sx :*: M sx sw :*: J (Cov sx) :*: J (Cov sw) :*: J S) MX
+  -> J (Cov sx) MX
+propOneCov c2d (dsx1_dsx0 :*: dsx1_dsw0 :*: p0 :*: qs :*: h) = fromMat' p1
   where
-    f (dsx1_dsx0' :*: dsx1_dsw0' :*: p0' :*: q0') = p1
-      where
-        q0 = toMat' q0'
-        p0 = toMat' p0'
+    qd = c2d dsx1_dsx0 dsx1_dsw0 qs h
 
-        p1' :: M sx sx MX
-        p1' = dsx1_dsx0' `M.mm` p0 `M.mm` M.trans dsx1_dsx0' +
-              dsx1_dsw0' `M.mm` q0 `M.mm` M.trans dsx1_dsw0'
-
-        p1 :: J (Cov sx) MX
-        p1 = fromMat' p1'
+    p1 :: M sx sx MX
+    p1 = dsx1_dsx0 `M.mm` (toMat' p0) `M.mm` M.trans dsx1_dsx0 + qd
 
 
 sensitivityStageFunction ::
