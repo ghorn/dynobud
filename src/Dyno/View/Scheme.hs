@@ -25,7 +25,7 @@ import GHC.Generics hiding ( S )
 import Dyno.Nats
 import Dyno.View.View
 import Dyno.View.CasadiMat
-import Dyno.View.M
+import Dyno.View.M ( M(..) )
 
 data MyScheme a = MyScheme (J (JVec D3 S) a) (J (JVec D2 S) a) deriving (Generic, Generic1, Show)
 instance Scheme MyScheme
