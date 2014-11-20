@@ -70,7 +70,7 @@ main = do
         
   _ <- CC.forkIO parserThread
   
-  animateIO Nothing "sofa lol" (animateFun trajMVar)
+  animateIO (defaultOpts { optWindowName = "sofa lol" }) (animateFun trajMVar)
 
 multiplyList :: Int -> Int -> [a] -> [a]
 multiplyList _ _ [] = []
