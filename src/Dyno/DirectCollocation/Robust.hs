@@ -305,7 +305,7 @@ continuousToDiscreetNoiseApprox _dsx1_dsx0 dsx1_dsw0 qs h = qd
     -- Qs' = G * Qs * G.T
     qs' = dsx1_dsw0 `M.mm` (toMat' qs) `M.mm` M.trans dsx1_dsw0
 
-    qd = qs' `M.ms` h
+    qd = qs' `M.ms` (1/h)
 --         + (dsx1_dsx0 `M.mm` qs' + qs' `M.mm` (M.trans dsx1_dsx0)) `M.ms` (h*h/2)
 --         + (dsx1_dsx0 `M.mm` qs' `M.mm` (M.trans dsx1_dsx0)) `M.ms` (h*h*h/3)
 
