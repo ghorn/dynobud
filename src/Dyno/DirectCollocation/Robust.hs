@@ -146,7 +146,7 @@ mkComputeCovariances ::
    Vectorize sx, Vectorize sw)
   => (M (JV sx) (JV sx) MX -> M (JV sx) (JV sw) MX -> J (Cov (JV sw)) MX -> J S MX
       -> M (JV sx) (JV sx) MX)
-  -> MXFun (J (CollTraj x z u p n deg)) (CovarianceSensitivities (JV sx) (JV sw) n)
+  -> (J (CollTraj x z u p n deg) MX -> CovarianceSensitivities (JV sx) (JV sw) n MX)
   -> J (Cov (JV sw)) DMatrix
   -> IO (MXFun
          (J (CollTrajCov sx x z u p n deg))
@@ -159,7 +159,7 @@ mkComputeCovariances c2d computeSens qc' = do
         where
           CollTrajCov p0 collTraj = split collTrajCov
 
-          sensitivities = call computeSens collTraj
+          sensitivities = computeSens collTraj
 
           covTraj =
             CovTraj
