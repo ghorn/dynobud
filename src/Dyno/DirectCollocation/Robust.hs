@@ -74,7 +74,7 @@ mkComputeSensitivities ::
   -> (x Sxe -> x Sxe -> z Sxe -> u Sxe -> p Sxe -> Sxe
       -> sx Sxe -> sx Sxe -> sz Sxe -> sw Sxe
       -> sr Sxe)
-  -> IO (MXFun (J (CollTraj x z u p n deg)) (CovarianceSensitivities (JV sx) (JV sw) n))
+  -> IO (J (CollTraj x z u p n deg) MX -> CovarianceSensitivities (JV sx) (JV sw) n MX)
 mkComputeSensitivities roots covDae = do
   let -- the collocation points
       taus :: Vec deg Double
@@ -107,9 +107,9 @@ mkComputeSensitivities roots covDae = do
         where
           y0 :*: y1 = call sensitivityStageFun (dt :*: p :*: stagetimes :*: x0 :*: xzus)
 
-  let foo :: J (CollTraj x z u p n deg) MX
+  let computeAllSensitivities :: J (CollTraj x z u p n deg) MX
              -> CovarianceSensitivities (JV sx) (JV sw) n MX
-      foo collTraj = CovarianceSensitivities (M.vcat' fs) (M.vcat' ws)
+      computeAllSensitivities collTraj = CovarianceSensitivities (M.vcat' fs) (M.vcat' ws)
         where
           -- split up the design vars
           CollTraj tf parm stages' _ = split collTraj
@@ -136,7 +136,8 @@ mkComputeSensitivities roots covDae = do
           (fs, ws) = TV.tvunzip $ TV.tvzipWith mkFw times' spstages
           mkFw stagetimes (CollStage x0' xzus') = sens dt parm stagetimes x0' xzus'
 
-  toMXFun "compute all sensitivities" foo
+  return computeAllSensitivities
+--  toMXFun "compute all sensitivities" computeAllSensitivities
 
 
 -- todo: calculate by first multiplying all the Fs
@@ -148,14 +149,12 @@ mkComputeCovariances ::
       -> M (JV sx) (JV sx) MX)
   -> (J (CollTraj x z u p n deg) MX -> CovarianceSensitivities (JV sx) (JV sw) n MX)
   -> J (Cov (JV sw)) DMatrix
-  -> IO (MXFun
-         (J (CollTrajCov sx x z u p n deg))
-         (J (CovTraj sx n))
-        )
+  -> IO (J (CollTrajCov sx x z u p n deg) MX -> J (CovTraj sx n) MX)
 mkComputeCovariances c2d computeSens qc' = do
   propOneCovFun <- toMXFun "propogate one covariance" (propOneCov c2d)
 
-  let computeCovs collTrajCov = cat covTraj
+  let computeCovs :: J (CollTrajCov sx x z u p n deg) MX -> J (CovTraj sx n) MX
+      computeCovs collTrajCov = cat covTraj
         where
           CollTrajCov p0 collTraj = split collTrajCov
 
@@ -188,7 +187,8 @@ mkComputeCovariances c2d computeSens qc' = do
           dt = tf / fromIntegral n
           n = reflectDim (Proxy :: Proxy n)
 
-  toMXFun "compute all covariances" computeCovs
+  return computeCovs
+--  toMXFun "compute all covariances" computeCovs
 
 dot :: forall x deg a b. (Fractional (J x a), Real b) => Vec deg b -> Vec deg (J x a) -> J x a
 dot cks xs = F.sum $ TV.unSeq elemwise
@@ -476,9 +476,7 @@ mkRobustifyFunction project robustifyPathC = do
                   gHe `M.mm` pe `M.mm` (M.trans gHe)
                   :: M.M (JV Id) (JV Id) MX
 
-  retFun <- toMXFun "robust constraint violations" $
-    \(x0 :*: x1 :*: x2 :*: x3) -> gogo x0 x1 x2 x3
+  retFun <- toMXFun "robust constraint violations"
+            (\(x0 :*: x1 :*: x2 :*: x3) -> gogo x0 x1 x2 x3) -- >>= expandMXFun
 
-  retFunSX <- expandMXFun retFun
-
-  return (\x y z w -> call retFunSX (x :*: y :*: z :*: w))
+  return (\x y z w -> call retFun (x :*: y :*: z :*: w))

@@ -239,7 +239,7 @@ makeCollCovProblem ocp ocpCov = do
 
   computeSensitivities <- mkComputeSensitivities roots (ocpCovDae ocpCov)
   computeCovariances <- mkComputeCovariances continuousToDiscreetNoiseApprox
-                        (call computeSensitivities) (ocpCovSq ocpCov)
+                        (computeSensitivities) (ocpCovSq ocpCov)
 
   sbcFun <- toSXFun "sbc" $ \(x0:*:x1) -> ocpCovSbc ocpCov x0 x1
   shFun <- toSXFun "sh" $ \(x0:*:x1) -> ocpCovSh ocpCov (de x0) x1
@@ -279,6 +279,7 @@ makeCollCovProblem ocp ocpCov = do
         (mayerFun :: SXFun (J S :*: (J (JV x) :*: (J (JV x) :*: (J (Cov (JV sx)) :*: J (Cov (JV sx)))))) (J S))
         (nlpFG' nlp0)
 
+  computeCovariancesFun' <- toMXFun "compute covariances" computeCovariances
   -- callbacks
   let dmToDv :: J a (Vector Double) -> J a DMatrix
       dmToDv (UnsafeJ v) = UnsafeJ (dvector v)
@@ -291,7 +292,7 @@ makeCollCovProblem ocp ocpCov = do
       callback collTrajCov = do
         let CollTrajCov _ collTraj = split collTrajCov
         (dynCollTraj, outputs) <- callback0 collTraj
-        covTraj <- fmap split $ eval computeCovariances (dmToDv collTrajCov)
+        covTraj <- fmap split $ eval computeCovariancesFun' (dmToDv collTrajCov)
         let covs' = ctAllButLast covTraj
             pF = ctLast covTraj
         let covs = unJVec (split covs') :: Vec n (J (Cov (JV sx)) DMatrix)
@@ -334,10 +335,11 @@ makeCollCovProblem ocp ocpCov = do
                        , cocSbc = fromMaybe (jfill 1) (ocpCovSbcScale ocpCov)
                        }
         }
+  computeSensitivitiesFun' <- toMXFun "compute sensitivities" computeSensitivities
   return $ CollCovProblem { ccpNlp = nlp
                           , ccpCallback = callback
-                          , ccpSensitivities = computeSensitivities
-                          , ccpCovariances = computeCovariances
+                          , ccpSensitivities = computeSensitivitiesFun'
+                          , ccpCovariances = computeCovariancesFun'
                           , ccpRoots = roots
                           }
 
@@ -433,7 +435,7 @@ getFgCov ::
    Vectorize sx, View sc, View sh, Vectorize shr)
   -- taus
   => Vec deg Double
-  -> (MXFun (J (CollTrajCov sx x z u p n deg)) (J (CovTraj sx n)))
+  -> (J (CollTrajCov sx x z u p n deg) MX -> J (CovTraj sx n) MX)
   -- gammas
   -> J (JV shr) MX
   -- robustify
@@ -496,7 +498,7 @@ getFgCov
 
     covs' :: J (JVec n (Cov (JV sx))) MX -- all but last covariance
     pF :: J (Cov (JV sx)) MX -- last covariances
-    CovTraj covs' pF = split (call computeCovariances collTrajCov)
+    CovTraj covs' pF = split (computeCovariances collTrajCov)
 
     -- lagrange term
     objectiveLagrangeCov = (lagrangeF + lagrange0s) / fromIntegral n
