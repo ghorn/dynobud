@@ -25,6 +25,8 @@ snoptSolver =
   , options = []
   , solverInterruptCode = -2
   , successCodes = ["1"]
+  , functionOptions = []
+  , functionCall = const (return ())
   }
 
 ipoptSolver :: NlpSolverStuff
@@ -45,4 +47,6 @@ ipoptSolver =
   , options = []
   , solverInterruptCode = 1
   , successCodes = ["Solve_Succeeded", "Solved_To_Acceptable_Level"]
+  , functionOptions = []
+  , functionCall = const (return ())
   }

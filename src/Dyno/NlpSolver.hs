@@ -96,6 +96,8 @@ data NlpSolverStuff =
   , options :: [(String,Op.Opt)]
   , solverInterruptCode :: Int
   , successCodes :: [String]
+  , functionOptions :: [(String, Op.Opt)]
+  , functionCall :: C.Function -> IO ()
   }
 
 getStat :: String -> NlpSolver x p g C.GenericType
@@ -340,7 +342,10 @@ runNlpSolver solverStuff nlpFun scaleX scaleG scaleF callback' (NlpSolver nlpMon
   outputScheme <- mkScheme SCHEME_NLPOutput [("f", objMat), ("g", gMat)]
   nlp <- mkFunction "nlp" inputScheme outputScheme
 --  Op.setOption nlp "verbose" True
+  mapM_ (\(l,Op.Opt o) -> Op.setOption nlp l o) (functionOptions solverStuff)
   soInit nlp
+
+  functionCall solverStuff nlp
 
 --  let eval 0 = error "finished"
 --      eval k = do
