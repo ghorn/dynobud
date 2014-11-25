@@ -363,7 +363,7 @@ runNlpSolver solverStuff nlpFun scaleX scaleG scaleF callback' (NlpSolver nlpMon
 --  C.sparsity_spyMatlab jac_sparsity "jac_sparsity_reorder.m"
 
 
-  solver <- C.nlpSolver__0 (solverName solverStuff) (C.castFunction nlp)
+  solver <- C.nlpSolver__0 (solverName solverStuff) nlp
 
   -- add callback if user provides it
   intref <- newIORef False
