@@ -143,6 +143,7 @@ toMatrix'' c = unsafePerformIO $ do
   C.triu2symm__2 triu
 {-# NOINLINE toMatrix'' #-}
 
+--todo: use the function from View.M
 toHMatrix :: forall f . View f => J (Cov f) DMatrix -> Mat.Matrix Double
 toHMatrix m = (n Mat.>< n) (V.toList v)
   where
