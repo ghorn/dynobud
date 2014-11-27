@@ -28,13 +28,18 @@ module Dyno.View.M
        , unrow
        , uncol
        , solve
+       , toHMat
+       , fromHMat
+       , fromHMat'
        ) where
 
+import qualified Data.Packed.Matrix as Mat
 import Data.Proxy
 import qualified Data.Vector as V
 import GHC.Generics ( Generic )
 
 import Casadi.Overloading
+import Casadi.DMatrix ( ddata, ddense, dvector )
 
 import Dyno.Vectorize
 import Dyno.View.CasadiMat ( CasadiMat )
@@ -253,3 +258,20 @@ uncol (UnsafeM x) = mkJ x
 
 solve :: (View g, View h, CasadiMat a) => M f g a -> M f h a -> M g h a
 solve (UnsafeM x) (UnsafeM y) = mkM (CM.solve x y)
+
+toHMat :: forall n m
+       . (View n, View m)
+       => M n m DMatrix -> Mat.Matrix Double
+toHMat (UnsafeM d) = Mat.trans $ (m Mat.>< n) (V.toList v)
+  where
+    v = ddata (ddense d)
+    n = size (Proxy :: Proxy n)
+    m = size (Proxy :: Proxy m)
+
+fromHMat :: (View g, View f) => Mat.Matrix Double -> M f g DMatrix
+fromHMat x = case fromHMat' x of
+  Right x' -> x'
+  Left msg -> error msg
+
+fromHMat' :: (View g, View f) => Mat.Matrix Double -> Either String (M f g DMatrix)
+fromHMat' = mkM' . CM.vertcat . V.fromList . fmap (CM.trans . dvector . V.fromList) . Mat.toLists

@@ -396,5 +396,6 @@ test-suite unit-tests
                        vector,
                        linear,
                        casadi-bindings >= 2.1.3.2,
+                       hmatrix,
                        base >=4.6 && <4.8
   ghc-options:         -O2

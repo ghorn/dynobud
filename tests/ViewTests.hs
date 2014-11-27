@@ -10,6 +10,8 @@ module ViewTests
        , viewTests
        ) where
 
+import qualified Data.Packed.Matrix as Mat
+import qualified Numeric.LinearAlgebra ( ) -- for Eq Matrix
 import qualified Data.Vector as V
 import GHC.Generics ( Generic )
 import System.IO.Unsafe ( unsafePerformIO )
@@ -93,6 +95,16 @@ instance MyEq MX where
   myEq x y = myEq (evalMX x) (evalMX y)
 instance (Dim n, MyEq a) => MyEq (Vec n a) where
   myEq f g = V.and $ V.zipWith myEq (vectorize f) (vectorize g)
+instance MyEq (Mat.Matrix Double) where
+  myEq x y
+    | and [rowx == 0, rowy == 0, colx == coly] = True
+    | and [colx == 0, coly == 0, rowx == rowy] = True
+    | otherwise = x == y
+    where
+      rowx = Mat.rows x
+      colx = Mat.cols x
+      rowy = Mat.rows y
+      coly = Mat.cols y
 
 instance Arbitrary Views where
   arbitrary = do
@@ -240,6 +252,41 @@ prop_testSplitJ  =
         xj2 :: J (JV f) a
         xj2 = cat xj1
 
+prop_toFromHMat :: Test
+prop_toFromHMat =
+  testProperty "fromHMat . toHMat" $
+  \(Views _ _ p1) (Views _ _ p2) -> test p1 p2
+  where
+    test :: forall f g
+            . (View f, View g)
+            => Proxy f -> Proxy g -> Property
+    test _ _ = beEqual m0 m2
+      where
+        m0 = countUp :: M f g DMatrix
+
+        m1 = toHMat m0 :: Mat.Matrix Double
+
+        m2 = fromHMat m1 :: M f g DMatrix
+
+prop_fromToHMat :: Test
+prop_fromToHMat =
+  testProperty "toHMat . fromHMat" $
+  \(Views _ _ p1) (Views _ _ p2) -> test p1 p2
+  where
+    test :: forall f g
+            . (View f, View g)
+            => Proxy f -> Proxy g -> Property
+    test _ _ = beEqual m1 m3
+      where
+        m0 = countUp :: M f g DMatrix
+
+        m1 = toHMat m0 :: Mat.Matrix Double
+
+        m2 = fromHMat m1 :: M f g DMatrix
+
+        m3 = toHMat m2 :: Mat.Matrix Double
+
+
 viewTests :: Test
 viewTests =
   testGroup "view tests"
@@ -248,4 +295,6 @@ viewTests =
   , prop_VSplitVCat'
   , prop_HSplitHCat'
   , prop_testSplitJ
+  , prop_toFromHMat
+  , prop_fromToHMat
   ]
