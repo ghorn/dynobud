@@ -241,7 +241,7 @@ prop_testSplitJ  =
             => Proxy f -> Proxy a -> Property
     test _ _ = beEqual xj0 xj2
       where
-        UnsafeM xm0 = ones :: M (JV f) (JV Id) a
+        UnsafeM xm0 = countUp :: M (JV f) (JV Id) a
 
         xj0 :: J (JV f) a
         xj0 = mkJ xm0
