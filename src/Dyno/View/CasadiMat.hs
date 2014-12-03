@@ -9,6 +9,7 @@ import qualified Data.Vector as V
 
 import System.IO.Unsafe ( unsafePerformIO )
 import Casadi.Overloading ( Fmod, ArcTan2, SymOrd )
+import Casadi.Sparsity ( Sparsity )
 import qualified Casadi.SX as SX
 import qualified Casadi.MX as MX
 import qualified Casadi.DMatrix as DMatrix
@@ -31,6 +32,7 @@ class (Eq a, Show a, Floating a, Fmod a, ArcTan2 a, SymOrd a) => CasadiMat a whe
   fromDVector :: V.Vector Double -> a
   solve :: a -> a -> a
   indexed :: a -> Slice -> Slice -> a
+  sparsity :: a -> Sparsity
 
 instance CasadiMat SX.SX where
   veccat = SX.sveccat
@@ -50,6 +52,7 @@ instance CasadiMat SX.SX where
   fromDVector = SX.d2s . fromDVector
   solve = SX.ssolve
   indexed = SX.sindexed
+  sparsity = SX.scrs
 
 instance CasadiMat MX.MX where
   veccat = MX.veccat
@@ -69,6 +72,7 @@ instance CasadiMat MX.MX where
   fromDVector = MX.d2m . fromDVector
   solve = MX.solve
   indexed = MX.indexed
+  sparsity = MX.crs
 
 instance CasadiMat DMatrix.DMatrix where
   veccat = DMatrix.dveccat
@@ -88,6 +92,7 @@ instance CasadiMat DMatrix.DMatrix where
   fromDVector = DMatrix.dvector
   solve x y = unsafePerformIO (C.solve__3 x y)
   indexed = DMatrix.dindexed
+  sparsity = DMatrix.dcrs
 
 vertslice :: CasadiMat a => a -> V.Vector Int -> V.Vector a
 vertslice x vs = V.fromList (f (V.toList vs))
