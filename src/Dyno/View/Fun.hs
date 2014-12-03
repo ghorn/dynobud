@@ -6,7 +6,7 @@ module Dyno.View.Fun
        ( FunClass(..)
        , MXFun
        , SXFun
-       , Fun
+       , Fun(..)
        , toMXFun
        , toSXFun
        , eval

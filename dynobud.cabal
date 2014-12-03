@@ -35,6 +35,7 @@ library
                        Dyno.Cov
                        Dyno.View
                        Dyno.View.CasadiMat
+                       Dyno.View.CustomFunction
                        Dyno.View.Fun
                        Dyno.View.FunJac
                        Dyno.View.HList
