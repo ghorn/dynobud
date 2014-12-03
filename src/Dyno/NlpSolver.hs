@@ -44,9 +44,10 @@ module Dyno.NlpSolver
        , setOption
        , reinit
        , liftIO
+       , generateAndCompile
        ) where
 
---import System.Process ( callProcess, showCommandForUser )
+import System.Process ( callProcess, showCommandForUser )
 import Control.Exception ( AsyncException( UserInterrupt ), try )
 import Control.Concurrent ( forkIO, newEmptyMVar, takeMVar, putMVar )
 import Control.Applicative ( Applicative(..) )
@@ -64,13 +65,12 @@ import qualified Casadi.Core.Classes.Function as C
 import qualified Casadi.Core.Classes.NlpSolver as C
 import qualified Casadi.Core.Classes.GenericType as C
 import qualified Casadi.Core.Classes.IOInterfaceFunction as C
---import Casadi.Wrappers.Classes.CasadiOptions
 
 import Casadi.Callback ( makeCallback )
 import Casadi.DMatrix
 import Casadi.SX
 import Casadi.SXElement ( SXElement )
---import Dyno.Casadi.Function
+import Casadi.Function ( Function, externalFunction )
 import qualified Casadi.Option as Op
 import qualified Casadi.GenericC as Gen
 import Casadi.SharedObject ( soInit )
@@ -303,14 +303,16 @@ newtype NlpSolver (x :: * -> *) (p :: * -> *) (g :: * -> *) a =
            , MonadIO
            )
 
---generateAndCompile :: String -> Function -> IO Function
---generateAndCompile name f = do
+generateAndCompile :: String -> Function -> IO Function
+generateAndCompile name f = do
+  putStrLn $ "generating " ++ name ++ ".c"
 --  writeFile (name ++ ".c") (generateCode f)
---  let cmd = "clang"
---      args = ["-fPIC","-shared","-O","-Wall","-Wno-unused-variable",name++".c","-o",name++".so"]
---  putStrLn (showCommandForUser cmd args)
---  callProcess cmd args
---  externalFunction ("./"++name++".so")
+  C.function_generateCode__3 f (name ++ ".c") True
+  let cmd = "clang"
+      args = ["-fPIC","-shared","-Wall","-Wno-unused-variable",name++".c","-o",name++".so"]
+  putStrLn (showCommandForUser cmd args)
+  callProcess cmd args
+  externalFunction ("./"++name++".so")
 
 runNlpSolver ::
   forall x p g a s .

@@ -92,7 +92,8 @@ library
                        Chart,
                        data-default-class,
                        distributive,
-                       text
+                       text,
+                       process
 --                       cplex
   hs-source-dirs:      src
   default-language:    Haskell2010
