@@ -27,6 +27,7 @@ class (Eq a, Show a, Floating a, Fmod a, ArcTan2 a, SymOrd a) => CasadiMat a whe
   mm :: a -> a -> a
   trans :: a -> a
   diag :: a -> a
+  eye :: Int -> a
   ones :: (Int,Int) -> a
   zeros :: (Int,Int) -> a
   fromDVector :: V.Vector Double -> a
@@ -47,6 +48,7 @@ instance CasadiMat SX.SX where
   mm = SX.smm
   trans = SX.strans
   diag = SX.sdiag
+  eye = SX.seye
   ones = SX.sones
   zeros = SX.szeros
   fromDVector = SX.d2s . fromDVector
@@ -67,6 +69,7 @@ instance CasadiMat MX.MX where
   mm = MX.mm
   trans = MX.trans
   diag = MX.diag
+  eye = MX.eye
   ones = MX.ones
   zeros = MX.zeros
   fromDVector = MX.d2m . fromDVector
@@ -87,6 +90,7 @@ instance CasadiMat DMatrix.DMatrix where
   mm = DMatrix.dmm
   trans = DMatrix.dtrans
   diag = DMatrix.ddiag
+  eye = DMatrix.deye
   ones = DMatrix.dones
   zeros = DMatrix.dzeros
   fromDVector = DMatrix.dvector

@@ -12,6 +12,7 @@ module Dyno.View.M
        , ms
        , trans
        , zeros
+       , eye
        , ones
        , countUp
        , vsplit
@@ -224,6 +225,12 @@ zeros = mkM z
     z = CM.zeros (rows, cols)
     rows = size (Proxy :: Proxy f)
     cols = size (Proxy :: Proxy g)
+
+eye :: forall f a . (View f, CasadiMat a) => M f f a
+eye = mkM z
+  where
+    z = CM.eye n
+    n = size (Proxy :: Proxy f)
 
 ones :: forall f g a . (View f, View g, CasadiMat a) => M f g a
 ones = mkM z
