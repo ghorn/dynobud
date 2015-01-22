@@ -16,9 +16,9 @@ import Dyno.View.JV
 import Dyno.View.View
 import Dyno.Cov
 import Dyno.Nlp ( Bounds )
+import Dyno.SXElement ( SXElement )
 
 import Casadi.SX ( SX )
-import Casadi.SXElement ( SXElement )
 import Casadi.DMatrix ( DMatrix )
 
 type Sx a = J a SX

@@ -29,13 +29,17 @@ import qualified Numeric.LinearAlgebra.Algorithms as LA
 import Linear.Matrix hiding ( trace )
 import Linear.V
 
-import Casadi.SXElement ( SXElement )
-import Casadi.SX ( sdata, sdense, svector )
 import Casadi.DMatrix ( dvector, ddata, ddense )
 
+import Dyno.SXElement ( sxToSXElement, sxElementToSX )
 import Dyno.View.CasadiMat hiding ( solve )
 import Dyno.Cov
-import Dyno.View
+import Dyno.View.View
+import Dyno.View.JV ( JV, sxCatJV, sxSplitJV, catJV, catJV' )
+import Dyno.View.HList ( (:*:)(..) )
+import Dyno.View.Fun
+import Dyno.View.Viewable ( Viewable )
+import Dyno.View.Scheme ( Scheme )
 import Dyno.Vectorize ( Vectorize(..), fill, vlength, vzipWith )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
@@ -47,18 +51,6 @@ import Dyno.DirectCollocation.Types
 import Dyno.DirectCollocation.Dynamic ( DynCollTraj, ctToDynamic )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..), mkTaus, interpolate, timesFromTaus )
 import Dyno.DirectCollocation.Robust
-
-de :: Vectorize v => J (JV v) SX -> v SXElement
-de = devectorize . sdata . sdense . unJ
-
-de' :: J S SX -> SXElement
-de' = V.head . sdata . sdense . unJ
-
-re :: Vectorize v => v SXElement -> J (JV v) SX
-re = mkJ . svector . vectorize
-
-re' :: SXElement -> J S SX
-re' = mkJ . svector . V.singleton
 
 data CollProblem x z u p r c h o n deg =
   CollProblem
@@ -90,22 +82,22 @@ makeCollProblem ocp = do
       cijs :: Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
       cijs = lagrangeDerivCoeffs (0 TV.<| taus)
 
-  bcFun <- toSXFun "bc" $ \(x0:*:x1) -> re $ ocpBc ocp (de x0) (de x1)
+  bcFun <- toSXFun "bc" $ \(x0:*:x1) -> sxCatJV $ ocpBc ocp (sxSplitJV x0) (sxSplitJV x1)
   mayerFun <- toSXFun "mayer" $ \(x0:*:x1:*:x2) ->
-    re' $ ocpMayer ocp (de' x0) (de x1) (de x2)
+    mkJ $ sxElementToSX $ ocpMayer ocp (sxToSXElement (unJ x0)) (sxSplitJV x1) (sxSplitJV x2)
   lagrangeFun <- toSXFun "lagrange" $ \(x0:*:x1:*:x2:*:x3:*:x4:*:x5:*:x6) ->
-    re' $ ocpLagrange ocp (de x0) (de x1) (de x2) (de x3) (de x4) (de' x5) (de' x6)
+    mkJ $ sxElementToSX $ ocpLagrange ocp (sxSplitJV x0) (sxSplitJV x1) (sxSplitJV x2) (sxSplitJV x3) (sxSplitJV x4) (sxToSXElement (unJ x5)) (sxToSXElement (unJ x6))
   quadFun <- toMXFun "quadratures" $ evaluateQuadraturesFunction lagrangeFun cijs taus n
 --  let callQuadFun = call quadFun
   callQuadFun <- fmap call (expandMXFun quadFun)
 
   dynFun <- toSXFun "dynamics" $ dynamicsFunction $
             \x0 x1 x2 x3 x4 x5 ->
-            let (r,o) = ocpDae ocp (de x0) (de x1) (de x2) (de x3) (de x4) (de' x5)
-            in (re r, re o)
+            let (r,o) = ocpDae ocp (sxSplitJV x0) (sxSplitJV x1) (sxSplitJV x2) (sxSplitJV x3) (sxSplitJV x4) (sxToSXElement (unJ x5))
+            in (sxCatJV r, sxCatJV o)
 
   pathConFun <- toSXFun "pathConstraints" $ pathConFunction $
-                \x0 x1 x2 x3 x4 x5 -> re $ ocpPathC ocp (de x0) (de x1) (de x2) (de x3) (de x4) (de' x5)
+                \x0 x1 x2 x3 x4 x5 -> sxCatJV $ ocpPathC ocp (sxSplitJV x0) (sxSplitJV x1) (sxSplitJV x2) (sxSplitJV x3) (sxSplitJV x4) (sxToSXElement (unJ x5))
   pathStageConFun <- toMXFun "pathStageCon" (pathStageConstraints pathConFun)
 
   dynStageConFun <- toMXFun "dynamicsStageCon" (dynStageConstraints cijs taus dynFun)
@@ -242,11 +234,11 @@ makeCollCovProblem ocp ocpCov = do
                         (computeSensitivities) (ocpCovSq ocpCov)
 
   sbcFun <- toSXFun "sbc" $ \(x0:*:x1) -> ocpCovSbc ocpCov x0 x1
-  shFun <- toSXFun "sh" $ \(x0:*:x1) -> ocpCovSh ocpCov (de x0) x1
+  shFun <- toSXFun "sh" $ \(x0:*:x1) -> ocpCovSh ocpCov (sxSplitJV x0) x1
   mayerFun <- toSXFun "cov mayer" $ \(x0:*:x1:*:x2:*:x3:*:x4) ->
-    re' $ ocpCovMayer ocpCov (de' x0) (de x1) (de x2) x3 x4
+    mkJ $ sxElementToSX $ ocpCovMayer ocpCov (sxToSXElement (unJ x0)) (sxSplitJV x1) (sxSplitJV x2) x3 x4
   lagrangeFun <- toSXFun "cov lagrange" $ \(x0:*:x1:*:x2:*:x3) ->
-    re' $ ocpCovLagrange ocpCov (de' x0) (de x1) x2 (de' x3)
+    mkJ $ sxElementToSX $ ocpCovLagrange ocpCov (sxToSXElement (unJ x0)) (sxSplitJV x1) x2 (sxToSXElement (unJ x3))
 
   cp0 <- makeCollProblem ocp
 

@@ -15,23 +15,24 @@ module Dyno.DirectCollocation.Robust
 
 import GHC.Generics ( Generic, Generic1 )
 import Data.Proxy ( Proxy(..) )
-import qualified Data.Vector as V
 import qualified Data.Foldable as F
 import qualified Data.Traversable as T
 import Linear.V
 
 import Casadi.MX ( d2m )
-import Casadi.SXElement ( SXElement )
-import Casadi.SX ( sdata, sdense, svector )
 
+import Dyno.SXElement ( SXElement, sxToSXElement )
 import Dyno.View.CasadiMat as CM
 import Dyno.Cov
-import Dyno.View
+import Dyno.View.View
+import Dyno.View.JV ( JV(..), sxSplitJV, sxCatJV )
+import Dyno.View.HList ( (:*:)(..) )
+import Dyno.View.Fun
+import Dyno.View.Viewable ( Viewable )
 import qualified Dyno.View.M as M
 import Dyno.View.M ( M )
---import Dyno.View.HList
 import Dyno.View.FunJac
---import Dyno.View.Scheme
+import Dyno.View.Scheme ( Scheme, blockSplit )
 import Dyno.Vectorize ( Vectorize(..), Id, vzipWith4 )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
@@ -39,15 +40,6 @@ import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs )
 
 import Dyno.DirectCollocation.Types
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..), mkTaus, interpolate )
-
-de :: Vectorize v => J (JV v) SX -> v SXElement
-de = devectorize . sdata . sdense . unJ
-
-de' :: J S SX -> SXElement
-de' = V.head . sdata . sdense . unJ
-
-re :: Vectorize v => v SXElement -> J (JV v) SX
-re = mkJ . svector . vectorize
 
 data CovTraj sx n a =
   CovTraj
@@ -87,9 +79,9 @@ mkComputeSensitivities roots covDae = do
   errorDynFun <- toSXFun "error dynamics" $ errorDynamicsFunction $
             \x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 ->
             let r = covDae
-                    (de x0) (de x1) (de x2) (de x3) (de x4)
-                    (de' x5) (de x6) (de x7) (de x8) (de x9)
-            in re r
+                    (sxSplitJV x0) (sxSplitJV x1) (sxSplitJV x2) (sxSplitJV x3) (sxSplitJV x4)
+                    (sxToSXElement (unJ x5)) (sxSplitJV x6) (sxSplitJV x7) (sxSplitJV x8) (sxSplitJV x9)
+            in sxCatJV r
 
   edscf <- toMXFun "errorDynamicsStageCon" (errorDynStageConstraints cijs taus errorDynFun)
   errorDynStageConFunJac <- toFunJac edscf
@@ -303,7 +295,7 @@ continuousToDiscreetNoiseApprox :: (View sx, View sw)
 continuousToDiscreetNoiseApprox _dsx1_dsx0 dsx1_dsw0 qs h = qd
   where
     -- Qs' = G * Qs * G.T
-    qs' = dsx1_dsw0 `M.mm` (toMat' qs) `M.mm` M.trans dsx1_dsw0
+    qs' = dsx1_dsw0 `M.mm` (toMat qs) `M.mm` M.trans dsx1_dsw0
 
     qd = qs' `M.ms` (1/h)
 --         + (dsx1_dsx0 `M.mm` qs' + qs' `M.mm` (M.trans dsx1_dsx0)) `M.ms` (h*h/2)
@@ -316,12 +308,12 @@ propOneCov ::
   => (M sx sx MX -> M sx sw MX -> J (Cov sw) MX -> J S MX -> M sx sx MX)
   -> (M sx sx :*: M sx sw :*: J (Cov sx) :*: J (Cov sw) :*: J S) MX
   -> J (Cov sx) MX
-propOneCov c2d (dsx1_dsx0 :*: dsx1_dsw0 :*: p0 :*: qs :*: h) = fromMat' p1
+propOneCov c2d (dsx1_dsx0 :*: dsx1_dsw0 :*: p0 :*: qs :*: h) = fromMat p1
   where
     qd = c2d dsx1_dsx0 dsx1_dsw0 qs h
 
     p1 :: M sx sx MX
-    p1 = dsx1_dsx0 `M.mm` (toMat' p0) `M.mm` M.trans dsx1_dsx0 + qd
+    p1 = dsx1_dsx0 `M.mm` (toMat p0) `M.mm` M.trans dsx1_dsx0 + qd
 
 
 sensitivityStageFunction ::
@@ -376,7 +368,7 @@ mkRobustifyFunction ::
   -> IO (J (JV shr) MX -> J (JV p) MX -> J (JV x) MX -> J (Cov (JV sx)) MX -> J (JV shr) MX)
 mkRobustifyFunction project robustifyPathC = do
   proj <- toSXFun "errorSpaceProjection" $
-          \(JacIn x0 x1) -> JacOut (re (project (de x1) (de x0))) (cat JNone)
+          \(JacIn x0 x1) -> JacOut (sxCatJV (project (sxSplitJV x1) (sxSplitJV x0))) (cat JNone)
   let _ = proj :: SXFun
                   (JacIn (JV sx) (J (JV x)))
                   (JacOut (JV x) (J JNone))
@@ -393,9 +385,9 @@ mkRobustifyFunction project robustifyPathC = do
                                (J (JV x))
                                (M.M (JV x) (JV sx))
 
-  let rpc (JacIn xe parm) = JacOut (re lol) (cat JNone)
+  let rpc (JacIn xe parm) = JacOut (sxCatJV lol) (cat JNone)
         where
-          lol = robustifyPathC (de x) (de e) (de parm)
+          lol = robustifyPathC (sxSplitJV x) (sxSplitJV e) (sxSplitJV parm)
           JTuple x e = split xe
   robustH <- toSXFun "robust constraint" rpc
   let _ = robustH :: SXFun
@@ -438,7 +430,7 @@ mkRobustifyFunction project robustifyPathC = do
             f = call simplifiedPropJac x
 
             pe :: M.M (JV sx) (JV sx) MX
-            pe = toMat' pe'
+            pe = toMat pe'
 
             fpef :: M.M (JV x) (JV x) MX
             fpef = fpe `M.mm` (M.trans f)

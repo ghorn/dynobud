@@ -31,13 +31,13 @@ import qualified Data.Vector as V
 import Linear.V ( Dim(..) )
 import Data.Proxy
 
-import Casadi.SXElement ( SXElement, sxElement_sym )
-import Casadi.SX ( svector )
 import Casadi.SharedObject ( soInit )
 import Casadi.MX ( MX )
 import Casadi.SXFunction
 import Casadi.Function
 
+import Dyno.View.CasadiMat ( veccat )
+import Dyno.SXElement ( SXElement, sxElementSym, sxElementToSX )
 import Dyno.Vectorize
 import Dyno.TypeVecs ( Vec )
 import Dyno.View.View
@@ -80,7 +80,7 @@ designVar name = do
   debug $ "adding design variable \""++name++"\""
   state0 <- get
   let map0 = nlpXSet state0
-  sym <- liftIO (sxElement_sym name)
+  sym <- liftIO (sxElementSym name)
   when (HS.member name map0) $ err $ name ++ " already in symbol map"
   let state1 = state0 { nlpX = nlpX state0 |> (name, sym)
                       , nlpXSet =  HS.insert name map0
@@ -159,6 +159,9 @@ buildNlp state = do
 
       xbnd :: Vec nx Bounds
       xbnd = fill (Nothing, Nothing)
+
+      svector = veccat . fmap sxElementToSX
+
   sxfun <- sxFunction (V.fromList [svector inputs]) (V.fromList [svector (V.singleton obj), svector (TV.unVec g)])
   soInit sxfun
   let fg :: J (JVec nx S) MX -> J JNone MX -> (J S MX, J (JVec ng S) MX)

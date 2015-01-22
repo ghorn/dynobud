@@ -11,6 +11,7 @@ import qualified Data.Vector as V
 
 import Dyno.TypeVecs
 import Dyno.View
+import Dyno.View.Scheme
 import Dyno.Vectorize
 import Dyno.Nlp
 import Dyno.Nats

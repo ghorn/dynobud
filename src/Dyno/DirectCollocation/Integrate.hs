@@ -17,9 +17,7 @@ import qualified Data.Vector as V
 import qualified Data.Foldable as F
 import Linear.V
 
-import Casadi.SXElement ( SXElement )
-import Casadi.SX ( sdata, sdense, svector )
-
+import Dyno.SXElement ( SXElement, sxToSXElement )
 import Dyno.View
 import Dyno.Vectorize ( Vectorize(..), vzipWith )
 import Dyno.TypeVecs ( Vec )
@@ -56,17 +54,6 @@ instance (Vectorize u, Vectorize p, Dim n, Dim deg)
          => View (IntegratorP u p n deg)
 instance (Vectorize x, Vectorize r, Dim n, Dim deg)
          => View (IntegratorG x r n deg)
-
-
-
-de :: Vectorize v => J (JV v) SX -> v SXElement
-de = devectorize . sdata . sdense . unJ
-
-de' :: J S SX -> SXElement
-de' = V.head . sdata . sdense . unJ
-
-re :: Vectorize v => v SXElement -> J (JV v) SX
-re = mkJ . svector . vectorize
 
 
 dot :: forall x deg a b. (Fractional (J x a), Real b) => Vec deg b -> Vec deg (J x a) -> J x a
@@ -165,8 +152,9 @@ withIntegrator _ initialX dae solver userFun = do
 
   dynFun <- toSXFun "dynamics" $ dynamicsFunction' $
             \x0 x1 x2 x3 x4 x5 ->
-            let r = dae (de x0) (de x1) (de x2) (de x3) (de x4) (de' x5)
-            in re r
+            let r = dae (sxSplitJV x0) (sxSplitJV x1) (sxSplitJV x2) (sxSplitJV x3)
+                    (sxSplitJV x4) (sxToSXElement (unJ  x5))
+            in sxCatJV r
 
   dynStageConFun <- toMXFun "dynamicsStageCon" (dynStageConstraints' cijs taus dynFun)
 --  let callDynStageConFun = call dynStageConFun

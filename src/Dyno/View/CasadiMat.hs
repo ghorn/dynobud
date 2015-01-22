@@ -30,10 +30,19 @@ class (Eq a, Show a, Floating a, Fmod a, ArcTan2 a, SymOrd a) => CasadiMat a whe
   eye :: Int -> a
   ones :: (Int,Int) -> a
   zeros :: (Int,Int) -> a
+  zerosSp :: Sparsity -> a
   fromDVector :: V.Vector Double -> a
   solve :: a -> a -> a
   indexed :: a -> Slice -> Slice -> a
   sparsity :: a -> Sparsity
+  getNZ :: a -> Slice -> a
+  setNZ :: a -> a -> Slice -> IO ()
+  triu :: a -> a
+  tril :: a -> a
+  triu2symm :: a -> a
+  tril2symm :: a -> a
+  copy :: a -> IO a
+  dense :: a -> a
 
 instance CasadiMat SX.SX where
   veccat = SX.sveccat
@@ -51,10 +60,19 @@ instance CasadiMat SX.SX where
   eye = SX.seye
   ones = SX.sones
   zeros = SX.szeros
+  zerosSp = SX.szerosSp
   fromDVector = SX.d2s . fromDVector
   solve = SX.ssolve
   indexed = SX.sindexed
   sparsity = SX.scrs
+  getNZ = SX.sgetNZ
+  setNZ = SX.ssetNZ
+  triu = SX.striu
+  tril = SX.stril
+  triu2symm = SX.striu2symm
+  tril2symm = SX.stril2symm
+  copy = SX.scopy
+  dense = SX.sdense
 
 instance CasadiMat MX.MX where
   veccat = MX.veccat
@@ -72,10 +90,19 @@ instance CasadiMat MX.MX where
   eye = MX.eye
   ones = MX.ones
   zeros = MX.zeros
+  zerosSp = MX.zerosSp
   fromDVector = MX.d2m . fromDVector
   solve = MX.solve
   indexed = MX.indexed
   sparsity = MX.crs
+  getNZ = MX.getNZ
+  setNZ = MX.setNZ
+  triu = MX.triu
+  tril = MX.tril
+  triu2symm = MX.triu2symm
+  tril2symm = MX.tril2symm
+  copy = MX.copy
+  dense = MX.dense
 
 instance CasadiMat DMatrix.DMatrix where
   veccat = DMatrix.dveccat
@@ -93,10 +120,19 @@ instance CasadiMat DMatrix.DMatrix where
   eye = DMatrix.deye
   ones = DMatrix.dones
   zeros = DMatrix.dzeros
+  zerosSp = DMatrix.dzerosSp
   fromDVector = DMatrix.dvector
   solve x y = unsafePerformIO (C.solve__3 x y)
   indexed = DMatrix.dindexed
   sparsity = DMatrix.dcrs
+  getNZ = DMatrix.dgetNZ
+  setNZ = DMatrix.dsetNZ
+  triu = DMatrix.dtriu
+  tril = DMatrix.dtril
+  triu2symm = DMatrix.dtriu2symm
+  tril2symm = DMatrix.dtril2symm
+  copy = DMatrix.dcopy
+  dense = DMatrix.ddense
 
 vertslice :: CasadiMat a => a -> V.Vector Int -> V.Vector a
 vertslice x vs = V.fromList (f (V.toList vs))

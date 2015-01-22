@@ -41,15 +41,18 @@ import qualified Data.Vector as V
 import Data.Proxy ( Proxy(..) )
 
 import Casadi.Option ( setOption )
-import Casadi.SXElement ( SXElement, sxElement_sym )
 import Casadi.SXFunction ( sxFunction )
-import Casadi.SX ( SX, sdata, sdense, svector )
+import Casadi.SX ( SX )
 import Casadi.Function ( callSX )
 import Casadi.SharedObject ( soInit )
 
+import qualified Dyno.View.CasadiMat as CM
+import Dyno.SXElement ( SXElement, sxElementSym, sxElementToSX, sxToSXElement )
 import Dyno.Ocp ( OcpPhase(..) )
 import Dyno.Nlp ( Bounds )
 import Dyno.Vectorize ( Vectorize(..), fill )
+import Dyno.View.View ( mkJ )
+import Dyno.View.JV ( sxSplitJV )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.NlpSolver ( NlpSolverStuff )
@@ -123,13 +126,15 @@ newDaeVariable description lens name = do
                _ -> return ()
   state0 <- State.get
   let map0 = daeNameSet state0
-  sym <- liftIO (sxElement_sym name)
+  sym <- liftIO (sxElementSym name)
   when (HS.member name map0) $ err $ name ++ " already in name set"
   let state1 = state0 { daeNameSet =  HS.insert name map0 }
       state2 = over lens (|> (name, sym)) state1
   State.put state2
   return sym
 
+svector :: Vector SXElement -> SX
+svector = CM.vertcat . fmap sxElementToSX
 
 diffState :: String -> DaeMonad (SXElement, SXElement)
 diffState name = do
@@ -243,10 +248,10 @@ reifyOcpPhase ::
       => OcpPhase x z u p r o c h -> CollTrajMeta -> IO ret)
   -> IO ret
 reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
-  time <- sxElement_sym "_t"
-  endT <- sxElement_sym "T"
-  let time' = svector (V.singleton time) :: SX
-      endT' = svector (V.singleton endT) :: SX
+  time <- sxElementSym "_t"
+  endT <- sxElementSym "T"
+  let time' = sxElementToSX time
+      endT' = sxElementToSX endT
   dae' <- buildDae (daeMonad time)
   let dae :: DaeState
       dae = case dae' of
@@ -273,7 +278,7 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
       onames :: Vector String
       osOut :: Vector SXElement
       (onames, osOut) = V.unzip $ V.fromList $ M.toList $ _daeO dae
-  os <- V.mapM sxElement_sym onames :: IO (Vector SXElement)
+  os <- V.mapM sxElementSym onames :: IO (Vector SXElement)
   let os' = svector os
 
       lookupThingy :: String -> OcpMonad SXElement
@@ -327,8 +332,8 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
   soInit daeFunSX
 
   -- run the mayer function
-  x0s <- mapM (sxElement_sym . (++ "_0")) (F.toList xnames)
-  xFs <- mapM (sxElement_sym . (++ "_F")) (F.toList xnames)
+  x0s <- mapM (sxElementSym . (++ "_0")) (F.toList xnames)
+  xFs <- mapM (sxElementSym . (++ "_F")) (F.toList xnames)
   let lookupState :: M.Map String SXElement -> String
                      -> ExceptT ErrorMessage (Writer [LogMessage]) SXElement
       lookupState xmap name = do
@@ -418,12 +423,12 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
                    -> (Vec nr SXElement, Vec no SXElement)
         daeFun x' x z u p t = (devec (rets V.! 0), devec (rets V.! 1))
           where
-            rets = callSX daeFunSX (V.fromList [vec x', vec x, vec z, vec u, vec p, vec' t])
+            rets = callSX daeFunSX (V.fromList [vec x', vec x, vec z, vec u, vec p, sxElementToSX t])
 
         lagrangeFun :: Vec nx SXElement -> Vec nz SXElement -> Vec nu SXElement -> Vec np SXElement -> Vec no SXElement -> SXElement -> SXElement -> SXElement
         lagrangeFun x z u p o t tf =
-          devec' $ V.head $ callSX lagFunSX $
-                 (V.fromList [vec x, vec z, vec u, vec p, vec o, vec' t, vec' tf])
+          sxToSXElement $ V.head $ callSX lagFunSX $
+                 (V.fromList [vec x, vec z, vec u, vec p, vec o, sxElementToSX t, sxElementToSX tf])
           --Left errmsg -> error $ "toOcpPhase: lagrangeFun: " ++ errmsg ++
           --  "\ninputs: " ++ show (xnames ++ znames ++ unames ++ pnames) ++ show onames ++
           --  "\nnumeric inputs x: " ++ show (V.length x) ++
@@ -435,11 +440,11 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
         pathConstraintFun :: Vec nx SXElement -> Vec nz SXElement -> Vec nu SXElement
                              -> Vec np SXElement -> Vec no SXElement -> SXElement -> Vec nh SXElement
         pathConstraintFun x z u p o t =
-          devec $ V.head $ callSX pathcFunSX (V.fromList [vec x, vec z, vec u, vec p, vec o, vec' t])
+          devec $ V.head $ callSX pathcFunSX (V.fromList [vec x, vec z, vec u, vec p, vec o, sxElementToSX t])
 
         mayerFun :: SXElement -> Vec nx SXElement -> Vec nx SXElement
                     -> SXElement
-        mayerFun endT'' x0 xF = devec' $ V.head $ callSX mayerFunSX (V.fromList [vec' endT'', vec x0, vec xF])
+        mayerFun endT'' x0 xF = sxToSXElement $ V.head $ callSX mayerFunSX (V.fromList [sxElementToSX endT'', vec x0, vec xF])
 
         bcFun :: Vec nx SXElement -> Vec nx SXElement -> Vec nc SXElement
         bcFun x0 xF = devec $ V.head $ callSX bcFunSX (V.fromList [vec x0, vec xF])
@@ -472,15 +477,8 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
 vec :: Vectorize f => f SXElement -> SX
 vec = svector . vectorize
 
-vec' :: SXElement -> SX
-vec' = svector . V.singleton
-
 devec :: Vectorize f => SX -> f SXElement
-devec = devectorize . sdata . sdense
-
-devec' :: SX -> SXElement
-devec' = V.head . sdata . sdense
-
+devec = sxSplitJV . mkJ
 
 solveStaticOcp ::
   NlpSolverStuff

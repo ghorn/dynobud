@@ -69,12 +69,12 @@ import qualified Casadi.Core.Classes.IOInterfaceFunction as C
 import Casadi.Callback ( makeCallback )
 import Casadi.DMatrix
 import Casadi.SX
-import Casadi.SXElement ( SXElement )
 import Casadi.Function ( Function, externalFunction )
 import qualified Casadi.Option as Op
 import qualified Casadi.GenericC as Gen
 import Casadi.SharedObject ( soInit )
 
+import Dyno.SXElement ( SXElement, sxElementToSX )
 import Dyno.Vectorize ( Vectorize(..) )
 import Dyno.View.JV
 import Dyno.View.View
@@ -425,11 +425,11 @@ solveNlp :: forall x p g .
   -> IO (Either String String, NlpOut x g Double)
 solveNlp solverStuff nlp callback = do
   let nlp' :: Nlp' (JV x) (JV p) (JV g) SX
-      nlp' = Nlp' { nlpFG' = \x' p' -> let x = devectorize (sdata (sdense (unJ x'))) :: x SXElement
-                                           p = devectorize (sdata (sdense (unJ p'))) :: p SXElement
-                                           (obj,g) = nlpFG nlp x p
-                                           obj' = mkJ (svector (V.singleton obj))
-                                           g' = mkJ (svector (vectorize g))
+      nlp' = Nlp' { nlpFG' = \x' p' -> let x = sxSplitJV x' :: x SXElement
+                                           p = sxSplitJV p' :: p SXElement
+                                           (obj,g) = nlpFG nlp x p :: (SXElement, g SXElement)
+                                           obj' = mkJ (sxElementToSX obj) :: J S SX
+                                           g' = sxCatJV g :: J (JV g) SX
                                        in (obj',g')
                   , nlpBX' = mkJ $ vectorize (nlpBX nlp) :: J (JV x) (V.Vector Bounds)
                   , nlpBG' = mkJ $ vectorize (nlpBG nlp) :: J (JV g) (V.Vector Bounds)

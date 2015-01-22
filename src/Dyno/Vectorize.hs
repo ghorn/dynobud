@@ -47,7 +47,6 @@ instance Applicative None where
   (<*>) = const (const None)
 instance Linear.Additive None where
 
-
 -- | a length-1 vectorizable type
 newtype Id a = Id a
              deriving (Eq, Ord, Generic, Generic1, Functor, Foldable, Traversable, Show)

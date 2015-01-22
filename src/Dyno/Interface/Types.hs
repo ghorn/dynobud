@@ -21,7 +21,7 @@ import qualified Data.Map as M
 import Control.Lens
 import Data.Functor ( (<$>) )
 
-import Casadi.SXElement ( SXElement )
+import Dyno.SXElement ( SXElement )
 
 data Constraint a = Eq2 a a
                   | Ineq2 a a
