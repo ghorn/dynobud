@@ -8,7 +8,7 @@ module Dyno.View.CasadiMat
 import qualified Data.Vector as V
 
 import System.IO.Unsafe ( unsafePerformIO )
-import Casadi.Overloading ( Fmod, ArcTan2, SymOrd )
+import Casadi.Overloading ( Fmod, ArcTan2, SymOrd, Erf )
 import Casadi.Sparsity ( Sparsity )
 import qualified Casadi.SX as SX
 import qualified Casadi.MX as MX
@@ -16,7 +16,7 @@ import qualified Casadi.DMatrix as DMatrix
 import Casadi.Slice ( Slice, slice )
 import Casadi.Core.Tools as C
 
-class (Eq a, Show a, Floating a, Fmod a, ArcTan2 a, SymOrd a) => CasadiMat a where
+class (Eq a, Show a, Floating a, Fmod a, ArcTan2 a, SymOrd a, Erf a) => CasadiMat a where
   vertsplit :: a -> V.Vector Int -> V.Vector a
   vertcat :: V.Vector a -> a
   horzsplit :: a -> V.Vector Int -> V.Vector a
