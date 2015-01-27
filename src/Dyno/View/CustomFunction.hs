@@ -116,7 +116,7 @@ toDerivGen dg = makeDerivativeGenerator $ \originalFun nfwd nadj -> do
                        ]
       spOuts = V.concat [ V.fromList spOuts0
                         , V.concat (replicate nfwd spAdj)
-                        , V.concat (replicate nadj spAdj)
+                        , V.concat (replicate nadj spFwd)
                         ]
   cf <- C.customFunction__1 ce spIns spOuts
   mapM_ (\(n,Opt o) -> setOption cf n o) (dgOptions dg)
