@@ -18,7 +18,6 @@ module Dyno.Cov
 
 --import GHC.Generics ( Generic )
 import Data.Vector ( Vector )
-import qualified Data.Vector as V
 import qualified Data.Sequence as Seq
 import System.IO.Unsafe ( unsafePerformIO )
 import qualified Data.Packed.Matrix as Mat
@@ -29,22 +28,17 @@ import Casadi.DMatrix ( DMatrix )
 import qualified Casadi.DMatrix as DMatrix
 
 import Dyno.Vectorize ( Vectorize(..), Proxy(..) )
-import Dyno.View.View ( View(..), J, S, unJ, mkJ )
+import Dyno.View.View ( View(..), J, unJ, mkJ )
 import Dyno.View.CasadiMat ( CasadiMat )
 import qualified Dyno.View.CasadiMat as CM
 import Dyno.View.JV ( JV )
 import Dyno.View.Viewable ( Viewable(..) )
 import Dyno.View.M ( M(..), mkM, toHMat )
 
-newtype Cov (f :: * -> *) a = Cov { unCov :: Vector (J S a) } deriving (Eq, Show)
+newtype Cov (f :: * -> *) a = Cov a
 instance View f => View (Cov f) where
-  cat = mkJ . vveccat . fmap unJ . unCov
-  split = Cov . fmap mkJ . flip vvertsplit ks . unJ
-    where
-      ks = V.fromList $ take (1 + size (Proxy :: Proxy (Cov f))) [0..]
-      --sizes kf 0 = [kf]
-      --sizes k0 k = k0 : sizes (k0 + k) (k-1)
-      --n = size (Proxy :: Proxy f)
+  cat (Cov x) = mkJ x
+  split x = Cov (unJ x)
   size = const $ (n*n + n) `div` 2
     where
       n = size (Proxy :: Proxy f)
