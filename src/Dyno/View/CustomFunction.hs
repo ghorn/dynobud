@@ -61,7 +61,6 @@ groupsOf k vs
 toDerivGen :: forall f g . (Scheme f, Scheme g) => DerivGen f g -> IO DerivativeGenerator
 toDerivGen dg = makeDerivativeGenerator $ \originalFun nfwd nadj -> do
   let f fun = do
-        putStrLn "custom evaluate"
         numIn <- C.ioInterfaceFunction_getNumInputs fun
         inputs <- mapM (C.ioInterfaceFunction_getInput__2 fun) (take numIn [0..])
 
