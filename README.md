@@ -13,6 +13,11 @@ You will have to install the CasADi C++ libraries and the casadi-bindings haskel
 See http://hackage.haskell.org/package/casadi-bindings for instructions.
 Installing ipopt is also highly recommended if you want to solve NLPs (`apt-get install coinor-libipopt-dev` if you're lucky)
 
+Please keep in mind that this library is continually evolving as my PhD progresses and I expect it to be very unstable.
+The API is also very messy as the library is evolving fast and it's unclear which parts are internal and external.
+Specifically, the matrix and vector views (J and M) aren't polished enough and don't yet work without leaking internals.
+Nevertheless, I have started making hackage releases so that my few users have some snapshots to version-constrain against.
+
 To install:
 
     >> cabal update
