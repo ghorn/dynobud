@@ -21,7 +21,7 @@ library
   exposed-modules:     Dyno.LagrangePolynomials
                        Dyno.TypeVecs
                        Dyno.Nats
---                       Dyno.MultipleShooting
+                       Dyno.MultipleShooting
                        Dyno.Dae
                        Dyno.Models.Aircraft
                        Dyno.Models.AeroCoeffs
@@ -94,9 +94,9 @@ library
                        time,
                        stm,
                        gtk >= 0.13,
-                       Chart-cairo,
+                       Chart-cairo >= 1.3.3,
                        cairo,
-                       Chart,
+                       Chart >= 1.3.3,
                        data-default-class,
                        distributive,
                        text,
@@ -124,6 +124,11 @@ executable multiple_shooting
                        , base >=4.6 && < 5
                        , vector
                        , linear
+                       , Chart >= 1.3.3
+                       , Chart-gtk >= 1.3.3
+                       , lens
+                       , colour
+                       , data-default-class
   ghc-options:         -O2
 
 
@@ -154,24 +159,6 @@ executable sofaTime
     Buildable: False
   hs-source-dirs:      examples
   main-is:             Sofa.hs
-  default-language:    Haskell2010
-  build-depends:       dynobud,
-                       vector,
-                       casadi-bindings-core,
-                       zeromq4-haskell,
-                       bytestring,
-                       cereal,
-                       linear,
-                       base >= 4.6 && < 5
-  ghc-options:         -threaded -O2
-
-executable multipleShooting
-  if flag(examples)
-    Buildable: True
-  else
-    Buildable: False
-  hs-source-dirs:      examples
-  main-is:             MultipleShooting.hs
   default-language:    Haskell2010
   build-depends:       dynobud,
                        vector,

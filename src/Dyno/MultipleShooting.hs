@@ -1,121 +1,173 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language ScopedTypeVariables #-}
-{-# Language DeriveFunctor #-}
 {-# Language DeriveGeneric #-}
-{-# Language RankNTypes #-}
 
 module Dyno.MultipleShooting
-       ( MsTraj(..)
-       , MsPoint(..)
+       ( MsOcp(..)
+       , MsDvs(..)
        , MsConstraints(..)
-       , MsOcp(..)
-       , makeNlp
+       , makeMsNlp
        ) where
 
+import GHC.Generics ( Generic )
+import Data.Vector ( Vector )
+import Data.Maybe ( fromMaybe )
 import qualified Data.Vector as V
-import Linear.Metric ( dot )
-import Linear.V ( Dim )
+import Linear
+import qualified Data.Foldable as F
 
-import Dyno.TypeVecs ( Vec )
-import qualified Dyno.TypeVecs as TV
+import Dyno.TypeVecs
+import Dyno.View
+import Dyno.View.Scheme
 import Dyno.Vectorize
 import Dyno.Nlp
 
-data MsOcp x u c h =
-  MsOcp { msMayer :: forall a. Floating a => x a -> V.Vector a
-        , msLagrange :: forall a. Floating a => x a -> u a -> V.Vector a
-        , msDae :: forall a. Floating a => x a -> u a -> x a
-        , msBc :: forall a. Floating a => x a -> x a -> c a
-        , msPathC :: forall a. Floating a => x a -> u a -> h a
-        , msPathCBnds :: h (Maybe Double, Maybe Double)
-        , msXbnd :: x (Maybe Double, Maybe Double)
-        , msUbnd :: u (Maybe Double, Maybe Double)
-        , msT :: Double
-        }
 
--- multiple shooting
-data MsPoint x u a = MsPoint (x a) (u a) deriving (Functor, Generic1)
-instance (Vectorize x, Vectorize u) => Vectorize (MsPoint x u)
-data MsTraj x u n a = MsTraj (Vec n (MsPoint x u a)) (x a) deriving (Functor, Generic1)
-instance (Vectorize x, Vectorize u, Dim n) => Vectorize (MsTraj x u n)
+data IntegratorIn x u p a = IntegratorIn (J (JV x) a) (J (JV u) a) (J (JV p) a)
+                          deriving (Generic, Generic1)
+data IntegratorOut x a = IntegratorOut (J (JV x) a)
+                       deriving (Generic, Generic1)
+instance (Vectorize x, Vectorize u, Vectorize p) => Scheme (IntegratorIn x u p)
+instance Vectorize x => Scheme (IntegratorOut x)
 
-data MsConstraints x n c h a =
-  MsConstraints
-  { mscBc :: c a
-  , mscPathc :: Vec n (h a)
-  , mscDynamics :: Vec n (x a)
-  } deriving (Functor, Generic1, Show)
+type Ode x u p a = x a -> u a -> p a -> a -> x a
 
-instance (Vectorize x, Vectorize c, Vectorize h, Dim n) =>
-         Vectorize (MsConstraints x n c h)
-
-getDvBnds ::
-  forall x u c h n . (Dim n) =>
-  MsOcp x u c h -> MsTraj x u n (Maybe Double, Maybe Double)
-getDvBnds ocp = MsTraj xus x
-  where
-    xus = fill (MsPoint (msXbnd ocp) (msUbnd ocp))
-    x = msXbnd ocp
-
-getGBnds ::
-  (Vectorize x, Vectorize c, Dim n) =>
-  MsOcp x u c h ->
-  MsConstraints x n c h (Maybe Double, Maybe Double)
-getGBnds ocp =
-  MsConstraints
-  { mscBc = fill (Just 0, Just 0)
-  , mscPathc = fill (msPathCBnds ocp)
-  , mscDynamics = fill (fill (Just 0, Just 0))
+-- problem specification
+data MsOcp x u p =
+  MsOcp
+  { msOde :: Ode x u p (J (JV Id) MX)
+  , msMayer :: x (J (JV Id) MX) -> J (JV Id) MX
+  , msLagrangeSum :: x (J (JV Id) MX) -> u (J (JV Id) MX) -> J (JV Id) MX
+  , msX0 :: x (Maybe Double)
+  , msXF :: x (Maybe Double)
+  , msXBnds :: x Bounds
+  , msUBnds :: u Bounds
+  , msPBnds :: p Bounds
+  , msEndTime :: Double
+  , msNumRk4Steps :: Maybe Int
   }
 
-getFg :: forall x u c h n a .
-  (Floating a, Vectorize x, Dim n) =>
-  MsOcp x u c h ->
-  (x a -> u a -> x a) ->
-  (MsTraj x u n a, None a) ->
-  (a, MsConstraints x n c h)
-getFg ocp integrator (MsTraj xus xf, _) = (objective, constraints)
-  where
-    xs = fmap (\(MsPoint x _) -> x) xus
-    us = fmap (\(MsPoint _ u) -> u) xus
---    n = TV.tvlength us
---    tf = msT ocp
---    ts = tf / (fromIntegral n)
-    constraints =
-      MsConstraints
-      { mscBc = msBc ocp (TV.tvhead xs) xf
-      , mscPathc = TV.tvzipWith (msPathC ocp) xs us
-      , mscDynamics = vzipWith3 integrator' xs us x1s
-      }
-      where
-        integrator' x0 u0 = vzipWith (-) x1'
-          where
-            x1' = integrator x0 u0
-        x1s :: Vec n (x a)
-        x1s = TV.tvshiftl xs xf
+-- design variables
+data MsDvs x u p n a =
+  MsDvs
+  { dvXus :: J (JVec n (JTuple (JV x) (JV u))) a
+  , dvXf :: J (JV x) a
+  , dvP :: J (JV p) a
+  } deriving (Generic, Generic1)
+instance (Vectorize x, Vectorize u, Vectorize p, Dim n) => View (MsDvs x u p n)
 
-    objective = objective' `dot` objective'
-    objective' = msMayer ocp xf
+-- constraints
+data MsConstraints x n a =
+  MsConstraints
+  { gContinuity :: J (JVec n (JV x)) a
+  } deriving (Generic, Generic1)
+instance (Vectorize x, Dim n) => View (MsConstraints x n)
 
---    objectiveL = V.foldl' f 0 (vectorize xus)
---      where
---        f acc (MsPoint x u) = integrator dae' ts x u + acc
---          where
---            dae' = Dae (\x None u p' -> ocpLagrange ocp x None u p')
---            ddtL l = ocpLagrange ocp x None u p
---        (ssum (tvzipWith (\x u -> ocpLagrange ocp x None u p) xs us)) / fromIntegral (tvlength us
---
---ssum :: Num a => Vec n a -> a
---ssum = F.foldl' (+) 0
+rk4 :: (Floating a, Additive x) => (x a -> u a -> p a -> a -> x a) -> x a -> u a -> p a -> a -> a -> x a
+rk4 f x0 u p t h =  x0 ^+^ h/6*^(k1 ^+^ 2 *^ k2 ^+^ 2 *^ k3 ^+^ k4)
+    where
+      k1 = f x0 u p t
+      k2 = f (x0 ^+^ h/2 *^ k1) u p (t+h/2)
+      k3 = f (x0 ^+^ h/2 *^ k2) u p (t+h/2)
+      k4 = f (x0 ^+^ h *^ k2) u p (t+h)
 
-makeNlp ::
-  (Vectorize x, Vectorize u, Vectorize c, Dim n) =>
-  MsOcp x u c h ->
-  (forall a. Floating a => x a -> u a -> x a) ->
-  Nlp (MsTraj x u n) None (MsConstraints x n c h)
-makeNlp ocp integrator = Nlp { nlpFG = getFg ocp integrator
-                             , nlpBX = getDvBnds ocp
-                             , nlpBG = getGBnds ocp
-                             , nlpX0 = fill 0
-                             , nlpP = None
-                             }
+simulate :: (Floating a, Additive x) => Int -> Ode x u p a -> x a -> u a -> p a -> a -> a -> x a
+simulate n ode x0' u p t h = xf
+    where
+      dt' = h/ fromIntegral n
+
+      xf = foldl sim x0' [ t+fromIntegral i*dt' | i <- [0..(n-1)] ]
+
+      sim x0'' t' = rk4 ode x0'' u p t' dt'
+
+makeMsNlp ::
+  forall x u p n
+  . (Dim n, Vectorize x, Vectorize u, Vectorize p, Additive x)
+  => MsOcp x u p -> IO (Nlp' (MsDvs x u p n) JNone (MsConstraints x n) MX)
+makeMsNlp msOcp = do
+  let n = reflectDim (Proxy :: Proxy n)
+      integrate (IntegratorIn x0 u p) = IntegratorOut (catJV' (simulate nsteps ode x0' u' p' 0 dt))
+        where
+          endTime = msEndTime msOcp
+          dt = (realToFrac endTime) / fromIntegral n
+          ode = msOde msOcp
+          nsteps = fromMaybe 1 (msNumRk4Steps msOcp)
+          x0' = splitJV' x0
+          u' = splitJV' u
+          p' = splitJV' p
+  integrator <- toMXFun "my integrator" integrate
+  let _ = integrator :: MXFun (IntegratorIn x u p) (IntegratorOut x) -- just for type signature
+
+  let nlp =
+        Nlp'
+        { nlpFG' = fg
+        , nlpBX' = bx
+        , nlpBG' = bg
+        , nlpX0' = x0
+        , nlpP' = cat JNone
+        , nlpLamX0' = Nothing
+        , nlpLamG0' = Nothing
+        , nlpScaleF' = Nothing
+        , nlpScaleX' = Nothing
+        , nlpScaleG' = Nothing
+        }
+
+      x0 :: J (MsDvs x u p n) (V.Vector Double)
+      x0 = jfill 0
+
+      boundsX0 = catJV (fmap (\x -> (x,x)) (msX0 msOcp)) :: J (JV x) (Vector Bounds)
+
+      boundsX =  catJV (msXBnds msOcp) :: J (JV x) (Vector Bounds)
+      boundsU =  catJV (msUBnds msOcp) :: J (JV u) (Vector Bounds)
+
+      boundsX0u = JTuple boundsX0 boundsU :: JTuple (JV x) (JV u) (Vector Bounds)
+      boundsXu  = JTuple boundsX  boundsU :: JTuple (JV x) (JV u) (Vector Bounds)
+      boundsXF = catJV (fmap (\x -> (x,x)) (msXF msOcp)) :: J (JV x) (Vector Bounds)
+
+      boundsXus :: (J (JVec n (JTuple (JV x) (JV u))) (Vector Bounds))
+      boundsXus = cat $  JVec $ mkVec'  ( cat boundsX0u : replicate (n-1) (cat boundsXu))
+
+      bx :: J (MsDvs x u p n) (Vector Bounds)
+      bx = cat MsDvs
+               { dvXus = boundsXus
+               , dvXf = boundsXF
+               , dvP = catJV (msPBnds msOcp)
+               }
+
+      bg :: J (MsConstraints x n) (Vector Bounds)
+      bg = cat MsConstraints { gContinuity = jfill (Just 0, Just 0) }
+
+      fg :: J (MsDvs x u p n) MX -> J JNone MX -> (J S MX, J (MsConstraints x n) MX)
+      fg dvs _ = (f, cat g)
+        where
+          MsDvs xus xf p = split dvs
+          x1s :: Vec n (J (JV x) MX)
+          x1s = fmap (callIntegrate . split) $ unJVec $ split xus
+          callIntegrate (JTuple x0' u) = x1
+            where
+              IntegratorOut x1 = call integrator (IntegratorIn x0' u p)
+
+          lagrangeSum = F.sum $ fmap callLagrangeSum (unJVec (split xus))
+            where
+              callLagrangeSum xu = msLagrangeSum msOcp (splitJV' x) (splitJV' u)
+                where
+                  JTuple x u = split xu
+
+          mayer = msMayer msOcp (splitJV' xf)
+
+          f :: J S MX
+          f = mkJ $ unJ $ mayer + lagrangeSum
+
+
+          x0s' = fmap (extractx . split) $ unJVec $ split xus :: Vec n (J (JV x) MX)
+          extractx (JTuple x0'' _) = x0''
+
+          x0s = tvtail (x0s' |> xf)  :: Vec n (J (JV x) MX)
+
+          gaps:: Vec n (J (JV x) MX)
+          gaps = tvzipWith (-) x1s x0s
+
+          g :: MsConstraints x n MX
+          g = MsConstraints { gContinuity = cat $ JVec gaps }
+
+  return nlp
