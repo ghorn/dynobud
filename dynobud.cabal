@@ -1,16 +1,21 @@
 name:                dynobud
 version:             0.1.0.0
 synopsis:            your dynamic optimization buddy
--- description:
+description:         See readme at <http://www.github.com/ghorn/dynobud http://www.github.com/ghorn/dynobud>
 license:             LGPL-3
 license-file:        LICENSE
 author:              Greg Horn
 maintainer:          gregmainland@gmail.com
-copyright:           (c) Greg Horn 2013-2014
+copyright:           (c) Greg Horn 2013-2015
 category:            Science
 build-type:          Simple
--- extra-source-files:
 cabal-version:       >=1.10
+extra-source-files:  README.md
+stability:           Experimental
+
+source-repository head
+  type:     git
+  location: git://github.com/ghorn/dynobud.git
 
 library
   exposed-modules:     Dyno.LagrangePolynomials
