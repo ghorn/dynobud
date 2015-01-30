@@ -85,21 +85,37 @@ main = do
       (xs', us) = unzip $ map splitXU $ F.toList $ unJVec $ split (dvXus xopt)
       xf = splitJV (dvXf xopt)
       xs = xs' ++ [xf]
-  renderableToWindow (chart [ ("u", (map (\(U u) -> u) us) ++ [0])
-                            , ("p", map (\(X p _) -> p) xs)
-                            , ("v", map (\(X _ v) -> v) xs)
-                            ]) 600 600
+      renderable :: Renderable ()
+      renderable = charts [ ("u", zip [0..] (map (\(U u)   -> u) us))
+                          , ("p", zip [0..] (map (\(X p _) -> p) xs))
+                          , ("v", zip [0..] (map (\(X _ v) -> v) xs))
+                          ]
+  renderableToWindow renderable 600 600
 
-chart :: [(String, [Double])] -> Renderable ()
-chart vals = toRenderable layout
+
+charts :: [(String,[(Double,Double)])] -> Renderable ()
+charts vals = toRenderable slayouts
   where
-    points :: (String, [Double]) -> PlotPoints Double Double
-    points (name, ys) = plot_points_style .~ filledCircles 2 (opaque red)
-       $ plot_points_values .~ (zip [0..] ys)
-           $ plot_points_title .~ name
-           $ def
+    plots :: (String, [(Double, Double)]) -> StackedLayout Double
+    plots (name, xys) = StackedLayout layout
+      where
+        lines' :: PlotLines Double Double
+        lines' = plot_lines_values .~ [xys]
+                 $ plot_lines_title .~ name
+                 $ def
 
-    layout :: Layout Double Double
-    layout = layout_title .~ "a plot"
-           $ layout_plots .~ (map (toPlot . points) vals)
-           $ def
+        points :: PlotPoints Double Double
+        points = plot_points_style .~ filledCircles 2 (opaque red)
+                 $ plot_points_values .~ [(x,y) |  (x,y) <- xys]
+                 $ plot_points_title .~ name
+                 $ def
+
+        layout :: Layout Double Double
+        layout = layout_title .~ name
+                 $ layout_plots .~ [toPlot lines', toPlot points]
+                 $ def
+
+    slayouts :: StackedLayouts Double
+    slayouts = slayouts_compress_legend .~ False
+               $ slayouts_layouts .~ (map plots vals)
+               $ def
