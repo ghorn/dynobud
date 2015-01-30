@@ -1,34 +1,26 @@
-dynobud - dynamic optimization buddy
+## dynobud - your dynamic optimization buddy
 
 This library has a few distinct features, which may later be broken into separate packages:
-* high level interface to CasADi (src/Dyno/Casadi)
+* high-level, strongly-typed interface to CasADi
 * NLP modeling/solving (examples/Basic.hs, examples/BasicJ.hs)
 * monadic NLP modeling DSL (examples/StaticExample.hs)
 * OCP modeling/solving (examles/Glider.hs)
 * monadic OCP modeling DSL (examples/OcpM.hs, examples/Rocket.hs)
 * live plotter for OCP solving (examples/Plotter.hs)
 
+This package is built on top of CasADi (www.casadi.org).
+You will have to install the CasADi C++ libraries and the casadi-bindings haskell package.
+See http://hackage.haskell.org/package/casadi-bindings for instructions.
+Installing ipopt is also highly recommended if you want to solve NLPs (`apt-get install coinor-libipopt-dev` if you're lucky)
 
-The current instructions for getting started on Debian/Ubuntu:
+To install:
 
-    >> apt-get install coinor-libipopt-dev
+    >> cabal update
+    >> cabal install dynobud
 
-    Install libcasadi-shared from https://github.com/casadi/casadi/releases/latest,
-    first download it from that website, then:
-    >> dpkg -i libcasadi-shared.deb
+casadi-bindings will probably fail, re-read casadi-bindings instructions
 
-    >> cabal update; cabal install casadi-bindings
-
-    >> git clone git://github.com:ghorn/dynobud.git
-    >> cd dynobud
-    >> cabal install --only-dependencies
-    >> cabal configure
-    >> cabal build
-
-Try running the examples in dynobud/examples
-
-
-you may need to do something like this on Debian/Ubuntu:
+To install dependencies, you may need to do something like this:
 
     >> cabal install alex
     >> cabal install happy
@@ -48,9 +40,26 @@ you may need to do something like this on Debian/Ubuntu:
     >> sudo apt-get install libgtk2.0-dev
     >> sudo apt-get install libgsl0-dev
 
+To build dynobud from source
 
-"user error: out of memory"
+    >> git clone git://github.com:ghorn/dynobud.git
+    >> cd dynobud
+    >> cabal install --only-dependencies            # without examples
+    >> cabal install --only-dependencies -fexamples # with examples
+    >> cabal configure
+    >> cabal build
+
+Try running the examples in dynobud/examples.
+
+    >> cabal configure -fexamples
+    >> cabal build
+    >> dist/build/rocket/rocket
+
+Known issues:
+
+    "user error: out of memory"
+
 If you get this ^ error on OSX while using the plotting tools, your
 cairo/pango/gtk may be linked to an XQuartz library.
 Add "extra-lib-dirs=/usr/local/lib" (or wherever the correct libraries are)
-to your .cabal/config
+to your .cabal/config and re-install haskell bindings to cairo/pango/gtk/etc
