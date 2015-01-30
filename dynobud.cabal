@@ -1,5 +1,5 @@
 name:                dynobud
-version:             0.1.0.0
+version:             1.0.0.0
 synopsis:            your dynamic optimization buddy
 description:         See readme at <http://www.github.com/ghorn/dynobud http://www.github.com/ghorn/dynobud>
 license:             LGPL-3
@@ -104,9 +104,9 @@ library
 --                       cplex
   hs-source-dirs:      src
   default-language:    Haskell2010
-  ghc-options:         -O2 -Wall -Werror
+  ghc-options:         -O2 -Wall
 --  ghc-options:         -O2 -rtsopts
-  ghc-prof-options:    -O2 -Wall -Werror -prof -fprof-auto -fprof-cafs -fprof-auto-calls
+  ghc-prof-options:    -O2 -Wall -prof -fprof-auto -fprof-cafs -fprof-auto-calls
 
 flag examples
     description:    build the examples
