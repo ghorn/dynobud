@@ -18,6 +18,7 @@ module Dyno.Cov
 
 --import GHC.Generics ( Generic )
 import Data.Vector ( Vector )
+import qualified Data.Vector as V
 import qualified Data.Sequence as Seq
 import System.IO.Unsafe ( unsafePerformIO )
 import qualified Data.Packed.Matrix as Mat
@@ -81,11 +82,11 @@ toHMatrix' v = toHMatrix $ (mkJ (DMatrix.dvector (unJ v)) :: J (Cov f) DMatrix)
 diag :: (View f, CasadiMat a, Viewable a) => J f a -> J (Cov f) a
 diag = fromMatrix . CM.diag . unJ
 
-diag' :: forall f . Vectorize f => f Double -> J (Cov (JV f)) (Vector Double)
-diag' x = mkJ $ DMatrix.ddata $ DMatrix.ddense $ unJ y
+diag' :: Vectorize f => f a -> a -> J (Cov (JV f)) (Vector a)
+diag' x offDiag = mkJ $ V.fromList $ concat $ zipWith f vx [0..]
   where
-    y :: J (Cov (JV f)) DMatrix
-    y = diag $ mkJ $ DMatrix.dvector $ vectorize x
+    f y k = replicate k offDiag ++ [y]
+    vx = V.toList $ vectorize x
 
 --data X a = X (J S a) (J S a) deriving (Generic, Show)
 --instance View X
