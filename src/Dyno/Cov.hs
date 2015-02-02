@@ -1,7 +1,6 @@
 {-# OPTIONS_GHC -Wall -fno-cse #-}
 {-# Language ScopedTypeVariables #-}
 {-# Language KindSignatures #-}
---{-# Language DeriveGeneric #-}
 
 module Dyno.Cov
        ( Cov(..)
@@ -16,7 +15,6 @@ module Dyno.Cov
        , nOfVecLen
        ) where
 
---import GHC.Generics ( Generic )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
 import qualified Data.Sequence as Seq
@@ -54,11 +52,6 @@ nOfVecLen m
   where
     m' = fromIntegral m :: Double
     n = round $ sqrt (2*m' + 1/4) - 1/2
-
----- THIS SKIPS THE DEVECTORIZE LENGTH CHECK!!
---instance (Serialize a) => Serialize (Cov f a) where
---  put = put . V.toList . unCov
---  get = fmap (Cov . V.fromList) get
 
 toMat :: (View f, CasadiMat a, Viewable a) => J (Cov f) a -> M f f a
 toMat c = mkM (toMatrix c)
@@ -102,7 +95,6 @@ diag' x offDiag = mkJ $ V.fromList $ concat $ zipWith f vx [0..]
 --dd2 :: J (Cov X) DMatrix
 --dd2 = fromMatrix sp
 
--- todo CasadiMat class
 fromMat :: (View f, CasadiMat a, Viewable a) => M f f a -> J (Cov f) a
 fromMat (UnsafeM c) = fromMatrix c
 
