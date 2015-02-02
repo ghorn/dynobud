@@ -9,6 +9,7 @@ module Dyno.NlpSolver
        ( NlpSolver
        , SXElement
        , runNlpSolver
+       , runNlp
          -- * solve
        , solveNlp
        , solveNlp'
@@ -476,6 +477,17 @@ solveNlp' ::
   -> Nlp' x p g a -> Maybe (J x (Vector Double) -> IO Bool)
   -> IO (Either String String, NlpOut' x g (Vector Double))
 solveNlp' solverStuff nlp callback =
+  runNlp solverStuff nlp callback solve'
+
+
+-- | set all inputs, handle scaling, and let the user run a NlpMonad
+runNlp ::
+  (View x, View p, View g, Symbolic a)
+  => NlpSolverStuff
+  -> Nlp' x p g a -> Maybe (J x (Vector Double) -> IO Bool)
+  -> NlpSolver x p g b
+  -> IO b
+runNlp solverStuff nlp callback runMe =
   runNlpSolver solverStuff (nlpFG' nlp) (nlpScaleX' nlp) (nlpScaleG' nlp) (nlpScaleF' nlp) callback $ do
     let (lbx,ubx) = junzip (nlpBX' nlp)
         (lbg,ubg) = junzip (nlpBG' nlp)
@@ -492,7 +504,7 @@ solveNlp' solverStuff nlp callback =
     case nlpLamG0' nlp of
       Just lam -> setLamG0 lam
       Nothing -> return ()
-    solve'
+    runMe
 
 -- | solve a homotopy nlp
 solveNlpHomotopy' ::
