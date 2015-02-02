@@ -325,7 +325,6 @@ runNlpSolver ::
   -> Maybe (J x (Vector Double) -> IO Bool)
   -> NlpSolver x p g a
   -> IO a
---runNlpSolver solverStuff nlpFun nlpX0' callback' (NlpSolver nlpMonad) = do
 runNlpSolver solverStuff nlpFun scaleX scaleG scaleF callback' (NlpSolver nlpMonad) = do
   inputsX <- sym "x"
   inputsP <- sym "p"
@@ -477,7 +476,6 @@ solveNlp' ::
   -> Nlp' x p g a -> Maybe (J x (Vector Double) -> IO Bool)
   -> IO (Either String String, NlpOut' x g (Vector Double))
 solveNlp' solverStuff nlp callback =
---  runNlpSolver solverStuff (nlpFG' nlp) (nlpX0' nlp) callback $ do
   runNlpSolver solverStuff (nlpFG' nlp) (nlpScaleX' nlp) (nlpScaleG' nlp) (nlpScaleF' nlp) callback $ do
     let (lbx,ubx) = junzip (nlpBX' nlp)
         (lbg,ubg) = junzip (nlpBG' nlp)
@@ -494,7 +492,6 @@ solveNlp' solverStuff nlp callback =
     case nlpLamG0' nlp of
       Just lam -> setLamG0 lam
       Nothing -> return ()
-
     solve'
 
 -- | solve a homotopy nlp
