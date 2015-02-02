@@ -1,8 +1,8 @@
 all : LagrangePolynomials.pdf
 
-LagrangePolynomials.pdf : ../src/Hascm/LagrangePolynomials.lhs
-	pdflatex ../src/Hascm/LagrangePolynomials.lhs
-	pdflatex ../src/Hascm/LagrangePolynomials.lhs
+LagrangePolynomials.pdf : ../src/Dyno/LagrangePolynomials.lhs
+	pdflatex ../src/Dyno/LagrangePolynomials.lhs
+	pdflatex ../src/Dyno/LagrangePolynomials.lhs
 
 clean :
 	rm -f *.aux *.log *.pdf
