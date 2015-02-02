@@ -12,7 +12,7 @@ import qualified Data.Vector as V
 
 import Dyno.View.View
 import Dyno.View.Viewable ( Viewable )
-import Dyno.View.CasadiMat ( CasadiMat(..) )
+import Dyno.View.CasadiMat ( CasadiMat(..), fromDVector )
 
 data ScaleFuns x g a =
   ScaleFuns

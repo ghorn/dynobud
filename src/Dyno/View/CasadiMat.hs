@@ -3,6 +3,7 @@
 module Dyno.View.CasadiMat
        ( CasadiMat(..), MX.MX, SX.SX, DMatrix.DMatrix
        , vertslice, horzslice
+       , fromDVector
        ) where
 
 import qualified Data.Vector as V
@@ -31,7 +32,6 @@ class (Eq a, Show a, Floating a, Fmod a, ArcTan2 a, SymOrd a, Erf a) => CasadiMa
   ones :: (Int,Int) -> a
   zeros :: (Int,Int) -> a
   zerosSp :: Sparsity -> a
-  fromDVector :: V.Vector Double -> a
   solve :: a -> a -> a
   indexed :: a -> Slice -> Slice -> a
   sparsity :: a -> Sparsity
@@ -43,6 +43,7 @@ class (Eq a, Show a, Floating a, Fmod a, ArcTan2 a, SymOrd a, Erf a) => CasadiMa
   tril2symm :: a -> a
   copy :: a -> IO a
   dense :: a -> a
+  fromDMatrix :: DMatrix.DMatrix -> a
 
 instance CasadiMat SX.SX where
   veccat = SX.sveccat
@@ -61,7 +62,6 @@ instance CasadiMat SX.SX where
   ones = SX.sones
   zeros = SX.szeros
   zerosSp = SX.szerosSp
-  fromDVector = SX.d2s . fromDVector
   solve = SX.ssolve
   indexed = SX.sindexed
   sparsity = SX.scrs
@@ -73,6 +73,7 @@ instance CasadiMat SX.SX where
   tril2symm = SX.stril2symm
   copy = SX.scopy
   dense = SX.sdense
+  fromDMatrix = SX.d2s
 
 instance CasadiMat MX.MX where
   veccat = MX.veccat
@@ -91,7 +92,6 @@ instance CasadiMat MX.MX where
   ones = MX.ones
   zeros = MX.zeros
   zerosSp = MX.zerosSp
-  fromDVector = MX.d2m . fromDVector
   solve = MX.solve
   indexed = MX.indexed
   sparsity = MX.crs
@@ -103,6 +103,7 @@ instance CasadiMat MX.MX where
   tril2symm = MX.tril2symm
   copy = MX.copy
   dense = MX.dense
+  fromDMatrix = MX.d2m
 
 instance CasadiMat DMatrix.DMatrix where
   veccat = DMatrix.dveccat
@@ -121,7 +122,6 @@ instance CasadiMat DMatrix.DMatrix where
   ones = DMatrix.dones
   zeros = DMatrix.dzeros
   zerosSp = DMatrix.dzerosSp
-  fromDVector = DMatrix.dvector
   solve x y = unsafePerformIO (C.solve__3 x y)
   indexed = DMatrix.dindexed
   sparsity = DMatrix.dcrs
@@ -133,6 +133,10 @@ instance CasadiMat DMatrix.DMatrix where
   tril2symm = DMatrix.dtril2symm
   copy = DMatrix.dcopy
   dense = DMatrix.ddense
+  fromDMatrix = id
+
+fromDVector :: CasadiMat a => V.Vector Double -> a
+fromDVector = fromDMatrix . DMatrix.dvector
 
 vertslice :: CasadiMat a => a -> V.Vector Int -> V.Vector a
 vertslice x vs = V.fromList (f (V.toList vs))
