@@ -24,6 +24,7 @@ module Dyno.View.M
        , vcat'
        , hcat'
        , hsplitTup
+       , hsplitTrip
        , row
        , col
        , unrow
@@ -174,6 +175,20 @@ hsplitTup (UnsafeM x) =
     ng = size (Proxy :: Proxy g)
     nh = size (Proxy :: Proxy h)
     ncs = V.fromList [0,ng,ng+nh]
+
+hsplitTrip ::
+  forall f g h j a .
+  (View f, View g, View h, View j, CasadiMat a)
+  => M f (JTriple g h j) a -> (M f g a, M f h a, M f j a)
+hsplitTrip (UnsafeM x) =
+  case V.toList (CM.horzsplit x ncs) of
+    [g,h,j] -> (mkM g, mkM h, mkM j)
+    n -> error $ "hsplitTup made a bad split with length " ++ show (length n)
+  where
+    ng = size (Proxy :: Proxy g)
+    nh = size (Proxy :: Proxy h)
+    nj = size (Proxy :: Proxy j)
+    ncs = V.fromList [0,ng,ng+nh,ng+nh+nj]
 
 hcat ::
   forall f g a .
