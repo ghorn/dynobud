@@ -44,6 +44,7 @@ module Dyno.NlpSolver
        , Op.Opt(..)
        , setOption
        , reinit
+       , MonadIO
        , liftIO
        , generateAndCompile
        ) where
