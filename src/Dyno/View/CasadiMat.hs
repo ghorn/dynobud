@@ -26,6 +26,7 @@ class (Eq a, Show a, Floating a, Fmod a, ArcTan2 a, SymOrd a, Erf a) => CasadiMa
   size1 :: a -> Int
   size2 :: a -> Int
   mm :: a -> a -> a
+  innerProd :: a -> a -> a
   trans :: a -> a
   diag :: a -> a
   eye :: Int -> a
@@ -56,6 +57,7 @@ instance CasadiMat SX.SX where
   size1 = SX.ssize1
   size2 = SX.ssize2
   mm = SX.smm
+  innerProd = SX.sinnerProd
   trans = SX.strans
   diag = SX.sdiag
   eye = SX.seye
@@ -86,6 +88,7 @@ instance CasadiMat MX.MX where
   size1 = MX.size1
   size2 = MX.size2
   mm = MX.mm
+  innerProd = MX.innerProd
   trans = MX.trans
   diag = MX.diag
   eye = MX.eye
@@ -116,6 +119,7 @@ instance CasadiMat DMatrix.DMatrix where
   size1 = DMatrix.dsize1
   size2 = DMatrix.dsize2
   mm = DMatrix.dmm
+  innerProd = DMatrix.dinnerProd
   trans = DMatrix.dtrans
   diag = DMatrix.ddiag
   eye = DMatrix.deye
