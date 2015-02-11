@@ -20,6 +20,7 @@ module Dyno.View.View
        , JTriple(..)
        , jreplicate, jreplicate'
        , reifyJVec, jfill
+       , v2d, d2v
        ) where
 
 import GHC.Generics hiding ( S )
@@ -33,6 +34,9 @@ import Linear.V ( Dim(..) )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
 import Data.Serialize ( Serialize(..) )
+
+import qualified Casadi.DMatrix as DMatrix
+import qualified Dyno.View.CasadiMat as CM
 
 import Dyno.TypeVecs ( Vec(..), unVec, mkVec, mkVec', reifyVector )
 import Dyno.View.Viewable ( Viewable(..) )
@@ -131,6 +135,12 @@ jfill x = mkJ (V.replicate n x)
 reifyJVec :: forall a f r . Vector (J f a) -> (forall (n :: *). Dim n => JVec n f a -> r) -> r
 reifyJVec v f = reifyVector v $ \(v' :: Vec n (J f a)) -> f (JVec v' :: JVec n f a)
 {-# INLINE reifyJVec #-}
+
+v2d :: View f => J f (V.Vector Double) -> J f CM.DMatrix
+v2d = mkJ . CM.fromDVector . unJ
+
+d2v :: View f => J f CM.DMatrix -> J f (V.Vector Double)
+d2v = mkJ . DMatrix.ddata . CM.dense . unJ
 
 -- | view into a None, for convenience
 data JNone a = JNone deriving ( Eq, Generic, Generic1, Show, Functor, Foldable, Traversable )
