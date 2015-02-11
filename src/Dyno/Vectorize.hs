@@ -48,7 +48,7 @@ instance Applicative None where
 instance Linear.Additive None where
 
 -- | a length-1 vectorizable type
-newtype Id a = Id a
+newtype Id a = Id { unId :: a }
              deriving (Eq, Ord, Generic, Generic1, Functor, Foldable, Traversable, Show)
 instance Vectorize Id
 instance Applicative Id where
