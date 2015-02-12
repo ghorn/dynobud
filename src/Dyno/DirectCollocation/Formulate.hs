@@ -29,10 +29,11 @@ import qualified Numeric.LinearAlgebra.Algorithms as LA
 import Linear.Matrix hiding ( trace )
 import Linear.V
 
-import Casadi.DMatrix ( dvector, ddata, ddense )
+import Casadi.DMatrix ( DMatrix, ddata )
+import Casadi.MX ( MX )
+import qualified Casadi.CMatrix as CM
 
 import Dyno.SXElement ( sxToSXElement, sxElementToSX )
-import Dyno.View.CasadiMat hiding ( solve )
 import Dyno.Cov
 import Dyno.View.View
 import Dyno.View.JV ( JV, sxCatJV, sxSplitJV, catJV, catJV' )
@@ -114,10 +115,10 @@ makeCollProblem ocp = do
 
       f :: J (JV o) DMatrix ->  J (JV x) DMatrix
            -> (J (JV o) (Vector Double), J (JV x) (Vector Double))
-      f o' x' = (mkJ (ddata (ddense (unJ o'))), mkJ (ddata (ddense (unJ x'))))
+      f o' x' = (mkJ (ddata (CM.dense (unJ o'))), mkJ (ddata (CM.dense (unJ x'))))
 
       dmToDv :: J a (Vector Double) -> J a DMatrix
-      dmToDv (UnsafeJ v) = UnsafeJ (dvector v)
+      dmToDv (UnsafeJ v) = UnsafeJ (CM.fromDVector v)
 
       callOutputFun :: J (JV p) (Vector Double)
                        -> J (JV Id) (Vector Double)
@@ -275,12 +276,12 @@ makeCollCovProblem ocp ocpCov = do
   computeCovariancesFun' <- toMXFun "compute covariances" computeCovariances
   -- callbacks
   let dmToDv :: J a (Vector Double) -> J a DMatrix
-      dmToDv (UnsafeJ v) = UnsafeJ (dvector v)
+      dmToDv (UnsafeJ v) = UnsafeJ (CM.fromDVector v)
 
       --dvToDm :: View a => J a DMatrix -> J a (Vector Double)
       --dvToDm v = mkJ (ddata (ddense (unJ v)))
       dvToDm :: J a DMatrix -> J a (Vector Double)
-      dvToDm (UnsafeJ v) = UnsafeJ (ddata (ddense v))
+      dvToDm (UnsafeJ v) = UnsafeJ (ddata (CM.dense v))
 
       callback collTrajCov = do
         let CollTrajCov _ collTraj = split collTrajCov

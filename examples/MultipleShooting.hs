@@ -20,6 +20,8 @@ import Data.Colour
 import Data.Colour.Names
 import Control.Lens
 
+import Casadi.MX ( MX )
+
 import Dyno.View.View
 import Dyno.View.JV
 import Dyno.View.JVec
@@ -27,7 +29,6 @@ import Dyno.Nlp
 import Dyno.NlpSolver
 import Dyno.Solvers
 import Dyno.Vectorize
-import Dyno.View.CasadiMat ( MX )
 import Dyno.Nats
 import Dyno.MultipleShooting
 

@@ -35,8 +35,8 @@ import Casadi.SharedObject ( soInit )
 import Casadi.MX ( MX )
 import Casadi.SXFunction
 import Casadi.Function
+import Casadi.CMatrix ( veccat )
 
-import Dyno.View.CasadiMat ( veccat )
 import Dyno.SXElement ( SXElement, sxElementSym, sxElementToSX )
 import Dyno.Vectorize ( Id, fill )
 import Dyno.TypeVecs ( Vec )

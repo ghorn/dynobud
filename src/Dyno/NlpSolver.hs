@@ -69,12 +69,14 @@ import qualified Casadi.Core.Classes.GenericType as C
 import qualified Casadi.Core.Classes.IOInterfaceFunction as C
 
 import Casadi.Callback ( makeCallback )
-import Casadi.DMatrix
-import Casadi.SX
+import Casadi.DMatrix ( DMatrix, ddata )
+import Casadi.SX ( SX )
 import Casadi.Function ( Function, externalFunction )
 import qualified Casadi.Option as Op
 import qualified Casadi.GenericC as Gen
 import Casadi.SharedObject ( soInit )
+import Casadi.CMatrix ( CMatrix )
+import qualified Casadi.CMatrix as CM
 
 import Dyno.SXElement ( SXElement, sxElementToSX )
 import Dyno.Vectorize ( Vectorize(..), Id )
@@ -83,8 +85,6 @@ import Dyno.View.JV
 import Dyno.View.View
 import Dyno.View.Symbolic
 import Dyno.View.Viewable ( Viewable )
-import Dyno.View.CasadiMat ( CasadiMat )
-import qualified Dyno.View.CasadiMat as CM
 import Dyno.Nlp ( Nlp(..), NlpOut(..), Nlp'(..), NlpOut'(..), Bounds )
 import Dyno.NlpScaling ( ScaleFuns(..), scaledFG, mkScaleFuns )
 import Data.Proxy
@@ -118,7 +118,7 @@ setInput ::
 setInput scaleFun getLen name x0 = do
   nlpState <- ask
   let x = unJ $ scaleFun (isScale nlpState) $ mkJ $ CM.fromDVector (unJ x0)
-  let nActual = (dsize1 x, dsize2 x)
+  let nActual = (CM.size1 x, CM.size2 x)
       nTypeLevel = (getLen nlpState, 1)
   when (nTypeLevel /= nActual) $ error $
     name ++ " dimension mismatch, " ++ show nTypeLevel ++
@@ -332,7 +332,7 @@ runNlpSolver solverStuff nlpFun scaleX scaleG scaleF callback' (NlpSolver nlpMon
   inputsX <- sym "x"
   inputsP <- sym "p"
 
-  let scale :: forall sfa . (CasadiMat sfa, Viewable sfa) => ScaleFuns x g sfa
+  let scale :: forall sfa . (CMatrix sfa, Viewable sfa) => ScaleFuns x g sfa
       scale = mkScaleFuns scaleX scaleG scaleF
 
   let (obj, g) = scaledFG scale nlpFun inputsX inputsP
@@ -375,7 +375,7 @@ runNlpSolver solverStuff nlpFun scaleX scaleG scaleF callback' (NlpSolver nlpMon
         callbackRet <- case callback' of
           Nothing -> return True
           Just callback -> do
-            xval <- fmap (mkJ . ddata . unJ . xbarToX scale . mkJ . ddense) $
+            xval <- fmap (mkJ . ddata . unJ . xbarToX scale . mkJ . CM.dense) $
                     C.ioInterfaceFunction_output__2 function' 0
             callback xval
         interrupt <- readIORef intref

@@ -17,10 +17,11 @@ import qualified Data.Foldable as F
 import Casadi.Sparsity ( Sparsity, dense )
 import Casadi.Option ( Opt(..), setOption )
 import Casadi.SharedObject ( soInit )
+import Casadi.DMatrix ( DMatrix )
+import Casadi.CMatrix ( sparsity )
 
 import qualified Dyno.TypeVecs as TV
 import Dyno.TypeVecs ( Vec, Dim, reifyDim )
-import Dyno.View.CasadiMat ( DMatrix, sparsity )
 import Dyno.View.Scheme ( Scheme(..) )
 import Dyno.View.Fun ( Fun(..) )
 import Casadi.Callback ( makeCustomEvaluate, makeDerivativeGenerator )

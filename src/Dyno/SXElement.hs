@@ -11,6 +11,7 @@ module Dyno.SXElement
 import Linear.Conjugate ( Conjugate(..) )
 
 import Casadi.SX
+import qualified Casadi.CMatrix as CM
 import Casadi.Overloading
 
 newtype SXElement =
@@ -28,11 +29,11 @@ sxToSXElement x
   | (1,1) == sizes = SXElement x
   | otherwise = error $ "sxToSXElement: got non-scalar of size " ++ show sizes
   where
-    sizes = (ssize1 x, ssize2 x)
+    sizes = (CM.size1 x, CM.size2 x)
 
 sxElementToSX :: SXElement -> SX
 sxElementToSX (SXElement x)
   | (1,1) == sizes = x
   | otherwise = error $ "sxElementToSX: got non-scalar of size " ++ show sizes
   where
-    sizes = (ssize1 x, ssize2 x)
+    sizes = (CM.size1 x, CM.size2 x)

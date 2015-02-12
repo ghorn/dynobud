@@ -22,8 +22,9 @@ import qualified Data.Vector as V
 import Data.Vector ( Vector )
 import GHC.Generics hiding ( S )
 
+import Casadi.CMatrix ( CMatrix )
+import qualified Casadi.CMatrix as CM
 import Dyno.View.View
-import Dyno.View.CasadiMat
 import Dyno.View.M ( M(..) )
 --import Dyno.Nats
 --import Dyno.View.JVec ( JVec )
@@ -37,15 +38,15 @@ import Dyno.View.M ( M(..) )
 --og :: V.Vector MX
 --og = toVector go
 
-blockSplit :: forall f g a . (View f, View g, CasadiMat a) => M f g a -> Vector (Vector a)
-blockSplit (UnsafeM m) = fmap (flip horzsplit hsizes) ms
+blockSplit :: forall f g a . (View f, View g, CMatrix a) => M f g a -> Vector (Vector a)
+blockSplit (UnsafeM m) = fmap (flip CM.horzsplit hsizes) ms
   where
     vsizes = V.fromList $ 0 : (F.toList (sizes 0 (Proxy :: Proxy f)))
     hsizes = V.fromList $ 0 : (F.toList (sizes 0 (Proxy :: Proxy g)))
-    ms = vertsplit m vsizes
+    ms = CM.vertsplit m vsizes
 
 class FunctionIO (f :: * -> *) where
-  fromMat :: CasadiMat a => a -> Either String (f a)
+  fromMat :: CMatrix a => a -> Either String (f a)
   toFioMat :: f a -> a
   matSizes :: Proxy f -> (Int,Int)
 
@@ -81,8 +82,8 @@ instance View f => FunctionIO (J f) where
                  ", actual size: " ++ show (n1,n2)
       n1' = size (Proxy :: Proxy f)
       n2' = 1
-      n1 = size1 x
-      n2 = size2 x
+      n1 = CM.size1 x
+      n2 = CM.size2 x
   matSizes = const (size (Proxy :: Proxy f), 1)
 
 instance (View f, View g) => FunctionIO (M f g) where
@@ -96,13 +97,13 @@ instance (View f, View g) => FunctionIO (M f g) where
                  ", actual size: " ++ show (n1,n2)
       n1' = size (Proxy :: Proxy f)
       n2' = size (Proxy :: Proxy g)
-      n1 = size1 x
-      n2 = size2 x
+      n1 = CM.size1 x
+      n2 = CM.size2 x
   matSizes = const (size (Proxy :: Proxy f), size (Proxy :: Proxy g))
 
 class Scheme (f :: * -> *) where
   numFields :: Proxy f -> Int
-  fromVector :: CasadiMat a => V.Vector a -> f a
+  fromVector :: CMatrix a => V.Vector a -> f a
   toVector :: f a -> V.Vector a
   sizeList :: Proxy f -> [(Int,Int)]
 
@@ -119,7 +120,7 @@ class Scheme (f :: * -> *) where
       reproxy = const Proxy
 
   default fromVector :: ( Rep (f a) aa ~ M1 t d ff aa, GFromVector (Rep (f a)) a
-                        , Generic (f a), Datatype d, CasadiMat a )
+                        , Generic (f a), Datatype d, CMatrix a )
                         => Vector a -> f a
   fromVector vs = out'
     where
@@ -141,7 +142,7 @@ class GNumFields f where
 class GSizeList f where
   gsizeList :: Proxy (f p) -> Seq.Seq (Int,Int)
 class GFromVector f a where
-  gfromVector :: CasadiMat a => String -> Vector a -> Proxy (f a) -> f a
+  gfromVector :: CMatrix a => String -> Vector a -> Proxy (f a) -> f a
 class GToVector f a where
   gtoVector :: f a -> Seq.Seq a
 

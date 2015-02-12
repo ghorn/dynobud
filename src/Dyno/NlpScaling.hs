@@ -10,11 +10,12 @@ module Dyno.NlpScaling
 import Data.Maybe ( fromMaybe )
 import qualified Data.Vector as V
 
+import Casadi.CMatrix ( CMatrix, fromDVector )
+
 import Dyno.Vectorize ( Id )
 import Dyno.View.View
 import Dyno.View.JV
 import Dyno.View.Viewable ( Viewable )
-import Dyno.View.CasadiMat ( CasadiMat(..), fromDVector )
 
 data ScaleFuns x g a =
   ScaleFuns
@@ -32,7 +33,7 @@ data ScaleFuns x g a =
 
 scaledFG ::
   forall x p g a .
-  (View x, View g, CasadiMat a, Viewable a)
+  (View x, View g, CMatrix a, Viewable a)
   => ScaleFuns x g a
   -> (J x a -> J p a -> (J (JV Id) a, J g a))
   -> J x a
@@ -47,7 +48,7 @@ allPositive = all (> 0) . fromMaybe [] . fmap V.toList
 
 mkScaleFuns ::
   forall x g a .
-  (View x, View g, CasadiMat a, Viewable a)
+  (View x, View g, CMatrix a, Viewable a)
   => Maybe (J x (V.Vector Double))
   -> Maybe (J g (V.Vector Double))
   -> Maybe Double

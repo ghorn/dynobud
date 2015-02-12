@@ -28,13 +28,16 @@ import qualified Casadi.MXFunction as C
 import qualified Casadi.SXFunction as C
 import Casadi.Option
 import Casadi.SharedObject
+import Casadi.MX ( MX )
+import Casadi.SX ( SX )
+import Casadi.DMatrix ( DMatrix )
+import Casadi.CMatrix ( CMatrix )
 
 import qualified Casadi.Core.Classes.Function as F
 import qualified Casadi.Core.Classes.MXFunction as M
 import qualified Casadi.Core.Classes.SharedObject as C
 import qualified Casadi.Core.Classes.OptionsFunctionality as C
 
-import Dyno.View.CasadiMat
 import Dyno.View.Scheme
 import Dyno.View.FunJac
 
@@ -87,7 +90,7 @@ callSX :: (Scheme f, Scheme g) => SXFun f g -> f SX -> g SX
 callSX (SXFun sxf) = fromVector . C.callSX sxf . toVector
 
 mkSym :: forall a f .
-         (Scheme f, CasadiMat a)
+         (Scheme f, CMatrix a)
          => (String -> Int -> Int -> IO a)
          -> String -> Proxy f -> IO (f a)
 mkSym mk name _ = do

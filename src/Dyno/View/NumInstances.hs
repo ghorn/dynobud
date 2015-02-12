@@ -10,7 +10,8 @@ import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
 
-import Dyno.View.CasadiMat ( CasadiMat(..) )
+import Casadi.CMatrix ( CMatrix(..) )
+
 import Casadi.MX ( MX )
 import Casadi.SX ( SX )
 import Casadi.DMatrix ( DMatrix )

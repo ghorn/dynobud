@@ -10,7 +10,7 @@ import qualified Data.Vector as V
 import qualified Casadi.SX as SX
 import qualified Casadi.MX as MX
 import qualified Casadi.DMatrix as DMatrix
-import qualified Dyno.View.CasadiMat as CM
+import qualified Casadi.CMatrix as CM
 
 class Viewable a where
   vvertsplit :: a -> V.Vector Int -> V.Vector a
@@ -21,7 +21,7 @@ class Viewable a where
   vrecoverDimension :: a -> Int -> a
 
 instance Viewable SX.SX where
-  vveccat = SX.sveccat
+  vveccat = CM.veccat
   vvertsplit = CM.vertsplit
   vhorzsplit = CM.horzsplit
   vsize1 = CM.size1
@@ -29,7 +29,7 @@ instance Viewable SX.SX where
   vrecoverDimension _ k = CM.zeros (k,1)
 
 instance Viewable MX.MX where
-  vveccat = MX.veccat
+  vveccat = CM.veccat
   vvertsplit = CM.vertsplit
   vhorzsplit = CM.horzsplit
   vsize1 = CM.size1
@@ -37,7 +37,7 @@ instance Viewable MX.MX where
   vrecoverDimension _ k = CM.zeros (k,1)
 
 instance Viewable DMatrix.DMatrix where
-  vveccat = DMatrix.dveccat
+  vveccat = CM.veccat
   vvertsplit = CM.vertsplit
   vhorzsplit = CM.horzsplit
   vsize1 = CM.size1

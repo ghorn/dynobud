@@ -19,10 +19,12 @@ import qualified Data.Foldable as F
 import qualified Data.Traversable as T
 import Linear.V
 
-import Casadi.MX ( d2m )
+import qualified Casadi.CMatrix as CM
+import Casadi.MX ( MX )
+import Casadi.SX ( SX )
+import Casadi.DMatrix ( DMatrix )
 
 import Dyno.SXElement ( SXElement, sxToSXElement )
-import Dyno.View.CasadiMat as CM
 import Dyno.Cov
 import Dyno.View.View
 import Dyno.View.JV ( JV(..), sxSplitJV, sxCatJV )
@@ -164,7 +166,7 @@ mkComputeCovariances c2d computeSens qc' = do
           (pF, covs) = T.mapAccumL ffs p0 $
                            TV.tvzip (M.vsplit' (csFs sensitivities)) (M.vsplit' (csWs sensitivities))
 
-          qc = mkJ (d2m (unJ qc'))
+          qc = mkJ (CM.fromDMatrix (unJ qc'))
 
           ffs :: J (Cov (JV sx)) MX
                  -> (M (JV sx) (JV sx) MX, M (JV sx) (JV sw) MX)
