@@ -129,17 +129,14 @@ makeCollProblem ocp = do
            -> (J (JV o) (Vector Double), J (JV x) (Vector Double))
       f o' x' = (mkJ (ddata (CM.dense (unJ o'))), mkJ (ddata (CM.dense (unJ x'))))
 
-      dmToDv :: J a (Vector Double) -> J a DMatrix
-      dmToDv (UnsafeJ v) = UnsafeJ (CM.fromDVector v)
-
       callOutputFun :: J (JV p) (Vector Double)
                        -> J (JV Id) (Vector Double)
                        -> J (CollStage (JV x) (JV z) (JV u) deg) (Vector Double)
                        -> J (JV Id) (Vector Double)
                        -> IO (Vec deg (J (JV o) (Vector Double), J (JV x) (Vector Double)))
       callOutputFun p h stage k = do
-        (_ :*: xdot :*: out) <- eval outputFun $
-                       (dmToDv stage) :*: (dmToDv p) :*: (dmToDv h) :*: (dmToDv k)
+        (_ :*: xdot :*: out) <-
+          eval outputFun $ (v2d stage) :*: (v2d p) :*: (v2d h) :*: (v2d k)
         let outs0 = unJVec (split out) :: Vec deg (J (JV o) DMatrix)
             xdots0 = unJVec (split xdot) :: Vec deg (J (JV x) DMatrix)
         return (TV.tvzipWith f outs0 xdots0)
