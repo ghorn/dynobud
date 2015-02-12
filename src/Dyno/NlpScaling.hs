@@ -12,9 +12,11 @@ import qualified Data.Vector as V
 
 import Casadi.CMatrix ( CMatrix, fromDVector )
 
+import Dyno.View.Internal.View ( unJ, mkJ )
+
 import Dyno.Vectorize ( Id )
-import Dyno.View.View
-import Dyno.View.JV
+import Dyno.View.View ( View, J )
+import Dyno.View.JV ( JV )
 import Dyno.View.Viewable ( Viewable )
 
 data ScaleFuns x g a =
@@ -94,8 +96,8 @@ mkScaleFuns mx mg mf
     divByXScale :: J x a -> J x a
     (mulByXScale, divByXScale) = case mx of
       Nothing -> (id, id)
-      Just xscl -> ( \(UnsafeJ x') -> mkJ (x' * s)
-                   , \(UnsafeJ x') -> mkJ (x' / s)
+      Just xscl -> ( mkJ . (* s) . unJ
+                   , mkJ . (/ s) . unJ
                    )
         where
           s :: a
@@ -105,8 +107,8 @@ mkScaleFuns mx mg mf
     divByGScale :: J g a -> J g a
     (mulByGScale, divByGScale) = case mg of
       Nothing -> (id, id)
-      Just gscl -> ( \(UnsafeJ g') -> mkJ (g' * s)
-                   , \(UnsafeJ g') -> mkJ (g' / s)
+      Just gscl -> ( mkJ . (* s) . unJ
+                   , mkJ . (/ s) . unJ
                    )
         where
           s :: a
@@ -116,8 +118,8 @@ mkScaleFuns mx mg mf
     divByFScale :: J (JV Id) a -> J (JV Id) a
     (mulByFScale, divByFScale) = case mf of
       Nothing -> (id, id)
-      Just fscl -> ( \(UnsafeJ f') -> mkJ (f' * s)
-                   , \(UnsafeJ f') -> mkJ (f' / s)
+      Just fscl -> ( mkJ . (* s) . unJ
+                   , mkJ . (/ s) . unJ
                    )
         where
           s :: a

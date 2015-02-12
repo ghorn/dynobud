@@ -38,6 +38,7 @@ import qualified Casadi.Core.Classes.MXFunction as M
 import qualified Casadi.Core.Classes.SharedObject as C
 import qualified Casadi.Core.Classes.OptionsFunctionality as C
 
+import Dyno.View.Viewable ( Viewable )
 import Dyno.View.Scheme
 import Dyno.View.FunJac
 
@@ -90,7 +91,7 @@ callSX :: (Scheme f, Scheme g) => SXFun f g -> f SX -> g SX
 callSX (SXFun sxf) = fromVector . C.callSX sxf . toVector
 
 mkSym :: forall a f .
-         (Scheme f, CMatrix a)
+         (Scheme f, CMatrix a, Viewable a)
          => (String -> Int -> Int -> IO a)
          -> String -> Proxy f -> IO (f a)
 mkSym mk name _ = do
@@ -102,7 +103,7 @@ mkSym mk name _ = do
   return $ fromVector (V.fromList ms)
 
 mkFun :: forall f g fun fun' a
-         . (Scheme f, Scheme g, C.SharedObjectClass fun, C.OptionsFunctionalityClass fun)
+         . (Scheme f, Scheme g, Viewable a, C.SharedObjectClass fun, C.OptionsFunctionalityClass fun)
          => (Vector a -> Vector a -> IO fun)
          -> (String -> Proxy f -> IO (f a))
          -> (fun -> fun' f g)

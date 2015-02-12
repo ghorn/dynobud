@@ -24,7 +24,10 @@ import GHC.Generics hiding ( S )
 
 import Casadi.CMatrix ( CMatrix )
 import qualified Casadi.CMatrix as CM
-import Dyno.View.View
+
+import Dyno.View.Internal.View ( unsafeUnJ, mkJ )
+import Dyno.View.View ( View(..), J )
+import Dyno.View.Viewable ( Viewable )
 import Dyno.View.M ( M(..) )
 --import Dyno.Nats
 --import Dyno.View.JVec ( JVec )
@@ -46,7 +49,7 @@ blockSplit (UnsafeM m) = fmap (flip CM.horzsplit hsizes) ms
     ms = CM.vertsplit m vsizes
 
 class FunctionIO (f :: * -> *) where
-  fromMat :: CMatrix a => a -> Either String (f a)
+  fromMat :: (CMatrix a, Viewable a) => a -> Either String (f a)
   toFioMat :: f a -> a
   matSizes :: Proxy f -> (Int,Int)
 
@@ -76,7 +79,7 @@ instance View f => FunctionIO (J f) where
     | n1 /= n1' = mismatch
     | n1 /= 0 && n2 /= n2' = mismatch
     | n1 == 0 && not (n2 `elem` [0,1]) = mismatch
-    | otherwise = Right (UnsafeJ x)
+    | otherwise = Right (mkJ x)
     where
       mismatch = Left $ "length mismatch: typed size: " ++ show (n1',n2') ++
                  ", actual size: " ++ show (n1,n2)
@@ -103,7 +106,7 @@ instance (View f, View g) => FunctionIO (M f g) where
 
 class Scheme (f :: * -> *) where
   numFields :: Proxy f -> Int
-  fromVector :: CMatrix a => V.Vector a -> f a
+  fromVector :: (CMatrix a, Viewable a) => V.Vector a -> f a
   toVector :: f a -> V.Vector a
   sizeList :: Proxy f -> [(Int,Int)]
 
@@ -120,7 +123,7 @@ class Scheme (f :: * -> *) where
       reproxy = const Proxy
 
   default fromVector :: ( Rep (f a) aa ~ M1 t d ff aa, GFromVector (Rep (f a)) a
-                        , Generic (f a), Datatype d, CMatrix a )
+                        , Generic (f a), Datatype d, CMatrix a, Viewable a )
                         => Vector a -> f a
   fromVector vs = out'
     where
@@ -202,7 +205,7 @@ instance GFromVector f a => GFromVector (M1 i d f) a where
       reproxy :: Proxy (M1 i d f p) -> Proxy (f p)
       reproxy = const Proxy
 
-instance FunctionIO f => GFromVector (Rec0 (f a)) a where
+instance (FunctionIO f, Viewable a) => GFromVector (Rec0 (f a)) a where
   gfromVector name ms = const (K1 j)
     where
       j = case fromMat m of

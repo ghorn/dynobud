@@ -156,7 +156,7 @@ makeMsNlp msOcp = do
           mayer = msMayer msOcp (splitJV' xf)
 
           f :: J (JV Id) MX
-          f = mkJ $ unJ $ mayer + lagrangeSum
+          f = mayer + lagrangeSum
 
 
           x0s' = fmap (extractx . split) $ unJVec $ split xus :: Vec n (J (JV x) MX)

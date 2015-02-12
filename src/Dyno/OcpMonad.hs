@@ -47,12 +47,12 @@ import Casadi.Function ( callSX )
 import Casadi.SharedObject ( soInit )
 import Casadi.CMatrix as CM
 
-import Dyno.SXElement ( SXElement, sxElementSym, sxElementToSX, sxToSXElement )
+import Dyno.View.Internal.View ( mkJ )
+
+import Dyno.SXElement ( SXElement, sxElementSym, sxElementToSX, sxToSXElement, sxSplitJV )
 import Dyno.Ocp ( OcpPhase(..) )
 import Dyno.Nlp ( Bounds )
 import Dyno.Vectorize ( Vectorize(..), fill )
-import Dyno.View.View ( mkJ )
-import Dyno.View.JV ( sxSplitJV )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.NlpSolver ( NlpSolverStuff )

@@ -12,8 +12,6 @@ module Dyno.View.JV
        , catJV
        , splitJV'
        , catJV'
-       , sxSplitJV
-       , sxCatJV
        ) where
 
 import GHC.Generics hiding ( S )
@@ -23,11 +21,10 @@ import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
 
-import Casadi.SX ( SX )
+import Dyno.View.Internal.View ( mkJ, unJ )
 
-import Dyno.SXElement
+import Dyno.View.View ( View(..), J )
 import Dyno.View.Viewable ( Viewable(..) )
-import Dyno.View.View
 import Dyno.Vectorize ( Vectorize(..), Id, vlength )
 import Dyno.Server.Accessors ( Lookup(..) )
 
@@ -59,15 +56,3 @@ splitJV' = fmap mkJ . unJV . split
 
 catJV' :: (Vectorize f, Viewable a) => f (J (JV Id) a) -> J (JV f) a
 catJV' = cat . JV . fmap unJ
-
-sxSplitJV :: Vectorize f => J (JV f) SX -> f SXElement
-sxSplitJV v = fmap f (splitJV' v)
-  where
-    f :: J (JV Id) SX -> SXElement
-    f (UnsafeJ x) = sxToSXElement x
-
-sxCatJV :: Vectorize f => f SXElement -> J (JV f) SX
-sxCatJV v = catJV' (fmap f v)
-  where
-    f :: SXElement -> J (JV Id) SX
-    f x = mkJ (sxElementToSX x)

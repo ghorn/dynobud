@@ -13,13 +13,20 @@ import Control.Monad ( void, forever )
 import GHC.Generics ( Generic )
 import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
-import qualified Data.Vector as V
 import qualified Data.Foldable as F
 import Linear.V
 
-import Dyno.SXElement ( SXElement, sxToSXElement )
-import Dyno.View
-import Dyno.Vectorize ( Vectorize(..), Id, vzipWith )
+import Casadi.MX ( MX )
+
+import Dyno.SXElement ( SXElement, sxSplitJV, sxCatJV )
+import Dyno.View.JV ( JV, splitJV, catJV )
+import Dyno.View.Viewable ( Viewable )
+import Dyno.View.View ( View(..), J, JNone, JTuple(..), jfill )
+import Dyno.View.Fun ( SXFun, call, toSXFun, toMXFun, expandMXFun )
+import Dyno.View.JVec ( JVec(..), jreplicate )
+import Dyno.View.HList ( (:*:)(..) )
+import qualified Dyno.View.M as M
+import Dyno.Vectorize ( Vectorize(..), Id(..), vzipWith )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs )
@@ -84,7 +91,7 @@ dynStageConstraints' ::
   -> SXFun (J (JV Id) :*: J p :*: J x :*: J (CollPoint x z u)) (J r)
   -> (J x :*: J (JVec deg (JTuple x z)) :*: J (JVec deg u) :*: J (JV Id) :*: J p :*: J (JVec deg (JV Id))) MX
   -> (J (JVec deg r) :*: J x) MX
-dynStageConstraints' cijs taus dynFun (x0 :*: xzs' :*: us' :*: UnsafeJ h :*: p :*: stageTimes') =
+dynStageConstraints' cijs taus dynFun (x0 :*: xzs' :*: us' :*: h :*: p :*: stageTimes') =
   cat (JVec dynConstrs) :*: xnext
   where
     xzs = fmap split (unJVec (split xzs')) :: Vec deg (JTuple x z MX)
@@ -108,7 +115,7 @@ dynStageConstraints' cijs taus dynFun (x0 :*: xzs' :*: us' :*: UnsafeJ h :*: p :
 
     -- state derivatives, maybe these could be useful as outputs
     xdots :: Vec deg (J x MX)
-    xdots = fmap (/ UnsafeJ h) $ interpolateXDots cijs (x0 TV.<| xs)
+    xdots = fmap (`M.vs` (1/h)) $ interpolateXDots cijs (x0 TV.<| xs)
 
     xs :: Vec deg (J x MX)
     xs = fmap (\(JTuple x _) -> x) xzs
@@ -153,7 +160,7 @@ withIntegrator _ initialX dae solver userFun = do
   dynFun <- toSXFun "dynamics" $ dynamicsFunction' $
             \x0 x1 x2 x3 x4 x5 ->
             let r = dae (sxSplitJV x0) (sxSplitJV x1) (sxSplitJV x2) (sxSplitJV x3)
-                    (sxSplitJV x4) (sxToSXElement (unJ  x5))
+                    (sxSplitJV x4) (unId (sxSplitJV x5))
             in sxCatJV r
 
   dynStageConFun <- toMXFun "dynamicsStageCon" (dynStageConstraints' cijs taus dynFun)
@@ -188,7 +195,7 @@ withIntegrator _ initialX dae solver userFun = do
       toParams us p tf =
         cat $
         IntegratorP
-        { ipTf = mkJ (V.singleton tf)
+        { ipTf = catJV (Id tf)
         , ipParm = catJV p
         , ipU = case us of
           Left u -> jreplicate (jreplicate (catJV u))

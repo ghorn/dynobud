@@ -3,16 +3,26 @@
 
 module Dyno.SXElement
        ( SXElement(..)
+       , sxSplitJV
+       , sxCatJV
+         -- todo: remove this completely after NlpMonad/OcpMonad are done with it
        , sxElementSym
-       , sxToSXElement
+         -- todo: remove the next two exports after NlpMonad/OcpMonad are done with it
        , sxElementToSX
+       , sxToSXElement
        ) where
 
 import Linear.Conjugate ( Conjugate(..) )
 
-import Casadi.SX
+import Casadi.SX ( SX, ssym )
 import qualified Casadi.CMatrix as CM
-import Casadi.Overloading
+import Casadi.Overloading ( Fmod, ArcTan2, SymOrd )
+
+import Dyno.View.Internal.View ( mkJ, unJ )
+
+import Dyno.View.JV ( JV, splitJV', catJV' )
+import Dyno.View.View ( J )
+import Dyno.Vectorize ( Vectorize, Id )
 
 newtype SXElement =
   SXElement SX
@@ -21,8 +31,10 @@ newtype SXElement =
            , Show, Eq, Conjugate
            )
 
+-- todo: take this out after NlpMonad/OcpMonad are done with it
 sxElementSym :: String -> IO SXElement
 sxElementSym = fmap SXElement . ssym
+
 
 sxToSXElement :: SX -> SXElement
 sxToSXElement x
@@ -37,3 +49,16 @@ sxElementToSX (SXElement x)
   | otherwise = error $ "sxElementToSX: got non-scalar of size " ++ show sizes
   where
     sizes = (CM.size1 x, CM.size2 x)
+
+
+sxSplitJV :: Vectorize f => J (JV f) SX -> f SXElement
+sxSplitJV v = fmap f (splitJV' v)
+  where
+    f :: J (JV Id) SX -> SXElement
+    f = sxToSXElement . unJ
+
+sxCatJV :: Vectorize f => f SXElement -> J (JV f) SX
+sxCatJV v = catJV' (fmap f v)
+  where
+    f :: SXElement -> J (JV Id) SX
+    f x = mkJ (sxElementToSX x)

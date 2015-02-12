@@ -27,8 +27,10 @@ import Casadi.DMatrix ( DMatrix )
 import Casadi.CMatrix ( CMatrix )
 import qualified Casadi.CMatrix as CM
 
+import Dyno.View.Internal.View ( unJ, mkJ )
+
 import Dyno.Vectorize ( Vectorize(..), Proxy(..) )
-import Dyno.View.View ( View(..), J, unJ, mkJ )
+import Dyno.View.View ( View(..), J )
 import Dyno.View.JV ( JV )
 import Dyno.View.Viewable ( Viewable(..) )
 import Dyno.View.M ( M(..), mkM, toHMat )

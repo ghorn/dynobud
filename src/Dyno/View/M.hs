@@ -10,6 +10,7 @@ module Dyno.View.M
        , mkM'
        , mm
        , ms
+       , vs
        , trans
        , zeros
        , eye
@@ -40,17 +41,19 @@ import Data.Proxy
 import qualified Data.Vector as V
 import GHC.Generics ( Generic )
 
-import Casadi.Overloading
-import Casadi.DMatrix ( ddata )
+import Casadi.Overloading ( Fmod(..), ArcTan2(..), SymOrd(..) )
+import Casadi.DMatrix ( DMatrix, ddata )
 import Casadi.CMatrix ( CMatrix )
 import qualified Casadi.CMatrix as CM
 
-import Dyno.Vectorize
-import Dyno.View.JV
+import Dyno.View.Internal.View ( mkJ, unJ )
+
+import Dyno.Vectorize ( Vectorize(..), Id, fill )
+import Dyno.View.JV ( JV )
 import Dyno.TypeVecs ( Vec, Dim(..) )
-import Dyno.View.View
-import Dyno.View.JVec
-import Dyno.View.Viewable
+import Dyno.View.View ( View(..), J, JTuple, JTriple )
+import Dyno.View.JVec ( JVec )
+import Dyno.View.Viewable ( Viewable )
 
 newtype M (f :: * -> *) (g :: * -> *) (a :: *) =
   UnsafeM { unM :: a } deriving (Eq, Functor, Generic)
@@ -134,8 +137,11 @@ mkM' x
 mm :: (View f, View h, CMatrix a) => M f g a -> M g h a -> M f h a
 mm (UnsafeM m0) (UnsafeM m1) = mkM (CM.mm m0 m1)
 
-ms :: (View f, View h, CMatrix a) => M f g a -> J (JV Id) a -> M f h a
-ms (UnsafeM m0) (UnsafeJ m1) = mkM (m0 * m1)
+ms :: (View f, View h, Viewable a, CMatrix a) => M f g a -> J (JV Id) a -> M f h a
+ms (UnsafeM m0) m1 = mkM (m0 * (unJ m1))
+
+vs :: (View f, Viewable a, CMatrix a) => J f a -> J (JV Id) a -> J f a
+vs m0 m1 = uncol $ ms (col m0) m1
 
 trans :: (View f, View g, CMatrix a) => M f g a -> M g f a
 trans (UnsafeM m) = mkM (CM.trans m)
@@ -267,11 +273,11 @@ countUp = mkM z
     rows = size (Proxy :: Proxy f)
     cols = size (Proxy :: Proxy g)
 
-row :: (CMatrix a, View f) => J f a -> M (JV Id) f a
-row (UnsafeJ x) = mkM (CM.trans x)
+row :: (CMatrix a, View f, Viewable a) => J f a -> M (JV Id) f a
+row = mkM . CM.trans . unJ
 
-col :: (CMatrix a, View f) => J f a -> M f (JV Id) a
-col (UnsafeJ x) = mkM x
+col :: (CMatrix a, View f, Viewable a) => J f a -> M f (JV Id) a
+col = mkM . unJ
 
 unrow :: (Viewable a, CMatrix a, View f) => M (JV Id) f a -> J f a
 unrow (UnsafeM x) = mkJ (CM.trans x)

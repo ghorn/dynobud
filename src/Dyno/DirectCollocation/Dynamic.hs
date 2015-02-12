@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -Wall -fno-warn-orphans #-}
+{-# OPTIONS_GHC -Wall #-}
 {-# Language ScopedTypeVariables #-}
 {-# Language DeriveGeneric #-}
 
@@ -26,6 +26,8 @@ import qualified Data.Tree as Tree
 import Data.Serialize ( Serialize(..) )
 import GHC.Generics ( Generic )
 import Linear.V
+
+import Dyno.View.Internal.View ( J(UnsafeJ) )
 
 import Dyno.Server.Accessors ( AccessorTree(..), Lookup(..), accessors )
 import Dyno.Vectorize
@@ -60,10 +62,6 @@ catDynPlotPoints pps =
 data D a
 data DynCollTraj a = DynCollTraj (J (CollTraj D D D D () ()) a) (Vec () (Vec () (J D a, J D a)))
                       deriving (Generic, Show)
-instance Serialize a => Serialize (DynCollTraj a)
-instance Serialize a => Serialize (V.Vector a) where
-  put = put . V.toList
-  get = fmap V.fromList get
 
 dynPlotPoints ::
   forall a .

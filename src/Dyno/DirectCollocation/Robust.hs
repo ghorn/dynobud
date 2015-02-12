@@ -19,15 +19,14 @@ import qualified Data.Foldable as F
 import qualified Data.Traversable as T
 import Linear.V
 
-import qualified Casadi.CMatrix as CM
 import Casadi.MX ( MX )
 import Casadi.SX ( SX )
 import Casadi.DMatrix ( DMatrix )
 
-import Dyno.SXElement ( SXElement, sxToSXElement )
+import Dyno.SXElement ( SXElement, sxSplitJV, sxCatJV )
 import Dyno.Cov
-import Dyno.View.View
-import Dyno.View.JV ( JV(..), sxSplitJV, sxCatJV )
+import Dyno.View.View ( View(..), J, JNone(..), JTuple(..), fromDMatrix )
+import Dyno.View.JV ( JV(..), catJV', splitJV' )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.Fun
 import Dyno.View.Viewable ( Viewable )
@@ -36,7 +35,7 @@ import Dyno.View.M ( M )
 import Dyno.View.JVec ( JVec(..) )
 import Dyno.View.FunJac
 import Dyno.View.Scheme ( Scheme, blockSplit )
-import Dyno.Vectorize ( Vectorize(..), Id, vzipWith4 )
+import Dyno.Vectorize ( Vectorize(..), Id(..), vzipWith4 )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs )
@@ -83,7 +82,7 @@ mkComputeSensitivities roots covDae = do
             \x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 ->
             let r = covDae
                     (sxSplitJV x0) (sxSplitJV x1) (sxSplitJV x2) (sxSplitJV x3) (sxSplitJV x4)
-                    (sxToSXElement (unJ x5)) (sxSplitJV x6) (sxSplitJV x7) (sxSplitJV x8) (sxSplitJV x9)
+                    (unId (sxSplitJV x5)) (sxSplitJV x6) (sxSplitJV x7) (sxSplitJV x8) (sxSplitJV x9)
             in sxCatJV r
 
   edscf <- toMXFun "errorDynamicsStageCon" (errorDynStageConstraints cijs taus errorDynFun)
@@ -166,7 +165,8 @@ mkComputeCovariances c2d computeSens qc' = do
           (pF, covs) = T.mapAccumL ffs p0 $
                            TV.tvzip (M.vsplit' (csFs sensitivities)) (M.vsplit' (csWs sensitivities))
 
-          qc = mkJ (CM.fromDMatrix (unJ qc'))
+          qc :: J (Cov (JV sw)) MX
+          qc = fromDMatrix qc'
 
           ffs :: J (Cov (JV sx)) MX
                  -> (M (JV sx) (JV sx) MX, M (JV sx) (JV sw) MX)
@@ -247,7 +247,7 @@ errorDynStageConstraints ::
   -> JacIn (ErrorInD sx sw sz deg) (ErrorIn0 x z u p deg) MX
   -> JacOut (ErrorOut sr sx deg) (J JNone) MX
 errorDynStageConstraints cijs taus dynFun
-  (JacIn errorInD (ErrorIn0 x0 xzus' (UnsafeJ h) p stageTimes'))
+  (JacIn errorInD (ErrorIn0 x0 xzus' h p stageTimes'))
   = JacOut (cat (ErrorOut (cat (JVec dynConstrs)) sxnext)) (cat JNone)
   where
     ErrorInD sx0 sw0 sxzs' = split errorInD
@@ -258,7 +258,7 @@ errorDynStageConstraints cijs taus dynFun
     xs = fmap ((\(CollPoint x _ _) -> x) . split) xzus
 
     xdots :: Vec deg (J x MX)
-    xdots = fmap (/ UnsafeJ h) $ interpolateXDots cijs (x0 TV.<| xs)
+    xdots = fmap (`M.vs` (1 / h)) $ interpolateXDots cijs (x0 TV.<| xs)
 
 --    -- interpolated final state
 --    xnext :: J x MX
@@ -284,7 +284,7 @@ errorDynStageConstraints cijs taus dynFun
 
     -- error state derivatives
     sxdots :: Vec deg (J sx MX)
-    sxdots = fmap (/ UnsafeJ h) $ interpolateXDots cijs (sx0 TV.<| sxs)
+    sxdots = fmap (`M.vs` (1/h)) $ interpolateXDots cijs (sx0 TV.<| sxs)
 
     sxs :: Vec deg (J sx MX)
     szs :: Vec deg (J sz MX)
@@ -419,7 +419,7 @@ mkRobustifyFunction project robustifyPathC = do
   let gogo :: J (JV shr) MX -> J (JV p) MX -> J (JV x) MX -> J (Cov (JV sx)) MX -> J (JV shr) MX
       gogo gammas' theta x pe' = rcs'
           where
-            gammas = fmap mkJ (unJV (split gammas')) :: shr (J (JV Id) MX)
+            gammas = splitJV' gammas' :: shr (J (JV Id) MX)
 
             jHx :: M (JV shr) (JV x) MX
             jHe :: M (JV shr) (JV sx) MX
@@ -447,10 +447,10 @@ mkRobustifyFunction project robustifyPathC = do
             jHes :: shr (M.M (JV Id) (JV sx) MX)
             jHes = M.vsplit jHe
 
-            shr' = fmap mkJ (unJV (split h0vec)) :: shr (J (JV Id) MX)
+            shr' = splitJV' h0vec :: shr (J (JV Id) MX)
 
             rcs' :: J (JV shr) MX
-            rcs' = cat $ JV $ fmap unsafeUnJ rcs
+            rcs' = catJV' rcs
 
             rcs :: shr (J (JV Id) MX)
             rcs = vzipWith4 robustify gammas shr' jHxs jHes
@@ -460,12 +460,10 @@ mkRobustifyFunction project robustifyPathC = do
                          -> M.M (JV Id) (JV x) MX
                          -> M.M (JV Id) (JV sx) MX
                          -> J (JV Id) MX
-            robustify gamma h0 gHx gHe = h0 + gamma * sqrt sigma2
+            robustify gamma h0 gHx gHe = h0 + gamma * sqrt (M.uncol sigma2)
               where
-                sigma2 :: J (JV Id) MX
-                sigma2 = mkJ sigma2'
-
-                M.UnsafeM sigma2' =
+                sigma2 :: M.M (JV Id) (JV Id) MX
+                sigma2 =
                   gHx `M.mm` fpef `M.mm` (M.trans gHx) +
                   2 * gHx `M.mm` fpe `M.mm` (M.trans gHe) +
                   gHe `M.mm` pe `M.mm` (M.trans gHe)

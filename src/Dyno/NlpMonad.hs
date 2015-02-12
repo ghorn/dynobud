@@ -37,10 +37,12 @@ import Casadi.SXFunction
 import Casadi.Function
 import Casadi.CMatrix ( veccat )
 
+import Dyno.View.Internal.View ( mkJ, unJ )
+
 import Dyno.SXElement ( SXElement, sxElementSym, sxElementToSX )
 import Dyno.Vectorize ( Id, fill )
 import Dyno.TypeVecs ( Vec )
-import Dyno.View.View
+import Dyno.View.View ( View(..), J, JNone(..), jfill )
 import Dyno.View.JV ( JV )
 import Dyno.View.JVec ( JVec )
 import qualified Dyno.TypeVecs as TV

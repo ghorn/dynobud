@@ -23,8 +23,8 @@ import GHC.Generics ( Generic )
 import Linear.V ( Dim(..) )
 import Data.Vector ( Vector )
 
-import Dyno.View ( View(..), J, JVec(..), mkJ, unJ, jfill, jreplicate )
-import Dyno.View.JV ( JV, splitJV )
+import Dyno.View ( View(..), J, JVec(..), jfill, jreplicate )
+import Dyno.View.JV ( JV, splitJV, catJV )
 import Dyno.Vectorize ( Vectorize(..), Id )
 import Dyno.Cov ( Cov )
 
@@ -105,10 +105,10 @@ fillCollConstraints ::
   => x a -> r a -> c a -> h a -> CollOcpConstraints n deg x r c h (Vector a)
 fillCollConstraints x r c h =
   CollOcpConstraints
-  { coCollPoints = jreplicate $ jreplicate $ mkJ (vectorize r)
-  , coContinuity = jreplicate $ mkJ (vectorize x)
-  , coPathC = jreplicate $ jreplicate $ mkJ (vectorize h)
-  , coBc = mkJ (vectorize c)
+  { coCollPoints = jreplicate $ jreplicate $ catJV r
+  , coContinuity = jreplicate $ catJV x
+  , coPathC = jreplicate $ jreplicate $ catJV h
+  , coBc = catJV c
   }
 
 
@@ -144,13 +144,13 @@ fmapCollTraj ::
 fmapCollTraj fx fz fu fp ft (CollTraj tf1 p stages1 xf) = CollTraj tf2 (fj fp p) stages2 (fj fx xf)
   where
     tf2 :: J (JV Id) (Vector b)
-    tf2 = mkJ $ fmap ft (unJ tf1)
+    tf2 = catJV $ fmap ft (splitJV tf1)
     stages2 = cat $ fmapJVec (fmapStage fx fz fu) (split stages1)
 
     fj :: (Vectorize f1, Vectorize f2)
           => (f1 a -> f2 b)
           -> J (JV f1) (Vector a) -> J (JV f2) (Vector b)
-    fj f = mkJ . vectorize . f . devectorize . unJ
+    fj f = catJV . f . splitJV
 
 fmapJVec :: (View f, View g, Show a, Show b)
             => (f (Vector a) -> g (Vector b)) -> JVec deg f (Vector a) -> JVec deg g (Vector b)
@@ -175,7 +175,7 @@ fmapStage fx fz fu (CollStage x0 points0) = CollStage (fj fx x0) points1
           => (f1 a -> f2 b)
           -> J (JV f1) (Vector a)
           -> J (JV f2) (Vector b)
-    fj f = mkJ . vectorize . f . devectorize . unJ
+    fj f = catJV . f . splitJV
 
 fmapCollPoint :: forall x1 x2 z1 z2 u1 u2 a b .
                  ( Vectorize x1, Vectorize x2
@@ -193,4 +193,4 @@ fmapCollPoint fx fz fu (CollPoint x z u) = CollPoint (fj fx x) (fj fz z) (fj fu 
           => (f1 a -> f2 b)
           -> J (JV f1) (Vector a)
           -> J (JV f2) (Vector b)
-    fj f = mkJ . vectorize . f . devectorize . unJ
+    fj f = catJV . f . splitJV

@@ -28,14 +28,14 @@ import qualified Numeric.LinearAlgebra.Algorithms as LA
 import Linear.Matrix hiding ( trace )
 import Linear.V
 
-import Casadi.DMatrix ( DMatrix, ddata )
+import Casadi.DMatrix ( DMatrix )
 import Casadi.MX ( MX )
-import qualified Casadi.CMatrix as CM
 
-import Dyno.SXElement ( sxToSXElement, sxElementToSX )
 import Dyno.Cov
-import Dyno.View.View
-import Dyno.View.JV ( JV, sxCatJV, sxSplitJV, splitJV, catJV, catJV' )
+import Dyno.SXElement ( sxCatJV, sxSplitJV )
+import Dyno.View.View ( View(..), J, jfill, JTuple(..), JNone(..), v2d, d2v )
+import qualified Dyno.View.M as M
+import Dyno.View.JV ( JV, splitJV, catJV, catJV' )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.Fun
 import Dyno.View.JVec( JVec(..), jreplicate )
@@ -98,20 +98,20 @@ makeCollProblem ocp = do
 
   bcFun <- toSXFun "bc" $ \(x0:*:x1) -> sxCatJV $ ocpBc ocp (sxSplitJV x0) (sxSplitJV x1)
   mayerFun <- toSXFun "mayer" $ \(x0:*:x1:*:x2) ->
-    mkJ $ sxElementToSX $ ocpMayer ocp (sxToSXElement (unJ x0)) (sxSplitJV x1) (sxSplitJV x2)
+    sxCatJV $ Id $ ocpMayer ocp (unId (sxSplitJV x0)) (sxSplitJV x1) (sxSplitJV x2)
   lagrangeFun <- toSXFun "lagrange" $ \(x0:*:x1:*:x2:*:x3:*:x4:*:x5:*:x6) ->
-    mkJ $ sxElementToSX $ ocpLagrange ocp (sxSplitJV x0) (sxSplitJV x1) (sxSplitJV x2) (sxSplitJV x3) (sxSplitJV x4) (sxToSXElement (unJ x5)) (sxToSXElement (unJ x6))
+    sxCatJV $ Id $ ocpLagrange ocp (sxSplitJV x0) (sxSplitJV x1) (sxSplitJV x2) (sxSplitJV x3) (sxSplitJV x4) (unId (sxSplitJV x5)) (unId (sxSplitJV x6))
   quadFun <- toMXFun "quadratures" $ evaluateQuadraturesFunction lagrangeFun callInterpolateScalar cijs n
 --  let callQuadFun = call quadFun
   callQuadFun <- fmap call (expandMXFun quadFun)
 
   dynFun <- toSXFun "dynamics" $ dynamicsFunction $
             \x0 x1 x2 x3 x4 x5 ->
-            let (r,o) = ocpDae ocp (sxSplitJV x0) (sxSplitJV x1) (sxSplitJV x2) (sxSplitJV x3) (sxSplitJV x4) (sxToSXElement (unJ x5))
+            let (r,o) = ocpDae ocp (sxSplitJV x0) (sxSplitJV x1) (sxSplitJV x2) (sxSplitJV x3) (sxSplitJV x4) (unId (sxSplitJV x5))
             in (sxCatJV r, sxCatJV o)
 
   pathConFun <- toSXFun "pathConstraints" $ pathConFunction $
-                \x0 x1 x2 x3 x4 x5 -> sxCatJV $ ocpPathC ocp (sxSplitJV x0) (sxSplitJV x1) (sxSplitJV x2) (sxSplitJV x3) (sxSplitJV x4) (sxToSXElement (unJ x5))
+                \x0 x1 x2 x3 x4 x5 -> sxCatJV $ ocpPathC ocp (sxSplitJV x0) (sxSplitJV x1) (sxSplitJV x2) (sxSplitJV x3) (sxSplitJV x4) (unId (sxSplitJV x5))
   pathStageConFun <- toMXFun "pathStageCon" (pathStageConstraints pathConFun)
 
   dynStageConFun <- toMXFun "dynamicsStageCon" (dynStageConstraints callInterpolate cijs dynFun)
@@ -127,7 +127,7 @@ makeCollProblem ocp = do
 
       f :: J (JV o) DMatrix ->  J (JV x) DMatrix
            -> (J (JV o) (Vector Double), J (JV x) (Vector Double))
-      f o' x' = (mkJ (ddata (CM.dense (unJ o'))), mkJ (ddata (CM.dense (unJ x'))))
+      f o' x' = (d2v o', d2v x')
 
       callOutputFun :: J (JV p) (Vector Double)
                        -> J (JV Id) (Vector Double)
@@ -152,7 +152,7 @@ makeCollProblem ocp = do
             vstages = unJVec (split stages)
                 :: Vec n (J (CollStage (JV x) (JV z) (JV u) deg) (Vector Double))
             ks :: Vec n (J (JV Id) (Vector Double))
-            ks = TV.mkVec' $ map (mkJ . V.singleton . realToFrac) (take n [(0::Int)..])
+            ks = TV.mkVec' $ map (catJV . Id . realToFrac) (take n [(0::Int)..])
 
         T.sequence $ TV.tvzipWith (callOutputFun p h) vstages ks
 
@@ -162,7 +162,7 @@ makeCollProblem ocp = do
         outputs <- mapOutputFun traj
         let -- devectorize outputs
             devec :: (J (JV o) (Vector Double), J (JV x) (Vector Double)) -> (o Double, x Double)
-            devec (UnsafeJ os, UnsafeJ xds) = (devectorize os, devectorize xds)
+            devec (os, xds) = (splitJV os, splitJV xds)
         return (ctToDynamic traj outputs, fmap (fmap devec) outputs)
 
   let nlp = Nlp' {
@@ -249,9 +249,9 @@ makeCollCovProblem ocp ocpCov = do
   sbcFun <- toSXFun "sbc" $ \(x0:*:x1) -> ocpCovSbc ocpCov x0 x1
   shFun <- toSXFun "sh" $ \(x0:*:x1) -> ocpCovSh ocpCov (sxSplitJV x0) x1
   mayerFun <- toSXFun "cov mayer" $ \(x0:*:x1:*:x2:*:x3:*:x4) ->
-    mkJ $ sxElementToSX $ ocpCovMayer ocpCov (sxToSXElement (unJ x0)) (sxSplitJV x1) (sxSplitJV x2) x3 x4
+    sxCatJV $ Id $ ocpCovMayer ocpCov (unId (sxSplitJV x0)) (sxSplitJV x1) (sxSplitJV x2) x3 x4
   lagrangeFun <- toSXFun "cov lagrange" $ \(x0:*:x1:*:x2:*:x3) ->
-    mkJ $ sxElementToSX $ ocpCovLagrange ocpCov (sxToSXElement (unJ x0)) (sxSplitJV x1) x2 (sxToSXElement (unJ x3))
+    sxCatJV $ Id $ ocpCovLagrange ocpCov (unId (sxSplitJV x0)) (sxSplitJV x1) x2 (unId (sxSplitJV x3))
 
   cp0 <- makeCollProblem ocp
 
@@ -286,22 +286,14 @@ makeCollCovProblem ocp ocpCov = do
 
   computeCovariancesFun' <- toMXFun "compute covariances" computeCovariances
   -- callbacks
-  let dmToDv :: J a (Vector Double) -> J a DMatrix
-      dmToDv (UnsafeJ v) = UnsafeJ (CM.fromDVector v)
-
-      --dvToDm :: View a => J a DMatrix -> J a (Vector Double)
-      --dvToDm v = mkJ (ddata (ddense (unJ v)))
-      dvToDm :: J a DMatrix -> J a (Vector Double)
-      dvToDm (UnsafeJ v) = UnsafeJ (ddata (CM.dense v))
-
-      callback collTrajCov = do
+  let callback collTrajCov = do
         let CollTrajCov _ collTraj = split collTrajCov
         (dynCollTraj, outputs) <- callback0 collTraj
-        covTraj <- fmap split $ eval computeCovariancesFun' (dmToDv collTrajCov)
+        covTraj <- fmap split $ eval computeCovariancesFun' (v2d collTrajCov)
         let covs' = ctAllButLast covTraj
             pF = ctLast covTraj
         let covs = unJVec (split covs') :: Vec n (J (Cov (JV sx)) DMatrix)
-        return (dynCollTraj, outputs, fmap dvToDm covs, dvToDm pF)
+        return (dynCollTraj, outputs, fmap d2v covs, d2v pF)
 
       nlp =
         Nlp'
@@ -532,10 +524,10 @@ getBg ocp =
   { coCollPoints = jreplicate (jfill (Just 0, Just 0)) -- dae residual constraint
   , coContinuity = jreplicate (jfill (Just 0, Just 0)) -- continuity constraint
   , coPathC = jreplicate (jreplicate hbnds)
-  , coBc = mkJ $ vectorize $ ocpBcBnds ocp
+  , coBc = catJV (ocpBcBnds ocp)
   }
   where
-    hbnds = mkJ $ vectorize $ ocpPathCBnds ocp
+    hbnds = catJV (ocpPathCBnds ocp)
 
 evaluateQuadraturesFunction ::
   forall x z u p o deg .
@@ -636,7 +628,7 @@ dynStageConstraints ::
            (J r :*: J o)
   -> (J x :*: J (JVec deg (JTuple x z)) :*: J (JVec deg u) :*: J (JV Id) :*: J p :*: J (JVec deg (JV Id))) MX
   -> (J (JVec deg r) :*: J x :*: J (JVec deg o)) MX
-dynStageConstraints interpolate' cijs dynFun (x0 :*: xzs' :*: us' :*: UnsafeJ h :*: p :*: stageTimes') =
+dynStageConstraints interpolate' cijs dynFun (x0 :*: xzs' :*: us' :*: h :*: p :*: stageTimes') =
   cat (JVec dynConstrs) :*: xnext :*: cat (JVec outputs)
   where
     xzs = fmap split (unJVec (split xzs')) :: Vec deg (JTuple x z MX)
@@ -661,7 +653,7 @@ dynStageConstraints interpolate' cijs dynFun (x0 :*: xzs' :*: us' :*: UnsafeJ h 
 
     -- state derivatives, maybe these could be useful as outputs
     xdots :: Vec deg (J x MX)
-    xdots = fmap (/ UnsafeJ h) $ interpolateXDots cijs (x0 TV.<| xs)
+    xdots = fmap (`M.vs` (1/h)) $ interpolateXDots cijs (x0 TV.<| xs)
 
     xs :: Vec deg (J x MX)
     xs = fmap (\(JTuple x _) -> x) xzs
@@ -691,15 +683,15 @@ outputFunction ::
            (J r :*: J o)
   -> (J (CollStage x z u deg) :*: J p :*: J (JV Id) :*: J (JV Id)) MX
   -> (J (JVec deg r) :*: J (JVec deg x) :*: J (JVec deg o)) MX
-outputFunction cijs taus dynFun (collStage :*: p :*: h'@(UnsafeJ h) :*: k) =
+outputFunction cijs taus dynFun (collStage :*: p :*: h :*: k) =
   cat (JVec dynConstrs) :*: cat (JVec xdots) :*: cat (JVec outputs)
   where
     xzus = unJVec (split xzus') :: Vec deg (J (CollPoint x z u) MX)
     CollStage x0 xzus' = split collStage
     -- times at each collocation point
     stageTimes :: Vec deg (J (JV Id) MX)
-    stageTimes = fmap (\tau -> t0 + realToFrac tau * h') taus
-    t0 = k*h'
+    stageTimes = fmap (\tau -> t0 + realToFrac tau * h) taus
+    t0 = k*h
 
     -- dae constraints (dynamics)
     dynConstrs :: Vec deg (J r MX)
@@ -713,7 +705,7 @@ outputFunction cijs taus dynFun (collStage :*: p :*: h'@(UnsafeJ h) :*: k) =
 
     -- state derivatives, maybe these could be useful as outputs
     xdots :: Vec deg (J x MX)
-    xdots = fmap (/ UnsafeJ h) $ interpolateXDots cijs (x0 TV.<| xs)
+    xdots = fmap (`M.vs` (1/h)) $ interpolateXDots cijs (x0 TV.<| xs)
 
     xs :: Vec deg (J x MX)
     xs = fmap ((\(CollPoint x _ _) -> x) . split) xzus
@@ -784,7 +776,7 @@ makeGuess ::
   -> p Double
   -> CollTraj x z u p n deg (Vector Double)
 makeGuess quadratureRoots tf guessX guessZ guessU parm =
-  CollTraj (jfill tf) (v2j parm) guesses (v2j (guessX tf))
+  CollTraj (jfill tf) (catJV parm) guesses (catJV (guessX tf))
   where
     -- timestep
     dt = tf / fromIntegral n
@@ -800,8 +792,8 @@ makeGuess quadratureRoots tf guessX guessZ guessU parm =
 
     mkGuess' :: (Double, Vec deg Double) -> CollStage (JV x) (JV z) (JV u) deg (Vector Double)
     mkGuess' (t,ts) =
-      CollStage (v2j (guessX t)) $
-      cat $ JVec $ fmap (\t' -> cat (CollPoint (v2j (guessX t')) (v2j (guessZ t')) (v2j (guessU t')))) ts
+      CollStage (catJV (guessX t)) $
+      cat $ JVec $ fmap (\t' -> cat (CollPoint (catJV (guessX t')) (catJV (guessZ t')) (catJV (guessU t')))) ts
 
     guesses :: J (JVec n (CollStage (JV x) (JV z) (JV u) deg)) (Vector Double)
     guesses = cat $ JVec $ fmap (cat . mkGuess') times
@@ -809,10 +801,6 @@ makeGuess quadratureRoots tf guessX guessZ guessU parm =
     -- the collocation points
     taus :: Vec deg Double
     taus = mkTaus quadratureRoots
-
-
-    v2j :: Vectorize v => v Double -> J (JV v) (Vector Double)
-    v2j = mkJ . vectorize
 
 
 -- | make an initial guess
@@ -827,7 +815,7 @@ makeGuessSim ::
   -> p Double
   -> CollTraj x z u p n deg (Vector Double)
 makeGuessSim quadratureRoots tf x00 ode guessU p =
-  CollTraj (jfill tf) (v2j p) (cat (JVec stages)) (v2j xf)
+  CollTraj (jfill tf) (catJV p) (cat (JVec stages)) (catJV xf)
   where
     -- timestep
     dt = tf / fromIntegral n
@@ -843,20 +831,17 @@ makeGuessSim quadratureRoots tf x00 ode guessU p =
 
     stageGuess :: x Double -> Double
                   -> (x Double, J (CollStage (JV x) (JV z) (JV u) deg) (Vector Double))
-    stageGuess x0 t0 = (integrate 1, cat (CollStage (v2j x0) points))
+    stageGuess x0 t0 = (integrate 1, cat (CollStage (catJV x0) points))
       where
         points = cat $ JVec $ fmap (toCollPoint . integrate) taus
         u = guessU x0 t0
         f x = ode x u
-        toCollPoint x = cat $ CollPoint (v2j x) (v2j (fill 0 :: z Double)) (v2j u)
+        toCollPoint x = cat $ CollPoint (catJV x) (catJV (fill 0 :: z Double)) (catJV u)
         integrate localTau = rk4 f (localTau * dt) x0
 
     -- the collocation points
     taus :: Vec deg Double
     taus = mkTaus quadratureRoots
-
-    v2j :: Vectorize v => v Double -> J (JV v) (Vector Double)
-    v2j = mkJ . vectorize
 
     rk4 :: (x Double -> x Double) -> Double -> x Double -> x Double
     rk4 f h x0 = x0 ^+^ ((k1 ^+^ (2 *^ k2) ^+^ (2 *^ k3) ^+^ k4) ^/ 6)

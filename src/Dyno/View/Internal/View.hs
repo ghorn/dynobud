@@ -17,7 +17,8 @@ module Dyno.View.Internal.View
        , mkJ, mkJ', unJ, unJ'
        , JNone(..), JTuple(..), JTriple(..)
        , jfill
-       , v2d, d2v
+       , v2d, d2v, fromDMatrix
+       , fmapJ, unzipJ
        ) where
 
 import GHC.Generics hiding ( S )
@@ -126,11 +127,22 @@ jfill x = mkJ (V.replicate n x)
   where
     n = size (Proxy :: Proxy f)
 
+fromDMatrix :: (CM.CMatrix a, Viewable a, View f) => J f DMatrix.DMatrix -> J f a
+fromDMatrix = mkJ . CM.fromDMatrix . unJ
+
 v2d :: View f => J f (V.Vector Double) -> J f DMatrix.DMatrix
 v2d = mkJ . CM.fromDVector . unJ
 
 d2v :: View f => J f DMatrix.DMatrix -> J f (V.Vector Double)
 d2v = mkJ . DMatrix.ddata . CM.dense . unJ
+
+fmapJ :: View f => (a -> b) -> J f (Vector a) -> J f (Vector b)
+fmapJ f = mkJ . V.map f . unJ
+
+unzipJ :: View f => J f (Vector (a,b)) -> (J f (Vector a), J f (Vector b))
+unzipJ v = (mkJ x, mkJ y)
+  where
+    (x,y) = V.unzip (unJ v)
 
 -- | view into a None, for convenience
 data JNone a = JNone deriving ( Eq, Generic, Generic1, Show, Functor, Foldable, Traversable )

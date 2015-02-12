@@ -78,12 +78,13 @@ import Casadi.SharedObject ( soInit )
 import Casadi.CMatrix ( CMatrix )
 import qualified Casadi.CMatrix as CM
 
-import Dyno.SXElement ( SXElement, sxElementToSX )
-import Dyno.Vectorize ( Vectorize(..), Id )
-import Dyno.View.JV
+import Dyno.View.Internal.View ( unJ, mkJ )
 
-import Dyno.View.View
-import Dyno.View.Symbolic
+import Dyno.SXElement ( SXElement, sxSplitJV, sxCatJV )
+import Dyno.Vectorize ( Vectorize(..), Id(..) )
+import Dyno.View.JV ( JV )
+import Dyno.View.View ( View(..), J, JNone(..), JTuple(..), jfill, unzipJ, fmapJ )
+import Dyno.View.Symbolic ( Symbolic, sym, mkScheme, mkFunction )
 import Dyno.View.Viewable ( Viewable )
 import Dyno.Nlp ( Nlp(..), NlpOut(..), Nlp'(..), NlpOut'(..), Bounds )
 import Dyno.NlpScaling ( ScaleFuns(..), scaledFG, mkScaleFuns )
@@ -133,10 +134,10 @@ inf :: Double
 inf = read "Infinity"
 
 toLb :: View x => J x (Vector (Maybe Double)) -> J x (Vector Double)
-toLb = mkJ . V.map (fromMaybe (-inf)) . unJ
+toLb = fmapJ (fromMaybe (-inf))
 
 toUb :: View x => J x (Vector (Maybe Double)) -> J x (Vector Double)
-toUb = mkJ . V.map (fromMaybe   inf ) . unJ
+toUb = fmapJ (fromMaybe   inf )
 
 setLbx :: View x => VMD x -> NlpSolver x p g ()
 setLbx = setInput xToXBar isNx "lbx" . toLb
@@ -430,7 +431,7 @@ solveNlp solverStuff nlp callback = do
       nlp' = Nlp' { nlpFG' = \x' p' -> let x = sxSplitJV x' :: x SXElement
                                            p = sxSplitJV p' :: p SXElement
                                            (obj,g) = nlpFG nlp x p :: (SXElement, g SXElement)
-                                           obj' = mkJ (sxElementToSX obj) :: J (JV Id) SX
+                                           obj' = sxCatJV (Id obj) :: J (JV Id) SX
                                            g' = sxCatJV g :: J (JV g) SX
                                        in (obj',g')
                   , nlpBX' = mkJ $ vectorize (nlpBX nlp) :: J (JV x) (V.Vector Bounds)
@@ -464,14 +465,6 @@ solveNlp solverStuff nlp callback = do
   return (r0, r1)
 
 
-fmapJ :: View x => (a -> b) -> J x (Vector a) -> J x (Vector b)
-fmapJ f (UnsafeJ v) = mkJ (V.map f v)
-
-junzip :: View x => J x (Vector (a,b)) -> (J x (Vector a), J x (Vector b))
-junzip (UnsafeJ v) = (mkJ x, mkJ y)
-  where
-    (x,y) = V.unzip v
-
 -- | convenience function to solve a pure Nlp'
 solveNlp' ::
   (View x, View p, View g, Symbolic a)
@@ -491,8 +484,8 @@ runNlp ::
   -> IO b
 runNlp solverStuff nlp callback runMe =
   runNlpSolver solverStuff (nlpFG' nlp) (nlpScaleX' nlp) (nlpScaleG' nlp) (nlpScaleF' nlp) callback $ do
-    let (lbx,ubx) = junzip (nlpBX' nlp)
-        (lbg,ubg) = junzip (nlpBG' nlp)
+    let (lbx,ubx) = unzipJ (nlpBX' nlp)
+        (lbg,ubg) = unzipJ (nlpBG' nlp)
 
     setX0 (nlpX0' nlp)
     setP (nlpP' nlp)
@@ -518,7 +511,7 @@ solveNlpHomotopy' ::
   -> Maybe (J x (Vector Double) -> J p (Vector Double) -> Double -> IO ())
   -> IO (Either String String, NlpOut' (JTuple x p) g (Vector Double))
 solveNlpHomotopy' userStep (reduction, increase, iterIncrease, iterDecrease)
-  solverStuff nlp (UnsafeJ pF) callback callbackP = do
+  solverStuff nlp pF callback callbackP = do
   when (reduction >= 1) $ error $ "homotopy reduction factor " ++ show reduction ++ " >= 1"
   when (increase  <= 1) $ error $ "homotopy increase factor "  ++ show increase  ++ " <= 1"
   let fg :: J (JTuple x p) a -> J JNone a -> (J (JV Id) a, J g a)
@@ -526,13 +519,13 @@ solveNlpHomotopy' userStep (reduction, increase, iterIncrease, iterDecrease)
         where
           JTuple x p = split xp
   runNlpSolver solverStuff fg Nothing (nlpScaleG' nlp) (nlpScaleF' nlp) callback $ do
-    let (lbx,ubx) = junzip (nlpBX' nlp)
-        (lbg,ubg) = junzip (nlpBG' nlp)
-        UnsafeJ p0 = nlpP' nlp
+    let (lbx,ubx) = unzipJ (nlpBX' nlp)
+        (lbg,ubg) = unzipJ (nlpBG' nlp)
+        p0 = unJ $ nlpP' nlp
 
         setAlpha :: Double -> NlpSolver (JTuple x p) JNone g ()
         setAlpha alpha = do
-          let p = mkJ $ V.zipWith (+) p0 (V.map (alpha*) (V.zipWith (-) pF p0))
+          let p = mkJ $ V.zipWith (+) p0 (V.map (alpha*) (V.zipWith (-) (unJ pF) p0))
           setLbx $ cat (JTuple lbx (fmapJ Just p))
           setUbx $ cat (JTuple ubx (fmapJ Just p))
 

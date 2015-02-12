@@ -9,6 +9,8 @@ module Dyno.DirectCollocation.Reify
 
 import Linear.V ( Dim )
 
+import Dyno.View.Internal.View ( J(UnsafeJ), mkJ )
+
 import Dyno.Vectorize
 import Dyno.TypeVecs ( Vec )
 import Dyno.View.JV

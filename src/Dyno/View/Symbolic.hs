@@ -20,7 +20,9 @@ import Casadi.Option ( setOption )
 import Casadi.MX ( MX, symV )
 import Casadi.IOSchemes
 
-import Dyno.View.View ( View(..), J, mkJ )
+import Dyno.View.Internal.View ( mkJ )
+
+import Dyno.View.View ( View(..), J )
 import Dyno.View.Viewable ( Viewable(..) )
 
 class (Viewable a, CMatrix a) => Symbolic a where
