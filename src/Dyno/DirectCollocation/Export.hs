@@ -34,7 +34,7 @@ toMatlab ::
   -> CollTraj x z u p n deg (Vector Double)
   -> IO String
 toMatlab cp ct@(CollTraj tf' p' stages' xf) = do
-  outs <- fmap snd $ cpCallback cp (cat ct)
+  outs <- cpOutputs cp (cat ct)
 
   let taus :: Vec deg Double
       taus = cpTaus cp
@@ -64,7 +64,7 @@ toMatlab cp ct@(CollTraj tf' p' stages' xf) = do
 
       os :: [o Double]
       xdots :: [x Double]
-      (os, xdots) = unzip $ F.concatMap F.toList outs
+      (os, xdots) = unzip $ F.concatMap (F.toList . fst) outs -- drop the interpolated value
 
       getXs (CollStage x0 xzus) = splitJV x0 : map (getX . split) (F.toList (unJVec (split xzus)))
       getZs (CollStage  _ xzus) =              map (getZ . split) (F.toList (unJVec (split xzus)))

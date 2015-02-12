@@ -49,7 +49,7 @@ import Dyno.Nlp ( Nlp'(..), Bounds )
 import Dyno.Ocp ( OcpPhase(..), OcpPhaseWithCov(..) )
 
 import Dyno.DirectCollocation.Types
-import Dyno.DirectCollocation.Dynamic ( DynCollTraj, ctToDynamic )
+import Dyno.DirectCollocation.Dynamic ( DynPlotPoints, dynPlotPoints )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..), mkTaus, interpolate, timesFromTaus )
 import Dyno.DirectCollocation.Robust
 
@@ -57,8 +57,9 @@ data CollProblem x z u p r c h o n deg =
   CollProblem
   { cpNlp :: Nlp' (CollTraj x z u p n deg) JNone (CollOcpConstraints n deg x r c h) MX
   , cpOcp :: OcpPhase x z u p r o c h
-  , cpCallback :: J (CollTraj x z u p n deg) (Vector Double)
-                  -> IO (DynCollTraj (Vector Double), Vec n (Vec deg (o Double, x Double)))
+  , cpPlotPoints :: J (CollTraj x z u p n deg) (Vector Double) -> IO (DynPlotPoints Double)
+  , cpOutputs :: J (CollTraj x z u p n deg) (Vector Double)
+                 -> IO (Vec n (Vec deg (o Double, x Double), x Double))
   , cpTaus :: Vec deg Double
   , cpRoots :: QuadratureRoots
   }
@@ -120,7 +121,7 @@ makeCollProblem ocp = do
 --  let callStageFun = call stageFun
   callStageFun <- fmap call (expandMXFun stageFun)
 
-  outputFun <- toMXFun "stageOutputs" $ outputFunction cijs taus dynFun
+  outputFun <- toMXFun "stageOutputs" $ outputFunction callInterpolate cijs taus dynFun
 
   -- prepare callbacks
   let nlpX0 = jfill 0 :: J (CollTraj x z u p n deg) (Vector Double)
@@ -133,16 +134,16 @@ makeCollProblem ocp = do
                        -> J (JV Id) (Vector Double)
                        -> J (CollStage (JV x) (JV z) (JV u) deg) (Vector Double)
                        -> J (JV Id) (Vector Double)
-                       -> IO (Vec deg (J (JV o) (Vector Double), J (JV x) (Vector Double)))
+                       -> IO (Vec deg (J (JV o) (Vector Double), J (JV x) (Vector Double)), J (JV x) (Vector Double))
       callOutputFun p h stage k = do
-        (_ :*: xdot :*: out) <-
+        (_ :*: xdot :*: out :*: xnext) <-
           eval outputFun $ (v2d stage) :*: (v2d p) :*: (v2d h) :*: (v2d k)
         let outs0 = unJVec (split out) :: Vec deg (J (JV o) DMatrix)
             xdots0 = unJVec (split xdot) :: Vec deg (J (JV x) DMatrix)
-        return (TV.tvzipWith f outs0 xdots0)
+        return (TV.tvzipWith f outs0 xdots0, d2v xnext)
 
       mapOutputFun :: J (CollTraj x z u p n deg) (Vector Double)
-                      -> IO (Vec n (Vec deg (J (JV o) (Vector Double), J (JV x) (Vector Double))))
+                      -> IO (Vec n (Vec deg (J (JV o) (Vector Double), J (JV x) (Vector Double)), J (JV x) (Vector Double)))
       mapOutputFun ct = do
         let CollTraj tf p stages _ = split ct
             h = catJV $ Id (tf' / fromIntegral n)
@@ -156,14 +157,19 @@ makeCollProblem ocp = do
 
         T.sequence $ TV.tvzipWith (callOutputFun p h) vstages ks
 
-      callback :: J (CollTraj x z u p n deg) (Vector Double)
-                  -> IO (DynCollTraj (Vector Double), Vec n (Vec deg (o Double, x Double)))
-      callback traj = do
+      getPlotPoints :: J (CollTraj x z u p n deg) (Vector Double) -> IO (DynPlotPoints Double)
+      getPlotPoints traj = do
         outputs <- mapOutputFun traj
-        let -- devectorize outputs
-            devec :: (J (JV o) (Vector Double), J (JV x) (Vector Double)) -> (o Double, x Double)
-            devec (os, xds) = (splitJV os, splitJV xds)
-        return (ctToDynamic traj outputs, fmap (fmap devec) outputs)
+        return (dynPlotPoints roots (split traj) outputs)
+
+      getOutputs :: J (CollTraj x z u p n deg) (Vector Double)
+                    -> IO (Vec n (Vec deg (o Double, x Double), x Double))
+      getOutputs traj = do
+        outputs <- mapOutputFun traj
+        let devec :: Vec deg (J (JV o) (Vector Double), J (JV x) (Vector Double))
+                  -> Vec deg (o Double, x Double)
+            devec = fmap (\(x,y) -> (splitJV x, splitJV y))
+        return $ fmap (\(x,y) -> (devec x, splitJV y)) outputs
 
   let nlp = Nlp' {
         nlpFG' =
@@ -201,7 +207,8 @@ makeCollProblem ocp = do
         }
   return $ CollProblem { cpNlp = nlp
                        , cpOcp = ocp
-                       , cpCallback = callback
+                       , cpPlotPoints = getPlotPoints
+                       , cpOutputs = getOutputs
                        , cpTaus = taus
                        , cpRoots = roots
                        }
@@ -213,10 +220,12 @@ data CollCovProblem x z u p r o c h n deg sx sw sh shr sc =
               (CollTrajCov sx x z u p n deg)
               JNone
               (CollOcpCovConstraints n deg x r c h sh shr sc) MX
-  , ccpCallback ::
+  , ccpPlotPoints :: J (CollTrajCov sx x z u p n deg) (Vector Double) -> IO (DynPlotPoints Double)
+  , ccpOutputs ::
        J (CollTrajCov sx x z u p n deg) (Vector Double)
-       -> IO ( DynCollTraj (Vector Double), Vec n (Vec deg (o Double, x Double))
-             , Vec n (J (Cov (JV sx)) (Vector Double)), J (Cov (JV sx)) (Vector Double)
+       -> IO ( Vec n (Vec deg (o Double, x Double), x Double)
+             , Vec n (J (Cov (JV sx)) (Vector Double))
+             , J (Cov (JV sx)) (Vector Double)
              )
   , ccpSensitivities :: MXFun
                         (J (CollTraj x z u p n deg))
@@ -258,7 +267,6 @@ makeCollCovProblem ocp ocpCov = do
   robustify <- mkRobustifyFunction (ocpCovProjection ocpCov) (ocpCovRobustifyPathC ocpCov)
 
   let nlp0 = cpNlp cp0
-      callback0 = cpCallback cp0
       gammas' = ocpCovGammas ocpCov :: shr Double
 
       gammas :: J (JV shr) MX
@@ -286,14 +294,24 @@ makeCollCovProblem ocp ocpCov = do
 
   computeCovariancesFun' <- toMXFun "compute covariances" computeCovariances
   -- callbacks
-  let callback collTrajCov = do
+  let getPlotPoints :: J (CollTrajCov sx x z u p n deg) (Vector Double) -> IO (DynPlotPoints Double)
+      getPlotPoints collTrajCov = do
         let CollTrajCov _ collTraj = split collTrajCov
-        (dynCollTraj, outputs) <- callback0 collTraj
+        cpPlotPoints cp0 collTraj
+
+      getOutputs :: J (CollTrajCov sx x z u p n deg) (Vector Double)
+                    -> IO ( Vec n (Vec deg (o Double, x Double), x Double)
+                          , Vec n (J (Cov (JV sx)) (Vector Double))
+                          , J (Cov (JV sx)) (Vector Double)
+                          )
+      getOutputs collTrajCov = do
+        let CollTrajCov _ collTraj = split collTrajCov
+        outputs <- (cpOutputs cp0) collTraj
         covTraj <- fmap split $ eval computeCovariancesFun' (v2d collTrajCov)
         let covs' = ctAllButLast covTraj
             pF = ctLast covTraj
         let covs = unJVec (split covs') :: Vec n (J (Cov (JV sx)) DMatrix)
-        return (dynCollTraj, outputs, fmap d2v covs, d2v pF)
+        return (outputs, fmap d2v covs, d2v pF)
 
       nlp =
         Nlp'
@@ -334,7 +352,8 @@ makeCollCovProblem ocp ocpCov = do
         }
   computeSensitivitiesFun' <- toMXFun "compute sensitivities" computeSensitivities
   return $ CollCovProblem { ccpNlp = nlp
-                          , ccpCallback = callback
+                          , ccpPlotPoints = getPlotPoints
+                          , ccpOutputs = getOutputs
                           , ccpSensitivities = computeSensitivitiesFun'
                           , ccpCovariances = computeCovariancesFun'
                           , ccpRoots = roots
@@ -678,13 +697,14 @@ instance (View sr, View sx, Dim deg) => View (ErrorOut sr sx deg)
 -- outputs
 outputFunction ::
   forall x z u p r o deg . (Dim deg, View x, View z, View u, View p, View r, View o)
-  => Vec (TV.Succ deg) (Vec (TV.Succ deg) Double) -> Vec deg Double
+  => (J x MX -> Vec deg (J x MX) -> J x MX)
+  -> Vec (TV.Succ deg) (Vec (TV.Succ deg) Double) -> Vec deg Double
   -> SXFun (J (JV Id) :*: J p :*: J x :*: J (CollPoint x z u))
            (J r :*: J o)
   -> (J (CollStage x z u deg) :*: J p :*: J (JV Id) :*: J (JV Id)) MX
-  -> (J (JVec deg r) :*: J (JVec deg x) :*: J (JVec deg o)) MX
-outputFunction cijs taus dynFun (collStage :*: p :*: h :*: k) =
-  cat (JVec dynConstrs) :*: cat (JVec xdots) :*: cat (JVec outputs)
+  -> (J (JVec deg r) :*: J (JVec deg x) :*: J (JVec deg o) :*: J x) MX
+outputFunction callInterpolate cijs taus dynFun (collStage :*: p :*: h :*: k) =
+  cat (JVec dynConstrs) :*: cat (JVec xdots) :*: cat (JVec outputs) :*: xnext
   where
     xzus = unJVec (split xzus') :: Vec deg (J (CollPoint x z u) MX)
     CollStage x0 xzus' = split collStage
@@ -692,6 +712,8 @@ outputFunction cijs taus dynFun (collStage :*: p :*: h :*: k) =
     stageTimes :: Vec deg (J (JV Id) MX)
     stageTimes = fmap (\tau -> t0 + realToFrac tau * h) taus
     t0 = k*h
+
+    xnext = callInterpolate x0 xs
 
     -- dae constraints (dynamics)
     dynConstrs :: Vec deg (J r MX)
@@ -709,7 +731,6 @@ outputFunction cijs taus dynFun (collStage :*: p :*: h :*: k) =
 
     xs :: Vec deg (J x MX)
     xs = fmap ((\(CollPoint x _ _) -> x) . split) xzus
-
 
 
 

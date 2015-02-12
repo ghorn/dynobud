@@ -253,7 +253,6 @@ main :: IO ()
 main = do
   cp <- makeCollProblem ocp
   let nlp = cpNlp cp
-      toDyn = cpCallback cp
   ZMQ.withContext $ \context ->
     withPublisher context urlDynoPlot $ \sendDynoPlotMsg -> do
 --    withPublisher context urlOptTelem $ \sendOptTelemMsg -> do
@@ -265,11 +264,10 @@ main = do
           callback :: J (CollTraj SbX SbZ SbU SbP NCollStages CollDeg) (Vector Double)
                       -> IO Bool
           callback traj = do
-            (dyn,_) <- toDyn traj
+            plotPoints <- cpPlotPoints cp traj
             -- dynoplot
-            -- todo: re-enable this after fixing Dynamic
-            --let dynoPlotMsg = encodeSerial ([dyn], meta)
-            --sendDynoPlotMsg "glider" dynoPlotMsg
+            let dynoPlotMsg = encodeSerial (plotPoints, meta)
+            sendDynoPlotMsg "glider" dynoPlotMsg
 
 --            -- 3d vis
 --            let CollTraj tf' _ _ stages' xf = split traj

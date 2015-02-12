@@ -1,45 +1,43 @@
-{-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Wall -fno-warn-orphans #-}
 {-# Language ScopedTypeVariables #-}
 {-# Language DeriveGeneric #-}
 
 module Dyno.DirectCollocation.Dynamic
-       ( DynCollTraj(..)
-       , DynPlotPoints
+       ( DynPlotPoints
        , CollTrajMeta(..)
        , MetaTree
        , forestFromMeta
        , toMeta
        , toMetaCov
-       , ctToDynamic
        , dynPlotPoints
        , catDynPlotPoints
 --       , toPlotTree
        , NameTree(..)
        ) where
 
-import Data.List ( mapAccumL ) -- , unzip5 )
+import Data.Proxy ( Proxy(..) )
+import Data.List ( mapAccumL, unzip5 )
 import Data.Tree ( Tree(..) )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
---import qualified Data.Foldable as F
+import qualified Data.Foldable as F
 import qualified Data.Tree as Tree
 import Data.Serialize ( Serialize(..) )
 import GHC.Generics ( Generic )
 import Linear.V
 
-import Dyno.View.Internal.View ( J(UnsafeJ) )
+import Dyno.View.Internal.View ( unJ, unJ' )
 
 import Dyno.Server.Accessors ( AccessorTree(..), Lookup(..), accessors )
-import Dyno.Vectorize
+import Dyno.Vectorize ( Vectorize, Id(..) )
 import Dyno.View.JV
 import Dyno.View.View
---import Dyno.View.JVec ( JVec(..) )
+import Dyno.View.JVec ( JVec(..) )
 import qualified Dyno.TypeVecs as TV
 import Dyno.TypeVecs ( Vec )
 
 import Dyno.DirectCollocation.Types
-import Dyno.DirectCollocation.Quadratures ( QuadratureRoots ) -- , mkTaus, interpolate )
-import Dyno.DirectCollocation.Reify ( reifyCollTraj )
+import Dyno.DirectCollocation.Quadratures ( QuadratureRoots, mkTaus )
 
 
 data DynPlotPoints a = DynPlotPoints
@@ -48,7 +46,11 @@ data DynPlotPoints a = DynPlotPoints
                        [[(a, Vector a)]]
                        [[(a, Vector a)]]
                        [[(a, Vector a)]]
-                     deriving Show
+                     deriving (Show, Generic)
+instance Serialize a => Serialize (DynPlotPoints a)
+instance Serialize a => Serialize (Vector a) where
+  get = fmap V.fromList get
+  put = put . V.toList
 
 catDynPlotPoints :: [DynPlotPoints a] -> DynPlotPoints a
 catDynPlotPoints pps =
@@ -59,88 +61,56 @@ catDynPlotPoints pps =
   (concatMap (\(DynPlotPoints _ _ _ x _) -> x) pps)
   (concatMap (\(DynPlotPoints _ _ _ _ x) -> x) pps)
 
-data D a
-data DynCollTraj a = DynCollTraj (J (CollTraj D D D D () ()) a) (Vec () (Vec () (J D a, J D a)))
-                      deriving (Generic, Show)
-
 dynPlotPoints ::
-  forall a .
-  (Real a, Fractional a, Show a)
-  => DynCollTraj (Vector a) -> CollTrajMeta -> DynPlotPoints a
-dynPlotPoints (DynCollTraj traj outputs) meta =
-  reifyCollTraj (nx,nz,nu,np,no,n,deg) traj outputs foo
-  where
-    quadratureRoots = ctmQuadRoots meta
-    nx  = ctmNx meta
-    nz  = ctmNz meta
-    nu  = ctmNu meta
-    np  = ctmNp meta
-    no  = ctmNo meta
-    n   = ctmN meta
-    deg = ctmDeg meta
-
-    foo :: (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize o, Dim deg, Dim n)
-           => J (CollTraj x z u p n deg) (Vector a)
-           -> Vec n (Vec deg (J (JV o) (Vector a), J (JV x) (Vector a)))
-           -> DynPlotPoints a
-    foo ct outs = plotPoints quadratureRoots (split ct) outs
-
-
--- a safe, point maker which is difficult to work with
--- first stage in making a list
-plotPoints ::
   forall x z u p o n deg a .
   (Dim n, Dim deg, Real a, Fractional a, Show a,
    Vectorize x, Vectorize z, Vectorize u, Vectorize o, Vectorize p)
-  => QuadratureRoots -> CollTraj x z u p n deg (Vector a)
-  -> Vec n (Vec deg (J (JV o) (Vector a), J (JV x) (Vector a)))
+  => QuadratureRoots
+  -> CollTraj x z u p n deg (Vector a)
+  -> Vec n (Vec deg (J (JV o) (Vector a), J (JV x) (Vector a)), J (JV x) (Vector a))
   -> DynPlotPoints a
-plotPoints = undefined
---plotPoints quadratureRoots (CollTraj (UnsafeJ tf') _ stages' xf) outputs =
---  DynPlotPoints (xss++[[(tf,unJ xf)]]) zss uss oss xdss
---  where
---    nStages = size (Proxy :: Proxy (JVec n (JV Id)))
---    tf,h :: a
---    tf = V.head tf'
---    h = tf / fromIntegral nStages
---
---    taus :: Vec deg a
---    taus = mkTaus quadratureRoots
---
---    stages :: Vec n (CollStage (JV x) (JV z) (JV u) deg (Vector a))
---    stages = fmap split (unJVec (split stages'))
---    (xss,zss,uss,oss,xdss) = unzip5 $ F.toList $ f 0 $ zip (F.toList stages) (F.toList outputs)
---
---
---    -- todo: check this final time against expected tf
---    f :: a
---         -> [( CollStage (JV x) (JV z) (JV u) deg (Vector a)
---             , Vec deg (J (JV o) (Vector a), J (JV x) (Vector a))
---             )]
---         -> [( [(a,Vector a)]
---             , [(a,Vector a)]
---             , [(a,Vector a)]
---             , [(a,Vector a)]
---             , [(a,Vector a)]
---             )]
---    f _ [] = []
---    f t0 ((CollStage x0 xzus', xdos') : css) = (xs,zs,us,os,xds) : f tnext css
---      where
---        tnext = t0 + h
---        xzus0 = fmap split (unJVec (split xzus')) :: Vec deg (CollPoint (JV x) (JV z) (JV u) (Vector a))
---        xnext = interpolate taus x0 (fmap getX xzus0)
---
---        getX (CollPoint x _ _) = x
---
---        xs :: [(a,Vector a)]
---        xs = (t0,unJ x0):xs'++[(tnext,unJ xnext)]
---
---        xs',zs,us,os,xds :: [(a,Vector a)]
---        (xs',zs,us,os,xds) = unzip5 $ F.toList $ TV.tvzipWith3 g xzus0 xdos' taus
---
---        g (CollPoint x z u) (o,x') tau = ( (t,unJ' "x" x), (t,unJ' "z" z), (t,unJ' "u" u), (t,unJ' "o" o), (t,unJ' "x'" x') )
---          where
---            t = t0 + h*tau
+dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs =
+  DynPlotPoints (xss++[[(tf,unJ xf)]]) zss uss oss xdss
+  where
+    nStages = size (Proxy :: Proxy (JVec n (JV Id)))
+    tf,h :: a
+    Id tf = splitJV tf'
+    h = tf / fromIntegral nStages
+
+    taus :: Vec deg a
+    taus = mkTaus quadratureRoots
+
+    stages :: Vec n (CollStage (JV x) (JV z) (JV u) deg (Vector a))
+    stages = fmap split (unJVec (split stages'))
+    (xss,zss,uss,oss,xdss) = unzip5 $ F.toList $ f 0 $ zip (F.toList stages) (F.toList outputs)
+
+
+    -- todo: check this final time against expected tf
+    f :: a
+         -> [( CollStage (JV x) (JV z) (JV u) deg (Vector a)
+             , (Vec deg (J (JV o) (Vector a), J (JV x) (Vector a)), J (JV x) (Vector a))
+             )]
+         -> [( [(a,Vector a)]
+             , [(a,Vector a)]
+             , [(a,Vector a)]
+             , [(a,Vector a)]
+             , [(a,Vector a)]
+             )]
+    f _ [] = []
+    f t0 ((CollStage x0 xzus', (xdos, xnext)) : css) = (xs,zs,us,os,xds) : f tnext css
+      where
+        tnext = t0 + h
+        xzus0 = fmap split (unJVec (split xzus')) :: Vec deg (CollPoint (JV x) (JV z) (JV u) (Vector a))
+
+        xs :: [(a,Vector a)]
+        xs = (t0,unJ x0):xs'++[(tnext,unJ xnext)]
+
+        xs',zs,us,os,xds :: [(a,Vector a)]
+        (xs',zs,us,os,xds) = unzip5 $ F.toList $ TV.tvzipWith3 g xzus0 xdos taus
+
+        g (CollPoint x z u) (o,x') tau = ( (t,unJ' "x" x), (t,unJ' "z" z), (t,unJ' "u" u), (t,unJ' "o" o), (t,unJ' "x'" x') )
+          where
+            t = t0 + h*tau
 
 
 
@@ -250,14 +220,3 @@ toMetaCov :: forall sx x z u p o n deg .
 toMetaCov roots _ _ = meta0 { ctmNsx = size (Proxy :: Proxy (JV sx)) }
   where
     meta0 = toMeta roots (Proxy :: Proxy o) (Proxy :: Proxy (CollTraj x z u p n deg))
-
-ctToDynamic :: forall x z u p o n deg a .
-  (Vectorize x, Vectorize z, Vectorize u, Vectorize p) =>
-  J (CollTraj x z u p n deg) a -> Vec n (Vec deg (J (JV o) a, J (JV x) a)) -> DynCollTraj a
-ctToDynamic (UnsafeJ x) os = DynCollTraj (UnsafeJ x) (castO os) -- this should be totally safe
-  where
-    castO :: Vec n (Vec deg (J (JV o) a, J (JV x) a)) -> Vec () (Vec () (J D a, J D a))
-    castO = TV.mkUnit . fmap (TV.mkUnit . fmap cast)
-
-    cast :: (J (JV o) a, J (JV x) a) -> (J D a, J D a)
-    cast (UnsafeJ o, UnsafeJ x') = (UnsafeJ o, UnsafeJ x')

@@ -57,7 +57,7 @@ import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.NlpSolver ( NlpSolverStuff )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..) )
-import Dyno.DirectCollocation.Dynamic ( DynCollTraj, CollTrajMeta(..), NameTree(..) )
+import Dyno.DirectCollocation.Dynamic ( DynPlotPoints, CollTrajMeta(..), NameTree(..) )
 import Dyno.DirectCollocation ( solveOcp )
 
 import Dyno.Interface.LogsAndErrors
@@ -488,7 +488,7 @@ solveStaticOcp ::
   -> (SXElement -> (String -> OcpMonad SXElement) -> OcpMonad ())
   -> (Maybe Double, Maybe Double)
   -> Int -> Int
-  -> Maybe (CollTrajMeta -> [DynCollTraj (Vector Double)] -> IO Bool)
+  -> Maybe (CollTrajMeta -> DynPlotPoints Double -> IO Bool)
   -> IO (Either String String)
 solveStaticOcp solverStuff dae mayer bc ocp tbnds n deg cb =
   reifyOcpPhase dae mayer bc ocp tbnds n deg woo

@@ -113,16 +113,15 @@ main = do
 
   cp <- makeCollProblem ocp
   let nlp = cpNlp cp
-      toDyn = cpCallback cp
   withCallback gliderUrl gliderChannelName $ \cb -> do
     let guess = jfill 1
 
         cb' :: J (CollTraj AcX None AcU None NCollStages CollDeg) (Vector Double) -> IO Bool
         cb' traj = do
-          (dyn,_) <- toDyn traj
+          plotPoints <- cpPlotPoints cp traj
           let proxy :: Proxy (CollTraj AcX None AcU None NCollStages CollDeg)
               proxy = Proxy
-          cb ([dyn], toMeta (cpRoots cp) (Proxy :: Proxy None) proxy)
+          cb (plotPoints, toMeta (cpRoots cp) (Proxy :: Proxy None) proxy)
 
     (msg,opt') <- solveNlp' ipoptSolver (nlp { nlpX0' = guess }) (Just cb')
     opt <- case msg of Left msg' -> error msg'

@@ -6,7 +6,6 @@ module Dyno.Server.Server
        , Channel
        ) where
 
-import Data.Vector ( Vector )
 import qualified Control.Concurrent as CC
 import qualified Data.IORef as IORef
 import Data.Time ( getCurrentTime, diffUTCTime )
@@ -20,25 +19,23 @@ import qualified GHC.Stats
 
 import Dyno.Server.PlotTypes ( Channel(..), Message(..) )
 import Dyno.Server.GraphWidget ( newGraph )
-import Dyno.DirectCollocation.Dynamic ( DynCollTraj(..), CollTrajMeta(..)
-                                      , dynPlotPoints, catDynPlotPoints )
+import Dyno.DirectCollocation.Dynamic ( CollTrajMeta(..), DynPlotPoints )
 
-newChannel ::
-  String -> IO (Channel, ([DynCollTraj (Vector Double)], CollTrajMeta) -> IO ())
+newChannel :: String -> IO (Channel, (DynPlotPoints Double, CollTrajMeta) -> IO ())
 newChannel name = do
   time0 <- getCurrentTime
 
   msgStore <- Gtk.listStoreNew []
   counter <- IORef.newIORef 0
 
-  let newMessage :: ([DynCollTraj (Vector Double)], CollTrajMeta) -> IO ()
+  let newMessage :: (DynPlotPoints Double, CollTrajMeta) -> IO ()
       newMessage (newTrajs, newMeta) = do
         -- grab the time and counter
         time <- getCurrentTime
         k <- IORef.readIORef counter
         IORef.writeIORef counter (k+1)
         Gtk.postGUIAsync $ do
-          let pps = catDynPlotPoints $ map (flip dynPlotPoints newMeta) newTrajs
+          let pps = newTrajs
               val = Message pps k (diffUTCTime time time0) newMeta
           size <- Gtk.listStoreGetSize msgStore
           if size == 0
