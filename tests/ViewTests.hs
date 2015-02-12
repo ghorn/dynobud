@@ -10,6 +10,8 @@ module ViewTests
        , viewTests
        ) where
 
+import GHC.Generics ( Generic1 )
+
 import qualified Data.Packed.Matrix as Mat
 import qualified Numeric.LinearAlgebra ( ) -- for Eq Matrix
 import qualified Data.Vector as V

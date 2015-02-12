@@ -10,7 +10,8 @@ module VectorizeTests
        , vectorizeTests
        ) where
 
-import GHC.Generics ( Generic )
+import GHC.Generics ( Generic, Generic1 )
+
 import qualified Data.Vector as V
 import Linear
 import Linear.V

@@ -5,9 +5,10 @@
 module SofaShared
        where
 
+import GHC.Generics ( Generic, Generic1 )
+
 import qualified Data.Foldable as F
 import Data.Serialize
-import GHC.Generics ( Generic )
 
 import Dyno.TypeVecs ( Vec, Dim )
 import qualified Dyno.TypeVecs as TV

@@ -7,6 +7,8 @@
 
 module Main where
 
+import GHC.Generics ( Generic1 )
+
 import Dyno.Vectorize
 import Dyno.Nlp
 import Dyno.NlpSolver

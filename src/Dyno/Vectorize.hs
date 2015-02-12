@@ -21,7 +21,6 @@ module Dyno.Vectorize
        , vzipWith4
        , fill
        , GVectorize(..)
-       , Generic1
        , Proxy(..)
        ) where
 

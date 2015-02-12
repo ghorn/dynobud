@@ -9,7 +9,8 @@ module Dyno.MultipleShooting
        , makeMsNlp
        ) where
 
-import GHC.Generics ( Generic )
+import GHC.Generics ( Generic, Generic1 )
+
 import Data.Vector ( Vector )
 import Data.Maybe ( fromMaybe )
 import qualified Data.Vector as V

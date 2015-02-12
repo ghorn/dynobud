@@ -7,16 +7,16 @@
 --{-# LANGUAGE DeriveGeneric #-} -- for example at bottom
 
 module Dyno.Server.Accessors
-       ( Generic
-       , Lookup(..)
+       ( Lookup(..)
        , AccessorTree(..)
        , accessors
        , flatten
        ) where
 
+import GHC.Generics
+
 import Data.List ( intercalate )
 import qualified Linear
-import GHC.Generics
 
 import SpatialMath ( Euler )
 import SpatialMathT ( V3T, Rot )

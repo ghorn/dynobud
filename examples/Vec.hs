@@ -7,6 +7,8 @@
 
 module Main where
 
+import GHC.Generics ( Generic1 )
+
 import qualified Data.Foldable as F
 import qualified Data.Vector as V
 

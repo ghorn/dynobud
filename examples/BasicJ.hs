@@ -10,7 +10,8 @@
 
 module Main where
 
-import GHC.Generics ( Generic )
+import GHC.Generics ( Generic, Generic1 )
+
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
 

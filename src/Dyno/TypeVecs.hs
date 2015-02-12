@@ -46,6 +46,8 @@ module Dyno.TypeVecs
        )
        where
 
+import GHC.Generics ( Generic, Generic1 )
+
 import Control.Applicative
 import Data.Foldable ( Foldable )
 import Data.Traversable ( Traversable )
@@ -58,7 +60,6 @@ import Linear.Vector
 import Linear.V ( Dim(..) )
 import Data.Proxy
 import Data.Reflection as R
-import GHC.Generics ( Generic )
 import Data.Distributive ( Distributive(..) )
 
 import Dyno.Vectorize

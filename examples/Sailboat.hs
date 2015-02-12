@@ -10,6 +10,8 @@
 
 module Main ( main ) where
 
+import GHC.Generics ( Generic, Generic1 )
+
 import Data.Vector ( Vector )
 
 import Dyno.Vectorize
