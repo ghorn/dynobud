@@ -137,7 +137,7 @@ makeMsNlp msOcp = do
       bg :: J (MsConstraints x n) (Vector Bounds)
       bg = cat MsConstraints { gContinuity = jfill (Just 0, Just 0) }
 
-      fg :: J (MsDvs x u p n) MX -> J JNone MX -> (J S MX, J (MsConstraints x n) MX)
+      fg :: J (MsDvs x u p n) MX -> J JNone MX -> (J (JV Id) MX, J (MsConstraints x n) MX)
       fg dvs _ = (f, cat g)
         where
           MsDvs xus xf p = split dvs
@@ -155,7 +155,7 @@ makeMsNlp msOcp = do
 
           mayer = msMayer msOcp (splitJV' xf)
 
-          f :: J S MX
+          f :: J (JV Id) MX
           f = mkJ $ unJ $ mayer + lagrangeSum
 
 

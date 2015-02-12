@@ -134,7 +134,7 @@ mkM' x
 mm :: (View f, View h, CasadiMat a) => M f g a -> M g h a -> M f h a
 mm (UnsafeM m0) (UnsafeM m1) = mkM (CM.mm m0 m1)
 
-ms :: (View f, View h, CasadiMat a) => M f g a -> J S a -> M f h a
+ms :: (View f, View h, CasadiMat a) => M f g a -> J (JV Id) a -> M f h a
 ms (UnsafeM m0) (UnsafeJ m1) = mkM (m0 * m1)
 
 trans :: (View f, View g, CasadiMat a) => M f g a -> M g f a

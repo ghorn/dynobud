@@ -77,8 +77,9 @@ import qualified Casadi.GenericC as Gen
 import Casadi.SharedObject ( soInit )
 
 import Dyno.SXElement ( SXElement, sxElementToSX )
-import Dyno.Vectorize ( Vectorize(..) )
+import Dyno.Vectorize ( Vectorize(..), Id )
 import Dyno.View.JV
+
 import Dyno.View.View
 import Dyno.View.Symbolic
 import Dyno.View.Viewable ( Viewable )
@@ -202,7 +203,7 @@ getOutput scaleFun name = do
   let scale = scaleFun (isScale nlpState)
   return (mkJ $ ddata $ unJ $ scale (mkJ dmat))
 
-getF :: NlpSolver x p g (VD S)
+getF :: NlpSolver x p g (VD (JV Id))
 getF = getOutput fbarToF "f"
 
 getX :: View x => NlpSolver x p g (VD x)
@@ -320,7 +321,7 @@ runNlpSolver ::
   forall x p g a s .
   (View x, View p, View g, Symbolic s)
   => NlpSolverStuff
-  -> (J x s -> J p s -> (J S s, J g s))
+  -> (J x s -> J p s -> (J (JV Id) s, J g s))
   -> Maybe (J x (Vector Double))
   -> Maybe (J g (Vector Double))
   -> Maybe Double
@@ -429,7 +430,7 @@ solveNlp solverStuff nlp callback = do
       nlp' = Nlp' { nlpFG' = \x' p' -> let x = sxSplitJV x' :: x SXElement
                                            p = sxSplitJV p' :: p SXElement
                                            (obj,g) = nlpFG nlp x p :: (SXElement, g SXElement)
-                                           obj' = mkJ (sxElementToSX obj) :: J S SX
+                                           obj' = mkJ (sxElementToSX obj) :: J (JV Id) SX
                                            g' = sxCatJV g :: J (JV g) SX
                                        in (obj',g')
                   , nlpBX' = mkJ $ vectorize (nlpBX nlp) :: J (JV x) (V.Vector Bounds)
@@ -520,7 +521,7 @@ solveNlpHomotopy' userStep (reduction, increase, iterIncrease, iterDecrease)
   solverStuff nlp (UnsafeJ pF) callback callbackP = do
   when (reduction >= 1) $ error $ "homotopy reduction factor " ++ show reduction ++ " >= 1"
   when (increase  <= 1) $ error $ "homotopy increase factor "  ++ show increase  ++ " <= 1"
-  let fg :: J (JTuple x p) a -> J JNone a -> (J S a, J g a)
+  let fg :: J (JTuple x p) a -> J JNone a -> (J (JV Id) a, J g a)
       fg xp _ = nlpFG' nlp x p
         where
           JTuple x p = split xp

@@ -19,7 +19,7 @@ import Linear.V
 
 import Dyno.SXElement ( SXElement, sxToSXElement )
 import Dyno.View
-import Dyno.Vectorize ( Vectorize(..), vzipWith )
+import Dyno.Vectorize ( Vectorize(..), Id, vzipWith )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs )
@@ -37,7 +37,7 @@ data IntegratorX x z n deg a =
   } deriving (Generic)
 data IntegratorP u p n deg a =
   IntegratorP
-  { ipTf :: J S a
+  { ipTf :: J (JV Id) a
   , ipParm :: J (JV p) a
   , ipU :: J (JVec n (JVec deg (JV u))) a
   } deriving (Generic)
@@ -81,8 +81,8 @@ interpolateXDots cjks xs = TV.tvtail $ interpolateXDots' cjks xs
 dynStageConstraints' ::
   forall x z u p r deg . (Dim deg, View x, View z, View u, View p, View r)
   => Vec (TV.Succ deg) (Vec (TV.Succ deg) Double) -> Vec deg Double
-  -> SXFun (J S :*: J p :*: J x :*: J (CollPoint x z u)) (J r)
-  -> (J x :*: J (JVec deg (JTuple x z)) :*: J (JVec deg u) :*: J S :*: J p :*: J (JVec deg S)) MX
+  -> SXFun (J (JV Id) :*: J p :*: J x :*: J (CollPoint x z u)) (J r)
+  -> (J x :*: J (JVec deg (JTuple x z)) :*: J (JVec deg u) :*: J (JV Id) :*: J p :*: J (JVec deg (JV Id))) MX
   -> (J (JVec deg r) :*: J x) MX
 dynStageConstraints' cijs taus dynFun (x0 :*: xzs' :*: us' :*: UnsafeJ h :*: p :*: stageTimes') =
   cat (JVec dynConstrs) :*: xnext
@@ -100,7 +100,7 @@ dynStageConstraints' cijs taus dynFun (x0 :*: xzs' :*: us' :*: UnsafeJ h :*: p :
     dynConstrs :: Vec deg (J r MX)
     dynConstrs = TV.tvzipWith4 applyDae xdots xzs us stageTimes
 
-    applyDae :: J x MX -> JTuple x z MX -> J u MX -> J S MX -> J r MX
+    applyDae :: J x MX -> JTuple x z MX -> J u MX -> J (JV Id) MX -> J r MX
     applyDae x' (JTuple x z) u t = r
       where
         r = call dynFun (t :*: p :*: x' :*: collPoint)
@@ -117,8 +117,8 @@ dynStageConstraints' cijs taus dynFun (x0 :*: xzs' :*: us' :*: UnsafeJ h :*: p :
 -- dynamics residual and outputs
 dynamicsFunction' ::
   forall x z u p r a . (View x, View z, View u, View r, Viewable a)
-  => (J x a -> J x a -> J z a -> J u a -> J p a -> J S a -> J r a)
-  -> (J S :*: J p :*: J x :*: J (CollPoint x z u)) a
+  => (J x a -> J x a -> J z a -> J u a -> J p a -> J (JV Id) a -> J r a)
+  -> (J (JV Id) :*: J p :*: J x :*: J (CollPoint x z u)) a
   -> J r a
 dynamicsFunction' dae (t :*: parm :*: x' :*: collPoint) = dae x' x z u parm t
   where
@@ -162,7 +162,7 @@ withIntegrator _ initialX dae solver userFun = do
 
   let fg :: J (IntegratorX x z n deg) MX
             -> J (IntegratorP u p n deg) MX
-            -> (J S MX, J (IntegratorG x r n deg) MX)
+            -> (J (JV Id) MX, J (IntegratorG x r n deg) MX)
       fg = getFgIntegrator taus callDynStageConFun
 
       scaleX = Nothing
@@ -251,10 +251,10 @@ getFgIntegrator ::
   forall x z u p r n deg .
   (Dim deg, Dim n, Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize r)
   => Vec deg Double
-  -> ((J (JV x) :*: J (JVec deg (JTuple (JV x) (JV z))) :*: J (JVec deg (JV u)) :*: J S :*: J (JV p) :*: J (JVec deg S)) MX -> (J (JVec deg (JV r)) :*: J (JV x)) MX)
+  -> ((J (JV x) :*: J (JVec deg (JTuple (JV x) (JV z))) :*: J (JVec deg (JV u)) :*: J (JV Id) :*: J (JV p) :*: J (JVec deg (JV Id))) MX -> (J (JVec deg (JV r)) :*: J (JV x)) MX)
   -> J (IntegratorX x z n deg) MX
   -> J (IntegratorP u p n deg) MX
-  -> (J S MX, J (IntegratorG x r n deg) MX)
+  -> (J (JV Id) MX, J (IntegratorG x r n deg) MX)
 getFgIntegrator taus stageFun ix' ip' = (0, cat g)
   where
     ix = split ix'
@@ -276,10 +276,10 @@ getFgIntegrator taus stageFun ix' ip' = (0, cat g)
     n = reflectDim (Proxy :: Proxy n)
 
     -- times at each collocation point
-    times :: Vec n (Vec deg (J S MX))
+    times :: Vec n (Vec deg (J (JV Id) MX))
     times = fmap snd $ timesFromTaus 0 (fmap realToFrac taus) dt
 
-    times' :: Vec n (J (JVec deg S) MX)
+    times' :: Vec n (J (JVec deg (JV Id)) MX)
     times' = fmap (cat . JVec) times
 
     -- initial point at each stage
@@ -294,7 +294,7 @@ getFgIntegrator taus stageFun ix' ip' = (0, cat g)
         { igCollPoints = cat $ JVec dcs
         , igContinuity = cat $ JVec integratorMatchingConstraints
         }
-    integratorMatchingConstraints :: Vec n (J (JV x) MX) -- THIS SHOULD BE A NONLINEAR FUNCTION
+    integratorMatchingConstraints :: Vec n (J (JV x) MX) -- todo: THIS SHOULD BE A NONLINEAR FUNCTION
     integratorMatchingConstraints = vzipWith (-) interpolatedXs xfs
 
     dcs :: Vec n (J (JVec deg (JV r)) MX)
@@ -302,7 +302,7 @@ getFgIntegrator taus stageFun ix' ip' = (0, cat g)
     (dcs, interpolatedXs) = TV.tvunzip $ TV.tvzipWith3 fff spstages us times'
     fff :: CollStage (JV x) (JV z) JNone deg MX
            -> J (JVec deg (JV u)) MX
-           -> J (JVec deg S) MX
+           -> J (JVec deg (JV Id)) MX
            -> (J (JVec deg (JV r)) MX, J (JV x) MX)
     fff (CollStage x0' xzs') us' stageTimes = (dc, interpolatedX')
       where

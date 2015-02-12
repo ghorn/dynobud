@@ -38,9 +38,10 @@ import Casadi.Function
 
 import Dyno.View.CasadiMat ( veccat )
 import Dyno.SXElement ( SXElement, sxElementSym, sxElementToSX )
-import Dyno.Vectorize ( fill )
+import Dyno.Vectorize ( Id, fill )
 import Dyno.TypeVecs ( Vec )
 import Dyno.View.View
+import Dyno.View.JV ( JV )
 import Dyno.View.JVec ( JVec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.Interface.LogsAndErrors
@@ -145,7 +146,7 @@ toG :: Dim ng => S.Seq (Constraint SXElement) -> Vec ng (SXElement, Bounds)
 toG nlpConstraints' = TV.mkSeq $ fmap constr nlpConstraints'
 
 buildNlp :: forall nx ng .
-            (Dim nx, Dim ng) => NlpMonadState -> IO (Nlp' (JVec nx S) JNone (JVec ng S) MX)
+            (Dim nx, Dim ng) => NlpMonadState -> IO (Nlp' (JVec nx (JV Id)) JNone (JVec ng (JV Id)) MX)
 buildNlp state = do
   obj <- case nlpObj state of
     Objective obj' -> return obj'
@@ -165,7 +166,7 @@ buildNlp state = do
 
   sxfun <- sxFunction (V.fromList [svector inputs]) (V.fromList [svector (V.singleton obj), svector (TV.unVec g)])
   soInit sxfun
-  let fg :: J (JVec nx S) MX -> J JNone MX -> (J S MX, J (JVec ng S) MX)
+  let fg :: J (JVec nx (JV Id)) MX -> J JNone MX -> (J (JV Id) MX, J (JVec ng (JV Id)) MX)
       fg x _ = (mkJ (ret V.! 0), mkJ (ret V.! 1))
         where
           ret = callMX sxfun (V.singleton (unJ x))
@@ -204,7 +205,7 @@ reifyNlp nlpmonad cb x0map f = do
   TV.reifyDim nx $ \(Proxy :: Proxy nx) ->
 --  TV.reifyDim np $ \(Proxy :: Proxy np) ->
     TV.reifyDim ng $ \(Proxy :: Proxy ng) -> do
-      nlp0 <- buildNlp state :: IO (Nlp' (JVec nx S) JNone (JVec ng S) MX)
+      nlp0 <- buildNlp state :: IO (Nlp' (JVec nx (JV Id)) JNone (JVec ng (JV Id)) MX)
       let nlp = nlp0 { nlpX0' = mkJ x0 }
       f nlp (fmap (. unJ) cb) state
 

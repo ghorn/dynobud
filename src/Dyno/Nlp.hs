@@ -13,8 +13,9 @@ import GHC.Generics ( Generic, Generic1 )
 import qualified Data.Vector as V
 import Data.Serialize ( Serialize(..) )
 
-import Dyno.Vectorize ( Vectorize(..) )
-import Dyno.View.View ( View(..), J, S, unJ, mkJ )
+import Dyno.Vectorize ( Vectorize(..), Id )
+import Dyno.View.View ( View(..), J, unJ, mkJ )
+import Dyno.View.JV ( JV )
 
 type Bounds = (Maybe Double, Maybe Double)
 
@@ -58,7 +59,7 @@ instance (Vectorize x, Vectorize g, Serialize a) => Serialize (NlpOut x g a) whe
 -- | NLP using Views
 data NlpOut' x g a =
   NlpOut'
-  { fOpt' :: J S a
+  { fOpt' :: J (JV Id) a
   , xOpt' :: J x a
   , gOpt' :: J g a
   , lambdaXOpt' :: J x a
@@ -72,7 +73,7 @@ instance (View x, View g, Serialize a) => Serialize (NlpOut' x g (V.Vector a)) w
 
 data Nlp' x p g a =
   Nlp'
-  { nlpFG' :: J x a -> J p a -> (J S a, J g a)
+  { nlpFG' :: J x a -> J p a -> (J (JV Id) a, J g a)
   , nlpBX' :: J x (V.Vector Bounds)
   , nlpBG' :: J g (V.Vector Bounds)
   , nlpX0' :: J x (V.Vector Double)

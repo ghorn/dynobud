@@ -10,14 +10,16 @@ module Dyno.NlpScaling
 import Data.Maybe ( fromMaybe )
 import qualified Data.Vector as V
 
+import Dyno.Vectorize ( Id )
 import Dyno.View.View
+import Dyno.View.JV
 import Dyno.View.Viewable ( Viewable )
 import Dyno.View.CasadiMat ( CasadiMat(..), fromDVector )
 
 data ScaleFuns x g a =
   ScaleFuns
-  { fToFBar :: J S a -> J S a
-  , fbarToF :: J S a -> J S a
+  { fToFBar :: J (JV Id) a -> J (JV Id) a
+  , fbarToF :: J (JV Id) a -> J (JV Id) a
   , xToXBar :: J x a -> J x a
   , xbarToX :: J x a -> J x a
   , gToGBar :: J g a -> J g a
@@ -32,10 +34,10 @@ scaledFG ::
   forall x p g a .
   (View x, View g, CasadiMat a, Viewable a)
   => ScaleFuns x g a
-  -> (J x a -> J p a -> (J S a, J g a))
+  -> (J x a -> J p a -> (J (JV Id) a, J g a))
   -> J x a
   -> J p a
-  -> (J S a, J g a)
+  -> (J (JV Id) a, J g a)
 scaledFG scaleFuns fg x p = (fToFBar scaleFuns f, gToGBar scaleFuns g)
   where
     (f, g) = fg (xbarToX scaleFuns x) p
@@ -109,8 +111,8 @@ mkScaleFuns mx mg mf
           s :: a
           s = fromDVector (unJ gscl)
 
-    mulByFScale :: J S a -> J S a
-    divByFScale :: J S a -> J S a
+    mulByFScale :: J (JV Id) a -> J (JV Id) a
+    divByFScale :: J (JV Id) a -> J (JV Id) a
     (mulByFScale, divByFScale) = case mf of
       Nothing -> (id, id)
       Just fscl -> ( \(UnsafeJ f') -> mkJ (f' * s)

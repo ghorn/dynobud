@@ -90,9 +90,9 @@ mkComputeSensitivities roots covDae = do
   sensitivityStageFun' <- toMXFun "sensitivity stage function" $
                           sensitivityStageFunction (call errorDynStageConFunJac)
   sensitivityStageFun <- expandMXFun sensitivityStageFun'
-  let sens :: J S MX
+  let sens :: J (JV Id) MX
               -> J (JV p) MX
-              -> J (JVec deg S) MX
+              -> J (JVec deg (JV Id)) MX
               -> J (JV x) MX
               -> J (JVec deg (CollPoint (JV x) (JV z) (JV u))) MX
               -> (M (JV sx) (JV sx) MX, M (JV sx) (JV sw) MX)
@@ -114,14 +114,14 @@ mkComputeSensitivities roots covDae = do
           n = reflectDim (Proxy :: Proxy n)
 
           -- initial time at each collocation stage
-          t0s :: Vec n (J S MX)
+          t0s :: Vec n (J (JV Id) MX)
           t0s = TV.mkVec' $ take n [dt * fromIntegral k | k <- [(0::Int)..]]
 
           -- times at each collocation point
-          times :: Vec n (Vec deg (J S MX))
+          times :: Vec n (Vec deg (J (JV Id) MX))
           times = fmap (\t0 -> fmap (\tau -> t0 + realToFrac tau * dt) taus) t0s
 
-          times' :: Vec n (J (JVec deg S) MX)
+          times' :: Vec n (J (JVec deg (JV Id)) MX)
           times' = fmap (cat . JVec) times
 
           fs :: Vec n (M (JV sx) (JV sx) MX)
@@ -138,7 +138,7 @@ mkComputeCovariances ::
   forall z x u p sx sw n deg .
   (Dim deg, Dim n, Vectorize x, Vectorize z, Vectorize u, Vectorize p,
    Vectorize sx, Vectorize sw)
-  => (M (JV sx) (JV sx) MX -> M (JV sx) (JV sw) MX -> J (Cov (JV sw)) MX -> J S MX
+  => (M (JV sx) (JV sx) MX -> M (JV sx) (JV sw) MX -> J (Cov (JV sw)) MX -> J (JV Id) MX
       -> M (JV sx) (JV sx) MX)
   -> (J (CollTraj x z u p n deg) MX -> CovarianceSensitivities (JV sx) (JV sw) n MX)
   -> J (Cov (JV sw)) DMatrix
@@ -208,9 +208,9 @@ interpolateXDots cjks xs = TV.tvtail $ interpolateXDots' cjks xs
 errorDynamicsFunction ::
   forall x z u p r sx sz sw a .
   (View x, View z, View u, View r, View sx, View sz, View sw, Viewable a)
-  => (J x a -> J x a -> J z a -> J u a -> J p a -> J S a
+  => (J x a -> J x a -> J z a -> J u a -> J p a -> J (JV Id) a
       -> J sx a -> J sx a -> J sz a -> J sw a -> J r a)
-  -> (J S :*: J p :*: J x :*: J (CollPoint x z u) :*: J sx :*: J sx :*: J sz :*: J sw) a
+  -> (J (JV Id) :*: J p :*: J x :*: J (CollPoint x z u) :*: J sx :*: J sx :*: J sz :*: J sw) a
   -> J r a
 errorDynamicsFunction dae (t :*: parm :*: x' :*: collPoint :*: sx' :*: sx :*: sz :*: sw) =
   r
@@ -220,7 +220,7 @@ errorDynamicsFunction dae (t :*: parm :*: x' :*: collPoint :*: sx' :*: sx :*: sz
 
 
 data ErrorIn0 x z u p deg a =
-  ErrorIn0 (J x a) (J (JVec deg (CollPoint x z u)) a) (J S a) (J p a) (J (JVec deg S) a)
+  ErrorIn0 (J x a) (J (JVec deg (CollPoint x z u)) a) (J (JV Id) a) (J p a) (J (JVec deg (JV Id)) a)
   deriving Generic
 data ErrorInD sx sw sz deg a =
   ErrorInD (J sx a) (J sw a) (J (JVec deg (JTuple sx sz)) a)
@@ -240,7 +240,7 @@ errorDynStageConstraints ::
    View sr, View sw, View sz, View sx)
   => Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
   -> Vec deg Double
-  -> SXFun (J S :*: J p :*: J x :*: J (CollPoint x z u) :*: J sx :*: J sx :*: J sz :*: J sw)
+  -> SXFun (J (JV Id) :*: J p :*: J x :*: J (CollPoint x z u) :*: J sx :*: J sx :*: J sz :*: J sw)
            (J sr)
   -> JacIn (ErrorInD sx sw sz deg) (ErrorIn0 x z u p deg) MX
   -> JacOut (ErrorOut sr sx deg) (J JNone) MX
@@ -274,7 +274,7 @@ errorDynStageConstraints cijs taus dynFun
 
     applyDae
       :: J sx MX -> J sx MX -> J sz MX
-         -> J x MX -> J (CollPoint x z u) MX -> J S MX
+         -> J x MX -> J (CollPoint x z u) MX -> J (JV Id) MX
          -> J sr MX
     applyDae sx' sx sz x' xzu t =
       call dynFun
@@ -292,7 +292,7 @@ errorDynStageConstraints cijs taus dynFun
 
 
 continuousToDiscreetNoiseApprox :: (View sx, View sw)
-       => M sx sx MX -> M sx sw MX -> J (Cov sw) MX -> J S MX -> M sx sx MX
+       => M sx sx MX -> M sx sw MX -> J (Cov sw) MX -> J (JV Id) MX -> M sx sx MX
 continuousToDiscreetNoiseApprox _dsx1_dsx0 dsx1_dsw0 qs h = qd
   where
     -- Qs' = G * Qs * G.T
@@ -306,8 +306,8 @@ continuousToDiscreetNoiseApprox _dsx1_dsx0 dsx1_dsw0 qs h = qd
 propOneCov ::
   forall sx sw
   . (View sx, View sw)
-  => (M sx sx MX -> M sx sw MX -> J (Cov sw) MX -> J S MX -> M sx sx MX)
-  -> (M sx sx :*: M sx sw :*: J (Cov sx) :*: J (Cov sw) :*: J S) MX
+  => (M sx sx MX -> M sx sw MX -> J (Cov sw) MX -> J (JV Id) MX -> M sx sx MX)
+  -> (M sx sx :*: M sx sw :*: J (Cov sx) :*: J (Cov sw) :*: J (JV Id)) MX
   -> J (Cov sx) MX
 propOneCov c2d (dsx1_dsx0 :*: dsx1_dsw0 :*: p0 :*: qs :*: h) = fromMat p1
   where
@@ -322,7 +322,7 @@ sensitivityStageFunction ::
   . (Dim deg, View x, View z, View u, View p, View sx, View sz, View sw, View sr)
   => (JacIn (ErrorInD sx sw sz deg) (ErrorIn0 x z u p deg) MX
       -> Jac (ErrorInD sx sw sz deg) (ErrorOut sr sx deg) (J JNone) MX)
-  -> (J S :*: J p :*: J (JVec deg S) :*: J x :*: J (JVec deg (CollPoint x z u))) MX
+  -> (J (JV Id) :*: J p :*: J (JVec deg (JV Id)) :*: J x :*: J (JVec deg (CollPoint x z u))) MX
   -> (M sx sx :*: M sx sw) MX
 sensitivityStageFunction dynStageConJac
   (dt :*: parm :*: stageTimes :*: x0' :*: xzus') = dsx1_dsx0 :*: dsx1_dsw0

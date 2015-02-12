@@ -22,14 +22,14 @@ import qualified Data.Vector as V
 import Data.Vector ( Vector )
 import GHC.Generics hiding ( S )
 
-import Dyno.Nats
 import Dyno.View.View
 import Dyno.View.CasadiMat
 import Dyno.View.M ( M(..) )
-import Dyno.View.JVec ( JVec )
+--import Dyno.Nats
+--import Dyno.View.JVec ( JVec )
 
-data MyScheme a = MyScheme (J (JVec D3 S) a) (J (JVec D2 S) a) deriving (Generic, Generic1, Show)
-instance Scheme MyScheme
+--data MyScheme a = MyScheme (J (JVec D3 (JV Id)) a) (J (JVec D2 (JV Id)) a) deriving (Generic, Generic1, Show)
+--instance Scheme MyScheme
 
 --go :: MyScheme MX
 --go = fromVector (V.fromList [400,500])

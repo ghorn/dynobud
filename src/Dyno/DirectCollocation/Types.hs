@@ -25,15 +25,15 @@ import GHC.Generics ( Generic )
 import Linear.V ( Dim(..) )
 import Data.Vector ( Vector )
 
-import Dyno.View ( View(..), J, JVec(..), S, mkJ, unJ, jfill, jreplicate )
+import Dyno.View ( View(..), J, JVec(..), mkJ, unJ, jfill, jreplicate )
 import Dyno.View.JV ( JV, splitJV )
-import Dyno.Vectorize ( Vectorize(..) )
+import Dyno.Vectorize ( Vectorize(..), Id )
 import Dyno.Cov ( Cov )
 
 
 -- design variables
 data CollTraj x z u p n deg a =
-  CollTraj (J S a) (J (JV p) a) (J (JVec n (CollStage (JV x) (JV z) (JV u) deg)) a) (J (JV x) a)
+  CollTraj (J (JV Id) a) (J (JV p) a) (J (JVec n (CollStage (JV x) (JV z) (JV u) deg)) a) (J (JV x) a)
   deriving (Eq, Generic, Show)
   -- endtime, params, coll stages, xf
 
@@ -151,7 +151,7 @@ fmapCollTraj ::
   -> CollTraj x2 z2 u2 p2 n deg (Vector b)
 fmapCollTraj fx fz fu fp ft (CollTraj tf1 p stages1 xf) = CollTraj tf2 (fj fp p) stages2 (fj fx xf)
   where
-    tf2 :: J S (Vector b)
+    tf2 :: J (JV Id) (Vector b)
     tf2 = mkJ $ fmap ft (unJ tf1)
     stages2 = cat $ fmapJVec (fmapStage fx fz fu) (split stages1)
 

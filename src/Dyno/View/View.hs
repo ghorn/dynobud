@@ -10,13 +10,12 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE InstanceSigs #-}
 
 module Dyno.View.View
-       ( View(..), J(..), mkJ, mkJ', unJ, unJ'
-       , JNone(..), S(..), JTuple(..), JTriple(..)
+       ( View(..), J(..)
+       , mkJ, mkJ', unJ, unJ'
+       , JNone(..), JTuple(..), JTriple(..)
        , jfill
        , v2d, d2v
        ) where
@@ -37,7 +36,6 @@ import qualified Dyno.View.CasadiMat as CM
 
 import Dyno.View.Viewable ( Viewable(..) )
 import Dyno.Vectorize ( Vectorize(..) )
-import Dyno.Server.Accessors ( Lookup(..), AccessorTree )
 
 data JTuple f g a = JTuple (J f a) (J g a) deriving ( Generic, Show )
 instance (View f, View g) => View (JTuple f g)
@@ -84,10 +82,6 @@ unJ' msg (UnsafeJ x)
 instance Serialize a => Serialize (J f a)
 instance Show a => Show (J f a) where
   showsPrec p (UnsafeJ x) = showsPrec p x
-instance Lookup a => Lookup (J S (Vector a)) where
-  toAccessorTree :: J S (Vector a) -> (b -> J S (Vector a)) -> AccessorTree b
-  toAccessorTree (UnsafeJ x) f =
-    toAccessorTree (V.head x) (V.head . unJ . f)
 
 jfill :: forall a f . View f => a -> J f (Vector a)
 jfill x = mkJ (V.replicate n x)
@@ -104,16 +98,6 @@ d2v = mkJ . DMatrix.ddata . CM.dense . unJ
 data JNone a = JNone deriving ( Eq, Generic, Generic1, Show, Functor, Foldable, Traversable )
 instance Vectorize JNone where
 instance View JNone where
-
--- | view into a scalar, for convenience
-newtype S a = S { unS :: a } deriving ( Eq, Num, Fractional, Floating, Generic, Generic1, Show, Functor, Foldable, Traversable )
-instance View S where
-  cat :: forall a . Viewable a => S a -> J S a
-  cat (S x) = mkJ x
-  size = const 1
-  sizes = const . Seq.singleton . (1 +)
-  split :: forall a . Viewable a => J S a -> S a
-  split = S . unJ
 
 -- | Type-save "views" into vectors, which can access subvectors
 --   without splitting then concatenating everything.

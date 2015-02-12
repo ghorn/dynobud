@@ -100,7 +100,7 @@ plotPoints ::
 plotPoints quadratureRoots (CollTraj (UnsafeJ tf') _ stages' xf) outputs =
   DynPlotPoints (xss++[[(tf,unJ xf)]]) zss uss oss xdss
   where
-    nStages = size (Proxy :: Proxy (JVec n S))
+    nStages = size (Proxy :: Proxy (JVec n (JV Id)))
     tf,h :: a
     tf = V.head tf'
     h = tf / fromIntegral nStages

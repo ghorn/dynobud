@@ -146,7 +146,6 @@ primitives = do
   v <- arbitrary
   elements
     [ Views [] "JNone" (Proxy :: Proxy JNone)
-    , Views [] "S" (Proxy :: Proxy S)
     , mkJV v
     ]
 

@@ -12,14 +12,15 @@ import qualified Data.Vector as V
 import Text.Printf ( printf )
 
 import Dyno.View
+import Dyno.Vectorize
 import Dyno.Nlp
 import Dyno.NlpSolver
 import Dyno.Solvers
 
 
-data P a = P (J S a) (J S a) deriving (Generic, Show)
-data X a = X (J S a) (J S a) deriving (Generic, Show)
-data G a = G (J S a)-- (J S a)
+data P a = P (J (JV Id) a) (J (JV Id) a) deriving (Generic, Show)
+data X a = X (J (JV Id) a) (J (JV Id) a) deriving (Generic, Show)
+data G a = G (J (JV Id) a)-- (J (JV Id) a)
          deriving (Generic, Show)
 
 instance View X
@@ -50,7 +51,7 @@ myNlp = Nlp' { nlpFG' = fg
     bg :: J G (Vector Bounds)
     bg = mkJ $ (V.singleton (Nothing, Just 0))
 
-    fg :: J X MX -> J P MX -> (J S MX, J G MX)
+    fg :: J X MX -> J P MX -> (J (JV Id) MX, J G MX)
     fg xy pxy = (f, cat g)
       where
         X  x  y = split  xy
