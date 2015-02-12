@@ -118,12 +118,16 @@ compound genIt = do
   let vc = mkJV vc'
   vw0@(Views _ mv0 pv0) <- genIt
   vw1@(Views _ mv1 pv1) <- genIt
+  vw2@(Views _ mv2 pv2) <- genIt
   elements
     [ Views [vc] ("JX0 (" ++ mz ++ ")") (reproxy (Proxy :: Proxy JX0) pz)
     , Views [vc,vw0] ("JX1 (" ++ mz ++ ") (" ++ mv0 ++ ")") (reproxy2 (Proxy :: Proxy JX1) pz pv0)
     , Views [vc, vw0, vw1] ("JX2 (" ++ mv0 ++ ") (" ++ mv1 ++ ") (" ++ mz ++ ")")
       (reproxy3 (Proxy :: Proxy JX2) pv0 pv1 pz)
     , Views [vw0] ("Cov (" ++ mv0 ++ ")") (reproxy (Proxy :: Proxy Cov) pv0)
+    , Views [vw0,vw1] ("JTuple (" ++ mv0 ++ ") (" ++ mv1 ++ ")") (reproxy2 (Proxy :: Proxy JTuple) pv0 pv1)
+    , Views [vw0,vw1,vw2] ("JTriple (" ++ mv0 ++ ") (" ++ mv1 ++ ") (" ++ mv2 ++ ")")
+      (reproxy3 (Proxy :: Proxy JTriple) pv0 pv1 pv2)
     ]
 
 viewSize :: Views -> Int
