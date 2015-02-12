@@ -1,6 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language ScopedTypeVariables #-}
-{-# Language FlexibleContexts #-}
 {-# Language DeriveGeneric #-}
 
 module Dyno.DirectCollocation.Types
@@ -20,7 +19,6 @@ module Dyno.DirectCollocation.Types
        ) where
 
 import qualified Data.Foldable as F
-import Data.Serialize ( Serialize )
 import GHC.Generics ( Generic )
 import Linear.V ( Dim(..) )
 import Data.Vector ( Vector )
@@ -69,12 +67,6 @@ data CollOcpCovConstraints n deg x r c h sh shr sc a =
   , cocCovRobustPathC :: J (JVec n (JV shr)) a
   , cocSbc :: J sc a
   } deriving (Eq, Generic, Show)
-
--- serialize instances
-instance Serialize a => Serialize (CollPoint x z u a)
-instance Serialize a => Serialize (CollStage x z u deg a)
-instance Serialize a => Serialize (CollTraj x z u p n deg a)
-instance Serialize a => Serialize (CollTrajCov sx x z u p n deg a)
 
 -- View instances
 instance (View x, View z, View u) => View (CollPoint x z u)

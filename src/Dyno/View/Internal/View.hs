@@ -114,7 +114,10 @@ unJ' msg (UnsafeJ x)
     nx = size (Proxy :: Proxy f)
     nx' = vsize1 x
 
-instance Serialize a => Serialize (J f a)
+instance (Serialize a, View f) => Serialize (J f (Vector a)) where
+  put = put . V.toList . unJ
+  get = fmap (mkJ . V.fromList) get
+
 instance Show a => Show (J f a) where
   showsPrec p (UnsafeJ x) = showsPrec p x
 

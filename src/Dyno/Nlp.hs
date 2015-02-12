@@ -14,7 +14,7 @@ import qualified Data.Vector as V
 import Data.Serialize ( Serialize(..) )
 
 import Dyno.Vectorize ( Vectorize(..), Id )
-import Dyno.View.View ( View(..), J, unJ, mkJ )
+import Dyno.View.View ( View(..), J )
 import Dyno.View.JV ( JV )
 
 type Bounds = (Maybe Double, Maybe Double)
@@ -67,8 +67,8 @@ data NlpOut' x g a =
   } deriving (Eq, Show, Generic)
 instance (View x, View g) => View (NlpOut' x g)
 instance (View x, View g, Serialize a) => Serialize (NlpOut' x g (V.Vector a)) where
-  put = put . V.toList . unJ . cat
-  get = fmap (split . mkJ . V.fromList) get
+  put = put . cat
+  get = fmap split get
 
 
 data Nlp' x p g a =
