@@ -12,7 +12,6 @@ module Dyno.DirectCollocation.Formulate
        , makeCollProblem
        , makeCollCovProblem
        , mkTaus
-       , interpolate
        , makeGuess
        , makeGuessSim
        ) where
@@ -36,13 +35,13 @@ import qualified Casadi.CMatrix as CM
 import Dyno.SXElement ( sxToSXElement, sxElementToSX )
 import Dyno.Cov
 import Dyno.View.View
-import Dyno.View.JV ( JV, sxCatJV, sxSplitJV, catJV, catJV' )
+import Dyno.View.JV ( JV, sxCatJV, sxSplitJV, splitJV, catJV, catJV' )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.Fun
 import Dyno.View.JVec( JVec(..), jreplicate )
 import Dyno.View.Viewable ( Viewable )
 import Dyno.View.Scheme ( Scheme )
-import Dyno.Vectorize ( Vectorize(..), Id, fill, vlength, vzipWith )
+import Dyno.Vectorize ( Vectorize(..), Id(..), fill, vlength, vzipWith )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs )
@@ -84,12 +83,25 @@ makeCollProblem ocp = do
       cijs :: Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
       cijs = lagrangeDerivCoeffs (0 TV.<| taus)
 
+      interpolate' :: (J (JV x) :*: J (JVec deg (JV x))) MX -> J (JV x) MX
+      interpolate' (x0 :*: xs) = interpolate taus x0 (unJVec (split xs))
+      interpolateScalar' :: (J (JV Id) :*: J (JVec deg (JV Id))) MX -> J (JV Id) MX
+      interpolateScalar' (x0 :*: xs) = interpolate taus x0 (unJVec (split xs))
+
+  interpolateFun <- toMXFun "interpolate (JV x)" interpolate' >>= expandMXFun
+  interpolateScalarFun <- toMXFun "interpolate (JV Id)" interpolateScalar' >>= expandMXFun
+  let callInterpolateScalar :: J (JV Id) MX -> Vec deg (J (JV Id) MX) -> J (JV Id) MX
+      callInterpolateScalar x0 xs = call interpolateScalarFun (x0 :*: cat (JVec xs))
+
+      callInterpolate :: J (JV x) MX -> Vec deg (J (JV x) MX) -> J (JV x) MX
+      callInterpolate x0 xs = call interpolateFun (x0 :*: cat (JVec xs))
+
   bcFun <- toSXFun "bc" $ \(x0:*:x1) -> sxCatJV $ ocpBc ocp (sxSplitJV x0) (sxSplitJV x1)
   mayerFun <- toSXFun "mayer" $ \(x0:*:x1:*:x2) ->
     mkJ $ sxElementToSX $ ocpMayer ocp (sxToSXElement (unJ x0)) (sxSplitJV x1) (sxSplitJV x2)
   lagrangeFun <- toSXFun "lagrange" $ \(x0:*:x1:*:x2:*:x3:*:x4:*:x5:*:x6) ->
     mkJ $ sxElementToSX $ ocpLagrange ocp (sxSplitJV x0) (sxSplitJV x1) (sxSplitJV x2) (sxSplitJV x3) (sxSplitJV x4) (sxToSXElement (unJ x5)) (sxToSXElement (unJ x6))
-  quadFun <- toMXFun "quadratures" $ evaluateQuadraturesFunction lagrangeFun cijs taus n
+  quadFun <- toMXFun "quadratures" $ evaluateQuadraturesFunction lagrangeFun callInterpolateScalar cijs n
 --  let callQuadFun = call quadFun
   callQuadFun <- fmap call (expandMXFun quadFun)
 
@@ -102,7 +114,7 @@ makeCollProblem ocp = do
                 \x0 x1 x2 x3 x4 x5 -> sxCatJV $ ocpPathC ocp (sxSplitJV x0) (sxSplitJV x1) (sxSplitJV x2) (sxSplitJV x3) (sxSplitJV x4) (sxToSXElement (unJ x5))
   pathStageConFun <- toMXFun "pathStageCon" (pathStageConstraints pathConFun)
 
-  dynStageConFun <- toMXFun "dynamicsStageCon" (dynStageConstraints cijs taus dynFun)
+  dynStageConFun <- toMXFun "dynamicsStageCon" (dynStageConstraints callInterpolate cijs dynFun)
 
   stageFun <- toMXFun "stageFunction" $ stageFunction pathStageConFun (call dynStageConFun)
 --  let callStageFun = call stageFun
@@ -136,7 +148,9 @@ makeCollProblem ocp = do
                       -> IO (Vec n (Vec deg (J (JV o) (Vector Double), J (JV x) (Vector Double))))
       mapOutputFun ct = do
         let CollTraj tf p stages _ = split ct
-            h = tf / fromIntegral n
+            h = catJV $ Id (tf' / fromIntegral n)
+              where
+                Id tf' = splitJV tf
 
             vstages = unJVec (split stages)
                 :: Vec n (J (CollStage (JV x) (JV z) (JV u) deg) (Vector Double))
@@ -530,12 +544,12 @@ evaluateQuadraturesFunction ::
   forall x z u p o deg .
   (Dim deg, View x, View z, View u, View o, View p)
   => SXFun (J x :*: J z :*: J u :*: J p :*: J o :*: J (JV Id) :*: J (JV Id)) (J (JV Id))
+  -> (J (JV Id) MX -> Vec deg (J (JV Id) MX) -> J (JV Id) MX)
   -> Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
-  -> Vec deg Double
   -> Int
   -> (J p :*: J (JVec deg (CollPoint x z u)) :*: J (JVec deg o) :*: J (JV Id) :*: J (JVec deg (JV Id))) MX
   -> J (JV Id) MX
-evaluateQuadraturesFunction f cijs' taus n (p :*: stage' :*: outputs' :*: dt :*: stageTimes') =
+evaluateQuadraturesFunction f interpolate' cijs' n (p :*: stage' :*: outputs' :*: dt :*: stageTimes') =
   dt * qnext
   where
     tf = dt * fromIntegral n
@@ -550,7 +564,7 @@ evaluateQuadraturesFunction f cijs' taus n (p :*: stage' :*: outputs' :*: dt :*:
     stageTimes = unJVec (split stageTimes')
 
     qnext :: J (JV Id) MX
-    qnext = interpolate taus 0 qs
+    qnext = interpolate' 0 qs
 
     qdots :: Vec deg (J (JV Id) MX)
     qdots = TV.tvzipWith3 (\(CollPoint x z u) o t -> call f (x:*:z:*:u:*:p:*:o:*:t:*:tf)) stage outputs stageTimes
@@ -619,12 +633,13 @@ pathConFunction pathC (t :*: parm :*: o :*: collPoint) =
 -- return dynamics constraints, outputs, and interpolated state
 dynStageConstraints ::
   forall x z u p r o deg . (Dim deg, View x, View z, View u, View p, View r, View o)
-  => Vec (TV.Succ deg) (Vec (TV.Succ deg) Double) -> Vec deg Double
+  => (J x MX -> Vec deg (J x MX) -> J x MX)
+  -> Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
   -> SXFun (J (JV Id) :*: J p :*: J x :*: J (CollPoint x z u))
            (J r :*: J o)
   -> (J x :*: J (JVec deg (JTuple x z)) :*: J (JVec deg u) :*: J (JV Id) :*: J p :*: J (JVec deg (JV Id))) MX
   -> (J (JVec deg r) :*: J x :*: J (JVec deg o)) MX
-dynStageConstraints cijs taus dynFun (x0 :*: xzs' :*: us' :*: UnsafeJ h :*: p :*: stageTimes') =
+dynStageConstraints interpolate' cijs dynFun (x0 :*: xzs' :*: us' :*: UnsafeJ h :*: p :*: stageTimes') =
   cat (JVec dynConstrs) :*: xnext :*: cat (JVec outputs)
   where
     xzs = fmap split (unJVec (split xzs')) :: Vec deg (JTuple x z MX)
@@ -632,7 +647,7 @@ dynStageConstraints cijs taus dynFun (x0 :*: xzs' :*: us' :*: UnsafeJ h :*: p :*
 
     -- interpolated final state
     xnext :: J x MX
-    xnext = interpolate taus x0 xs
+    xnext = interpolate' x0 xs
 
     stageTimes = unJVec $ split stageTimes'
 

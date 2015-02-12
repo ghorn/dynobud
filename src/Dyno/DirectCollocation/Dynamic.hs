@@ -17,11 +17,11 @@ module Dyno.DirectCollocation.Dynamic
        , NameTree(..)
        ) where
 
-import Data.List ( mapAccumL, unzip5 )
+import Data.List ( mapAccumL ) -- , unzip5 )
 import Data.Tree ( Tree(..) )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
-import qualified Data.Foldable as F
+--import qualified Data.Foldable as F
 import qualified Data.Tree as Tree
 import Data.Serialize ( Serialize(..) )
 import GHC.Generics ( Generic )
@@ -31,12 +31,12 @@ import Dyno.Server.Accessors ( AccessorTree(..), Lookup(..), accessors )
 import Dyno.Vectorize
 import Dyno.View.JV
 import Dyno.View.View
-import Dyno.View.JVec ( JVec(..) )
+--import Dyno.View.JVec ( JVec(..) )
 import qualified Dyno.TypeVecs as TV
 import Dyno.TypeVecs ( Vec )
 
 import Dyno.DirectCollocation.Types
-import Dyno.DirectCollocation.Quadratures ( QuadratureRoots, mkTaus, interpolate )
+import Dyno.DirectCollocation.Quadratures ( QuadratureRoots ) -- , mkTaus, interpolate )
 import Dyno.DirectCollocation.Reify ( reifyCollTraj )
 
 
@@ -97,51 +97,55 @@ plotPoints ::
   => QuadratureRoots -> CollTraj x z u p n deg (Vector a)
   -> Vec n (Vec deg (J (JV o) (Vector a), J (JV x) (Vector a)))
   -> DynPlotPoints a
-plotPoints quadratureRoots (CollTraj (UnsafeJ tf') _ stages' xf) outputs =
-  DynPlotPoints (xss++[[(tf,unJ xf)]]) zss uss oss xdss
-  where
-    nStages = size (Proxy :: Proxy (JVec n (JV Id)))
-    tf,h :: a
-    tf = V.head tf'
-    h = tf / fromIntegral nStages
+plotPoints = undefined
+--plotPoints quadratureRoots (CollTraj (UnsafeJ tf') _ stages' xf) outputs =
+--  DynPlotPoints (xss++[[(tf,unJ xf)]]) zss uss oss xdss
+--  where
+--    nStages = size (Proxy :: Proxy (JVec n (JV Id)))
+--    tf,h :: a
+--    tf = V.head tf'
+--    h = tf / fromIntegral nStages
+--
+--    taus :: Vec deg a
+--    taus = mkTaus quadratureRoots
+--
+--    stages :: Vec n (CollStage (JV x) (JV z) (JV u) deg (Vector a))
+--    stages = fmap split (unJVec (split stages'))
+--    (xss,zss,uss,oss,xdss) = unzip5 $ F.toList $ f 0 $ zip (F.toList stages) (F.toList outputs)
+--
+--
+--    -- todo: check this final time against expected tf
+--    f :: a
+--         -> [( CollStage (JV x) (JV z) (JV u) deg (Vector a)
+--             , Vec deg (J (JV o) (Vector a), J (JV x) (Vector a))
+--             )]
+--         -> [( [(a,Vector a)]
+--             , [(a,Vector a)]
+--             , [(a,Vector a)]
+--             , [(a,Vector a)]
+--             , [(a,Vector a)]
+--             )]
+--    f _ [] = []
+--    f t0 ((CollStage x0 xzus', xdos') : css) = (xs,zs,us,os,xds) : f tnext css
+--      where
+--        tnext = t0 + h
+--        xzus0 = fmap split (unJVec (split xzus')) :: Vec deg (CollPoint (JV x) (JV z) (JV u) (Vector a))
+--        xnext = interpolate taus x0 (fmap getX xzus0)
+--
+--        getX (CollPoint x _ _) = x
+--
+--        xs :: [(a,Vector a)]
+--        xs = (t0,unJ x0):xs'++[(tnext,unJ xnext)]
+--
+--        xs',zs,us,os,xds :: [(a,Vector a)]
+--        (xs',zs,us,os,xds) = unzip5 $ F.toList $ TV.tvzipWith3 g xzus0 xdos' taus
+--
+--        g (CollPoint x z u) (o,x') tau = ( (t,unJ' "x" x), (t,unJ' "z" z), (t,unJ' "u" u), (t,unJ' "o" o), (t,unJ' "x'" x') )
+--          where
+--            t = t0 + h*tau
 
-    taus :: Vec deg a
-    taus = mkTaus quadratureRoots
-
-    stages :: Vec n (CollStage (JV x) (JV z) (JV u) deg (Vector a))
-    stages = fmap split (unJVec (split stages'))
-    (xss,zss,uss,oss,xdss) = unzip5 $ F.toList $ f 0 $ zip (F.toList stages) (F.toList outputs)
 
 
-    -- todo: check this final time against expected tf
-    f :: a
-         -> [( CollStage (JV x) (JV z) (JV u) deg (Vector a)
-             , Vec deg (J (JV o) (Vector a), J (JV x) (Vector a))
-             )]
-         -> [( [(a,Vector a)]
-             , [(a,Vector a)]
-             , [(a,Vector a)]
-             , [(a,Vector a)]
-             , [(a,Vector a)]
-             )]
-    f _ [] = []
-    f t0 ((CollStage x0 xzus', xdos') : css) = (xs,zs,us,os,xds) : f tnext css
-      where
-        tnext = t0 + h
-        xzus0 = fmap split (unJVec (split xzus')) :: Vec deg (CollPoint (JV x) (JV z) (JV u) (Vector a))
-        xnext = interpolate taus x0 (fmap getX xzus0)
-
-        getX (CollPoint x _ _) = x
-
-        xs :: [(a,Vector a)]
-        xs = (t0,unJ x0):xs'++[(tnext,unJ xnext)]
-
-        xs',zs,us,os,xds :: [(a,Vector a)]
-        (xs',zs,us,os,xds) = unzip5 $ F.toList $ TV.tvzipWith3 g xzus0 xdos' taus
-
-        g (CollPoint x z u) (o,x') tau = ( (t,unJ' "x" x), (t,unJ' "z" z), (t,unJ' "u" u), (t,unJ' "o" o), (t,unJ' "x'" x') )
-          where
-            t = t0 + h*tau
 
 --toPlotTree :: forall x z u .
 --              (Lookup (x Double), Lookup (z Double), Lookup (u Double),

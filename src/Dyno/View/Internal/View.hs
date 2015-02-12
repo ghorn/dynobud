@@ -44,6 +44,41 @@ instance (View f, View g, View h) => View (JTriple f g h)
 
 newtype J (f :: * -> *) (a :: *) = UnsafeJ { unsafeUnJ :: a } deriving (Eq, Functor, Generic)
 
+instance (View f, Viewable a, CM.CMatrix a) => Num (J f a) where
+  (UnsafeJ x) + (UnsafeJ y) = mkJ (x + y)
+  (UnsafeJ x) - (UnsafeJ y) = mkJ (x - y)
+  (UnsafeJ x) * (UnsafeJ y) = mkJ (x * y)
+  abs = fmap abs
+  signum = fmap signum
+  fromInteger k = mkJ (fromInteger k * CM.ones (n, 1))
+    where
+      n = size (Proxy :: Proxy f)
+
+instance (View f, Viewable a, CM.CMatrix a) => Fractional (J f a) where
+  (UnsafeJ x) / (UnsafeJ y) = mkJ (x / y)
+  fromRational x = mkJ (fromRational x * CM.ones (n, 1))
+    where
+      n = size (Proxy :: Proxy f)
+
+instance (View f, Viewable a, CM.CMatrix a) => Floating (J f a) where
+  pi = mkJ (pi * CM.ones (n, 1))
+    where
+      n = size (Proxy :: Proxy f)
+  (**) (UnsafeJ x) (UnsafeJ y) = mkJ (x ** y)
+  exp   = fmap exp
+  log   = fmap log
+  sin   = fmap sin
+  cos   = fmap cos
+  tan   = fmap tan
+  asin  = fmap asin
+  atan  = fmap atan
+  acos  = fmap acos
+  sinh  = fmap sinh
+  cosh  = fmap cosh
+  tanh  = fmap tanh
+  asinh = fmap asinh
+  atanh = fmap atanh
+  acosh = fmap acosh
 
 mkJ :: forall f a . (View f, Viewable a) => a -> J f a
 mkJ x = case mkJ' x of
