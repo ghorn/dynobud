@@ -31,6 +31,7 @@ import Dyno.Server.Accessors ( AccessorTree(..), Lookup(..), accessors )
 import Dyno.Vectorize
 import Dyno.View.JV
 import Dyno.View.View
+import Dyno.View.JVec ( JVec(..) )
 import qualified Dyno.TypeVecs as TV
 import Dyno.TypeVecs ( Vec )
 

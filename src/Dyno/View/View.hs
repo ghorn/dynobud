@@ -15,11 +15,9 @@
 {-# LANGUAGE InstanceSigs #-}
 
 module Dyno.View.View
-       ( J(..), mkJ, mkJ', unJ, unJ', View(..), JVec(..), JNone(..), S(..)
-       , JTuple(..)
-       , JTriple(..)
-       , jreplicate, jreplicate'
-       , reifyJVec, jfill
+       ( View(..), J(..), mkJ, mkJ', unJ, unJ'
+       , JNone(..), S(..), JTuple(..), JTriple(..)
+       , jfill
        , v2d, d2v
        ) where
 
@@ -30,7 +28,6 @@ import qualified Data.Foldable as F
 import qualified Data.Sequence as Seq
 import Data.Traversable ( Traversable )
 import Data.Proxy ( Proxy(..) )
-import Linear.V ( Dim(..) )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
 import Data.Serialize ( Serialize(..) )
@@ -38,7 +35,6 @@ import Data.Serialize ( Serialize(..) )
 import qualified Casadi.DMatrix as DMatrix
 import qualified Dyno.View.CasadiMat as CM
 
-import Dyno.TypeVecs ( Vec(..), unVec, mkVec, mkVec', reifyVector )
 import Dyno.View.Viewable ( Viewable(..) )
 import Dyno.Vectorize ( Vectorize(..) )
 import Dyno.Server.Accessors ( Lookup(..), AccessorTree )
@@ -47,10 +43,6 @@ data JTuple f g a = JTuple (J f a) (J g a) deriving ( Generic, Show )
 instance (View f, View g) => View (JTuple f g)
 data JTriple f g h a = JTriple (J f a) (J g a) (J h a) deriving ( Generic, Show )
 instance (View f, View g, View h) => View (JTriple f g h)
---instance View Id
---instance View Xy
---instance View Xyz
---instance View f => View (Fctr f)
 
 newtype J (f :: * -> *) (a :: *) = UnsafeJ { unsafeUnJ :: a } deriving (Eq, Functor, Generic)
 
@@ -97,44 +89,10 @@ instance Lookup a => Lookup (J S (Vector a)) where
   toAccessorTree (UnsafeJ x) f =
     toAccessorTree (V.head x) (V.head . unJ . f)
 
--- | vectors in View
-newtype JVec n f a = JVec { unJVec :: Vec n (J f a) } deriving ( Show, Eq )
-instance (Dim n, View f) => View (JVec n f) where
-  cat = mkJ . vveccat . fmap unJ . unVec . unJVec
-  split = JVec . fmap mkJ . mkVec . flip vvertsplit ks . unJ
-    where
-      ks = V.fromList (take (n+1) [0,m..])
-      n = reflectDim (Proxy :: Proxy n)
-      m = size (Proxy :: Proxy f)
-  size = const (n * m)
-    where
-      n = reflectDim (Proxy :: Proxy n)
-      m = size (Proxy :: Proxy f)
-  sizes = const . Seq.iterateN n (+m) . (+ m)
-    where
-      n = reflectDim (Proxy :: Proxy n)
-      m = size (Proxy :: Proxy f)
-instance (Dim n, Serialize (J f a)) => Serialize (JVec n f a) where
-  get = fmap (JVec . mkVec') get
-  put = put . F.toList . unJVec
-
-jreplicate' :: forall a n f . (Dim n, View f) => J f a -> JVec n f a
-jreplicate' el =  ret
-  where
-    ret = JVec (mkVec (V.replicate nvec el))
-    nvec = reflectDim (Proxy :: Proxy n)
-
-jreplicate :: forall a n f . (Dim n, View f, Viewable a) => J f a -> J (JVec n f) a
-jreplicate = cat . jreplicate'
-
 jfill :: forall a f . View f => a -> J f (Vector a)
 jfill x = mkJ (V.replicate n x)
   where
     n = size (Proxy :: Proxy f)
-
-reifyJVec :: forall a f r . Vector (J f a) -> (forall (n :: *). Dim n => JVec n f a -> r) -> r
-reifyJVec v f = reifyVector v $ \(v' :: Vec n (J f a)) -> f (JVec v' :: JVec n f a)
-{-# INLINE reifyJVec #-}
 
 v2d :: View f => J f (V.Vector Double) -> J f CM.DMatrix
 v2d = mkJ . CM.fromDVector . unJ

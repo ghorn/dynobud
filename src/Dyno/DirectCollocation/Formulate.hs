@@ -38,6 +38,7 @@ import Dyno.View.View
 import Dyno.View.JV ( JV, sxCatJV, sxSplitJV, catJV, catJV' )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.Fun
+import Dyno.View.JVec( JVec(..), jreplicate )
 import Dyno.View.Viewable ( Viewable )
 import Dyno.View.Scheme ( Scheme )
 import Dyno.Vectorize ( Vectorize(..), fill, vlength, vzipWith )

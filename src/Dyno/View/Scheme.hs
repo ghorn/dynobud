@@ -26,6 +26,7 @@ import Dyno.Nats
 import Dyno.View.View
 import Dyno.View.CasadiMat
 import Dyno.View.M ( M(..) )
+import Dyno.View.JVec ( JVec )
 
 data MyScheme a = MyScheme (J (JVec D3 S) a) (J (JVec D2 S) a) deriving (Generic, Generic1, Show)
 instance Scheme MyScheme

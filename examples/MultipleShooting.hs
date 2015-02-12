@@ -22,6 +22,7 @@ import Control.Lens
 
 import Dyno.View.View
 import Dyno.View.JV
+import Dyno.View.JVec
 import Dyno.Nlp
 import Dyno.NlpSolver
 import Dyno.Solvers

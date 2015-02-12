@@ -31,6 +31,7 @@ import Dyno.View.Fun
 import Dyno.View.Viewable ( Viewable )
 import qualified Dyno.View.M as M
 import Dyno.View.M ( M )
+import Dyno.View.JVec ( JVec(..) )
 import Dyno.View.FunJac
 import Dyno.View.Scheme ( Scheme, blockSplit )
 import Dyno.Vectorize ( Vectorize(..), Id, vzipWith4 )

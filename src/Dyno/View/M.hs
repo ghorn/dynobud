@@ -48,6 +48,7 @@ import Dyno.View.CasadiMat ( CasadiMat )
 import Dyno.View.JV
 import Dyno.TypeVecs ( Vec, Dim(..) )
 import Dyno.View.View
+import Dyno.View.JVec
 import Dyno.View.Viewable
 import qualified Dyno.View.CasadiMat as CM
 

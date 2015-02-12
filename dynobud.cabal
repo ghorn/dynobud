@@ -46,6 +46,7 @@ library
                        Dyno.View.FunJac
                        Dyno.View.HList
                        Dyno.View.JV
+                       Dyno.View.JVec
                        Dyno.View.M
                        Dyno.View.NumInstances
                        Dyno.View.Scheme
