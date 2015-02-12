@@ -1,7 +1,11 @@
 -- | Minimize the Rosenbrock function (plus a trivial constraint) using
 -- the more complicated NLP' interface.
+-- Unfortunately, at the moment there only types here are (JV ) compound types
+-- so the use of Views aren't fully illustrated.
+-- todo: comment up the multiple shooting code as an example
 
 {-# OPTIONS_GHC -Wall #-}
+{-# Language DeriveFunctor #-}
 {-# Language DeriveGeneric #-}
 
 module Main where
@@ -17,13 +21,13 @@ import Dyno.NlpSolver
 import Dyno.Solvers
 
 
-data X a = X (J (JV Id) a) (J (JV Id) a) deriving (Generic, Show)
-data G a = G (J (JV Id) a) deriving (Generic, Show)
+data X a = X a a deriving (Functor, Generic, Generic1, Show)
+data G a = G a deriving (Functor, Generic, Generic1, Show)
 
-instance View X
-instance View G
+instance Vectorize X
+instance Vectorize G
 
-myNlp :: Nlp' X JNone G MX
+myNlp :: Nlp' (JV X) JNone (JV G) MX
 myNlp = Nlp' { nlpFG' = fg
              , nlpBX' = bx
              , nlpBG' = bg
@@ -36,24 +40,24 @@ myNlp = Nlp' { nlpFG' = fg
              , nlpScaleG' = Nothing
              }
   where
-    x0 :: J X (V.Vector Double)
-    x0 = cat $ X (-8) (-8)
+    x0 :: J (JV X) (V.Vector Double)
+    x0 = catJV $ X (-8) (-8)
 
-    bx :: J X (Vector Bounds)
-    bx = mkJ $
-         V.fromList [ (Just (-21), Just 0.5)
-                    , (Just (-2), Just 2)
-                    ]
-    bg :: J G (Vector Bounds)
-    bg = mkJ $ (V.singleton (Just (-10), Just 10))
+    bx :: J (JV X) (Vector Bounds)
+    bx = catJV $
+         X (Just (-21), Just 0.5)
+           (Just (-2), Just 2)
 
-    fg :: J X MX -> J JNone MX -> (J (JV Id) MX, J G MX)
-    fg xy _ = (f, cat g)
+    bg :: J (JV G) (Vector Bounds)
+    bg = catJV $ G (Just (-10), Just 10)
+
+    fg :: J (JV X) MX -> J JNone MX -> (J (JV Id) MX, J (JV G) MX)
+    fg xy _ = (f, catJV' g)
       where
         f = (1-x)**2 + 100*(y - x**2)**2
         g = G x
 
-        X x y = split xy
+        X x y = splitJV' xy
 
 main :: IO ()
 main = do
