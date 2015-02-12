@@ -69,7 +69,8 @@ library
                        Dyno.Server.PlotTypes
                        Dyno.Server.Server
 
-  other-modules:
+  other-modules:       Dyno.View.Internal.View
+
   build-depends:       base >=4.6 && < 5,
                        vector >=0.10,
                        data-default,
