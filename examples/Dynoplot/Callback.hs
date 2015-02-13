@@ -1,12 +1,14 @@
 {-# OPTIONS_GHC -Wall #-}
 
-module ServerSender ( withCallback ) where
+module Dynoplot.Callback ( withCallback ) where
 
 import Data.ByteString.Char8 ( pack )
-import Data.Serialize
+import Data.Serialize ( Serialize, encode )
 import qualified System.ZMQ4 as ZMQ
 
 import Dyno.DirectCollocation.Dynamic
+
+import Dynoplot.Channel ( dynoplotUrl, dynoplotChannelName )
 
 callback :: Serialize a => ZMQ.Socket ZMQ.Pub -> String -> a -> IO Bool
 callback publisher chanName stuff = do
@@ -15,8 +17,8 @@ callback publisher chanName stuff = do
   ZMQ.send publisher [] bs
   return True
 
-withCallback :: Serialize a => String -> String -> (((DynPlotPoints a, CollTrajMeta) -> IO Bool) -> IO b) -> IO b
-withCallback url channelName userFun =
+withCallback :: Serialize a => (((DynPlotPoints a, CollTrajMeta) -> IO Bool) -> IO b) -> IO b
+withCallback userFun =
   ZMQ.withContext $ \context ->
     ZMQ.withSocket context ZMQ.Pub $ \publisher ->
-      ZMQ.bind publisher url >> userFun (callback publisher channelName)
+      ZMQ.bind publisher dynoplotUrl >> userFun (callback publisher dynoplotChannelName)

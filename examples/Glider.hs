@@ -23,8 +23,7 @@ import Glider.Aircraft
 import Glider.AeroCoeffs
 import Glider.Betty
 
-import GliderShared
-import ServerSender ( withCallback )
+import Dynoplot.Callback ( withCallback )
 
 type NCollStages = 100
 type CollDeg = 2
@@ -109,12 +108,9 @@ bc (AcX x0 v0 dcm0 w0 cs) _ = AcX x0 (v0 - V3 30 0 0) (dcm0 - eye3) w0 cs
 
 main :: IO ()
 main = do
-  putStrLn $ "using ip \""++gliderUrl++"\""
-  putStrLn $ "using channel \""++gliderChannelName++"\""
-
   cp <- makeCollProblem ocp
   let nlp = cpNlp cp
-  withCallback gliderUrl gliderChannelName $ \cb -> do
+  withCallback $ \cb -> do
     let guess = jfill 1
 
         cb' :: J (CollTraj AcX None AcU None NCollStages CollDeg) (Vector Double) -> IO Bool

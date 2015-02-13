@@ -12,9 +12,9 @@ import System.Console.CmdArgs ( (&=), Data, Typeable )
 import qualified System.Console.CmdArgs as CA
 
 import Dyno.Server.Server ( runPlotter, newChannel )
-import Dyno.DirectCollocation.Dynamic
+import Dyno.DirectCollocation.Dynamic ( DynPlotPoints, CollTrajMeta )
 
-import GliderShared ( gliderUrl, gliderChannelName )
+import Dynoplot.Channel ( dynoplotUrl, dynoplotChannelName )
 
 sub :: String -> ((DynPlotPoints Double, CollTrajMeta) -> IO ()) -> String -> IO ()
 sub ip' writeChan name = ZMQ.withContext $ \context ->
@@ -50,6 +50,6 @@ data VisArgs = VisArgs { ip :: String
                        } deriving (Show, Data, Typeable)
 
 myargs :: VisArgs
-myargs = VisArgs { ip = gliderUrl               &= CA.help "an IP address" &= CA.typ "ADDRESS"
-                 , channel = gliderChannelName  &= CA.help "zmq channel name"
+myargs = VisArgs { ip = dynoplotUrl               &= CA.help "an IP address" &= CA.typ "ADDRESS"
+                 , channel = dynoplotChannelName  &= CA.help "zmq channel name"
                  } &= CA.summary "plotter for dynobud OCPs"

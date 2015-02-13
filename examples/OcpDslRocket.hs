@@ -7,8 +7,7 @@ import Control.Monad ( void )
 
 import Dyno.Solvers
 
-import ServerSender
-import GliderShared
+import Dynoplot.Callback
 
 import ExampleDsl.OcpMonad
 
@@ -80,7 +79,7 @@ myOcp _time get = do
   --lagrangeTerm (1e-6*u*u + 1e-6*p*p + 1e-6*v*v + 1e-6*m*m)
 
 main :: IO ()
-main = void $ withCallback gliderUrl gliderChannelName go
+main = void $ withCallback go
   where
     n = 100
     deg = 3
