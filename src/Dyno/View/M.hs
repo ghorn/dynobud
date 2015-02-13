@@ -77,18 +77,18 @@ instance (View f, View g, CMatrix a) => Num (M f g a) where
   fromInteger k = mkM $ fromInteger k * CM.ones (nx,ny)
     where
       nx = size (Proxy :: Proxy f)
-      ny = size (Proxy :: Proxy f)
+      ny = size (Proxy :: Proxy g)
 instance (View f, View g, CMatrix a) => Fractional (M f g a) where
   (/) = over2 (/)
   fromRational k = mkM $ fromRational k * CM.ones (nx,ny)
     where
       nx = size (Proxy :: Proxy f)
-      ny = size (Proxy :: Proxy f)
+      ny = size (Proxy :: Proxy g)
 instance (View f, View g, CMatrix a) => Floating (M f g a) where
   pi = mkM $ pi * CM.ones (nx,ny)
     where
       nx = size (Proxy :: Proxy f)
-      ny = size (Proxy :: Proxy f)
+      ny = size (Proxy :: Proxy g)
   (**) = over2 (**)
   exp   = over exp
   log   = over log
