@@ -15,6 +15,7 @@ module Dyno.Cov
        , nOfVecLen
        ) where
 
+import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
 import qualified Data.Sequence as Seq
@@ -30,7 +31,7 @@ import qualified Casadi.CMatrix as CM
 import Dyno.View.Unsafe.View ( unJ, mkJ )
 import Dyno.View.Unsafe.M ( M(UnsafeM), mkM )
 
-import Dyno.Vectorize ( Vectorize(..), Proxy(..) )
+import Dyno.Vectorize ( Vectorize(..) )
 import Dyno.View.View ( View(..), J )
 import Dyno.View.JV ( JV )
 import Dyno.View.Viewable ( Viewable(..) )

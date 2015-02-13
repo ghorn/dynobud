@@ -12,6 +12,7 @@ module VectorizeTests
 
 import GHC.Generics ( Generic, Generic1 )
 
+import Data.Proxy ( Proxy(..) )
 import qualified Data.Vector as V
 import Linear
 import Linear.V

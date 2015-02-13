@@ -12,6 +12,7 @@ module ViewTests
 
 import GHC.Generics ( Generic1 )
 
+import Data.Proxy ( Proxy(..) )
 import qualified Data.Traversable as T
 import qualified Data.Packed.Matrix as Mat
 import qualified Numeric.LinearAlgebra ( ) -- for Eq Matrix

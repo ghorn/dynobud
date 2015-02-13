@@ -2,6 +2,7 @@
 
 module Main ( main ) where
 
+import Data.Proxy ( Proxy(..) )
 import Linear
 import Data.Vector ( Vector )
 

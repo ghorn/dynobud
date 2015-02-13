@@ -7,11 +7,12 @@ module Dyno.DirectCollocation.Profile
        , profile
        ) where
 
+import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 import Linear.V ( Dim(..) )
 
 import Dyno.View.View ( J )
-import Dyno.Vectorize ( Vectorize, Proxy(..) )
+import Dyno.Vectorize ( Vectorize )
 import Dyno.Ocp ( OcpPhase )
 import Dyno.Solvers ( NlpSolverStuff )
 import Dyno.DirectCollocation.Types ( CollTraj, CollOcpConstraints )

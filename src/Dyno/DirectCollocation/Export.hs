@@ -5,6 +5,7 @@ module Dyno.DirectCollocation.Export
        ( toMatlab
        ) where
 
+import Data.Proxy ( Proxy(..) )
 import Linear.V ( Dim(..) )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
@@ -14,7 +15,7 @@ import Dyno.View.Unsafe.View ( unJ )
 
 import Dyno.Server.Accessors ( Lookup, flatten, accessors )
 import Dyno.TypeVecs ( Vec )
-import Dyno.Vectorize ( Vectorize, Proxy(..), fill )
+import Dyno.Vectorize ( Vectorize, fill )
 import Dyno.View ( View(..), JV, JVec(..), splitJV )
 import Dyno.DirectCollocation.Formulate ( CollProblem(..) )
 import Dyno.DirectCollocation.Types ( CollTraj(..), CollStage(..), CollPoint(..) )

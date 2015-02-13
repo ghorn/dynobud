@@ -9,6 +9,7 @@ module Main where
 
 import GHC.Generics ( Generic1 )
 
+import Data.Proxy ( Proxy(..) )
 import Data.IORef ( newIORef, readIORef, writeIORef )
 import qualified Data.Foldable as F
 import Data.Serialize

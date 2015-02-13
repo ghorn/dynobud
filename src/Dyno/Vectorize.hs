@@ -21,7 +21,6 @@ module Dyno.Vectorize
        , vzipWith4
        , fill
        , GVectorize(..)
-       , Proxy(..)
        ) where
 
 import Control.Applicative ( Applicative(..) )

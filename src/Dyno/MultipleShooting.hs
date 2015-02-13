@@ -11,17 +11,24 @@ module Dyno.MultipleShooting
 
 import GHC.Generics ( Generic, Generic1 )
 
+import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 import Data.Maybe ( fromMaybe )
 import qualified Data.Vector as V
 import Linear
 import qualified Data.Foldable as F
 
+import Casadi.MX ( MX )
+
 import Dyno.TypeVecs
-import Dyno.View
-import Dyno.View.Scheme
-import Dyno.Vectorize
-import Dyno.Nlp
+import Dyno.View.View ( View(..) )
+import Dyno.View.View ( J, JNone(..), JTuple(..), jfill )
+import Dyno.View.JV ( JV, catJV, catJV', splitJV' )
+import Dyno.View.JVec ( JVec(..) )
+import Dyno.View.Fun ( MXFun, toMXFun, call )
+import Dyno.View.Scheme ( Scheme )
+import Dyno.Vectorize ( Vectorize, Id )
+import Dyno.Nlp ( Bounds, Nlp'(..) )
 
 
 data IntegratorIn x u p a = IntegratorIn (J (JV x) a) (J (JV u) a) (J (JV p) a)
