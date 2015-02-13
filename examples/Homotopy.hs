@@ -10,6 +10,8 @@ import Data.Vector ( Vector )
 import qualified Data.Vector as V
 import Text.Printf ( printf )
 
+import Casadi.MX ( MX )
+
 import Dyno.View
 import Dyno.Vectorize
 import Dyno.Nlp

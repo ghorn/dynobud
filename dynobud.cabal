@@ -182,6 +182,7 @@ executable homotopy
   default-language:    Haskell2010
   build-depends:       dynobud,
                        vector,
+                       casadi-bindings,
                        base >= 4.6 && < 5
   ghc-options:         -threaded -O2
 
@@ -269,6 +270,7 @@ executable basicJ
   default-language:    Haskell2010
   build-depends:       dynobud,
                        vector >=0.10,
+                       casadi-bindings >=0.10,
                        base >=4.6 && < 5
   ghc-options:         -threaded -O2
 

@@ -2,7 +2,7 @@
 {-# Language TypeFamilies #-}
 
 module Dyno.View.Viewable
-       ( Viewable(..), MX.MX, SX.SX, DMatrix.DMatrix
+       ( Viewable(..)
        ) where
 
 import qualified Data.Vector as V
