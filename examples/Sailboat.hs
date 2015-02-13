@@ -9,15 +9,26 @@
 {-# Language DeriveGeneric #-}
 {-# Language DataKinds #-}
 
-module Main ( main ) where
+module Main ( main
+            , SbX(..) -- to suppress warnings about unused record names
+            , SbU(..) -- to suppress warnings about unused record names
+            ) where
 
 import GHC.Generics ( Generic, Generic1 )
 
 import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
+import qualified System.ZMQ4 as ZMQ
+import Linear -- ( V2(..) )
+import qualified Data.List.NonEmpty as NE
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BS8
+import qualified Data.Serialize as Ser
+import Text.Printf ( printf )
 
 import Dyno.Vectorize
 import Dyno.View.View ( View(..), J )
+import Dyno.View.JV ( splitJV )
 import Dyno.Solvers
 import Dyno.NlpSolver
 import Dyno.Server.Accessors
@@ -27,13 +38,6 @@ import Dyno.DirectCollocation
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..) )
 import Dyno.DirectCollocation.Formulate ( makeGuess )
 import Dyno.DirectCollocation.Dynamic
-
-import qualified System.ZMQ4 as ZMQ
-import Linear -- ( V2(..) )
-import qualified Data.List.NonEmpty as NE
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as BS8
-import qualified Data.Serialize as Ser
 
 data SbX a = SbX { xGamma :: a
                  , xP :: V2 a
@@ -85,8 +89,8 @@ clift alpha = 2*pi*alpha*10/12 - exp (alpha/pi*180 - 12) + exp (-alpha/pi*180 - 
 
 sbDae :: forall a . Floating a => SbX a -> SbX a -> SbZ a -> SbU a -> SbP a -> a -> (SbR a, SbO a)
 sbDae
-  (SbX gamma' p'@(V2 px' pz') v'@(V2 vx' vz'))
-  (SbX gamma  p@(V2 px pz) v@(V2 vx vz))
+  (SbX gamma' p' v')
+  (SbX gamma  _ v@(V2 vx vz))
   _
   (SbU omega alpha)
   _
@@ -154,8 +158,8 @@ data SbBc a  = SbBc { bcPeriodicGamma :: a
                     deriving (Functor, Generic, Generic1, Show)
 bc :: Num a => SbX a -> SbX a -> SbBc a
 bc
-  (SbX gamma0 p0@(V2 px0 pz0) (V2 vx0 vz0))
-  (SbX gammaF (V2 pxF pzF) (V2 vxF vzF))
+  (SbX gamma0 p0@(V2 _ pz0) (V2 vx0 vz0))
+  (SbX gammaF    (V2 _ pzF) (V2 vxF vzF))
   = SbBc
     { bcPeriodicGamma = gamma0 + gammaF
     , bcPeriodicPz = pz0 - pzF
@@ -311,4 +315,7 @@ main = do
       (msg0,opt0') <- solveNlp' solver (nlp { nlpX0' = guess }) (Just callback)
       opt0 <- case msg0 of Left msg' -> error msg'
                            Right _ -> return opt0'
-      return ()
+      let CollTraj endTime' _ _ xf = split (xOpt' opt0)
+          endTime = unId $ splitJV endTime'
+          V2 pxF _ = xP $ splitJV xf
+      printf "optimal velocity: %.2f m/s\n" (pxF / endTime)

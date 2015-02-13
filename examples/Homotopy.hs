@@ -54,7 +54,7 @@ myNlp = Nlp' { nlpFG' = fg
     fg xy pxy = (f, catJV' g)
       where
         X  x  y = splitJV'  xy
-        P px py = splitJV' pxy
+        P px  _ = splitJV' pxy
         f = (1-x)**2 + 100*(y - x**2)**2
 --        g = G x
 --        f = (x - px)**2 + (y - py)**2
@@ -77,8 +77,7 @@ main = do
       cbp xy pxy alpha = do
         let X x y = splitJV xy
             P px py = splitJV pxy
-        --printf "X: (%.3f,%.3f), P: (%.3f, %.3f), a: %.4f\n"
-        -- (V.head (unJ x)) (V.head (unJ y)) (V.head (unJ px)) (V.head (unJ py)) alpha
+        printf "X: (%.3f,%.3f), P: (%.3f, %.3f), a: %.4f\n" x y px py alpha
         return ()
   opt <- solveNlpHomotopy' 1e-3 (0.6, 2, 10, 20) solver myNlp (catJV (P 2 0)) Nothing (Just cbp)
   print opt

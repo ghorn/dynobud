@@ -43,7 +43,7 @@ boundaryConditions get0 getF = do
   vF === 0
 
 mayer :: (Floating a, Monad m) => a -> (String -> m a) -> (String -> m a) -> m a
-mayer endTime get0 getF = do
+mayer endTime _get0 getF = do
   p <- getF "p"
   v <- getF "v"
 
@@ -51,7 +51,6 @@ mayer endTime get0 getF = do
 
 myOcp :: SXElement -> (String -> OcpMonad SXElement) -> OcpMonad ()
 myOcp time get = do
-  p <- get "p"
   v <- get "v"
   u <- get "u"
   force <- get "force"
@@ -59,7 +58,7 @@ myOcp time get = do
 
   v**2 + u**2 <== 4 + time/100
 
-  lagrangeTerm obj
+  lagrangeTerm (obj + force*force*1e-4)
 
 main :: IO ()
 main = void $ withCallback gliderUrl gliderChannelName go

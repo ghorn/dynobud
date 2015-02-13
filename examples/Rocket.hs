@@ -12,8 +12,8 @@ import ServerSender
 import GliderShared
 
 myDae :: SXElement -> DaeMonad ()
-myDae time = do
-  (p,p') <- diffState "p"
+myDae _time = do
+  (_,p') <- diffState "p"
   (v,v') <- diffState "v"
   (m,m') <- diffState "m"
   (u,u') <- diffState "u"
@@ -48,13 +48,13 @@ boundaryConditions get0 getF = do
   vF === 0
 
 mayer :: (Floating a, Monad m) => a -> (String -> m a) -> (String -> m a) -> m a
-mayer endTime get0 getF = do
+mayer _endTime _get0 getF = do
   m <- getF "m"
 
   return (-m) -- endTime -- (p**2 + v**2)
 
 myOcp :: SXElement -> (String -> OcpMonad SXElement) -> OcpMonad ()
-myOcp time get = do
+myOcp _time get = do
   p <- get "p"
   v <- get "v"
   m <- get "m"
