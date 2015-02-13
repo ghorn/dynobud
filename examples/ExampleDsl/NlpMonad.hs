@@ -146,7 +146,7 @@ constr (Ineq3 x (lhs,rhs)) = (x, (Just lhs, Just rhs))
 
 
 toG :: Dim ng => S.Seq (Constraint SXElement) -> Vec ng (SXElement, Bounds)
-toG nlpConstraints' = TV.mkSeq $ fmap constr nlpConstraints'
+toG nlpConstraints' = TV.mkVec $ V.fromList $ F.toList $ fmap constr nlpConstraints'
 
 buildNlp :: forall nx ng .
             (Dim nx, Dim ng) => NlpMonadState -> IO (Nlp' (JVec nx (JV Id)) JNone (JVec ng (JV Id)) MX)

@@ -188,8 +188,9 @@ mkComputeCovariances c2d computeSens qc' = do
   return computeCovs
 --  toMXFun "compute all covariances" computeCovs
 
-dot :: forall x deg a b. (Fractional (J x a), Real b) => Vec deg b -> Vec deg (J x a) -> J x a
-dot cks xs = F.sum $ TV.unSeq elemwise
+-- todo: code duplication
+dot :: forall x deg a b. (Fractional (J x a), Real b, Dim deg) => Vec deg b -> Vec deg (J x a) -> J x a
+dot cks xs = F.sum $ TV.unVec elemwise
   where
     elemwise :: Vec deg (J x a)
     elemwise = TV.tvzipWith smul cks xs
@@ -197,8 +198,8 @@ dot cks xs = F.sum $ TV.unSeq elemwise
     smul :: b -> J x a -> J x a
     smul x y = realToFrac x * y
 
-
-interpolateXDots' :: (Real b, Fractional (J x a)) => Vec deg (Vec deg b) -> Vec deg (J x a) -> Vec deg (J x a)
+-- todo: code duplication
+interpolateXDots' :: (Real b, Fractional (J x a), Dim deg) => Vec deg (Vec deg b) -> Vec deg (J x a) -> Vec deg (J x a)
 interpolateXDots' cjks xs = fmap (`dot` xs) cjks
 
 interpolateXDots ::

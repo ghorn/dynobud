@@ -44,8 +44,9 @@ mkTaus quadratureRoots = case taus of
       Radau -> error "radau not yet supported" -- shiftedRadauRoots (deg-1) ++ [1.0]
 
 
-dot :: forall x deg a b. (Fractional (J x a), Real b) => Vec deg b -> Vec deg (J x a) -> J x a
-dot cks xs = F.sum $ TV.unSeq elemwise
+-- todo: code duplication
+dot :: forall x deg a b. (Fractional (J x a), Real b, Dim deg) => Vec deg b -> Vec deg (J x a) -> J x a
+dot cks xs = F.sum $ TV.unVec elemwise
   where
     elemwise :: Vec deg (J x a)
     elemwise = TV.tvzipWith smul cks xs
@@ -54,6 +55,7 @@ dot cks xs = F.sum $ TV.unSeq elemwise
     smul x y = realToFrac x * y
 
 
+-- todo: code duplication
 interpolate :: (Dim deg, Real b, Fractional b, Fractional (J x a), View x) =>
                Vec deg b -> J x a -> Vec deg (J x a) -> J x a
 interpolate taus x0 xs = dot (TV.mkVec' xis) (x0 TV.<| xs)
