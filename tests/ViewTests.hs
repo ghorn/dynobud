@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Wall -fno-warn-orphans #-}
 {-# Language ScopedTypeVariables #-}
 {-# Language GADTs #-}
 {-# Language DeriveGeneric #-}
@@ -12,6 +12,7 @@ module ViewTests
 
 import GHC.Generics ( Generic1 )
 
+import qualified Data.Traversable as T
 import qualified Data.Packed.Matrix as Mat
 import qualified Numeric.LinearAlgebra ( ) -- for Eq Matrix
 import qualified Data.Vector as V
@@ -59,6 +60,36 @@ instance Arbitrary CMatrices where
                         , (5, return (CMatrices "SX" (Proxy :: Proxy SX)))
                         , (5, return (CMatrices "DMatrix" (Proxy :: Proxy DMatrix)))
                         ]
+instance (View f, View g, CMatrix a) => Arbitrary (M f g a) where
+  arbitrary = do
+    let prim :: Gen (M f g a)
+        prim = oneof
+               [ return $ zeros
+               , return $ countUp
+               , return $ fromInteger 0
+               , return $ fromRational 0
+               , fmap fromInteger arbitrary
+               , fmap fromRational arbitrary
+               ]
+        positive :: Gen (M f g a)
+        positive = elements
+                   [ ones
+                   , 1 + countUp
+                   , pi
+                   ]
+    x <- prim
+    y <- prim
+    z <- positive
+    oneof [ return $ x
+          , return $ x * y
+          , return $ x + y
+          , return $ x - y
+          , return $ x / z
+          , fmap trans (arbitrary :: Gen (M g f a))
+          ]
+
+instance (Arbitrary a, Dim n) => Arbitrary (Vec n a) where
+  arbitrary = T.sequence (fill arbitrary)
 
 evalMX :: MX -> DMatrix
 evalMX x = unsafePerformIO $ do
@@ -198,14 +229,11 @@ prop_VSplitVCat =
   where
     test :: forall f g a
             . (Vectorize f, View g, CMatrix a, MyEq a)
-            => Proxy f -> Proxy g -> Proxy a -> Property
-    test _ _ _ = beEqual x0 x1
-      where
-        x0 :: M (JV f) g a
-        x0 = countUp
-
-        x1 :: M (JV f) g a
-        x1 = vcat (vsplit x0)
+            => Proxy f -> Proxy g -> Proxy a -> Gen Property
+    test _ _ _ = do
+      x0 <- arbitrary :: Gen (M (JV f) g a)
+      let x1 = vcat (vsplit x0) :: M (JV f) g a
+      return $ beEqual x0 x1
 
 prop_HSplitHCat :: Test
 prop_HSplitHCat  =
@@ -214,14 +242,11 @@ prop_HSplitHCat  =
   where
     test :: forall f g a
             . (View f, Vectorize g, CMatrix a, MyEq a)
-            => Proxy f -> Proxy g -> Proxy a -> Property
-    test _ _ _ = beEqual x0 x1
-      where
-        x0 :: M f (JV g) a
-        x0 = countUp
-
-        x1 :: M f (JV g) a
-        x1 = hcat (hsplit x0)
+            => Proxy f -> Proxy g -> Proxy a -> Gen Property
+    test _ _ _ = do
+      x0 <- arbitrary :: Gen (M f (JV g) a)
+      let x1 = hcat (hsplit x0) :: M f (JV g) a
+      return $ beEqual x0 x1
 
 prop_VSplitVCat' :: Test
 prop_VSplitVCat'  =
@@ -231,15 +256,11 @@ prop_VSplitVCat'  =
   where
     test :: forall f g n a
             . (View f, View g, Dim n, CMatrix a, MyEq a)
-            => Proxy n -> Proxy f -> Proxy g -> Proxy a -> Property
-    test _ _ _ _ = beEqual x0 x1
-      where
-        x0 :: Vec n (M f g a)
-        x0 = fill countUp
-
-        x1 :: Vec n (M f g a)
-        x1 = vsplit' (vcat' x0)
-
+            => Proxy n -> Proxy f -> Proxy g -> Proxy a -> Gen Property
+    test _ _ _ _ = do
+      x0 <- arbitrary :: Gen (Vec n (M f g a))
+      let x1 = vsplit' (vcat' x0) :: Vec n (M f g a)
+      return $ beEqual x0 x1
 
 prop_HSplitHCat' :: Test
 prop_HSplitHCat' =
@@ -249,14 +270,11 @@ prop_HSplitHCat' =
   where
     test :: forall f g n a
             . (View f, View g, Dim n, CMatrix a, MyEq a)
-            => Proxy n -> Proxy f -> Proxy g -> Proxy a -> Property
-    test _ _ _ _ = beEqual x0 x1
-      where
-        x0 :: Vec n (M f g a)
-        x0 = fill countUp
-
-        x1 :: Vec n (M f g a)
-        x1 = hsplit' (hcat' x0)
+            => Proxy n -> Proxy f -> Proxy g -> Proxy a -> Gen Property
+    test _ _ _ _ = do
+      x0 <- arbitrary :: Gen (Vec n (M f g a))
+      let x1 = hsplit' (hcat' x0) :: Vec n (M f g a)
+      return $ beEqual x0 x1
 
 prop_testSplitJ :: Test
 prop_testSplitJ  =
@@ -265,19 +283,13 @@ prop_testSplitJ  =
   where
     test :: forall f a
             . (Vectorize f, CMatrix a, Viewable a, MyEq a)
-            => Proxy f -> Proxy a -> Property
-    test _ _ = beEqual xj0 xj2
-      where
-        UnsafeM xm0 = countUp :: M (JV f) (JV Id) a
-
-        xj0 :: J (JV f) a
-        xj0 = mkJ xm0
-
-        xj1 :: JV f a
-        xj1 = split xj0
-
-        xj2 :: J (JV f) a
-        xj2 = cat xj1
+            => Proxy f -> Proxy a -> Gen Property
+    test _ _ = do
+      UnsafeM xm0 <- arbitrary :: Gen (M (JV f) (JV Id) a)
+      let xj0 = mkJ xm0 :: J (JV f) a
+          xj1 = split xj0  :: JV f a
+          xj2 = cat xj1 :: J (JV f) a
+      return $ beEqual xj0 xj2
 
 prop_toFromHMat :: Test
 prop_toFromHMat =
@@ -286,14 +298,12 @@ prop_toFromHMat =
   where
     test :: forall f g
             . (View f, View g)
-            => Proxy f -> Proxy g -> Property
-    test _ _ = beEqual m0 m2
-      where
-        m0 = countUp :: M f g DMatrix
-
-        m1 = toHMat m0 :: Mat.Matrix Double
-
-        m2 = fromHMat m1 :: M f g DMatrix
+            => Proxy f -> Proxy g -> Gen Property
+    test _ _ = do
+      m0 <- arbitrary :: Gen (M f g DMatrix)
+      let m1 = toHMat m0 :: Mat.Matrix Double
+          m2 = fromHMat m1 :: M f g DMatrix
+      return $ beEqual m0 m2
 
 prop_fromToHMat :: Test
 prop_fromToHMat =
@@ -302,17 +312,13 @@ prop_fromToHMat =
   where
     test :: forall f g
             . (View f, View g)
-            => Proxy f -> Proxy g -> Property
-    test _ _ = beEqual m1 m3
-      where
-        m0 = countUp :: M f g DMatrix
-
-        m1 = toHMat m0 :: Mat.Matrix Double
-
-        m2 = fromHMat m1 :: M f g DMatrix
-
-        m3 = toHMat m2 :: Mat.Matrix Double
-
+            => Proxy f -> Proxy g -> Gen Property
+    test _ _ = do
+      m0 <- arbitrary :: Gen (M f g DMatrix)
+      let m1 = toHMat m0 :: Mat.Matrix Double
+          m2 = fromHMat m1 :: M f g DMatrix
+          m3 = toHMat m2 :: Mat.Matrix Double
+      return $ beEqual m1 m3
 
 viewTests :: Test
 viewTests =
