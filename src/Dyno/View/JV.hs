@@ -21,7 +21,7 @@ import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
 
-import Dyno.View.Internal.View ( mkJ, unJ )
+import Dyno.View.Unsafe.View ( mkJ, unJ )
 
 import Dyno.View.View ( View(..), J )
 import Dyno.View.Viewable ( Viewable(..) )

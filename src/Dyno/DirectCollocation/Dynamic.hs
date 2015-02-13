@@ -26,7 +26,7 @@ import Data.Serialize ( Serialize(..) )
 import GHC.Generics ( Generic )
 import Linear.V
 
-import Dyno.View.Internal.View ( unJ, unJ' )
+import Dyno.View.Unsafe.View ( unJ, unJ' )
 
 import Dyno.Server.Accessors ( AccessorTree(..), Lookup(..), accessors )
 import Dyno.Vectorize ( Vectorize, Id(..) )

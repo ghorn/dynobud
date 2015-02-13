@@ -18,7 +18,7 @@ import Casadi.SX ( SX, ssym )
 import qualified Casadi.CMatrix as CM
 import Casadi.Overloading ( Fmod, ArcTan2, SymOrd )
 
-import Dyno.View.Internal.View ( mkJ, unJ )
+import Dyno.View.Unsafe.View ( mkJ, unJ )
 
 import Dyno.View.JV ( JV, splitJV', catJV' )
 import Dyno.View.View ( J )

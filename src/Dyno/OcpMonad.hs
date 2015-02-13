@@ -47,7 +47,7 @@ import Casadi.Function ( callSX )
 import Casadi.SharedObject ( soInit )
 import Casadi.CMatrix as CM
 
-import Dyno.View.Internal.View ( mkJ )
+import Dyno.View.Unsafe.View ( mkJ )
 
 import Dyno.SXElement ( SXElement, sxElementSym, sxElementToSX, sxToSXElement, sxSplitJV )
 import Dyno.Ocp ( OcpPhase(..) )

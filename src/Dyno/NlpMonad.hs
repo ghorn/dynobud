@@ -37,7 +37,7 @@ import Casadi.SXFunction
 import Casadi.Function
 import Casadi.CMatrix ( veccat )
 
-import Dyno.View.Internal.View ( mkJ, unJ )
+import Dyno.View.Unsafe.View ( mkJ, unJ )
 
 import Dyno.SXElement ( SXElement, sxElementSym, sxElementToSX )
 import Dyno.Vectorize ( Id, fill )

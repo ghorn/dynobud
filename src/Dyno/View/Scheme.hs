@@ -25,7 +25,7 @@ import GHC.Generics hiding ( S )
 import Casadi.CMatrix ( CMatrix )
 import qualified Casadi.CMatrix as CM
 
-import Dyno.View.Internal.View ( unsafeUnJ, mkJ )
+import Dyno.View.Unsafe.View ( unsafeUnJ, mkJ )
 import Dyno.View.View ( View(..), J )
 import Dyno.View.Viewable ( Viewable )
 import Dyno.View.M ( M(..) )

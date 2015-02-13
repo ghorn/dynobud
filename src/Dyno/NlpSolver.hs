@@ -78,7 +78,7 @@ import Casadi.SharedObject ( soInit )
 import Casadi.CMatrix ( CMatrix )
 import qualified Casadi.CMatrix as CM
 
-import Dyno.View.Internal.View ( unJ, mkJ )
+import Dyno.View.Unsafe.View ( unJ, mkJ )
 
 import Dyno.SXElement ( SXElement, sxSplitJV, sxCatJV )
 import Dyno.Vectorize ( Vectorize(..), Id(..) )

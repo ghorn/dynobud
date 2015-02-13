@@ -12,7 +12,7 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE InstanceSigs #-}
 
-module Dyno.View.Internal.View
+module Dyno.View.Unsafe.View
        ( View(..), J(..)
        , mkJ, mkJ', unJ, unJ'
        , JNone(..), JTuple(..), JTriple(..)

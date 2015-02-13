@@ -12,7 +12,7 @@ import qualified Data.Vector as V
 
 import Casadi.CMatrix ( CMatrix, fromDVector )
 
-import Dyno.View.Internal.View ( unJ, mkJ )
+import Dyno.View.Unsafe.View ( unJ, mkJ )
 
 import Dyno.Vectorize ( Id )
 import Dyno.View.View ( View, J )

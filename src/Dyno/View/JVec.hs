@@ -18,7 +18,7 @@ import Data.Vector ( Vector )
 import qualified Data.Vector as V
 import Data.Serialize ( Serialize(..) )
 
-import Dyno.View.Internal.View ( mkJ, unJ )
+import Dyno.View.Unsafe.View ( mkJ, unJ )
 
 import Dyno.TypeVecs ( Vec(..), unVec, mkVec, mkVec', reifyVector )
 import Dyno.View.Viewable ( Viewable(..) )

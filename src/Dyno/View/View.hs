@@ -11,4 +11,4 @@ module Dyno.View.View
        , fromDMatrix
        ) where
 
-import Dyno.View.Internal.View
+import Dyno.View.Unsafe.View

@@ -46,7 +46,7 @@ import Casadi.DMatrix ( DMatrix, ddata )
 import Casadi.CMatrix ( CMatrix )
 import qualified Casadi.CMatrix as CM
 
-import Dyno.View.Internal.View ( mkJ, unJ )
+import Dyno.View.Unsafe.View ( mkJ, unJ )
 
 import Dyno.Vectorize ( Vectorize(..), Id, fill )
 import Dyno.View.JV ( JV )

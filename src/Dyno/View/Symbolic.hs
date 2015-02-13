@@ -20,7 +20,7 @@ import Casadi.Option ( setOption )
 import Casadi.MX ( MX, symV )
 import Casadi.IOSchemes
 
-import Dyno.View.Internal.View ( mkJ )
+import Dyno.View.Unsafe.View ( mkJ )
 
 import Dyno.View.View ( View(..), J )
 import Dyno.View.Viewable ( Viewable(..) )
