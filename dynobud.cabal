@@ -21,7 +21,6 @@ library
   exposed-modules:     Dyno.LagrangePolynomials
                        Dyno.TypeVecs
                        Dyno.MultipleShooting
-                       Dyno.Dae
                        Dyno.Models.Aircraft
                        Dyno.Models.AeroCoeffs
                        Dyno.Models.Betty
