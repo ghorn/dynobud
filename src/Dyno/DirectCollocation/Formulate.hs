@@ -31,10 +31,10 @@ import Linear.V
 import Casadi.DMatrix ( DMatrix )
 import Casadi.MX ( MX )
 
-import Dyno.Cov
 import Dyno.SXElement ( sxCatJV, sxSplitJV )
 import Dyno.View.View ( View(..), J, jfill, JTuple(..), JNone(..), v2d, d2v )
 import qualified Dyno.View.M as M
+import Dyno.View.Cov ( Cov )
 import Dyno.View.JV ( JV, splitJV, catJV, catJV' )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.Fun

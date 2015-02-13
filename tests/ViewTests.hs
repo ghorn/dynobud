@@ -38,7 +38,7 @@ import Dyno.TypeVecs ( Vec, Dim )
 import Dyno.Vectorize
 import Dyno.View
 import Dyno.View.M
-import Dyno.Cov
+import Dyno.View.Cov ( Cov )
 
 import Utils
 import VectorizeTests ( Vectorizes(..), Dims(..) )

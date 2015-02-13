@@ -24,9 +24,9 @@ import Linear.V ( Dim(..) )
 import Data.Vector ( Vector )
 
 import Dyno.View ( View(..), J, JVec(..), jfill, jreplicate )
+import Dyno.View.Cov ( Cov )
 import Dyno.View.JV ( JV, splitJV, catJV )
 import Dyno.Vectorize ( Vectorize(..), Id )
-import Dyno.Cov ( Cov )
 
 
 -- design variables

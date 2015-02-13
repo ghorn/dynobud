@@ -2,7 +2,7 @@
 {-# Language ScopedTypeVariables #-}
 {-# Language KindSignatures #-}
 
-module Dyno.Cov
+module Dyno.View.Cov
        ( Cov(..)
        , toMat
        , fromMat

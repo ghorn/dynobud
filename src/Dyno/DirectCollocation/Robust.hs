@@ -26,10 +26,10 @@ import Casadi.DMatrix ( DMatrix )
 import qualified Dyno.View.Unsafe.M as M ( mkM, blockSplit )
 
 import Dyno.SXElement ( SXElement, sxSplitJV, sxCatJV )
-import Dyno.Cov
 import Dyno.View.View ( View(..), J, JNone(..), JTuple(..), fromDMatrix )
 import Dyno.View.JV ( JV(..), catJV', splitJV' )
 import Dyno.View.HList ( (:*:)(..) )
+import Dyno.View.Cov ( Cov, toMat, fromMat )
 import Dyno.View.Fun
 import Dyno.View.Viewable ( Viewable )
 import qualified Dyno.View.M as M
