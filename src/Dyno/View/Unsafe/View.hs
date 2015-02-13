@@ -6,44 +6,36 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE InstanceSigs #-}
 
 module Dyno.View.Unsafe.View
        ( View(..), J(..)
        , mkJ, mkJ', unJ, unJ'
-       , JNone(..), JTuple(..), JTriple(..)
-       , jfill
-       , v2d, d2v, fromDMatrix
-       , fmapJ, unzipJ
        ) where
 
 import GHC.Generics hiding ( S )
 
-import Data.Foldable ( Foldable )
 import qualified Data.Foldable as F
 import qualified Data.Sequence as Seq
-import Data.Traversable ( Traversable )
 import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
 import Data.Serialize ( Serialize(..) )
 
-import qualified Casadi.DMatrix as DMatrix
 import qualified Casadi.CMatrix as CM
 
 import Dyno.View.Viewable ( Viewable(..) )
-import Dyno.Vectorize ( Vectorize(..) )
-
-data JTuple f g a = JTuple (J f a) (J g a) deriving ( Generic, Show )
-instance (View f, View g) => View (JTuple f g)
-data JTriple f g h a = JTriple (J f a) (J g a) (J h a) deriving ( Generic, Show )
-instance (View f, View g, View h) => View (JTriple f g h)
 
 newtype J (f :: * -> *) (a :: *) = UnsafeJ { unsafeUnJ :: a } deriving (Eq, Functor, Generic)
+
+instance (Serialize a, View f) => Serialize (J f (Vector a)) where
+  put = put . V.toList . unJ
+  get = fmap (mkJ . V.fromList) get
+
+instance Show a => Show (J f a) where
+  showsPrec p (UnsafeJ x) = showsPrec p x
 
 instance (View f, Viewable a, CM.CMatrix a) => Num (J f a) where
   (UnsafeJ x) + (UnsafeJ y) = mkJ (x + y)
@@ -114,40 +106,6 @@ unJ' msg (UnsafeJ x)
   where
     nx = size (Proxy :: Proxy f)
     nx' = vsize1 x
-
-instance (Serialize a, View f) => Serialize (J f (Vector a)) where
-  put = put . V.toList . unJ
-  get = fmap (mkJ . V.fromList) get
-
-instance Show a => Show (J f a) where
-  showsPrec p (UnsafeJ x) = showsPrec p x
-
-jfill :: forall a f . View f => a -> J f (Vector a)
-jfill x = mkJ (V.replicate n x)
-  where
-    n = size (Proxy :: Proxy f)
-
-fromDMatrix :: (CM.CMatrix a, Viewable a, View f) => J f DMatrix.DMatrix -> J f a
-fromDMatrix = mkJ . CM.fromDMatrix . unJ
-
-v2d :: View f => J f (V.Vector Double) -> J f DMatrix.DMatrix
-v2d = mkJ . CM.fromDVector . unJ
-
-d2v :: View f => J f DMatrix.DMatrix -> J f (V.Vector Double)
-d2v = mkJ . DMatrix.ddata . CM.dense . unJ
-
-fmapJ :: View f => (a -> b) -> J f (Vector a) -> J f (Vector b)
-fmapJ f = mkJ . V.map f . unJ
-
-unzipJ :: View f => J f (Vector (a,b)) -> (J f (Vector a), J f (Vector b))
-unzipJ v = (mkJ x, mkJ y)
-  where
-    (x,y) = V.unzip (unJ v)
-
--- | view into a None, for convenience
-data JNone a = JNone deriving ( Eq, Generic, Generic1, Show, Functor, Foldable, Traversable )
-instance Vectorize JNone where
-instance View JNone where
 
 -- | Type-save "views" into vectors, which can access subvectors
 --   without splitting then concatenating everything.
