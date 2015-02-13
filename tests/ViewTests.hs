@@ -119,18 +119,34 @@ compound :: Gen Views -> Gen Views
 compound genIt = do
   vc'@(Vectorizes _ mz pz) <- arbitrary
   let vc = mkJV vc'
-  vw0@(Views _ mv0 pv0) <- genIt
-  vw1@(Views _ mv1 pv1) <- genIt
-  vw2@(Views _ mv2 pv2) <- genIt
+  vw0@(Views {vwName = mv0, vwProxy = pv0}) <- genIt
+  vw1@(Views {vwName = mv1, vwProxy = pv1}) <- genIt
+  vw2@(Views {vwName = mv2, vwProxy = pv2}) <- genIt
   elements
-    [ Views [vc] ("JX0 (" ++ mz ++ ")") (reproxy (Proxy :: Proxy JX0) pz)
-    , Views [vc,vw0] ("JX1 (" ++ mz ++ ") (" ++ mv0 ++ ")") (reproxy2 (Proxy :: Proxy JX1) pz pv0)
-    , Views [vc, vw0, vw1] ("JX2 (" ++ mv0 ++ ") (" ++ mv1 ++ ") (" ++ mz ++ ")")
-      (reproxy3 (Proxy :: Proxy JX2) pv0 pv1 pz)
-    , Views [vw0] ("Cov (" ++ mv0 ++ ")") (reproxy (Proxy :: Proxy Cov) pv0)
-    , Views [vw0,vw1] ("JTuple (" ++ mv0 ++ ") (" ++ mv1 ++ ")") (reproxy2 (Proxy :: Proxy JTuple) pv0 pv1)
-    , Views [vw0,vw1,vw2] ("JTriple (" ++ mv0 ++ ") (" ++ mv1 ++ ") (" ++ mv2 ++ ")")
-      (reproxy3 (Proxy :: Proxy JTriple) pv0 pv1 pv2)
+    [ Views { vwShrinks = [vc]
+            , vwName = "JX0 (" ++ mz ++ ")"
+            , vwProxy = reproxy (Proxy :: Proxy JX0) pz
+            }
+    , Views { vwShrinks = [vc,vw0]
+            , vwName = "JX1 (" ++ mz ++ ") (" ++ mv0 ++ ")"
+            , vwProxy = reproxy2 (Proxy :: Proxy JX1) pz pv0
+            }
+    , Views { vwShrinks = [vc, vw0, vw1]
+            , vwName = "JX2 (" ++ mv0 ++ ") (" ++ mv1 ++ ") (" ++ mz ++ ")"
+            , vwProxy = reproxy3 (Proxy :: Proxy JX2) pv0 pv1 pz
+            }
+    , Views { vwShrinks = [vw0]
+            , vwName = "Cov (" ++ mv0 ++ ")"
+            , vwProxy = reproxy (Proxy :: Proxy Cov) pv0
+            }
+    , Views { vwShrinks = [vw0,vw1]
+            , vwName = "JTuple (" ++ mv0 ++ ") (" ++ mv1 ++ ")"
+            , vwProxy = reproxy2 (Proxy :: Proxy JTuple) pv0 pv1
+            }
+    , Views { vwShrinks = [vw0,vw1,vw2]
+            , vwName = "JTriple (" ++ mv0 ++ ") (" ++ mv1 ++ ") (" ++ mv2 ++ ")"
+            , vwProxy = reproxy3 (Proxy :: Proxy JTriple) pv0 pv1 pv2
+            }
     ]
 
 viewSize :: Views -> Int
@@ -140,7 +156,10 @@ mkJV :: Vectorizes -> Views
 mkJV = mkJV' True
   where
     mkJV' :: Bool -> Vectorizes -> Views
-    mkJV' sh v@(Vectorizes _ m p) = Views shrinks ("JV (" ++ m ++ ")") (reproxyJV p)
+    mkJV' sh v@(Vectorizes _ m p) = Views { vwShrinks = shrinks
+                                          , vwName = "JV (" ++ m ++ ")"
+                                          , vwProxy = reproxyJV p
+                                          }
       where
         shrinks :: [Views]
         shrinks = if sh then map (mkJV' False) (shrink v) else []
@@ -152,7 +171,7 @@ primitives :: Gen Views
 primitives = do
   v <- arbitrary
   elements
-    [ Views [] "JNone" (Proxy :: Proxy JNone)
+    [ Views {vwShrinks = [], vwName = "JNone", vwProxy = Proxy :: Proxy JNone}
     , mkJV v
     ]
 
@@ -175,7 +194,7 @@ beEqual x y = counterexample (sx ++ " =/= " ++ sy) (myEq x y)
 prop_VSplitVCat :: Test
 prop_VSplitVCat =
   testProperty "vcat . vsplit" $
-  \(Vectorizes _ _ p1) (Views _ _ p2) (CMatrices {cmProxy = pm}) -> test p1 p2 pm
+  \(Vectorizes _ _ p1) (Views {vwProxy = p2}) (CMatrices {cmProxy = pm}) -> test p1 p2 pm
   where
     test :: forall f g a
             . (Vectorize f, View g, CMatrix a, MyEq a)
@@ -191,7 +210,7 @@ prop_VSplitVCat =
 prop_HSplitHCat :: Test
 prop_HSplitHCat  =
   testProperty "hcat . hsplit" $
-  \(Views _ _ p1) (Vectorizes _ _ p2) (CMatrices {cmProxy = pm}) -> test p1 p2 pm
+  \(Views {vwProxy = p1}) (Vectorizes _ _ p2) (CMatrices {cmProxy = pm}) -> test p1 p2 pm
   where
     test :: forall f g a
             . (View f, Vectorize g, CMatrix a, MyEq a)
@@ -207,7 +226,8 @@ prop_HSplitHCat  =
 prop_VSplitVCat' :: Test
 prop_VSplitVCat'  =
   testProperty "vsplit' . vcat'" $
-  \(Dims _ pd) (Views _ _ p1) (Views _ _ p2) (CMatrices {cmProxy = pm}) -> test pd p1 p2 pm
+  \(Dims _ pd) (Views {vwProxy = p1}) (Views {vwProxy = p2}) (CMatrices {cmProxy = pm}) ->
+   test pd p1 p2 pm
   where
     test :: forall f g n a
             . (View f, View g, Dim n, CMatrix a, MyEq a)
@@ -224,7 +244,8 @@ prop_VSplitVCat'  =
 prop_HSplitHCat' :: Test
 prop_HSplitHCat' =
   testProperty "hsplit' . hcat'" $
-  \(Dims _ pd) (Views _ _ p1) (Views _ _ p2) (CMatrices {cmProxy = pm}) -> test pd p1 p2 pm
+  \(Dims _ pd) (Views {vwProxy = p1}) (Views {vwProxy = p2}) (CMatrices {cmProxy = pm}) ->
+   test pd p1 p2 pm
   where
     test :: forall f g n a
             . (View f, View g, Dim n, CMatrix a, MyEq a)
@@ -261,7 +282,7 @@ prop_testSplitJ  =
 prop_toFromHMat :: Test
 prop_toFromHMat =
   testProperty "fromHMat . toHMat" $
-  \(Views _ _ p1) (Views _ _ p2) -> test p1 p2
+  \(Views {vwProxy = p1}) (Views {vwProxy = p2}) -> test p1 p2
   where
     test :: forall f g
             . (View f, View g)
@@ -277,7 +298,7 @@ prop_toFromHMat =
 prop_fromToHMat :: Test
 prop_fromToHMat =
   testProperty "toHMat . fromHMat" $
-  \(Views _ _ p1) (Views _ _ p2) -> test p1 p2
+  \(Views {vwProxy = p1}) (Views {vwProxy = p2}) -> test p1 p2
   where
     test :: forall f g
             . (View f, View g)
