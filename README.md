@@ -3,10 +3,9 @@
 This library has a few distinct features, which may later be broken into separate packages:
 * high-level, strongly-typed interface to CasADi
 * NLP modeling/solving (examples/Basic.hs, examples/BasicJ.hs)
-* monadic NLP modeling DSL (examples/StaticExample.hs)
 * OCP modeling/solving (examles/Glider.hs)
-* monadic OCP modeling DSL (examples/OcpM.hs, examples/Rocket.hs)
-* live plotter for OCP solving (examples/Plotter.hs)
+* proof of concept monadic NLP/OCP modeling DSL (examples/{NlpDsl.hs,OcpDslRocket.hs})
+* live plotter for OCP solving (examples/Dynoplot.hs)
 
 This package is built on top of CasADi (www.casadi.org).
 You will have to install the CasADi C++ libraries and the casadi-bindings haskell package.
