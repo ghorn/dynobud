@@ -23,6 +23,8 @@ import Casadi.MX ( MX )
 import Casadi.SX ( SX )
 import Casadi.DMatrix ( DMatrix )
 
+import qualified Dyno.View.Unsafe.M as M ( mkM )
+
 import Dyno.SXElement ( SXElement, sxSplitJV, sxCatJV )
 import Dyno.Cov
 import Dyno.View.View ( View(..), J, JNone(..), JTuple(..), fromDMatrix )

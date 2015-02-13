@@ -28,6 +28,8 @@ import Casadi.SharedObject ( soInit )
 import Casadi.CMatrix ( CMatrix )
 
 import Dyno.View.Unsafe.View ( J(UnsafeJ), mkJ )
+import Dyno.View.Unsafe.M ( M(UnsafeM) )
+
 import Dyno.TypeVecs ( Vec, Dim )
 import Dyno.Vectorize
 import Dyno.View

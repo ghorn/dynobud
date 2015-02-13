@@ -26,9 +26,10 @@ import Casadi.CMatrix ( CMatrix )
 import qualified Casadi.CMatrix as CM
 
 import Dyno.View.Unsafe.View ( unsafeUnJ, mkJ )
+import Dyno.View.Unsafe.M ( M(UnsafeM), unM )
+
 import Dyno.View.View ( View(..), J )
 import Dyno.View.Viewable ( Viewable )
-import Dyno.View.M ( M(..) )
 --import Dyno.Nats
 --import Dyno.View.JVec ( JVec )
 

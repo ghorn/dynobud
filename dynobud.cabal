@@ -49,6 +49,7 @@ library
                        Dyno.View.Scheme
                        Dyno.View.Symbolic
                        Dyno.View.Unsafe.View
+                       Dyno.View.Unsafe.M
                        Dyno.View.View
                        Dyno.View.Viewable
                        Dyno.Vectorize
