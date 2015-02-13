@@ -16,7 +16,7 @@ import Text.Printf
 
 import Vis
 
-import SofaShared
+import Sofa.Common
 
 --type M22 = ((Double,Double),(Double,Double))
 

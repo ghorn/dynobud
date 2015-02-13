@@ -118,13 +118,14 @@ executable multiple_shooting
   ghc-options:         -O2
 
 
-executable plotSofa
+executable sofa-viz-2000
   if flag(examples)
     Buildable: True
   else
     Buildable: False
   hs-source-dirs:      examples
-  main-is:             PlotSofa.hs
+  main-is:             SofaVisualizer.hs
+  other-modules:       Sofa.Common
   default-language:    Haskell2010
   build-depends:       dynobud,
                        base >=4.6 && < 5,
@@ -138,13 +139,14 @@ executable plotSofa
                        vector
   ghc-options:         -O2 -threaded
 
-executable sofaTime
+executable sofa-expand-o-matic
   if flag(examples)
     Buildable: True
   else
     Buildable: False
   hs-source-dirs:      examples
-  main-is:             Sofa.hs
+  main-is:             SofaExpando.hs
+  other-modules:       Sofa.Common
   default-language:    Haskell2010
   build-depends:       dynobud,
                        vector,

@@ -24,7 +24,7 @@ import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.Solvers
 
-import SofaShared
+import Sofa.Common
 
 type NPoints = 81
 type NSteps = 61

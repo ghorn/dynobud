@@ -3,8 +3,16 @@
 {-# Language DeriveGeneric #-}
 {-# Language PolyKinds #-}
 
-module SofaShared
-       where
+module Sofa.Common
+       ( SofaMessage(..)
+       , Point(..)
+       , url
+       , sofaChannel
+       , zipWithNext
+       , zipWithNext'
+       , cross
+       , norm2
+       ) where
 
 import GHC.Generics ( Generic, Generic1 )
 
