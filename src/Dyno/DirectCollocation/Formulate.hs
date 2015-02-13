@@ -4,6 +4,7 @@
 {-# Language ScopedTypeVariables #-}
 {-# Language TypeOperators #-}
 {-# Language FlexibleContexts #-}
+{-# Language PolyKinds #-}
 
 module Dyno.DirectCollocation.Formulate
        ( CovTraj(..)

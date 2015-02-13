@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language DeriveFunctor #-}
 {-# Language DeriveGeneric #-}
+{-# Language PolyKinds #-}
 
 module SofaShared
        where

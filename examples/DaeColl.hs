@@ -2,6 +2,8 @@
 {-# Language FlexibleInstances #-}
 {-# Language DeriveFunctor #-}
 {-# Language DeriveGeneric #-}
+{-# Language DataKinds #-}
+{-# Language PolyKinds #-}
 
 module Main where
 
@@ -12,7 +14,6 @@ import Data.Vector ( Vector )
 import Dyno.Vectorize
 import Dyno.View.View ( J, jfill )
 import Dyno.TypeVecs
-import Dyno.Nats
 import Dyno.Solvers
 --import Dyno.Sqp.Sqp
 --import Dyno.Sqp.LineSearch
@@ -69,7 +70,7 @@ pendDae (PendX x' y' vx' vy') (PendX x y vx vy) (PendZ tau) (PendU torque) (Pend
     fx =  torque*y
     fy = -torque*x + m*9.8
 
-pendOcp :: OcpPhase PendX PendZ PendU PendP PendR PendO (Vec D8) None
+pendOcp :: OcpPhase PendX PendZ PendU PendP PendR PendO (Vec 8) None
 pendOcp = OcpPhase { ocpMayer = mayer
                    , ocpLagrange = lagrange
                    , ocpDae = pendDae
@@ -106,7 +107,7 @@ xbnd = PendX { pX =  (Just (-10), Just 10)
 ubnd :: PendU Bounds
 ubnd = PendU (Just (-40), Just 40)
 
-bc :: Floating a => PendX a -> PendX a -> Vec D8 a
+bc :: Floating a => PendX a -> PendX a -> Vec 8 a
 bc (PendX x0 y0 vx0 vy0) (PendX xf yf vxf vyf) =
   mkVec'
   [ x0
@@ -119,8 +120,8 @@ bc (PendX x0 y0 vx0 vy0) (PendX xf yf vxf vyf) =
   , vyf
   ]
 
-type NCollStages = D80
-type CollDeg = D3
+type NCollStages = 80
+type CollDeg = 3
 
 guess :: J (CollTraj PendX PendZ PendU PendP NCollStages CollDeg) (Vector Double)
 guess = jfill 1

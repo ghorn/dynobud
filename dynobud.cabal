@@ -20,7 +20,6 @@ source-repository head
 library
   exposed-modules:     Dyno.LagrangePolynomials
                        Dyno.TypeVecs
-                       Dyno.Nats
                        Dyno.MultipleShooting
                        Dyno.Dae
                        Dyno.Models.Aircraft

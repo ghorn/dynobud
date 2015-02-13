@@ -3,6 +3,7 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE PolyKinds #-}
 
 module Dyno.View.JVec
        ( JVec(..)
@@ -26,7 +27,7 @@ import Dyno.View.View ( View(..), J )
 
 
 -- | vectors in View
-newtype JVec n f a = JVec { unJVec :: Vec n (J f a) } deriving ( Show, Eq )
+newtype JVec (n :: k) f a = JVec { unJVec :: Vec n (J f a) } deriving ( Show, Eq )
 instance (Dim n, View f) => View (JVec n f) where
   cat = mkJ . vveccat . fmap unJ . unVec . unJVec
   split = JVec . fmap mkJ . mkVec . flip vvertsplit ks . unJ

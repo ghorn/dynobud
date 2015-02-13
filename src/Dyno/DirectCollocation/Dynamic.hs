@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -Wall -fno-warn-orphans #-}
 {-# Language ScopedTypeVariables #-}
 {-# Language DeriveGeneric #-}
+{-# Language PolyKinds #-}
 
 module Dyno.DirectCollocation.Dynamic
        ( DynPlotPoints

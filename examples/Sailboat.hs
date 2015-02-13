@@ -7,6 +7,7 @@
 {-# Language FlexibleInstances #-}
 {-# Language DeriveFunctor #-}
 {-# Language DeriveGeneric #-}
+{-# Language DataKinds #-}
 
 module Main ( main ) where
 
@@ -17,7 +18,6 @@ import Data.Vector ( Vector )
 
 import Dyno.Vectorize
 import Dyno.View.View ( View(..), J )
-import Dyno.Nats
 import Dyno.Solvers
 import Dyno.NlpSolver
 import Dyno.Server.Accessors
@@ -245,8 +245,8 @@ initialGuess = makeGuess Legendre tf guessX (const SbZ) guessU SbP
       where
         w = pi/tf
 
-type NCollStages = D200
-type CollDeg = D2
+type NCollStages = 200
+type CollDeg = 2
 
 solver :: NlpSolverStuff
 solver = ipoptSolver

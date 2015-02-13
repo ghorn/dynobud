@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language ScopedTypeVariables #-}
 {-# Language DeriveGeneric #-}
+{-# Language PolyKinds #-}
 
 module Dyno.MultipleShooting
        ( MsOcp(..)

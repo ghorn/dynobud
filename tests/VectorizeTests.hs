@@ -3,6 +3,8 @@
 {-# Language GADTs #-}
 {-# Language DeriveFunctor #-}
 {-# Language DeriveGeneric #-}
+{-# Language DataKinds #-}
+{-# Language PolyKinds #-}
 
 module VectorizeTests
        ( Vectorizes(..)
@@ -22,7 +24,6 @@ import Test.Framework ( Test, testGroup )
 import Test.Framework.Providers.QuickCheck2 ( testProperty )
 
 import Dyno.Vectorize
-import Dyno.Nats
 import qualified Dyno.TypeVecs as TV
 
 import Utils
@@ -45,7 +46,7 @@ data Vectorizes where
 data Dims where
   Dims :: Dim n =>
            { dShrinks :: [Dims]
-           , dProxy :: Proxy n
+           , dProxy :: Proxy (n :: k)
            } -> Dims
 instance Show Dims where
   show (Dims _ p) = "D" ++ show (reflectDim p)
@@ -53,13 +54,13 @@ instance Show Dims where
 instance Arbitrary Dims where
   arbitrary = elements [ d0, d1, d2, d3, d4, d10, d100 ]
     where
-      d0   = Dims []                   (Proxy :: Proxy D0)
-      d1   = Dims [d0]                 (Proxy :: Proxy D1)
-      d2   = Dims [d0,d1]              (Proxy :: Proxy D2)
-      d3   = Dims [d0,d1,d2]           (Proxy :: Proxy D3)
-      d4   = Dims [d0,d1,d2,d3]        (Proxy :: Proxy D4)
-      d10  = Dims [d0,d1,d2,d3,d4]     (Proxy :: Proxy D10)
-      d100 = Dims [d0,d1,d2,d3,d4,d10] (Proxy :: Proxy D100)
+      d0   = Dims []                   (Proxy :: Proxy 0)
+      d1   = Dims [d0]                 (Proxy :: Proxy 1)
+      d2   = Dims [d0,d1]              (Proxy :: Proxy 2)
+      d3   = Dims [d0,d1,d2]           (Proxy :: Proxy 3)
+      d4   = Dims [d0,d1,d2,d3]        (Proxy :: Proxy 4)
+      d10  = Dims [d0,d1,d2,d3,d4]     (Proxy :: Proxy 10)
+      d100 = Dims [d0,d1,d2,d3,d4,d10] (Proxy :: Proxy 100)
   shrink = dShrinks
 
 instance Show Vectorizes where

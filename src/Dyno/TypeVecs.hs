@@ -7,6 +7,7 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE PolyKinds #-} -- so that "Vec (n :: Nat) a" works
 
 module Dyno.TypeVecs
        ( Vec
@@ -65,7 +66,7 @@ import Data.Distributive ( Distributive(..) )
 import Dyno.Vectorize
 
 -- length-indexed vectors using phantom types
-newtype Vec n a = MkVec {unSeq :: S.Seq a}
+newtype Vec (n :: k) a = MkVec {unSeq :: S.Seq a}
                 deriving (Eq, Ord, Functor, Traversable, Foldable, Generic, Generic1)
 instance Serialize a => Serialize (Vec n a)
 

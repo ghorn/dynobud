@@ -3,6 +3,7 @@
 {-# Language TypeOperators #-}
 {-# Language DeriveGeneric #-}
 {-# Language FlexibleContexts #-}
+{-# LANGUAGE PolyKinds #-}
 
 module Dyno.DirectCollocation.Robust
        ( CovarianceSensitivities(..)

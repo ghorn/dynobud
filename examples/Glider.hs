@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
+{-# Language DataKinds #-}
 
 module Main ( main ) where
 
@@ -21,13 +22,12 @@ import Dyno.DirectCollocation.Dynamic ( toMeta )
 import Dyno.Models.Aircraft
 import Dyno.Models.AeroCoeffs
 import Dyno.Models.Betty
-import Dyno.Nats
 
 import GliderShared
 import ServerSender ( withCallback )
 
-type NCollStages = D100
-type CollDeg = D2
+type NCollStages = 100
+type CollDeg = 2
 
 mayer :: Floating a => a -> AcX a -> AcX a -> a
 mayer _ _ _ = 0

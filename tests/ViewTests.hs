@@ -3,6 +3,7 @@
 {-# Language GADTs #-}
 {-# Language DeriveGeneric #-}
 {-# Language FlexibleInstances #-}
+{-# Language PolyKinds #-}
 
 module ViewTests
        ( Views(..)

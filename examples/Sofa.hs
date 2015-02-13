@@ -4,6 +4,7 @@
 {-# Language DeriveFunctor #-}
 {-# Language DeriveGeneric #-}
 {-# Language ScopedTypeVariables #-}
+{-# Language DataKinds #-}
 
 module Main where
 
@@ -22,12 +23,11 @@ import Dyno.NlpSolver
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.Solvers
-import Dyno.Nats
 
 import SofaShared
 
-type NPoints = D81
-type NSteps = D61
+type NPoints = 81
+type NSteps = 61
 
 data X a =
   X

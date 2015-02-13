@@ -2,6 +2,7 @@
 {-# Language ScopedTypeVariables #-}
 {-# Language FlexibleContexts #-}
 {-# Language DeriveGeneric #-}
+{-# Language PolyKinds #-}
 
 module Dyno.DirectCollocation.Quadratures
        ( QuadratureRoots(..)

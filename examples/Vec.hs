@@ -1,9 +1,12 @@
--- | How to use type-indexed Vectors
+-- | How to use type-indexed Vectors.
+-- Don't forget to import DataKinds/PolyKinds !
 
 {-# OPTIONS_GHC -Wall #-}
 {-# Language ScopedTypeVariables #-}
 {-# Language DeriveFunctor #-}
 {-# Language DeriveGeneric #-}
+{-# Language DataKinds #-}
+{-# Language PolyKinds #-}
 
 module Main where
 
@@ -14,7 +17,6 @@ import qualified Data.Vector as V
 
 import Dyno.Vectorize
 import Dyno.TypeVecs
-import Dyno.Nats
 
 data Params a = Params a a deriving (Functor, Generic1, Show)
 data X n a = X (Vec n (Params a)) a deriving (Functor, Generic1, Show)
@@ -37,7 +39,7 @@ unknownLength :: (Num a, Show a) => V.Vector (Params a)
 unknownLength = V.fromList [Params 1 2, Params 3 4, Params 5 6, Params 7 8]
 
 -- you do know the length at compile time
-knownLength :: (Num a, Show a) => Vec D4 (Params a)
+knownLength :: (Num a, Show a) => Vec 4 (Params a)
 knownLength = mkVec unknownLength
 
 -- do something on type-safe vec data
@@ -51,6 +53,6 @@ doSomethingAtRuntime vec = reifyVector vec doSomething
 main :: IO ()
 main = do
   print (unknownLength :: V.Vector (Params Double))
-  print (knownLength :: Vec D4 (Params Double))
+  print (knownLength :: Vec 4 (Params Double))
   print (doSomething knownLength :: Double)
   print (doSomethingAtRuntime unknownLength :: Double)

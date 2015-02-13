@@ -2,6 +2,8 @@
 {-# Language ScopedTypeVariables #-}
 {-# Language DeriveGeneric #-}
 {-# Language DeriveFunctor #-}
+{-# Language DataKinds #-}
+{-# Language PolyKinds #-}
 
 module Main
        ( main
@@ -30,7 +32,6 @@ import Dyno.Nlp
 import Dyno.NlpSolver
 import Dyno.Solvers
 import Dyno.Vectorize
-import Dyno.Nats
 import Dyno.MultipleShooting
 
 -- state/control/parameter definitions
@@ -76,7 +77,7 @@ ode (X x v) (U u) _p _t = X v (-x -0.1*v + u)
 -- run the thing
 main :: IO ()
 main = do
-  myNlp <- makeMsNlp ocp :: IO (Nlp' (MsDvs X U P D40) JNone (MsConstraints X D40) MX)
+  myNlp <- makeMsNlp ocp :: IO (Nlp' (MsDvs X U P 40) JNone (MsConstraints X 40) MX)
   (msg,opt') <- solveNlp' ipoptSolver myNlp Nothing
   opt <- case msg of
           Left err -> error err
