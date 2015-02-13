@@ -23,7 +23,7 @@ import Casadi.MX ( MX )
 import Casadi.SX ( SX )
 import Casadi.DMatrix ( DMatrix )
 
-import qualified Dyno.View.Unsafe.M as M ( mkM )
+import qualified Dyno.View.Unsafe.M as M ( mkM, blockSplit )
 
 import Dyno.SXElement ( SXElement, sxSplitJV, sxCatJV )
 import Dyno.Cov
@@ -36,7 +36,7 @@ import qualified Dyno.View.M as M
 import Dyno.View.M ( M )
 import Dyno.View.JVec ( JVec(..) )
 import Dyno.View.FunJac
-import Dyno.View.Scheme ( Scheme, blockSplit )
+import Dyno.View.Scheme ( Scheme )
 import Dyno.Vectorize ( Vectorize(..), Id(..), vzipWith4 )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
@@ -350,7 +350,7 @@ sensitivityStageFunction dynStageConJac
     dg_dsw0 :: M sx sw MX
     dg_dsxz :: M sx (JVec deg (JTuple sx sz)) MX
     ((df_dsx0, df_dsw0, df_dsxz), (dg_dsx0, dg_dsw0, dg_dsxz)) =
-      case fmap F.toList (F.toList (blockSplit mat)) of
+      case fmap F.toList (F.toList (M.blockSplit mat)) of
       [[x00,x01,x02],[x10,x11,x12]] -> ((M.mkM x00, M.mkM x01, M.mkM x02),
                                         (M.mkM x10, M.mkM x11, M.mkM x12))
       _ -> error "stageFunction: got wrong number of elements in jacobian"

@@ -12,7 +12,6 @@
 module Dyno.View.Scheme
        ( Scheme(..)
        , FunctionIO(..)
-       , blockSplit
        ) where
 
 import Data.Proxy
@@ -41,13 +40,6 @@ import Dyno.View.Viewable ( Viewable )
 --
 --og :: V.Vector MX
 --og = toVector go
-
-blockSplit :: forall f g a . (View f, View g, CMatrix a) => M f g a -> Vector (Vector a)
-blockSplit (UnsafeM m) = fmap (flip CM.horzsplit hsizes) ms
-  where
-    vsizes = V.fromList $ 0 : (F.toList (sizes 0 (Proxy :: Proxy f)))
-    hsizes = V.fromList $ 0 : (F.toList (sizes 0 (Proxy :: Proxy g)))
-    ms = CM.vertsplit m vsizes
 
 class FunctionIO (f :: * -> *) where
   fromMat :: (CMatrix a, Viewable a) => a -> Either String (f a)

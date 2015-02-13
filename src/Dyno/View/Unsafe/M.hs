@@ -8,9 +8,13 @@ module Dyno.View.Unsafe.M
        ( M(..)
        , mkM
        , mkM'
+       , blockSplit
        ) where
 
 import Data.Proxy
+import qualified Data.Foldable as F
+import qualified Data.Vector as V
+import Data.Vector ( Vector )
 import GHC.Generics ( Generic )
 
 import Casadi.Overloading ( Fmod(..), ArcTan2(..), SymOrd(..) )
@@ -98,3 +102,11 @@ mkM' x
     nx' = CM.size1 x
     ny' = CM.size2 x
     zeros = mkM (CM.zeros (nx, ny))
+
+
+blockSplit :: forall f g a . (View f, View g, CMatrix a) => M f g a -> Vector (Vector a)
+blockSplit (UnsafeM m) = fmap (flip CM.horzsplit hsizes) ms
+  where
+    vsizes = V.fromList $ 0 : (F.toList (sizes 0 (Proxy :: Proxy f)))
+    hsizes = V.fromList $ 0 : (F.toList (sizes 0 (Proxy :: Proxy g)))
+    ms = CM.vertsplit m vsizes
