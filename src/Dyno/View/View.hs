@@ -15,7 +15,7 @@ module Dyno.View.View
        , fromDMatrix
        ) where
 
-import GHC.Generics hiding ( S )
+import GHC.Generics ( Generic, Generic1 )
 
 import Data.Foldable ( Foldable )
 import Data.Traversable ( Traversable )

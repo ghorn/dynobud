@@ -18,6 +18,7 @@ module Dyno.DirectCollocation.Formulate
        ) where
 
 import GHC.Generics ( Generic )
+
 import Data.Maybe ( fromMaybe )
 import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )

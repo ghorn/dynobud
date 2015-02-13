@@ -5,12 +5,12 @@
 
 module Dyno.Models.AeroCoeffs where
 
+import GHC.Generics ( Generic, Generic1 )
+
 import Data.Foldable ( Foldable )
-import GHC.Generics
 import Linear
 
 import Dyno.Server.Accessors ( Lookup(..) )
-
 import Dyno.Vectorize
 
 atan2' :: Floating a => a -> a -> a

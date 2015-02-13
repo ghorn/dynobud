@@ -15,7 +15,7 @@ module Dyno.View.Unsafe.View
        , mkJ, mkJ', unJ, unJ'
        ) where
 
-import GHC.Generics hiding ( S )
+import GHC.Generics
 
 import qualified Data.Foldable as F
 import qualified Data.Sequence as Seq

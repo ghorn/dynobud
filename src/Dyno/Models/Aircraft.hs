@@ -5,7 +5,8 @@
 
 module Dyno.Models.Aircraft ( AcX(..), AcU(..), aircraftDae ) where
 
-import GHC.Generics
+import GHC.Generics ( Generic, Generic1 )
+
 import Linear
 
 import Dyno.Vectorize

@@ -23,8 +23,9 @@ module Dyno.Vectorize
        , GVectorize(..)
        ) where
 
-import Control.Applicative ( Applicative(..) )
 import GHC.Generics
+
+import Control.Applicative ( Applicative(..) )
 import qualified Data.Vector as V
 import Data.Foldable ( Foldable )
 import Data.Traversable ( Traversable )

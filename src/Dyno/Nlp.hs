@@ -10,6 +10,7 @@ module Dyno.Nlp
        ) where
 
 import GHC.Generics ( Generic, Generic1 )
+
 import qualified Data.Vector as V
 import Data.Serialize ( Serialize(..) )
 

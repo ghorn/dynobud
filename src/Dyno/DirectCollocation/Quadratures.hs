@@ -13,6 +13,7 @@ module Dyno.DirectCollocation.Quadratures
        ) where
 
 import GHC.Generics ( Generic )
+
 import Data.Proxy ( Proxy(..) )
 import qualified Data.Vector as V
 import qualified Data.Foldable as F

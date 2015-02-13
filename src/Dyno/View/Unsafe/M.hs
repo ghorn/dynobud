@@ -11,11 +11,12 @@ module Dyno.View.Unsafe.M
        , blockSplit
        ) where
 
+import GHC.Generics ( Generic )
+
 import Data.Proxy
 import qualified Data.Foldable as F
 import qualified Data.Vector as V
 import Data.Vector ( Vector )
-import GHC.Generics ( Generic )
 
 import Casadi.Overloading ( Fmod(..), ArcTan2(..), SymOrd(..) )
 import Casadi.CMatrix ( CMatrix )

@@ -19,8 +19,9 @@ module Dyno.DirectCollocation.Types
        , getXzus
        ) where
 
-import qualified Data.Foldable as F
 import GHC.Generics ( Generic )
+
+import qualified Data.Foldable as F
 import Linear.V ( Dim(..) )
 import Data.Vector ( Vector )
 

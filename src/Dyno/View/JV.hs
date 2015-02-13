@@ -14,7 +14,7 @@ module Dyno.View.JV
        , catJV'
        ) where
 
-import GHC.Generics hiding ( S )
+import GHC.Generics ( Generic, Generic1 )
 
 import qualified Data.Sequence as Seq
 import Data.Proxy ( Proxy(..) )
@@ -29,7 +29,7 @@ import Dyno.Vectorize ( Vectorize(..), Id, vlength )
 import Dyno.Server.Accessors ( Lookup(..) )
 
 -- | views into Vectorizable things
-newtype JV f a = JV { unJV :: f a } deriving (Functor, Generic)
+newtype JV f a = JV { unJV :: f a } deriving (Functor, Generic, Generic1)
 
 instance Vectorize f => View (JV f) where
   cat :: forall a . Viewable a => JV f a -> J (JV f) a

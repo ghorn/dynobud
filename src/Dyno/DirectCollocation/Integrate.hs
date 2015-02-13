@@ -8,9 +8,10 @@ module Dyno.DirectCollocation.Integrate
        ( withIntegrator
        ) where
 
+import GHC.Generics ( Generic )
+
 import qualified Control.Concurrent as CC
 import Control.Monad ( void, forever )
-import GHC.Generics ( Generic )
 import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 import qualified Data.Foldable as F

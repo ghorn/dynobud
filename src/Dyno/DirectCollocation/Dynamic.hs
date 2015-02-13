@@ -16,6 +16,8 @@ module Dyno.DirectCollocation.Dynamic
        , NameTree(..)
        ) where
 
+import GHC.Generics ( Generic )
+
 import Data.Proxy ( Proxy(..) )
 import Data.List ( mapAccumL, unzip5 )
 import Data.Tree ( Tree(..) )
@@ -24,7 +26,6 @@ import qualified Data.Vector as V
 import qualified Data.Foldable as F
 import qualified Data.Tree as Tree
 import Data.Serialize ( Serialize(..) )
-import GHC.Generics ( Generic )
 import Linear.V
 
 import Dyno.View.Unsafe.View ( unJ, unJ' )

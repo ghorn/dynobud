@@ -14,12 +14,13 @@ module Dyno.View.Scheme
        , FunctionIO(..)
        ) where
 
+import GHC.Generics
+
 import Data.Proxy
 import qualified Data.Foldable as F
 import qualified Data.Sequence as Seq
 import qualified Data.Vector as V
 import Data.Vector ( Vector )
-import GHC.Generics hiding ( S )
 
 import Casadi.CMatrix ( CMatrix )
 import qualified Casadi.CMatrix as CM
