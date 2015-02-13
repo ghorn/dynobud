@@ -37,7 +37,6 @@ library
                        Dyno.DirectCollocation.Robust
                        Dyno.DirectCollocation.Types
                        Dyno.SXElement
-                       Dyno.View
                        Dyno.View.Cov
                        Dyno.View.CustomFunction
                        Dyno.View.Fun

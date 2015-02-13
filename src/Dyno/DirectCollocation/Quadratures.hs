@@ -20,7 +20,7 @@ import Linear.V
 
 import JacobiRoots ( shiftedLegendreRoots ) --, shiftedRadauRoots )
 
-import Dyno.View
+import Dyno.View.View ( View, J )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeXis )

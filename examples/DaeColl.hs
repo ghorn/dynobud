@@ -10,7 +10,7 @@ import GHC.Generics ( Generic, Generic1 )
 import Data.Vector ( Vector )
 
 import Dyno.Vectorize
-import Dyno.View
+import Dyno.View.View ( J, jfill )
 import Dyno.TypeVecs
 import Dyno.Nats
 import Dyno.Solvers

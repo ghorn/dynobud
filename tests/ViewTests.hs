@@ -35,8 +35,10 @@ import Dyno.View.Unsafe.View ( J(UnsafeJ), mkJ )
 import Dyno.View.Unsafe.M ( M(UnsafeM) )
 
 import Dyno.TypeVecs ( Vec, Dim )
-import Dyno.Vectorize
-import Dyno.View
+import Dyno.Vectorize ( Vectorize(..), Id, fill )
+import Dyno.View.View ( View(..), JNone, JTuple, JTriple )
+import Dyno.View.JV ( JV )
+import Dyno.View.Viewable ( Viewable )
 import Dyno.View.M
 import Dyno.View.Cov ( Cov )
 

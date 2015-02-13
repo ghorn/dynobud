@@ -12,10 +12,11 @@ import Text.Printf ( printf )
 
 import Casadi.MX ( MX )
 
-import Dyno.View
-import Dyno.Vectorize
-import Dyno.Nlp
-import Dyno.NlpSolver
+import Dyno.View.View ( J )
+import Dyno.View.JV ( JV, catJV, catJV', splitJV, splitJV' )
+import Dyno.Vectorize ( Vectorize, Id )
+import Dyno.Nlp ( Nlp'(..), Bounds )
+import Dyno.NlpSolver ( Opt(..), solveNlpHomotopy' )
 import Dyno.Solvers
 
 

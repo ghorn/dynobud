@@ -16,7 +16,8 @@ import Data.Vector ( Vector )
 import qualified Data.Vector as V
 
 import Casadi.MX ( MX )
-import Dyno.View
+import Dyno.View.View
+import Dyno.View.JV ( JV, catJV, catJV', splitJV' )
 import Dyno.Vectorize
 import Dyno.Nlp
 import Dyno.NlpSolver

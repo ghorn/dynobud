@@ -11,7 +11,7 @@ module Dyno.DirectCollocation
 import Data.Proxy
 import Data.Vector ( Vector )
 
-import Dyno.View ( J, jfill )
+import Dyno.View.View ( J, jfill )
 import Dyno.Vectorize ( Vectorize )
 import Dyno.Ocp ( OcpPhase )
 import Dyno.NlpSolver ( NlpSolverStuff, solveNlp' )

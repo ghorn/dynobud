@@ -16,7 +16,7 @@ import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 
 import Dyno.Vectorize
-import Dyno.View
+import Dyno.View.View ( View(..), J )
 import Dyno.Nats
 import Dyno.Solvers
 import Dyno.NlpSolver

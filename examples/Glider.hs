@@ -7,7 +7,7 @@ import Linear
 import Data.Vector ( Vector )
 
 import Dyno.Vectorize
-import Dyno.View
+import Dyno.View.View
 import Dyno.Solvers
 --import Dyno.Sqp.Sqp
 --import Dyno.Sqp.LineSearch
