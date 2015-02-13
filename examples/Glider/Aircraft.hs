@@ -3,7 +3,7 @@
 {-# Language DeriveFunctor #-}
 {-# Language DeriveGeneric #-}
 
-module Dyno.Models.Aircraft ( AcX(..), AcU(..), aircraftDae ) where
+module Glider.Aircraft ( AcX(..), AcU(..), aircraftDae ) where
 
 import GHC.Generics ( Generic, Generic1 )
 
@@ -11,7 +11,8 @@ import Linear
 
 import Dyno.Vectorize
 import Dyno.Server.Accessors ( Lookup(..) )
-import Dyno.Models.AeroCoeffs
+
+import Glider.AeroCoeffs
 
 data AcX a = AcX { ac_r_n2b_n :: V3 a
                  , ac_v_bn_b :: V3 a

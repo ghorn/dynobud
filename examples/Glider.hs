@@ -19,9 +19,9 @@ import Dyno.Ocp
 import Dyno.DirectCollocation
 import Dyno.DirectCollocation.Dynamic ( toMeta )
 
-import Dyno.Models.Aircraft
-import Dyno.Models.AeroCoeffs
-import Dyno.Models.Betty
+import Glider.Aircraft
+import Glider.AeroCoeffs
+import Glider.Betty
 
 import GliderShared
 import ServerSender ( withCallback )

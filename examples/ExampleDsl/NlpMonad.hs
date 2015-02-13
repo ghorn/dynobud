@@ -4,7 +4,7 @@
 {-# Language GeneralizedNewtypeDeriving #-}
 {-# Language RankNTypes #-}
 
-module Dyno.NlpMonad
+module ExampleDsl.NlpMonad
        ( NlpMonad
        , (===)
        , (<==)
@@ -46,10 +46,11 @@ import Dyno.View.View ( View(..), J, JNone(..), jfill )
 import Dyno.View.JV ( JV )
 import Dyno.View.JVec ( JVec )
 import qualified Dyno.TypeVecs as TV
-import Dyno.Interface.LogsAndErrors
-import Dyno.Interface.Types
 import Dyno.NlpSolver ( NlpSolverStuff, solveNlp' )
 import Dyno.Nlp ( Nlp'(..), NlpOut'(..), Bounds)
+
+import ExampleDsl.LogsAndErrors
+import ExampleDsl.Types
 
 --withEllipse :: Int -> String -> String
 --withEllipse n blah

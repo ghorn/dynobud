@@ -3,7 +3,7 @@
 {-# Language DeriveFoldable #-}
 {-# Language DeriveGeneric #-}
 
-module Dyno.Models.AeroCoeffs where
+module Glider.AeroCoeffs where
 
 import GHC.Generics ( Generic, Generic1 )
 

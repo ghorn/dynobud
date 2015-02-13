@@ -4,10 +4,11 @@ module Main ( main ) where
 
 import Control.Monad ( void )
 
-import Dyno.OcpMonad
 import Dyno.Solvers
+
 import ServerSender
 import GliderShared
+import ExampleDsl.OcpMonad
 
 myDae :: SXElement -> DaeMonad ()
 myDae time = do

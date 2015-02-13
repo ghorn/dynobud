@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wall -ddump-splices #-}
 
-module Dyno.Interface.Types
+module ExampleDsl.Types
        ( Constraint(..)
        , Objective(..)
        , HomotopyParam(..)

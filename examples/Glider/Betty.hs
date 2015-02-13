@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 
-module Dyno.Models.Betty
+module Glider.Betty
        ( bettyFc
        , bettyMc
        , bettyRefs
@@ -10,7 +10,7 @@ module Dyno.Models.Betty
 
 import Linear
 
-import Dyno.Models.AeroCoeffs
+import Glider.AeroCoeffs
 
 bettyFc :: Floating a => AeroForceCoeffs a
 bettyFc = AeroForceCoeffs

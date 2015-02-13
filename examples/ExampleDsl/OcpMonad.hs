@@ -7,7 +7,7 @@
 {-# Language FlexibleContexts #-}
 {-# Language RankNTypes #-}
 
-module Dyno.OcpMonad
+module ExampleDsl.OcpMonad
        ( OcpMonad
        , EqMonad(..)
        , LeqMonad(..)
@@ -60,8 +60,8 @@ import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..) )
 import Dyno.DirectCollocation.Dynamic ( DynPlotPoints, CollTrajMeta(..), NameTree(..) )
 import Dyno.DirectCollocation ( solveOcp )
 
-import Dyno.Interface.LogsAndErrors
-import Dyno.Interface.Types
+import ExampleDsl.LogsAndErrors
+import ExampleDsl.Types
 
 --withEllipse :: Int -> String -> String
 --withEllipse n blah

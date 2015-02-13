@@ -2,7 +2,7 @@
 {-# Language PackageImports #-}
 {-# Language FlexibleContexts #-}
 
-module Dyno.Interface.LogsAndErrors
+module ExampleDsl.LogsAndErrors
        ( ErrorMessage (..)
        , LogMessage (..)
        , countLogs

@@ -5,11 +5,12 @@ module Main ( main ) where
 import Control.Monad ( void )
 --import Control.Concurrent ( threadDelay )
 
-import Dyno.OcpMonad
 import Dyno.Solvers
 
 import ServerSender
 import GliderShared
+
+import ExampleDsl.OcpMonad
 
 myDae :: SXElement -> DaeMonad ()
 myDae _time = do

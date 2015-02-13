@@ -2,8 +2,9 @@
 
 module Main where
 
-import Dyno.NlpMonad
 import Dyno.Solvers
+
+import ExampleDsl.NlpMonad
 
 rosen :: NlpMonad ()
 rosen = do
