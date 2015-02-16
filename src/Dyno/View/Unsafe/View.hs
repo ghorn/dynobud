@@ -28,7 +28,7 @@ import qualified Casadi.CMatrix as CM
 
 import Dyno.View.Viewable ( Viewable(..) )
 
-newtype J (f :: * -> *) (a :: *) = UnsafeJ { unsafeUnJ :: a } deriving (Eq, Functor, Generic)
+newtype J (f :: * -> *) (a :: *) = UnsafeJ { unsafeUnJ :: a } deriving (Eq, Generic)
 
 instance (Serialize a, View f) => Serialize (J f (Vector a)) where
   put = put . V.toList . unJ
@@ -41,8 +41,8 @@ instance (View f, Viewable a, CM.CMatrix a) => Num (J f a) where
   (UnsafeJ x) + (UnsafeJ y) = mkJ (x + y)
   (UnsafeJ x) - (UnsafeJ y) = mkJ (x - y)
   (UnsafeJ x) * (UnsafeJ y) = mkJ (x * y)
-  abs = fmap abs
-  signum = fmap signum
+  abs (UnsafeJ x) = mkJ $ abs x
+  signum (UnsafeJ x) = mkJ $ signum x
   fromInteger k = mkJ (fromInteger k * CM.ones (n, 1))
     where
       n = size (Proxy :: Proxy f)
@@ -58,20 +58,20 @@ instance (View f, Viewable a, CM.CMatrix a) => Floating (J f a) where
     where
       n = size (Proxy :: Proxy f)
   (**) (UnsafeJ x) (UnsafeJ y) = mkJ (x ** y)
-  exp   = fmap exp
-  log   = fmap log
-  sin   = fmap sin
-  cos   = fmap cos
-  tan   = fmap tan
-  asin  = fmap asin
-  atan  = fmap atan
-  acos  = fmap acos
-  sinh  = fmap sinh
-  cosh  = fmap cosh
-  tanh  = fmap tanh
-  asinh = fmap asinh
-  atanh = fmap atanh
-  acosh = fmap acosh
+  exp   (UnsafeJ x) = mkJ $ exp   x
+  log   (UnsafeJ x) = mkJ $ log   x
+  sin   (UnsafeJ x) = mkJ $ sin   x
+  cos   (UnsafeJ x) = mkJ $ cos   x
+  tan   (UnsafeJ x) = mkJ $ tan   x
+  asin  (UnsafeJ x) = mkJ $ asin  x
+  atan  (UnsafeJ x) = mkJ $ atan  x
+  acos  (UnsafeJ x) = mkJ $ acos  x
+  sinh  (UnsafeJ x) = mkJ $ sinh  x
+  cosh  (UnsafeJ x) = mkJ $ cosh  x
+  tanh  (UnsafeJ x) = mkJ $ tanh  x
+  asinh (UnsafeJ x) = mkJ $ asinh x
+  atanh (UnsafeJ x) = mkJ $ atanh x
+  acosh (UnsafeJ x) = mkJ $ acosh x
 
 mkJ :: forall f a . (View f, Viewable a) => a -> J f a
 mkJ x = case mkJ' x of
