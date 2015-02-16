@@ -41,7 +41,7 @@ import Dyno.View.View ( View(..), JNone, JTuple, JTriple )
 import Dyno.View.JV ( JV )
 import Dyno.View.Viewable ( Viewable )
 import Dyno.View.M
-import Dyno.View.Cov ( Cov )
+import Dyno.View.Cov ( Cov, fromMat, toMat )
 
 import Utils
 import VectorizeTests ( Vectorizes(..), Dims(..) )
@@ -96,6 +96,8 @@ instance (View f, View g, CMatrix a) => Arbitrary (M f g a) where
           , return $ x / z
           , fmap trans (arbitrary :: Gen (M g f a))
           ]
+instance (View f, CMatrix a, Viewable a) => Arbitrary (J f a) where
+  arbitrary = fmap uncol arbitrary
 
 instance (Arbitrary a, Dim n) => Arbitrary (Vec n a) where
   arbitrary = T.sequence (fill arbitrary)
@@ -329,6 +331,35 @@ prop_fromToHMat =
           m3 = toHMat m2 :: Mat.Matrix Double
       return $ beEqual m1 m3
 
+prop_covToFromMat :: Test
+prop_covToFromMat =
+  testProperty "fromMat . toMat" $
+  \(Views {vwProxy = p1}) (Views {vwProxy = p2}) -> test p1 p2
+  where
+    test :: forall f g
+            . (View f, View g)
+            => Proxy f -> Proxy g -> Gen Property
+    test _ _ = do
+      m0 <- arbitrary :: Gen (J (Cov f) DMatrix)
+      let m1 = toMat m0 :: M f f DMatrix
+          m2 = fromMat m1 :: J (Cov f) DMatrix
+      return $ beEqual m0 m2
+
+prop_covFromToMat :: Test
+prop_covFromToMat =
+  testProperty "toMat . fromMat" $
+  \(Views {vwProxy = p1}) (Views {vwProxy = p2}) -> test p1 p2
+  where
+    test :: forall f g
+            . (View f, View g)
+            => Proxy f -> Proxy g -> Gen Property
+    test _ _ = do
+      m0' <- arbitrary :: Gen (M f f DMatrix)
+      let m0 = 0.5 * (m0' + trans m0') -- make it symmetric
+          m1 = fromMat m0 :: J (Cov f) DMatrix
+          m2 = toMat m1 :: M f f DMatrix
+      return $ beEqual m0 m2
+
 viewTests :: Test
 viewTests =
   testGroup "view tests"
@@ -339,4 +370,6 @@ viewTests =
   , prop_testSplitJ
   , prop_toFromHMat
   , prop_fromToHMat
+  , prop_covFromToMat
+  , prop_covToFromMat
   ]
