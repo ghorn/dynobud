@@ -7,7 +7,7 @@
 {-# LANGUAGE InstanceSigs #-}
 
 module Dyno.View.JV
-       ( JV(..)
+       ( JV
        , splitJV
        , catJV
        , splitJV'
