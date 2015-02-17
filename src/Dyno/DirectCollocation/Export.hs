@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language ScopedTypeVariables #-}
+{-# Language PolyKinds #-}
 
 module Dyno.DirectCollocation.Export
        ( toMatlab
