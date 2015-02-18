@@ -39,7 +39,6 @@ module Dyno.NlpSolver
        , getG
        , getLamX
        , getLamG
-       , NlpSolverStuff(..)
          -- * options
        , Op.Opt(..)
        , setOption
@@ -88,21 +87,11 @@ import Dyno.View.Symbolic ( Symbolic, sym, mkScheme, mkFunction )
 import Dyno.View.Viewable ( Viewable )
 import Dyno.Nlp ( Nlp(..), NlpOut(..), Nlp'(..), NlpOut'(..), Bounds )
 import Dyno.NlpScaling ( ScaleFuns(..), scaledFG, mkScaleFuns )
+import Dyno.Solvers ( Solver(..) )
 import Data.Proxy
 
 type VD a = J a (Vector Double)
 type VMD a = J a (Vector (Maybe Double))
-
-data NlpSolverStuff =
-  NlpSolverStuff
-  { solverName :: String
-  , defaultOptions :: [(String,Op.Opt)]
-  , options :: [(String,Op.Opt)]
-  , solverInterruptCode :: Int
-  , successCodes :: [String]
-  , functionOptions :: [(String, Op.Opt)]
-  , functionCall :: C.Function -> IO ()
-  }
 
 getStat :: String -> NlpSolver x p g C.GenericType
 getStat name = do
@@ -321,7 +310,7 @@ generateAndCompile name f = do
 runNlpSolver ::
   forall x p g a s .
   (View x, View p, View g, Symbolic s)
-  => NlpSolverStuff
+  => Solver
   -> (J x s -> J p s -> (J (JV Id) s, J g s))
   -> Maybe (J x (Vector Double))
   -> Maybe (J g (Vector Double))
@@ -423,7 +412,7 @@ proxy = const Proxy
 -- | convenience function to solve a pure Nlp
 solveNlp :: forall x p g .
   (Vectorize x, Vectorize p, Vectorize g)
-  => NlpSolverStuff
+  => Solver
   -> Nlp x p g SXElement -> Maybe (x Double -> IO Bool)
   -> IO (Either String String, NlpOut x g Double)
 solveNlp solverStuff nlp callback = do
@@ -468,7 +457,7 @@ solveNlp solverStuff nlp callback = do
 -- | convenience function to solve a pure Nlp'
 solveNlp' ::
   (View x, View p, View g, Symbolic a)
-  => NlpSolverStuff
+  => Solver
   -> Nlp' x p g a -> Maybe (J x (Vector Double) -> IO Bool)
   -> IO (Either String String, NlpOut' x g (Vector Double))
 solveNlp' solverStuff nlp callback =
@@ -478,7 +467,7 @@ solveNlp' solverStuff nlp callback =
 -- | set all inputs, handle scaling, and let the user run a NlpMonad
 runNlp ::
   (View x, View p, View g, Symbolic a)
-  => NlpSolverStuff
+  => Solver
   -> Nlp' x p g a -> Maybe (J x (Vector Double) -> IO Bool)
   -> NlpSolver x p g b
   -> IO b
@@ -506,7 +495,7 @@ solveNlpHomotopy' ::
   forall x p g a .
   (View x, View p, View g, Symbolic a)
   => Double -> (Double, Double, Int, Int)
-  -> NlpSolverStuff
+  -> Solver
   -> Nlp' x p g a -> J p (Vector Double) -> Maybe (J (JTuple x p) (Vector Double) -> IO Bool)
   -> Maybe (J x (Vector Double) -> J p (Vector Double) -> Double -> IO ())
   -> IO (Either String String, NlpOut' (JTuple x p) g (Vector Double))

@@ -49,7 +49,7 @@ myNlp = Nlp { nlpFG = fg
         f = (1-x)**2 + 100*(y - x**2)**2
         g = G x
 
-solver :: NlpSolverStuff
+solver :: Solver
 solver = ipoptSolver
 --solver = snoptSolver
 

@@ -243,7 +243,7 @@ fg (X r points stages) _ = (f, g)
 
         inner (Point xij' yij') phiij = xij'*cos(phiij) + yij'*sin(phiij)
 
-solver :: NlpSolverStuff
+solver :: Solver
 solver = ipoptSolver { options = [("ma86_order", Opt "metis"), ("max_iter", Opt (1000 :: Int))]}
 --solver = snoptSolver { options = [ ("detect_linear", Opt False) ] }
 

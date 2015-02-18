@@ -1,14 +1,27 @@
 {-# OPTIONS_GHC -Wall #-}
 
-module Dyno.Solvers ( NlpSolverStuff(..), ipoptSolver, snoptSolver ) where
+module Dyno.Solvers ( Solver(..)
+                    , Opt(..)
+                    , ipoptSolver, snoptSolver
+                    ) where
 
---import qualified Data.Vector as V
+import Casadi.Core.Classes.Function ( Function )
+import Casadi.Option ( Opt(..) )
 
-import Dyno.NlpSolver ( NlpSolverStuff(..), Opt(..) )
+data Solver =
+  Solver
+  { solverName :: String
+  , defaultOptions :: [(String,Opt)]
+  , options :: [(String,Opt)]
+  , solverInterruptCode :: Int
+  , successCodes :: [String]
+  , functionOptions :: [(String, Opt)]
+  , functionCall :: Function -> IO ()
+  }
 
-snoptSolver :: NlpSolverStuff
+snoptSolver :: Solver
 snoptSolver =
-  NlpSolverStuff
+  Solver
   { solverName = "snopt"
   , defaultOptions = [ -- ("_iprint", Opt (0::Int))
 --                       , ("_isumm", Opt (6::Int))
@@ -29,9 +42,9 @@ snoptSolver =
   , functionCall = const (return ())
   }
 
-ipoptSolver :: NlpSolverStuff
+ipoptSolver :: Solver
 ipoptSolver =
-  NlpSolverStuff
+  Solver
   { solverName = "ipopt"
   , defaultOptions = [ ("max_iter", Opt (3000 :: Int))
                      , ("tol", Opt (1e-9 :: Double))

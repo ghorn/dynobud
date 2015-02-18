@@ -55,7 +55,7 @@ import Dyno.Nlp ( Bounds )
 import Dyno.Vectorize ( Vectorize(..), fill )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
-import Dyno.NlpSolver ( NlpSolverStuff )
+import Dyno.Solvers ( Solver )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..) )
 import Dyno.DirectCollocation.Dynamic ( DynPlotPoints, CollTrajMeta(..), NameTree(..) )
 import Dyno.DirectCollocation ( solveOcp )
@@ -481,7 +481,7 @@ devec :: Vectorize f => SX -> f SXElement
 devec = sxSplitJV . mkJ
 
 solveStaticOcp ::
-  NlpSolverStuff
+  Solver
   -> (SXElement -> DaeMonad ())
   -> (forall a m . (Floating a, Monad m) => a -> (String -> m a) -> (String -> m a) -> m a)
   -> ((String -> BCMonad SXElement) -> (String -> BCMonad SXElement) -> BCMonad ())

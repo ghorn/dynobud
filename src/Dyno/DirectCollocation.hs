@@ -14,7 +14,8 @@ import Data.Vector ( Vector )
 import Dyno.View.View ( J, jfill )
 import Dyno.Vectorize ( Vectorize )
 import Dyno.Ocp ( OcpPhase )
-import Dyno.NlpSolver ( NlpSolverStuff, solveNlp' )
+import Dyno.NlpSolver ( solveNlp' )
+import Dyno.Solvers ( Solver )
 import Dyno.Nlp ( Nlp'(..) )
 import Dyno.DirectCollocation.Formulate ( CollProblem(..), makeCollProblem )
 import Dyno.DirectCollocation.Types ( CollTraj(..) )
@@ -25,7 +26,7 @@ solveOcp ::
   forall x z u p r o c h .
   (Vectorize x, Vectorize z, Vectorize u, Vectorize p,
    Vectorize r, Vectorize o, Vectorize c, Vectorize h)
-  => NlpSolverStuff -> Int -> Int -> Maybe (DynPlotPoints Double -> IO Bool)
+  => Solver -> Int -> Int -> Maybe (DynPlotPoints Double -> IO Bool)
   -> OcpPhase x z u p r o c h
   -> IO (Either String String)
 solveOcp solverStuff n deg cb0 ocp =

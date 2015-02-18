@@ -31,7 +31,8 @@ import Dyno.Vectorize ( Vectorize(..), Id(..), vzipWith )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs )
-import Dyno.NlpSolver ( NlpSolverStuff, runNlpSolver, liftIO, solve
+import Dyno.Solvers ( Solver )
+import Dyno.NlpSolver ( runNlpSolver, liftIO, solve
                       , setX0, setLbg, setUbg, setP, setLbx, setUbx, getX )
 import Dyno.DirectCollocation.Types ( CollStage(..), CollPoint(..) )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..), mkTaus, interpolate, timesFromTaus )
@@ -143,7 +144,7 @@ withIntegrator ::
   => Proxy (n, deg)
   -> x Double
   -> (x Sxe -> x Sxe -> z Sxe -> u Sxe -> p Sxe -> Sxe -> r Sxe)
-  -> NlpSolverStuff
+  -> Solver
   -> ((x Double -> Either (u Double) (Vec n (Vec deg (u Double))) -> p Double -> Double -> IO (x Double)) -> IO b)
   -> IO b
 withIntegrator _ initialX dae solver userFun = do

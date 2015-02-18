@@ -46,7 +46,8 @@ import Dyno.View.View ( View(..), J, JNone(..), jfill )
 import Dyno.View.JV ( JV )
 import Dyno.View.JVec ( JVec )
 import qualified Dyno.TypeVecs as TV
-import Dyno.NlpSolver ( NlpSolverStuff, solveNlp' )
+import Dyno.Solvers ( Solver )
+import Dyno.NlpSolver ( solveNlp' )
 import Dyno.Nlp ( Nlp'(..), NlpOut'(..), Bounds)
 
 import ExampleDsl.LogsAndErrors
@@ -214,7 +215,7 @@ reifyNlp nlpmonad cb x0map f = do
 
 
 solveStaticNlp ::
-  NlpSolverStuff
+  Solver
   -> NlpMonad () -> [(String,Double)] -> Maybe (Vector Double -> IO Bool)
   -> IO (Either String String, Double, [(String,Double)])
 solveStaticNlp solverStuff nlp x0' callback = reifyNlp nlp callback x0 foo

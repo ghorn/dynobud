@@ -252,7 +252,7 @@ initialGuess = makeGuess Legendre tf guessX (const SbZ) guessU SbP
 type NCollStages = 200
 type CollDeg = 2
 
-solver :: NlpSolverStuff
+solver :: Solver
 solver = ipoptSolver
 --solver = snoptSolver { options = [("detect_linear", Opt False)] }
 

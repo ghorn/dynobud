@@ -61,7 +61,7 @@ myNlp = Nlp' { nlpFG' = fg
 
         g = G (x - px)
 
-solver :: NlpSolverStuff
+solver :: Solver
 --solver = ipoptSolver {options = [ --("max_iter", Opt (5 :: Int))
 --                                  ("print_level", Opt (0 :: Int))
 --                                , ("print_time", Opt False)

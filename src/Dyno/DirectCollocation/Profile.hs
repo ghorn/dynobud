@@ -14,7 +14,7 @@ import Linear.V ( Dim(..) )
 import Dyno.View.View ( J )
 import Dyno.Vectorize ( Vectorize )
 import Dyno.Ocp ( OcpPhase )
-import Dyno.Solvers ( NlpSolverStuff )
+import Dyno.Solvers ( Solver )
 import Dyno.DirectCollocation.Types ( CollTraj, CollOcpConstraints )
 import Dyno.DirectCollocation.Formulate ( CollProblem(..), makeCollProblem )
 import qualified Dyno.TypeVecs as TV
@@ -37,7 +37,7 @@ profile :: forall x z u p r o c h .
    Vectorize r, Vectorize o, Vectorize c, Vectorize h)
    => OcpPhase x z u p r o c h
   -> (forall deg n . (Dim deg, Dim n) => J (CollTraj x z u p n deg) (Vector Double))
-  -> NlpSolverStuff
+  -> Solver
   -> [(Int,Int)]
   -> IO [ProfileReport]
 profile ocp guess solver range = do
@@ -55,7 +55,7 @@ profileOne ::
    Dim n, Dim deg)
   => OcpPhase x z u p r o c h
   -> J (CollTraj x z u p n deg) (Vector Double)
-  -> NlpSolverStuff
+  -> Solver
   -> IO ProfileReport
 profileOne ocp guess solver = do
   cp <- makeCollProblem ocp
