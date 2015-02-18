@@ -18,7 +18,7 @@ import Dyno.Solvers ( Solver )
 import Dyno.DirectCollocation.Types ( CollTraj, CollOcpConstraints )
 import Dyno.DirectCollocation.Formulate ( CollProblem(..), makeCollProblem )
 import qualified Dyno.TypeVecs as TV
-import Dyno.NlpSolver ( solveNlp' )
+import Dyno.NlpUtils ( solveNlp' )
 import Dyno.Nlp ( Nlp'(..), NlpOut'(..) )
 
 data ProfileReport =

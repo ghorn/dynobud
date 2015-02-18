@@ -16,7 +16,7 @@ import Dyno.View.View ( J )
 import Dyno.View.JV ( JV, catJV, catJV', splitJV, splitJV' )
 import Dyno.Vectorize ( Vectorize, Id )
 import Dyno.Nlp ( Nlp'(..), Bounds )
-import Dyno.NlpSolver ( Opt(..), solveNlpHomotopy' )
+import Dyno.NlpUtils ( solveNlpHomotopy )
 import Dyno.Solvers
 
 
@@ -79,5 +79,5 @@ main = do
             P px py = splitJV pxy
         printf "X: (%.3f,%.3f), P: (%.3f, %.3f), a: %.4f\n" x y px py alpha
         return ()
-  opt <- solveNlpHomotopy' 1e-3 (0.6, 2, 10, 20) solver myNlp (catJV (P 2 0)) Nothing (Just cbp)
+  opt <- solveNlpHomotopy 1e-3 (0.6, 2, 10, 20) solver myNlp (catJV (P 2 0)) Nothing (Just cbp)
   print opt

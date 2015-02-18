@@ -19,7 +19,8 @@ import Data.ByteString.Char8 ( pack )
 
 import Dyno.Vectorize
 import Dyno.Nlp
-import Dyno.NlpSolver
+import Dyno.NlpSolver ( SXElement )
+import Dyno.NlpUtils
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.Solvers

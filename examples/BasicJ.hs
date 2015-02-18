@@ -20,7 +20,7 @@ import Dyno.View.View
 import Dyno.View.JV ( JV, catJV, catJV', splitJV' )
 import Dyno.Vectorize
 import Dyno.Nlp
-import Dyno.NlpSolver
+import Dyno.NlpUtils
 import Dyno.Solvers
 
 

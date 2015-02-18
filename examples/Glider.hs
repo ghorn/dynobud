@@ -13,7 +13,7 @@ import Dyno.Solvers
 --import Dyno.Sqp.Sqp
 --import Dyno.Sqp.LineSearch
 import Dyno.Nlp
-import Dyno.NlpSolver
+import Dyno.NlpUtils
 
 import Dyno.Ocp
 import Dyno.DirectCollocation

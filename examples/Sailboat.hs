@@ -30,7 +30,7 @@ import Dyno.Vectorize
 import Dyno.View.View ( View(..), J )
 import Dyno.View.JV ( splitJV )
 import Dyno.Solvers
-import Dyno.NlpSolver
+import Dyno.NlpUtils
 import Dyno.Server.Accessors
 import Dyno.Nlp
 import Dyno.Ocp

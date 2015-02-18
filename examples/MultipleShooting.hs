@@ -29,7 +29,7 @@ import Dyno.View.View
 import Dyno.View.JV
 import Dyno.View.JVec
 import Dyno.Nlp
-import Dyno.NlpSolver
+import Dyno.NlpUtils
 import Dyno.Solvers
 import Dyno.Vectorize
 import Dyno.MultipleShooting

@@ -47,7 +47,7 @@ import Dyno.View.JV ( JV )
 import Dyno.View.JVec ( JVec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.Solvers ( Solver )
-import Dyno.NlpSolver ( solveNlp' )
+import Dyno.NlpUtils ( solveNlp' )
 import Dyno.Nlp ( Nlp'(..), NlpOut'(..), Bounds)
 
 import ExampleDsl.LogsAndErrors
