@@ -2,7 +2,7 @@
 
 module Dyno.Solvers ( Solver(..)
                     , Opt(..)
-                    , ipoptSolver, snoptSolver
+                    , ipoptSolver, snoptSolver, worhpSolver
                     ) where
 
 import Casadi.Core.Classes.Function ( Function )
@@ -63,3 +63,18 @@ ipoptSolver =
   , functionOptions = []
   , functionCall = const (return ())
   }
+
+worhpSolver :: Solver
+worhpSolver =
+  Solver
+  { solverName = "worhp"
+  , defaultOptions = []
+  , options = []
+  , solverInterruptCode = 1
+  , successCodes = ["OptimalSolution"]
+  , functionOptions = []
+  , functionCall = const (return ())
+  }
+
+
+
