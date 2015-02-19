@@ -16,9 +16,16 @@ import Dyno.View.View ( J )
 import Dyno.View.JV ( JV, catJV, catJV', splitJV, splitJV' )
 import Dyno.Vectorize ( Vectorize, Id )
 import Dyno.Nlp ( Nlp'(..), Bounds )
-import Dyno.NlpUtils ( solveNlpHomotopy )
+import Dyno.NlpUtils ( HomotopyParams(..), solveNlpHomotopy )
 import Dyno.Solvers
 
+hp :: HomotopyParams
+hp = HomotopyParams
+   { reduction = 0.6
+   , increase = 2
+   , iterIncrease = 10
+   , iterDecrease = 20
+   }
 
 data P a = P a a deriving (Functor, Generic, Generic1, Show)
 data X a = X a a deriving (Functor, Generic, Generic1, Show)
@@ -62,15 +69,15 @@ myNlp = Nlp' { nlpFG' = fg
         g = G (x - px)
 
 solver :: Solver
---solver = ipoptSolver {options = [ --("max_iter", Opt (5 :: Int))
---                                  ("print_level", Opt (0 :: Int))
---                                , ("print_time", Opt False)
---                                ]}
-solver = snoptSolver {options = [ ("print_time", Opt False)
---                                , ("_isumm", Opt (0 :: Int))
---                                , ("max_iter", Opt (5 :: Int))
---                                , ("_start", Opt "Warm")
+solver = ipoptSolver {options = [ --("max_iter", Opt (5 :: Int))
+                                  ("print_level", Opt (0 :: Int))
+                                , ("print_time", Opt False)
                                 ]}
+--solver = snoptSolver {options = [ ("print_time", Opt False)
+----                                , ("_isumm", Opt (0 :: Int))
+----                                , ("max_iter", Opt (5 :: Int))
+----                                , ("_start", Opt "Warm")
+--                                ]}
 main :: IO ()
 main = do
   let cbp :: J (JV X) (Vector Double) -> J (JV P) (Vector Double) -> Double -> IO ()
@@ -79,5 +86,6 @@ main = do
             P px py = splitJV pxy
         printf "X: (%.3f,%.3f), P: (%.3f, %.3f), a: %.4f\n" x y px py alpha
         return ()
-  opt <- solveNlpHomotopy 1e-3 (0.6, 2, 10, 20) solver myNlp (catJV (P 2 0)) Nothing (Just cbp)
+      pfs = [catJV (P 2 0), catJV (P 3 0)]
+  opt <- solveNlpHomotopy 1e-3 hp solver myNlp pfs Nothing (Just cbp)
   print opt
