@@ -8,7 +8,6 @@ module Dyno.NlpSolver
        ( NlpSolver
        , SXElement
        , runNlpSolver
-       , runNlp
          -- * solve
        , solve
        , solve'
@@ -79,10 +78,10 @@ import Dyno.View.Unsafe.View ( unJ, mkJ )
 import Dyno.SXElement ( SXElement )
 import Dyno.Vectorize ( Id(..) )
 import Dyno.View.JV ( JV )
-import Dyno.View.View ( View(..), J, unzipJ, fmapJ )
+import Dyno.View.View ( View(..), J, fmapJ )
 import Dyno.View.Symbolic ( Symbolic, sym, mkScheme, mkFunction )
 import Dyno.View.Viewable ( Viewable )
-import Dyno.Nlp ( Nlp'(..), NlpOut'(..) )
+import Dyno.Nlp ( NlpOut'(..) )
 import Dyno.NlpScaling ( ScaleFuns(..), scaledFG, mkScaleFuns )
 import Dyno.Solvers ( Solver(..) )
 
@@ -405,30 +404,3 @@ runNlpSolver solverStuff nlpFun scaleX scaleG scaleF callback' (NlpSolver nlpMon
                           , isScale = scale
                           }
   liftIO $ runReaderT nlpMonad nlpState
-
-
--- | set all inputs, handle scaling, and let the user run a NlpMonad
-runNlp ::
-  (View x, View p, View g, Symbolic a)
-  => Solver
-  -> Nlp' x p g a -> Maybe (J x (Vector Double) -> IO Bool)
-  -> NlpSolver x p g b
-  -> IO b
-runNlp solverStuff nlp callback runMe =
-  runNlpSolver solverStuff (nlpFG' nlp) (nlpScaleX' nlp) (nlpScaleG' nlp) (nlpScaleF' nlp) callback $ do
-    let (lbx,ubx) = unzipJ (nlpBX' nlp)
-        (lbg,ubg) = unzipJ (nlpBG' nlp)
-
-    setX0 (nlpX0' nlp)
-    setP (nlpP' nlp)
-    setLbx lbx
-    setUbx ubx
-    setLbg lbg
-    setUbg ubg
-    case nlpLamX0' nlp of
-      Just lam -> setLamX0 lam
-      Nothing -> return ()
-    case nlpLamG0' nlp of
-      Just lam -> setLamG0 lam
-      Nothing -> return ()
-    runMe

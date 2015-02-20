@@ -7,6 +7,8 @@ module Dyno.NlpUtils
        , solveNlpHomotopy
        , solveNlp
        , solveNlp'
+       , setNlpInputs
+       , runNlp
        ) where
 
 import Control.Applicative ( Applicative(..) )
@@ -234,3 +236,36 @@ solveNlp' ::
   -> IO (Either String String, NlpOut' x g (Vector Double))
 solveNlp' solverStuff nlp callback =
   runNlp solverStuff nlp callback solve'
+
+
+-- | set all inputs
+setNlpInputs :: (View x, View p, View g, Symbolic a) => Nlp' x p g a -> NlpSolver x p g ()
+setNlpInputs nlp = do
+  let (lbx,ubx) = unzipJ (nlpBX' nlp)
+      (lbg,ubg) = unzipJ (nlpBG' nlp)
+
+  setX0 (nlpX0' nlp)
+  setP (nlpP' nlp)
+  setLbx lbx
+  setUbx ubx
+  setLbg lbg
+  setUbg ubg
+  case nlpLamX0' nlp of
+    Just lam -> setLamX0 lam
+    Nothing -> return ()
+  case nlpLamG0' nlp of
+    Just lam -> setLamG0 lam
+    Nothing -> return ()
+
+
+-- | set all inputs, handle scaling, and let the user run a NlpMonad
+runNlp ::
+  (View x, View p, View g, Symbolic a)
+  => Solver
+  -> Nlp' x p g a -> Maybe (J x (Vector Double) -> IO Bool)
+  -> NlpSolver x p g b
+  -> IO b
+runNlp solverStuff nlp callback runMe =
+  runNlpSolver solverStuff (nlpFG' nlp) (nlpScaleX' nlp) (nlpScaleG' nlp) (nlpScaleF' nlp) callback $ do
+    setNlpInputs nlp
+    runMe
