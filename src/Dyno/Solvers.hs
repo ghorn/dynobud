@@ -71,7 +71,9 @@ worhpSolver =
   , defaultOptions = []
   , options = []
   , solverInterruptCode = 1
-  , successCodes = ["OptimalSolution"]
+  , successCodes = [ "OptimalSolution"
+                   , "LowPassFilterOptimal"
+                   ]
   , functionOptions = []
   , functionCall = const (return ())
   }
