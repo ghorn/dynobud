@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 
@@ -14,11 +15,13 @@ module Dyno.View.Unsafe.M
 import GHC.Generics ( Generic )
 
 import Data.Proxy
+import Data.Serialize ( Serialize(..) )
 import qualified Data.Foldable as F
 import qualified Data.Vector as V
 import Data.Vector ( Vector )
 
 import Casadi.Overloading ( Fmod(..), ArcTan2(..), SymOrd(..) )
+import Casadi.DMatrix ( DMatrix )
 import Casadi.CMatrix ( CMatrix )
 import qualified Casadi.CMatrix as CM
 
@@ -26,6 +29,10 @@ import Dyno.View.View ( View(..) )
 
 newtype M (f :: * -> *) (g :: * -> *) (a :: *) =
   UnsafeM { unM :: a } deriving (Eq, Functor, Generic)
+
+instance (View f, View g) => Serialize (M f g DMatrix) where
+  put = put . unM
+  get = fmap mkM get
 
 instance Show a => Show (M f g a) where
   showsPrec p (UnsafeM x) = showsPrec p x

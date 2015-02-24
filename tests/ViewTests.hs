@@ -14,6 +14,7 @@ module ViewTests
 import GHC.Generics ( Generic1 )
 
 import Data.Proxy ( Proxy(..) )
+import Data.Serialize ( encode, decode )
 import qualified Data.Traversable as T
 import qualified Data.Packed.Matrix as Mat
 import qualified Numeric.LinearAlgebra ( ) -- for Eq Matrix
@@ -360,6 +361,20 @@ prop_covFromToMat =
           m2 = toMat m1 :: M f f DMatrix
       return $ beEqual m0 m2
 
+prop_serializeDeserialize :: Test
+prop_serializeDeserialize =
+  testProperty "(M f g DMatrix): deserialize . serialize" $
+  \(Views {vwProxy = p1}) (Views {vwProxy = p2}) -> test p1 p2
+  where
+    test :: forall f g . (View f, View g) => Proxy f -> Proxy g -> Gen Property
+    test _ _ = do
+      m0 <- arbitrary :: Gen (M f g DMatrix)
+      let m1 = encode m0
+      return $
+        case decode m1 of
+         Left msg -> counterexample ("deserialization failure " ++ show msg) False
+         Right m2 -> beEqual m0 m2
+
 viewTests :: Test
 viewTests =
   testGroup "view tests"
@@ -372,4 +387,5 @@ viewTests =
   , prop_fromToHMat
   , prop_covFromToMat
   , prop_covToFromMat
+  , prop_serializeDeserialize
   ]

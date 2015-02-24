@@ -25,6 +25,7 @@ import qualified Data.Vector as V
 import Data.Serialize ( Serialize(..) )
 
 import qualified Casadi.CMatrix as CM
+import Casadi.DMatrix ( DMatrix )
 
 import Dyno.View.Viewable ( Viewable(..) )
 
@@ -33,6 +34,10 @@ newtype J (f :: * -> *) (a :: *) = UnsafeJ { unsafeUnJ :: a } deriving (Eq, Gene
 instance (Serialize a, View f) => Serialize (J f (Vector a)) where
   put = put . V.toList . unJ
   get = fmap (mkJ . V.fromList) get
+
+instance (View f) => Serialize (J f DMatrix) where
+  put = put . unJ
+  get = fmap mkJ get
 
 instance Show a => Show (J f a) where
   showsPrec p (UnsafeJ x) = showsPrec p x

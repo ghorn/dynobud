@@ -64,7 +64,7 @@ library
 
   build-depends:       base >=4.6 && < 5,
                        casadi-bindings-core >= 2.2.0.2,
-                       casadi-bindings >= 2.2.0.4,
+                       casadi-bindings >= 2.2.0.6,
 --                       casadi-bindings-internal,
                        jacobi-roots >=0.2 && <0.3,
                        spatial-math >= 0.2.1.0,
@@ -408,6 +408,7 @@ test-suite unit-tests
                        test-framework-quickcheck2,
                        vector,
                        linear,
+                       cereal,
                        casadi-bindings,
                        hmatrix,
                        base >=4.6 && < 5
