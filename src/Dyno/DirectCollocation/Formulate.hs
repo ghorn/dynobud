@@ -113,7 +113,7 @@ makeCollProblem ocp = do
     sxCatJV $ Id $ ocpLagrange ocp (sxSplitJV x0) (sxSplitJV x1) (sxSplitJV x2) (sxSplitJV x3) (sxSplitJV x4) (unId (sxSplitJV x5)) (unId (sxSplitJV x6))
   quadFun <- toMXFun "quadratures" $ evaluateQuadraturesFunction lagrangeFun callInterpolateScalar cijs n
 --  let callQuadFun = call quadFun
-  callQuadFun <- fmap call (expandMXFun quadFun)
+  callQuadFun <- fmap call (expandMXFun quadFun) -- necessary to discard unused outputs
   genericQuadraturesFun <- toMXFun "generic quadratures" $ genericQuadraturesFunction callInterpolateScalar cijs n
 
   dynFun <- toSXFun "dynamics" $ dynamicsFunction $
