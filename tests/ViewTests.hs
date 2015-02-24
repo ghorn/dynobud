@@ -375,6 +375,71 @@ prop_serializeDeserialize =
          Left msg -> counterexample ("deserialization failure " ++ show msg) False
          Right m2 -> beEqual m0 m2
 
+prop_vsplitTup :: Test
+prop_vsplitTup =
+  testProperty "vcatTup . vsplitTup" $
+  \(Views {vwProxy = p1}) (Views {vwProxy = p2}) (Views {vwProxy = p3}) (CMatrices {cmProxy = p4})
+  -> test p1 p2 p3 p4
+  where
+    test :: forall f g h a
+            . (View f, View g, View h, CMatrix a, MyEq a)
+            => Proxy f -> Proxy g -> Proxy h -> Proxy a
+            -> Gen Property
+    test _ _ _ _ = do
+      m0 <- arbitrary :: Gen (M (JTuple f g) h a)
+      let (mx,my) = vsplitTup m0
+          m1 = vcatTup mx my
+      return (beEqual m0 m1)
+
+prop_hsplitTup :: Test
+prop_hsplitTup =
+  testProperty "hcatTup . hsplitTup" $
+  \(Views {vwProxy = p1}) (Views {vwProxy = p2}) (Views {vwProxy = p3}) (CMatrices {cmProxy = p4})
+  -> test p1 p2 p3 p4
+  where
+    test :: forall f g h a
+            . (View f, View g, View h, CMatrix a, MyEq a)
+            => Proxy f -> Proxy g -> Proxy h -> Proxy a
+            -> Gen Property
+    test _ _ _ _ = do
+      m0 <- arbitrary :: Gen (M f (JTuple g h) a)
+      let (mx,my) = hsplitTup m0
+          m1 = hcatTup mx my
+      return (beEqual m0 m1)
+
+prop_vsplitTrip :: Test
+prop_vsplitTrip =
+  testProperty "vcatTrip . vsplitTrip" $
+  \(Views {vwProxy = p1}) (Views {vwProxy = p2}) (Views {vwProxy = p3}) (Views {vwProxy = p4}) (CMatrices {cmProxy = p5})
+  -> test p1 p2 p3 p4 p5
+  where
+    test :: forall f1 f2 f3 g a
+            . (View f1, View f2, View f3, View g, CMatrix a, MyEq a)
+            => Proxy f1 -> Proxy f2 -> Proxy f3 -> Proxy g -> Proxy a
+            -> Gen Property
+    test _ _ _ _ _ = do
+      m0 <- arbitrary :: Gen (M (JTriple f1 f2 f3) g a)
+      let (mx,my,mz) = vsplitTrip m0
+          m1 = vcatTrip mx my mz
+      return (beEqual m0 m1)
+
+prop_hsplitTrip :: Test
+prop_hsplitTrip =
+  testProperty "hcatTrip . hsplitTrip" $
+  \(Views {vwProxy = p1}) (Views {vwProxy = p2}) (Views {vwProxy = p3}) (Views {vwProxy = p4}) (CMatrices {cmProxy = p5})
+  -> test p1 p2 p3 p4 p5
+  where
+    test :: forall f g1 g2 g3 a
+            . (View f, View g1, View g2, View g3, CMatrix a, MyEq a)
+            => Proxy f -> Proxy g1 -> Proxy g2 -> Proxy g3 -> Proxy a
+            -> Gen Property
+    test _ _ _ _ _ = do
+      m0 <- arbitrary :: Gen (M f (JTriple g1 g2 g3) a)
+      let (mx,my,mz) = hsplitTrip m0
+          m1 = hcatTrip mx my mz
+      return (beEqual m0 m1)
+
+
 viewTests :: Test
 viewTests =
   testGroup "view tests"
@@ -388,4 +453,8 @@ viewTests =
   , prop_covFromToMat
   , prop_covToFromMat
   , prop_serializeDeserialize
+  , prop_vsplitTup
+  , prop_hsplitTup
+  , prop_vsplitTrip
+  , prop_hsplitTrip
   ]

@@ -25,6 +25,12 @@ module Dyno.View.M
        , hcat'
        , hsplitTup
        , hsplitTrip
+       , hcatTup
+       , hcatTrip
+       , vsplitTup
+       , vsplitTrip
+       , vcatTup
+       , vcatTrip
        , row
        , col
        , unrow
@@ -102,6 +108,12 @@ hsplitTup (UnsafeM x) =
     nh = size (Proxy :: Proxy h)
     ncs = V.fromList [0,ng,ng+nh]
 
+hcatTup ::
+  forall f g h a .
+  (View f, View g, View h, CMatrix a)
+  => M f g a -> M f h a -> M f (JTuple g h) a
+hcatTup (UnsafeM x) (UnsafeM y) = mkM (CM.horzcat (V.fromList [x,y]))
+
 hsplitTrip ::
   forall f g h j a .
   (View f, View g, View h, View j, CMatrix a)
@@ -109,12 +121,18 @@ hsplitTrip ::
 hsplitTrip (UnsafeM x) =
   case V.toList (CM.horzsplit x ncs) of
     [g,h,j] -> (mkM g, mkM h, mkM j)
-    n -> error $ "hsplitTup made a bad split with length " ++ show (length n)
+    n -> error $ "hsplitTrip made a bad split with length " ++ show (length n)
   where
     ng = size (Proxy :: Proxy g)
     nh = size (Proxy :: Proxy h)
     nj = size (Proxy :: Proxy j)
     ncs = V.fromList [0,ng,ng+nh,ng+nh+nj]
+
+hcatTrip ::
+  forall f g1 g2 g3 a .
+  (View f, View g1, View g2, View g3, CMatrix a)
+  => M f g1 a -> M f g2 a -> M f g3 a -> M f (JTriple g1 g2 g3) a
+hcatTrip (UnsafeM x) (UnsafeM y) (UnsafeM z) = mkM (CM.horzcat (V.fromList [x,y,z]))
 
 hcat ::
   forall f g a .
@@ -140,6 +158,45 @@ vsplit' (UnsafeM x)
     n = reflectDim (Proxy :: Proxy n)
     nr = size (Proxy :: Proxy f)
     nrs = V.fromList [0,nr..n*nr]
+
+vsplitTup ::
+  forall f g h a .
+  (View f, View g, View h, CMatrix a)
+  => M (JTuple f g) h a -> (M f h a, M g h a)
+vsplitTup (UnsafeM x) =
+  case V.toList (CM.vertsplit x ncs) of
+    [f,g] -> (mkM f, mkM g)
+    n -> error $ "vsplitTup made a bad split with length " ++ show (length n)
+  where
+    nf = size (Proxy :: Proxy f)
+    ng = size (Proxy :: Proxy g)
+    ncs = V.fromList [0,nf,nf+ng]
+
+vcatTup ::
+  forall f g h a .
+  (View f, View g, View h, CMatrix a)
+  => M f h a -> M g h a -> M (JTuple f g) h a
+vcatTup (UnsafeM x) (UnsafeM y) = mkM (CM.vertcat (V.fromList [x,y]))
+
+vsplitTrip ::
+  forall f g h j a .
+  (View f, View g, View h, View j, CMatrix a)
+  => M (JTriple f g h) j a -> (M f j a, M g j a, M h j a)
+vsplitTrip (UnsafeM x) =
+  case V.toList (CM.vertsplit x ncs) of
+    [f,g,h] -> (mkM f, mkM g, mkM h)
+    n -> error $ "vsplitTrip made a bad split with length " ++ show (length n)
+  where
+    nf = size (Proxy :: Proxy f)
+    ng = size (Proxy :: Proxy g)
+    nh = size (Proxy :: Proxy h)
+    ncs = V.fromList [0,nf,nf+ng,nf+ng+nh]
+
+vcatTrip ::
+  forall f1 f2 f3 h a .
+  (View f1, View f2, View f3, View h, CMatrix a)
+  => M f1 h a -> M f2 h a -> M f3 h a -> M (JTriple f1 f2 f3) h a
+vcatTrip (UnsafeM x) (UnsafeM y) (UnsafeM z) = mkM (CM.vertcat (V.fromList [x,y,z]))
 
 hcat' ::
   forall f g n a .
