@@ -60,6 +60,12 @@ data CollProblem x z u p r c h o n deg =
   { cpNlp :: Nlp' (CollTraj x z u p n deg) JNone (CollOcpConstraints n deg x r c h) MX
   , cpOcp :: OcpPhase x z u p r o c h
   , cpPlotPoints :: J (CollTraj x z u p n deg) (Vector Double) -> IO (DynPlotPoints Double)
+  , cpHellaOutputs :: J (CollTraj x z u p n deg) (Vector Double)
+                      -> IO ( DynPlotPoints Double
+                            , Vec n ( Vec deg (J (JV o) (Vector Double), J (JV x) (Vector Double))
+                                    , J (JV x) (Vector Double)
+                                    )
+                            )
   , cpOutputs :: J (CollTraj x z u p n deg) (Vector Double)
                  -> IO (Vec n (Vec deg (o Double, x Double), x Double))
   , cpTaus :: Vec deg Double
@@ -161,10 +167,20 @@ makeCollProblem ocp = do
 
         T.sequence $ TV.tvzipWith (callOutputFun p h) vstages ks
 
-      getPlotPoints :: J (CollTraj x z u p n deg) (Vector Double) -> IO (DynPlotPoints Double)
-      getPlotPoints traj = do
+      getHellaOutputs ::
+        J (CollTraj x z u p n deg) (Vector Double)
+        -> IO ( DynPlotPoints Double
+              , Vec n ( Vec deg (J (JV o) (Vector Double), J (JV x) (Vector Double))
+                      , J (JV x) (Vector Double)
+                      )
+              )
+      getHellaOutputs traj = do
         outputs <- mapOutputFun traj
-        return (dynPlotPoints roots (split traj) outputs)
+        return (dynPlotPoints roots (split traj) outputs, outputs)
+
+      getPlotPoints :: J (CollTraj x z u p n deg) (Vector Double)
+                       -> IO (DynPlotPoints Double)
+      getPlotPoints traj = fmap fst $ getHellaOutputs traj
 
       getOutputs :: J (CollTraj x z u p n deg) (Vector Double)
                     -> IO (Vec n (Vec deg (o Double, x Double), x Double))
@@ -226,6 +242,7 @@ makeCollProblem ocp = do
   return $ CollProblem { cpNlp = nlp
                        , cpOcp = ocp
                        , cpPlotPoints = getPlotPoints
+                       , cpHellaOutputs = getHellaOutputs
                        , cpOutputs = getOutputs
                        , cpTaus = taus
                        , cpRoots = roots
