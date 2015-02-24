@@ -64,6 +64,7 @@ data CollProblem x z u p r c h o n deg =
                  -> IO (Vec n (Vec deg (o Double, x Double), x Double))
   , cpTaus :: Vec deg Double
   , cpRoots :: QuadratureRoots
+  , cpEvalQuadratures :: Vec n (Vec deg Double) -> Double -> IO Double
   }
 
 makeCollProblem ::
@@ -107,6 +108,7 @@ makeCollProblem ocp = do
   quadFun <- toMXFun "quadratures" $ evaluateQuadraturesFunction lagrangeFun callInterpolateScalar cijs n
 --  let callQuadFun = call quadFun
   callQuadFun <- fmap call (expandMXFun quadFun)
+  genericQuadraturesFun <- toMXFun "generic quadratures" $ genericQuadraturesFunction callInterpolateScalar cijs n
 
   dynFun <- toSXFun "dynamics" $ dynamicsFunction $
             \x0 x1 x2 x3 x4 x5 ->
@@ -207,12 +209,27 @@ makeCollProblem ocp = do
                        (fromMaybe (fill 1) (ocpBcScale ocp))
                        (fromMaybe (fill 1) (ocpPathCScale ocp))
         }
+      evalQuadratures :: Vec n (Vec deg Double) -> Double -> IO Double
+      evalQuadratures qs' tf' = do
+        let d2d :: Double -> J (JV Id) DMatrix
+            d2d = realToFrac
+            qs :: Vec n (J (JVec deg (JV Id)) DMatrix)
+            qs = fmap (cat . JVec . fmap d2d) qs'
+            tf :: J (JV Id) DMatrix
+            tf = realToFrac tf'
+            evalq :: J (JVec deg (JV Id)) DMatrix -> IO (J (JV Id) DMatrix)
+            evalq q = eval genericQuadraturesFun (q :*: tf)
+        stageIntegrals' <- T.mapM evalq qs :: IO (Vec n (J (JV Id) DMatrix))
+        let stageIntegrals = fmap (unId . splitJV . d2v) stageIntegrals' :: Vec n Double
+        return (F.sum stageIntegrals)
+
   return $ CollProblem { cpNlp = nlp
                        , cpOcp = ocp
                        , cpPlotPoints = getPlotPoints
                        , cpOutputs = getOutputs
                        , cpTaus = taus
                        , cpRoots = roots
+                       , cpEvalQuadratures = evalQuadratures
                        }
 
 
@@ -595,6 +612,46 @@ evaluateQuadraturesFunction f interpolate' cijs' n (p :*: stage' :*: outputs' :*
 
     cijInvFr :: Vec deg (Vec deg (J (JV Id) MX))
     cijInvFr = fmap (fmap realToFrac) cijInv
+
+
+-- todo: merging this with evaluateQuadraturesFunction would reduce duplication,
+-- but could be inefficient
+genericQuadraturesFunction ::
+  forall deg
+  . Dim deg
+  => (J (JV Id) MX -> Vec deg (J (JV Id) MX) -> J (JV Id) MX)
+  -> Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
+  -> Int
+  -> (J (JVec deg (JV Id)) :*: J (JV Id)) MX
+  -> J (JV Id) MX
+genericQuadraturesFunction interpolate' cijs' n (qdots' :*: tf) =
+  dt * qnext
+  where
+    dt = tf / fromIntegral n
+
+    qnext :: J (JV Id) MX
+    qnext = interpolate' 0 qs
+
+    qdots :: Vec deg (J (JV Id) MX)
+    qdots = unJVec $ split qdots'
+
+    qs = cijInvFr !* qdots
+
+    cijs :: Vec deg (Vec deg Double)
+    cijs = TV.tvtail $ fmap TV.tvtail cijs'
+
+    cijMat :: Mat.Matrix Double
+    cijMat = Mat.fromLists $ F.toList $ fmap F.toList cijs
+
+    cijInv' :: Mat.Matrix Double
+    cijInv' = LA.inv cijMat
+
+    cijInv :: Vec deg (Vec deg Double)
+    cijInv = TV.mkVec' (map TV.mkVec' (Mat.toLists cijInv'))
+
+    cijInvFr :: Vec deg (Vec deg (J (JV Id) MX))
+    cijInvFr = fmap (fmap realToFrac) cijInv
+
 
 -- todo: code duplication
 dot :: forall x deg a b. (Fractional (J x a), Real b, Dim deg) => Vec deg b -> Vec deg (J x a) -> J x a
