@@ -5,6 +5,8 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE PolyKinds #-}
 
+-- todo: sparsify/densify
+
 module Dyno.View.M
        ( M
        , mm
@@ -13,6 +15,7 @@ module Dyno.View.M
        , trans
        , zeros
        , eye
+       , diag
        , ones
        , countUp
        , vsplit
@@ -229,6 +232,11 @@ eye = mkM z
   where
     z = CM.eye n
     n = size (Proxy :: Proxy f)
+
+diag :: forall f a . (View f, Viewable a, CMatrix a) => J f a -> M f f a
+diag x = mkM z
+  where
+    z = CM.diag (unJ x)
 
 ones :: forall f g a . (View f, View g, CMatrix a) => M f g a
 ones = mkM z
