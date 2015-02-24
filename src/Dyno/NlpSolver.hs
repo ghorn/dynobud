@@ -36,6 +36,10 @@ module Dyno.NlpSolver
        , getLamG
        , getStat
        , getNlpOut'
+         -- * compute stuff
+       , evalGradF
+       , evalJacG
+       , evalHessLag
          -- * options
        , Op.Opt(..)
        , setOption
@@ -74,11 +78,13 @@ import Casadi.CMatrix ( CMatrix )
 import qualified Casadi.CMatrix as CM
 
 import Dyno.View.Unsafe.View ( unJ, mkJ )
+import Dyno.View.Unsafe.M ( mkM )
 
 import Dyno.SXElement ( SXElement )
 import Dyno.Vectorize ( Id(..) )
 import Dyno.View.JV ( JV )
-import Dyno.View.View ( View(..), J, fmapJ )
+import Dyno.View.View ( View(..), J, fmapJ, d2v, v2d )
+import Dyno.View.M ( M )
 import Dyno.View.Symbolic ( Symbolic, sym, mkScheme, mkFunction )
 import Dyno.View.Viewable ( Viewable )
 import Dyno.Nlp ( NlpOut'(..) )
@@ -202,6 +208,63 @@ getLamX = getOutput lamXBarToLamX "lam_x"
 
 getLamG :: View g => NlpSolver x p g (VD g)
 getLamG = getOutput lamGBarToLamG "lam_g"
+
+
+evalGradF :: forall x p g . (View x, View g, View p)
+             => NlpSolver x p g (J x DMatrix, J (JV Id) DMatrix)
+evalGradF = do
+  x0bar <- getInput (const id) "x0" :: NlpSolver x p g (J x (Vector Double))
+  pbar <- getInput (const id) "p" :: NlpSolver x p g (J p (Vector Double))
+
+  nlpState <- ask
+  let solver = isSolver nlpState :: C.NlpSolver
+      scale = isScale nlpState
+  liftIO $ do
+    gradF <- C.nlpSolver_gradF solver
+    C.ioInterfaceFunction_setInput__0 gradF (unJ (v2d x0bar)) "x"
+    C.ioInterfaceFunction_setInput__0 gradF (unJ (v2d pbar)) "p"
+    C.function_evaluate gradF
+    gradF' <- C.ioInterfaceFunction_output__0 gradF "grad"
+    f' <- C.ioInterfaceFunction_output__0 gradF "f"
+    return (gradFBarToGradF scale (mkJ gradF'), fbarToF scale (mkJ f'))
+
+evalJacG :: forall x p g . (View x, View g, View p)
+            => NlpSolver x p g (M g x DMatrix, J g DMatrix)
+evalJacG = do
+  x0bar <- getInput (const id) "x0" :: NlpSolver x p g (J x (Vector Double))
+  pbar <- getInput (const id) "p" :: NlpSolver x p g (J p (Vector Double))
+
+  nlpState <- ask
+  let solver = isSolver nlpState :: C.NlpSolver
+      scale = isScale nlpState
+  liftIO $ do
+    jacG <- C.nlpSolver_jacG solver
+    C.ioInterfaceFunction_setInput__0 jacG (unJ (v2d x0bar)) "x"
+    C.ioInterfaceFunction_setInput__0 jacG (unJ (v2d pbar)) "p"
+    C.function_evaluate jacG
+    jacG' <- C.ioInterfaceFunction_output__0 jacG "jac"
+    g' <- C.ioInterfaceFunction_output__0 jacG "g"
+    return (jacGBarToJacG scale (mkM jacG'), gbarToG scale (mkJ g'))
+
+evalHessLag :: forall x p g . (View x, View g, View p)
+               => NlpSolver x p g (M x x DMatrix)
+evalHessLag = do
+  x0bar <- getInput (const id) "x0" :: NlpSolver x p g (J x (Vector Double))
+  pbar <- getInput (const id) "p" :: NlpSolver x p g (J p (Vector Double))
+  lamGbar <- getInput (const id) "lam_g0" :: NlpSolver x p g (J g (Vector Double))
+
+  nlpState <- ask
+  let solver = isSolver nlpState :: C.NlpSolver
+      scale = isScale nlpState
+  liftIO $ do
+    hessLag <- C.nlpSolver_hessLag solver
+    C.ioInterfaceFunction_setInput__0 hessLag (unJ (v2d x0bar)) "x"
+    C.ioInterfaceFunction_setInput__0 hessLag (unJ (v2d pbar)) "p"
+    C.ioInterfaceFunction_setInput__0 hessLag (unJ (v2d lamGbar)) "lam_g"
+    C.ioInterfaceFunction_setInput__0 hessLag 1.0 "lam_f"
+    C.function_evaluate hessLag
+    hess' <- C.ioInterfaceFunction_output__0 hessLag "hess"
+    return (hessLagBarToHessLag scale (mkM hess'))
 
 
 setOption :: Gen.GenericC a => String -> a -> NlpSolver x p g ()

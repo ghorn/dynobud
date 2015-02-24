@@ -14,9 +14,11 @@ import Casadi.CMatrix ( CMatrix, fromDVector )
 
 import Dyno.View.Unsafe.View ( unJ, mkJ )
 
-import Dyno.Vectorize ( Id )
-import Dyno.View.View ( View, J )
-import Dyno.View.JV ( JV )
+import Dyno.View.M ( M )
+import qualified Dyno.View.M as M
+import Dyno.Vectorize ( Id(..) )
+import Dyno.View.View ( View, J, v2d, fromDMatrix )
+import Dyno.View.JV ( JV, catJV' )
 import Dyno.View.Viewable ( Viewable )
 
 data ScaleFuns x g a =
@@ -31,6 +33,9 @@ data ScaleFuns x g a =
   , lamXBarToLamX :: J x a -> J x a
   , lamGToLamGBar :: J g a -> J g a
   , lamGBarToLamG :: J g a -> J g a
+  , gradFBarToGradF :: J x a -> J x a
+  , jacGBarToJacG :: M g x a -> M g x a
+  , hessLagBarToHessLag :: M x x a -> M x x a
   }
 
 scaledFG ::
@@ -48,6 +53,9 @@ scaledFG scaleFuns fg x p = (fToFBar scaleFuns f, gToGBar scaleFuns g)
 allPositive :: Maybe (V.Vector Double) -> Bool
 allPositive = all (> 0) . fromMaybe [] . fmap V.toList
 
+-- todo:
+-- Could make this return casadi Functions for better performance.
+-- Doesn't seem to be a bottleneck
 mkScaleFuns ::
   forall x g a .
   (View x, View g, CMatrix a, Viewable a)
@@ -72,8 +80,39 @@ mkScaleFuns mx mg mf
               , lamXBarToLamX = lamXBarToLamX'
               , lamGToLamGBar = lamGToLamGBar'
               , lamGBarToLamG = lamGBarToLamG'
+              , gradFBarToGradF = gradFBarToGradF'
+              , jacGBarToJacG = jacGBarToJacG'
+              , hessLagBarToHessLag = hessLagBarToHessLag'
               }
   where
+    xdiaginv :: Maybe (M x x a)
+    xdiaginv = fmap (\scl -> M.diag (fromDMatrix (1.0 / (v2d scl)))) mx
+
+    gdiag :: Maybe (M g g a)
+    gdiag = fmap (\scl -> M.diag (fromDMatrix (v2d scl))) mg
+
+    jacGBarToJacG' :: M g x a -> M g x a
+    jacGBarToJacG' g0 = gg0x
+      where
+        gg0x = case gdiag of
+          Nothing -> g0x
+          Just gd -> gd `M.mm` g0x
+        g0x = case xdiaginv of
+          Nothing -> g0
+          Just xdi -> g0 `M.mm` xdi
+
+    gradFBarToGradF' :: J x a -> J x a
+    gradFBarToGradF' = lamXBarToLamX'
+
+    hessLagBarToHessLag' :: M x x a -> M x x a
+    hessLagBarToHessLag' h0 = case mf of
+      Nothing -> h1
+      Just fscl -> h1 `M.ms` (catJV' (Id (realToFrac fscl)))
+      where
+        h1 = case xdiaginv of
+          Nothing -> h0
+          Just xdi -> xdi `M.mm` h0 `M.mm` xdi
+
     (lamXToLamXBar', lamXBarToLamX') = case mf of
       Nothing -> (mulByXScale, divByXScale)
       Just fscl -> ( \lamx -> mkJ ((unJ (mulByXScale lamx)) / fs)
