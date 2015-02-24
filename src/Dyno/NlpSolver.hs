@@ -423,7 +423,7 @@ runNlpSolver solverStuff nlpFun scaleX scaleG scaleF callback' (NlpSolver nlpMon
         callbackRet <- case callback' of
           Nothing -> return True
           Just callback -> do
-            xval <- fmap (mkJ . ddata . unJ . xbarToX scale . mkJ . CM.dense) $
+            xval <- fmap (d2v . xbarToX scale . mkJ . CM.dense) $
                     C.ioInterfaceFunction_output__2 function' 0
             callback xval
         interrupt <- readIORef intref
