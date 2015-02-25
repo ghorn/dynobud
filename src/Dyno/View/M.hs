@@ -5,10 +5,9 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE PolyKinds #-}
 
--- todo: sparsify/densify
-
 module Dyno.View.M
        ( M
+       , sparse, dense
        , mm
        , ms
        , vs
@@ -47,7 +46,7 @@ module Dyno.View.M
 import qualified Data.Vector as V
 import Data.Proxy ( Proxy(..) )
 import Casadi.CMatrix ( CMatrix )
-import Casadi.DMatrix ( DMatrix, ddata )
+import Casadi.DMatrix ( DMatrix, ddata, dsparsify )
 import qualified Casadi.CMatrix as CM
 import qualified Data.Packed.Matrix as Mat
 
@@ -61,6 +60,13 @@ import Dyno.View.JV ( JV )
 import Dyno.View.JVec ( JVec )
 import Dyno.View.Viewable ( Viewable )
 
+
+-- todo: generalize once casadi 2.3 is ready
+sparse :: (View f, View g) => M f g DMatrix -> M f g DMatrix
+sparse (UnsafeM m) = mkM (dsparsify m)
+
+dense :: (View f, View g, CMatrix a) => M f g a -> M f g a
+dense (UnsafeM m) = mkM (CM.dense m)
 
 mm :: (View f, View h, CMatrix a) => M f g a -> M g h a -> M f h a
 mm (UnsafeM m0) (UnsafeM m1) = mkM (CM.mm m0 m1)
