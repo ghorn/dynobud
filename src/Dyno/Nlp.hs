@@ -7,16 +7,19 @@ module Dyno.Nlp
        ( Bounds
        , Nlp(..),  NlpOut(..)
        , Nlp'(..), NlpOut'(..)
+       , KKT(..)
        ) where
 
 import GHC.Generics ( Generic, Generic1 )
 
+import Casadi.DMatrix ( DMatrix )
 import qualified Data.Vector as V
 import Data.Serialize ( Serialize(..) )
 
 import Dyno.Vectorize ( Vectorize(..), Id )
 import Dyno.View.View ( View(..), J )
 import Dyno.View.JV ( JV )
+import Dyno.View.M ( M )
 
 type Bounds = (Maybe Double, Maybe Double)
 
@@ -66,11 +69,7 @@ data NlpOut' x g a =
   , lambdaXOpt' :: J x a
   , lambdaGOpt' :: J g a
   } deriving (Eq, Show, Generic)
-instance (View x, View g) => View (NlpOut' x g)
-instance (View x, View g, Serialize a) => Serialize (NlpOut' x g (V.Vector a)) where
-  put = put . cat
-  get = fmap split get
-
+instance (View x, View g, Serialize a) => Serialize (NlpOut' x g (V.Vector a))
 
 data Nlp' x p g a =
   Nlp'
@@ -85,3 +84,14 @@ data Nlp' x p g a =
   , nlpScaleX' :: Maybe (J x (V.Vector Double))
   , nlpScaleG' :: Maybe (J g (V.Vector Double))
   }
+
+
+data KKT x g =
+  KKT
+  { kktHessLag :: M x x DMatrix
+  , kktJacG :: M g x DMatrix
+  , kktG :: J g DMatrix
+  , kktGradF :: J x DMatrix
+  , kktF :: J (JV Id) DMatrix
+  } deriving (Generic, Eq, Show)
+instance (View x, View g) => Serialize (KKT x g)
