@@ -1,4 +1,4 @@
--- | Example of NlpSolver monad testing scaling
+-- | Example of NlpSolver monad and autoscaling
 
 {-# OPTIONS_GHC -Wall #-}
 {-# Language DeriveFunctor #-}
@@ -6,17 +6,19 @@
 
 module Main where
 
-import GHC.Generics ( Generic1 )
+import GHC.Generics ( Generic, Generic1 )
 
 import Casadi.MX ( MX )
 
-import Dyno.Vectorize ( Vectorize, Id(..), None(..) )
+import Dyno.Vectorize ( Vectorize, Id(..), None(..), fill )
 import Dyno.View.View
+import Dyno.View.Viewable
 import Dyno.View.JV -- ( JV )
 import Dyno.Nlp
 import Dyno.NlpSolver
 import Dyno.NlpUtils
 import Dyno.Solvers
+import Dyno.AutoScaling
 
 data X a = X a a deriving (Functor, Generic1, Show)
 data G a = G a deriving (Functor, Generic1, Show)
@@ -32,63 +34,111 @@ myNlp = Nlp' { nlpFG' = fg
              , nlpP' = catJV None
              , nlpLamX0' = Nothing
              , nlpLamG0' = Nothing
-             , nlpScaleF' = Just 2.235
-             , nlpScaleX' = Just $ catJV (X 11 77)
-             , nlpScaleG' = Just $ catJV (G 666)
+             , nlpScaleF' = Just (1 / 0.1)
+             , nlpScaleX' = Just $ catJV $ (X (4.7e-3) (4.7e4))
+             , nlpScaleG' = Just $ catJV $ (G (1 / 0.2))
+--             , nlpScaleF' = Just 1
+--             , nlpScaleX' = Just $ catJV (X 1 1)
+--             , nlpScaleG' = Just $ catJV (G 1) -- 1)
              }
   where
     x0 :: X Double
-    x0 = X (-8) (-8)
+    x0 = X 0 0
 
     bx :: X Bounds
-    bx = X (Just (-10), Just 10)
-           (Just (-10), Just 10)
+    bx = fill (Nothing, Nothing)
 
     bg :: G Bounds
-    bg = G (Just (2), Nothing)
+    bg = G (Just 2, Nothing)
 
     fg :: J (JV X) MX -> J (JV None) MX -> (J (JV Id) MX, J (JV G) MX)
     fg xy _ = (f, catJV' g)
       where
         X x y = splitJV' xy
-        f = x**2 + 2*y**2 + 0.1 * x*y
-        g = G (0.3*x + 0.4*y)
+        x' = 1e3*x
+        y' = 1e-4*y
+        f = x'**2 + y'**2 + 0.1*x' * y'
+        g = G (x' + y')
 
 solver :: Solver
 solver = ipoptSolver { options = [ ("print_time", Opt False)
-                                 , ("print_level", Opt (0 :: Int))
+                                 , ("linear_solver", Opt "ma86")
+                                 --, ("print_level", Opt (0 :: Int))
                                  ] }
 
-runMe' :: NlpSolver (JV X) (JV None) (JV G) ()
-runMe' = do
-  liftIO $ putStrLn "running it!!"
-  getX0 >>= (\x -> liftIO (putStrLn ("x0: " ++ show (splitJV x))))
-  getLamX0 >>= (\x -> liftIO (putStrLn ("lam_x0: " ++ show (splitJV x))))
-  getLamG0 >>= (\x -> liftIO (putStrLn ("lam_g0: " ++ show (splitJV x))))
-  (gradF,f) <- evalGradF
-  (jacG, g) <- evalJacG
-  hessL <- evalHessLag
+quietSolver :: Solver
+quietSolver = ipoptSolver { options = [ ("print_time", Opt False)
+                                      , ("print_level", Opt (0 :: Int))
+                                      , ("linear_solver", Opt "ma86")
+                                      ] }
 
-  liftIO $ do
-    putStrLn $ "f: " ++ show (unId (splitJV (d2v f)))
-    putStrLn $ "gradF: " ++ show (splitJV (d2v gradF))
-    putStrLn $ "g: " ++ show (splitJV (d2v g))
-    putStrLn $ "jacG: " ++ show jacG
-    putStrLn $ "hessLag: " ++ show hessL
+computeKKTs :: NlpSolver (JV X) (JV None) (JV G)
+               (KKT (JV X) (JV G), KKT (JV X) (JV G))
+computeKKTs = do
+  kktU <- evalUnscaledKKT
+  kktS <- evalScaledKKT
+  return (kktU, kktS)
 
 
-runMe :: NlpSolver (JV X) (JV None) (JV G) ()
+runMe :: NlpSolver (JV X) (JV None) (JV G) ((Double, X Double, G Double), (KKT (JV X) (JV G), KKT (JV X) (JV G)))
 runMe = do
-  runMe'
-  liftIO $ putStrLn "========================="
-  out <- solve'
-  liftIO $ print out
-  liftIO $ putStrLn "========================="
+  (msg,opt') <- solve'
+  let opt = case msg of
+        Left m -> error m
+        Right _ -> opt'
+      f = fOpt' opt
+      x = xOpt' opt
+      g = gOpt' opt
   getX >>= setX0
   getLamX >>= setLamX0
   getLamG >>= setLamG0
-  runMe'
-  
+  kkts <- computeKKTs
+  return ((unId (splitJV f), splitJV x, splitJV g), kkts)
+
+data Sdv a = Sdv (J (JV X) a) (J (JV G) a) deriving (Generic)
+instance View Sdv
+
+expand :: Viewable a => J Sdv a -> (J (JV X) a, J (JV G) a)
+expand sdv' = (x, g)
+  where
+    Sdv x g = split sdv'
 
 main :: IO ()
-main = runNlp solver myNlp Nothing runMe
+main = do
+  (opt, (kktU, kktS)) <- runNlp solver myNlp Nothing runMe
+  putStrLn "***********************************************************"
+  putStrLn "scaled kkt:"
+  putStrLn $ kktScalingInfo kktS
+  putStrLn "\nunscaled kkt:"
+  putStrLn $ kktScalingInfo kktU
+  putStrLn $ "scaled gradF:" ++ show (kktGradF kktS)
+  putStrLn $ "unscaled gradF:" ++ show (kktGradF kktU)
+
+  putStrLn $ "scaled jacG:" ++ show (kktJacG kktS)
+  putStrLn $ "unscaled jacG:" ++ show (kktJacG kktU)
+
+  putStrLn $ "scaled hessLag:" ++ show (kktHessLag kktS)
+  putStrLn $ "unscaled hessLag:" ++ show (kktHessLag kktU)
+
+  let snlp = scalingNlp kktU expand
+  (msg,opt') <- solveNlp' quietSolver snlp Nothing
+  let xopt = case msg of
+        Left m -> error m
+        Right _ -> xOpt' opt'
+      ScalingDvs obj' user = split (fmapJ exp xopt)
+      Sdv x' g' = split user
+      Id obj = splitJV obj'
+      x = splitJV x'
+      g = splitJV g'
+  putStrLn "***********************************************************"
+  putStrLn "solution:"
+  print opt
+  putStrLn "***********************************************************"
+  putStrLn "scaling:"
+  putStrLn $ "f: " ++ show obj
+  putStrLn $ "x: " ++ show x
+  putStrLn $ "g: " ++ show g
+  putStrLn "***********************************************************"
+  putStrLn "before and after"
+  beforeAndAfter kktU expand xopt
+  return ()

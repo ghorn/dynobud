@@ -18,7 +18,8 @@ source-repository head
   location: git://github.com/ghorn/dynobud.git
 
 library
-  exposed-modules:     Dyno.LagrangePolynomials
+  exposed-modules:     Dyno.AutoScaling
+                       Dyno.LagrangePolynomials
                        Dyno.TypeVecs
                        Dyno.MultipleShooting
                        Dyno.Ocp
@@ -110,7 +111,6 @@ executable nlp-solver
                        , base >=4.6 && < 5
                        , casadi-bindings
   ghc-options:         -O2
-
 
 executable multiple_shooting
   if flag(examples)
