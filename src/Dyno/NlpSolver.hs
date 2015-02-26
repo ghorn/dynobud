@@ -249,6 +249,7 @@ evalScaledJacG = do
 
   nlpState <- ask
   let solver = isSolver nlpState :: C.NlpSolver
+  -- todo: remove this workaround when casadi fixes https://github.com/casadi/casadi/issues/1345
   if size (Proxy :: Proxy g) == 0
     then return (M.zeros, M.uncol M.zeros)
     else liftIO $ do
