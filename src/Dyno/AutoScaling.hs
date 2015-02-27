@@ -118,10 +118,12 @@ toLogScaling kkt expand sdvs' =
     gradFMatValues = toSparse "gradF" (M.col (kktGradF kkt))
 
     sdvs = split sdvs'
-    objScale = sdvObj sdvs
+    objScale = negate (sdvObj sdvs) -- objective is inverted
     x :: J x a
-    g :: J g a
-    (x,g) = expand (sdvUser sdvs)
+    g' :: J g a
+    (x,g') = expand (sdvUser sdvs)
+    -- constraints are inverted
+    g = negate g'
 
     reproxy :: J f a -> Proxy f
     reproxy = const Proxy

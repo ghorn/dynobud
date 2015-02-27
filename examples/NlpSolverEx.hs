@@ -8,6 +8,8 @@ module Main where
 
 import GHC.Generics ( Generic, Generic1 )
 
+import Text.Printf ( printf )
+
 import Casadi.MX ( MX )
 
 import Dyno.Vectorize ( Vectorize, Id(..), None(..), fill )
@@ -34,9 +36,9 @@ myNlp = Nlp' { nlpFG' = fg
              , nlpP' = catJV None
              , nlpLamX0' = Nothing
              , nlpLamG0' = Nothing
-             , nlpScaleF' = Just (1 / 0.1)
+             , nlpScaleF' = Just 9.86
              , nlpScaleX' = Just $ catJV $ (X (4.7e-3) (4.7e4))
-             , nlpScaleG' = Just $ catJV $ (G (1 / 0.2))
+             , nlpScaleG' = Just $ catJV $ (G 4.7)
 --             , nlpScaleF' = Just 1
 --             , nlpScaleX' = Just $ catJV (X 1 1)
 --             , nlpScaleG' = Just $ catJV (G 1) -- 1)
@@ -107,18 +109,19 @@ main :: IO ()
 main = do
   (opt, (kktU, kktS)) <- runNlp solver myNlp Nothing runMe
   putStrLn "***********************************************************"
-  putStrLn "scaled kkt:"
-  putStrLn $ kktScalingInfo kktS
-  putStrLn "\nunscaled kkt:"
+  putStrLn "unscaled kkt:"
   putStrLn $ kktScalingInfo kktU
-  putStrLn $ "scaled gradF:" ++ show (kktGradF kktS)
-  putStrLn $ "unscaled gradF:" ++ show (kktGradF kktU)
-
-  putStrLn $ "scaled jacG:" ++ show (kktJacG kktS)
-  putStrLn $ "unscaled jacG:" ++ show (kktJacG kktU)
-
-  putStrLn $ "scaled hessLag:" ++ show (kktHessLag kktS)
-  putStrLn $ "unscaled hessLag:" ++ show (kktHessLag kktU)
+  putStrLn "\nscaled kkt:"
+  putStrLn $ kktScalingInfo kktS
+  putStrLn "***********************************************************"
+  putStrLn $ "unscaled gradF: " ++ show (kktGradF kktU)
+  putStrLn $ "scaled gradF:   " ++ show (kktGradF kktS)
+  putStrLn ""
+  putStrLn $ "unscaled jacG: " ++ show (kktJacG kktU)
+  putStrLn $ "scaled jacG:   " ++ show (kktJacG kktS)
+  putStrLn ""
+  putStrLn $ "unscaled hessLag: " ++ show (kktHessLag kktU)
+  putStrLn $ "scaled hessLag:   " ++ show (kktHessLag kktS)
 
   let snlp = scalingNlp kktU expand
   (msg,opt') <- solveNlp' quietSolver snlp Nothing
@@ -135,9 +138,9 @@ main = do
   print opt
   putStrLn "***********************************************************"
   putStrLn "scaling:"
-  putStrLn $ "f: " ++ show obj
-  putStrLn $ "x: " ++ show x
-  putStrLn $ "g: " ++ show g
+  putStrLn $ "f: " ++ (printf "%.2e" obj)
+  putStrLn $ "x: " ++ show (fmap (printf "%.2e" :: Double -> String) x)
+  putStrLn $ "g: " ++ show (fmap (printf "%.2e" :: Double -> String) g)
   putStrLn "***********************************************************"
   putStrLn "before and after"
   beforeAndAfter kktU expand xopt
