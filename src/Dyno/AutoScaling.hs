@@ -181,15 +181,26 @@ beforeAndAfter
      => KKT x g
      -> (J sdv DMatrix -> (J (JV Id) DMatrix, J x DMatrix, J g DMatrix))
      -> J sdv (V.Vector Double)
-     -> IO ()
-beforeAndAfter kkts expand scalingSol = do
-  let ls0 = fmap (unId . splitJV . d2v) $ toLogScaling kkts expand (v2d (jfill 0))
+     -> String
+beforeAndAfter kkts expand scalingSol =
+  init $ unlines
+  [ minMax "hessLag0" hessLag0
+  , minMax "hessLag " hessLag
+  , ""
+  , minMax "jacG0" jacG0
+  , minMax "jacG " jacG
+  , ""
+  , minMax "gradF0" gradF0
+  , minMax "gradF " gradF
+  ]
+  where
+      ls0 = fmap (unId . splitJV . d2v) $ toLogScaling kkts expand (v2d (jfill 0))
       LogScaling hessLag0 jacG0 gradF0 = toMatrixCoeffs ls0 :: LogScaling Double
 
       ls :: LogScaling Double
       ls = fmap (unId . splitJV . d2v) $ toLogScaling kkts expand (v2d scalingSol)
       LogScaling hessLag jacG gradF = toMatrixCoeffs ls :: LogScaling Double
-      minMax name xs = printf "%s min: %s, max: %s\n" name min' max'
+      minMax name xs = printf "%s min: %s, max: %s" name min' max'
         where
           min' = case xs of
             [] -> "N/A"
@@ -198,14 +209,6 @@ beforeAndAfter kkts expand scalingSol = do
             [] -> "N/A"
             xs' -> printf "% 8.2e" (maximum xs')
 
-  minMax "hessLag0" hessLag0
-  minMax "hessLag " hessLag
-  putStrLn ""
-  minMax "jacG0" jacG0
-  minMax "jacG " jacG
-  putStrLn ""
-  minMax "gradF0" gradF0
-  minMax "gradF " gradF
 
 
 --analyzeSol :: Nlp'

@@ -142,5 +142,5 @@ main = do
   putStrLn $ "g: " ++ show (fmap (printf "%.2e" :: Double -> String) g)
   putStrLn "***********************************************************"
   putStrLn "before and after"
-  beforeAndAfter kktU expand xopt
+  putStrLn $ beforeAndAfter kktU expand xopt
   return ()
