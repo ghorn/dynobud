@@ -41,6 +41,9 @@ module Dyno.View.M
        , toHMat
        , fromHMat
        , fromHMat'
+         -- * hmatrix wrappers
+       , rcond
+       , rank
        ) where
 
 import qualified Data.Vector as V
@@ -49,6 +52,7 @@ import Casadi.CMatrix ( CMatrix )
 import Casadi.DMatrix ( DMatrix, ddata, dsparsify )
 import qualified Casadi.CMatrix as CM
 import qualified Data.Packed.Matrix as HMat
+import qualified Numeric.LinearAlgebra.HMatrix as HMat
 
 import Dyno.View.Unsafe.View ( unJ, mkJ )
 import Dyno.View.Unsafe.M ( M(UnsafeM), mkM, mkM', unM )
@@ -295,3 +299,8 @@ fromHMat x = case fromHMat' x of
 fromHMat' :: (View f, View g) => HMat.Matrix Double -> Either String (M f g DMatrix)
 fromHMat' = mkM' . CM.vertcat . V.fromList . fmap (CM.trans . CM.fromDVector . V.fromList) . HMat.toLists
 
+rcond :: (View f, View g) => M f g DMatrix -> Double
+rcond = HMat.rcond . toHMat
+
+rank :: (View f, View g) => M f g DMatrix -> Int
+rank = HMat.rank . toHMat
