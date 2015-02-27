@@ -231,7 +231,7 @@ evalScaledGradF = do
     C.function_evaluate gradF
     gradF' <- C.ioInterfaceFunction_output__0 gradF "grad"
     f' <- C.ioInterfaceFunction_output__0 gradF "f"
-    return ((mkJ gradF'), (mkJ f'))
+    return (mkJ gradF', mkJ f')
 
 evalGradF :: forall x p g . (View x, View g, View p)
              => NlpSolver x p g (J x DMatrix, J (JV Id) DMatrix)
