@@ -39,11 +39,10 @@ toSparse name mat0
   | V.length row /= V.length dat = error $ name ++ " sparsity patter size doesn't match data size"
   | otherwise = V.toList $ V.zip3 row col dat
   where
-    mat = M.sparse mat0
-    mat' = unM mat
+    mat = unM $ M.sparse mat0
 
-    sp = CM.sparsity mat'
-    dat = ddata mat'
+    sp = CM.sparsity mat
+    dat = ddata mat
     row = getRow sp
     col = getCol sp
 
