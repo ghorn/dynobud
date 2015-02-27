@@ -48,7 +48,7 @@ import Data.Proxy ( Proxy(..) )
 import Casadi.CMatrix ( CMatrix )
 import Casadi.DMatrix ( DMatrix, ddata, dsparsify )
 import qualified Casadi.CMatrix as CM
-import qualified Data.Packed.Matrix as Mat
+import qualified Data.Packed.Matrix as HMat
 
 import Dyno.View.Unsafe.View ( unJ, mkJ )
 import Dyno.View.Unsafe.M ( M(UnsafeM), mkM, mkM', unM )
@@ -280,18 +280,18 @@ solve (UnsafeM x) (UnsafeM y) = mkM (CM.solve x y)
 
 toHMat :: forall n m
        . (View n, View m)
-       => M n m DMatrix -> Mat.Matrix Double
-toHMat (UnsafeM d) = Mat.trans $ (m Mat.>< n) (V.toList v)
+       => M n m DMatrix -> HMat.Matrix Double
+toHMat (UnsafeM d) = HMat.trans $ (m HMat.>< n) (V.toList v)
   where
     v = ddata (CM.dense d)
     n = size (Proxy :: Proxy n)
     m = size (Proxy :: Proxy m)
 
-fromHMat :: (View g, View f) => Mat.Matrix Double -> M f g DMatrix
+fromHMat :: (View f, View g) => HMat.Matrix Double -> M f g DMatrix
 fromHMat x = case fromHMat' x of
   Right x' -> x'
   Left msg -> error msg
 
-fromHMat' :: (View g, View f) => Mat.Matrix Double -> Either String (M f g DMatrix)
-fromHMat' = mkM' . CM.vertcat . V.fromList . fmap (CM.trans . CM.fromDVector . V.fromList) . Mat.toLists
+fromHMat' :: (View f, View g) => HMat.Matrix Double -> Either String (M f g DMatrix)
+fromHMat' = mkM' . CM.vertcat . V.fromList . fmap (CM.trans . CM.fromDVector . V.fromList) . HMat.toLists
 
