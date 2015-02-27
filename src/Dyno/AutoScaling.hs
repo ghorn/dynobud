@@ -49,9 +49,11 @@ toSparse name mat0
 kktScalingInfo :: (View f, View g) => KKT f g -> String
 kktScalingInfo kkt =
   init $ unlines
-  [ showOne "hessLag " (kktHessLag kkt)
-  , showOne "jacG    " (kktJacG kkt)
-  , showOne "gradF   " (M.col (kktGradF kkt))
+  [ showOne "hessLag  " (kktHessLag kkt)
+  , showOne "hessF    " (kktHessF kkt)
+  , showOne "hessLamG " (kktHessLambdaG kkt)
+  , showOne "jacG     " (kktJacG kkt)
+  , showOne "gradF    " (M.col (kktGradF kkt))
   ]
   where
     showOne name m =
@@ -79,19 +81,21 @@ kktScalingInfo kkt =
 -- log |aij| + sj + si (+ sf)
 data LogScaling a =
   LogScaling
-  { lsHessLag :: [a]
+  { lsHessF :: [a]
+  , lsHessLambdaG :: [a]
+  , lsHessLag :: [a]
   , lsJacG :: [a]
   , lsGradF :: [a]
   } deriving Functor
 
 
 toObjective :: Floating a => LogScaling a -> a
-toObjective (LogScaling hl jg gf) = sum (map sqr hl) + 2*sum (map sqr jg) + sum (map sqr gf)
+toObjective (LogScaling hf hlg hl jg gf) = sum (map sqr hf) + sum (map sqr hlg) + 0*sum (map sqr hl) + 2*sum (map sqr jg) + sum (map sqr gf)
   where
     sqr x = x*x
 
 toMatrixCoeffs :: Floating a => LogScaling a -> LogScaling a
-toMatrixCoeffs (LogScaling hl jg gf) = LogScaling (f hl) (f jg) (f gf)
+toMatrixCoeffs (LogScaling hf hlg hl jg gf) = LogScaling (f hf) (f hlg) (f hl) (f jg) (f gf)
   where
     f = map exp
 
@@ -102,11 +106,15 @@ toLogScaling ::
 toLogScaling kkt expand sdvs =
   LogScaling
   { lsJacG = jacGObjValues
+  , lsHessF = hessFObjValues
+  , lsHessLambdaG = hessLambdaGObjValues
   , lsHessLag = hessLagObjValues
   , lsGradF = gradFObjValues
   }
   where
     jacGMatValues = toSparse "jacG" (kktJacG kkt)
+    hessFMatValues = toSparse "hessF" (kktHessF kkt)
+    hessLambdaGMatValues = toSparse "hessLamG" (kktHessLambdaG kkt)
     hessLagMatValues = toSparse "hessLag" (kktHessLag kkt)
     gradFMatValues = toSparse "gradF" (M.col (kktGradF kkt))
 
@@ -132,6 +140,12 @@ toLogScaling kkt expand sdvs =
 
     jacGObjValues :: [J (JV Id) a]
     jacGObjValues = map (toSum gs xs) jacGMatValues
+
+    hessFObjValues :: [J (JV Id) a]
+    hessFObjValues = map ((+ objScale) . toSum xs xs) hessFMatValues
+
+    hessLambdaGObjValues :: [J (JV Id) a]
+    hessLambdaGObjValues = map ((+ objScale) . toSum xs xs) hessLambdaGMatValues
 
     hessLagObjValues :: [J (JV Id) a]
     hessLagObjValues = map ((+ objScale) . toSum xs xs) hessLagMatValues
@@ -188,7 +202,13 @@ beforeAndAfter
      -> String
 beforeAndAfter kkts expand scalingSol =
   init $ unlines
-  [ minMax "hessLag0" hessLag0
+  [ minMax "hessF0" hessF0
+  , minMax "hessF " hessF
+  , ""
+  , minMax "hessLamG0" hessLamG0
+  , minMax "hessLamG " hessLamG
+  , ""
+  , minMax "hessLag0" hessLag0
   , minMax "hessLag " hessLag
   , ""
   , minMax "jacG0" jacG0
@@ -199,11 +219,11 @@ beforeAndAfter kkts expand scalingSol =
   ]
   where
       ls0 = fmap (unId . splitJV . d2v) $ toLogScaling kkts expand (v2d (jfill 0))
-      LogScaling hessLag0 jacG0 gradF0 = toMatrixCoeffs ls0 :: LogScaling Double
+      LogScaling hessF0 hessLamG0 hessLag0 jacG0 gradF0 = toMatrixCoeffs ls0 :: LogScaling Double
 
       ls :: LogScaling Double
       ls = fmap (unId . splitJV . d2v) $ toLogScaling kkts expand (v2d scalingSol)
-      LogScaling hessLag jacG gradF = toMatrixCoeffs ls :: LogScaling Double
+      LogScaling hessF hessLamG hessLag jacG gradF = toMatrixCoeffs ls :: LogScaling Double
       minMax name xs = printf "%s min: %s, max: %s, ratio: %s" name min' max' ratio
         where
           -- protect against empty list

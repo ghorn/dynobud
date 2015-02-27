@@ -35,6 +35,8 @@ data ScaleFuns x g a =
   , lamGBarToLamG :: J g a -> J g a
   , gradFBarToGradF :: J x a -> J x a
   , jacGBarToJacG :: M g x a -> M g x a
+  , hessFBarToHessF :: M x x a -> M x x a
+  , hessLamGBarToHessLamG :: M x x a -> M x x a
   , hessLagBarToHessLag :: M x x a -> M x x a
   }
 
@@ -82,7 +84,9 @@ mkScaleFuns mx mg mf
               , lamGBarToLamG = lamGBarToLamG'
               , gradFBarToGradF = gradFBarToGradF'
               , jacGBarToJacG = jacGBarToJacG'
-              , hessLagBarToHessLag = hessLagBarToHessLag'
+              , hessFBarToHessF = hessFBarToHessF'
+              , hessLamGBarToHessLamG = hessFBarToHessF' -- only valid at the solution
+              , hessLagBarToHessLag = hessFBarToHessF' -- only valid at the solution
               }
   where
     xdiaginv :: Maybe (M x x a)
@@ -104,8 +108,8 @@ mkScaleFuns mx mg mf
     gradFBarToGradF' :: J x a -> J x a
     gradFBarToGradF' = lamXBarToLamX'
 
-    hessLagBarToHessLag' :: M x x a -> M x x a
-    hessLagBarToHessLag' h0 = case mf of
+    hessFBarToHessF' :: M x x a -> M x x a
+    hessFBarToHessF' h0 = case mf of
       Nothing -> h1
       Just fscl -> h1 `M.ms` (catJV' (Id (realToFrac fscl)))
       where

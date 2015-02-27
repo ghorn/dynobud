@@ -39,11 +39,14 @@ module Dyno.NlpSolver
          -- * kkt conditions, evalKKT is in user units, evalScaledKKT is the internal one
        , evalGradF
        , evalJacG
-       , evalHessLag
+       , evalHessF
+       , evalHessLambdaG
        , evalKKT
        , evalScaledGradF
        , evalScaledJacG
        , evalScaledHessLag
+       , evalScaledHessF
+       , evalScaledHessLambdaG
        , evalScaledKKT
          -- * options
        , Op.Opt(..)
@@ -88,7 +91,7 @@ import Dyno.View.Unsafe.M ( mkM )
 import Dyno.SXElement ( SXElement )
 import Dyno.Vectorize ( Id(..) )
 import Dyno.View.JV ( JV )
-import Dyno.View.View ( View(..), J, fmapJ, d2v, v2d )
+import Dyno.View.View ( View(..), J, fmapJ, d2v, v2d, jfill )
 import Dyno.View.M ( M )
 import qualified Dyno.View.M as M
 import Dyno.View.Symbolic ( Symbolic, sym, mkScheme, mkFunction )
@@ -289,34 +292,99 @@ evalScaledHessLag = do
     hess' <- C.ioInterfaceFunction_output__0 hessLag "hess"
     return (mkM hess')
 
+-- | only valid at the solution
 evalHessLag :: forall x p g . (View x, View g, View p)
-                       => NlpSolver x p g (M x x DMatrix)
+                   => NlpSolver x p g (M x x DMatrix)
 evalHessLag = do
-  hess <- evalScaledHessLag
+  hess <- evalScaledHessLambdaG
   nlpState <- ask
   let scale = isScale nlpState
   return (hessLagBarToHessLag scale hess)
+
+
+evalScaledHessF :: forall x p g . (View x, View g, View p)
+                   => NlpSolver x p g (M x x DMatrix)
+evalScaledHessF = do
+  x0bar <- getInput (const id) "x0" :: NlpSolver x p g (J x (Vector Double))
+  pbar <- getInput (const id) "p" :: NlpSolver x p g (J p (Vector Double))
+  let lamGbar = jfill 0 :: J g (Vector Double)
+  nlpState <- ask
+  let solver = isSolver nlpState :: C.NlpSolver
+  liftIO $ do
+    hessLag <- C.nlpSolver_hessLag solver
+    C.ioInterfaceFunction_setInput__0 hessLag (unJ (v2d x0bar)) "x"
+    C.ioInterfaceFunction_setInput__0 hessLag (unJ (v2d pbar)) "p"
+    C.ioInterfaceFunction_setInput__0 hessLag (unJ (v2d lamGbar)) "lam_g"
+    C.ioInterfaceFunction_setInput__0 hessLag 1.0 "lam_f"
+    C.function_evaluate hessLag
+    hess' <- C.ioInterfaceFunction_output__0 hessLag "hess"
+    return (mkM hess')
+
+evalHessF :: forall x p g . (View x, View g, View p)
+             => NlpSolver x p g (M x x DMatrix)
+evalHessF = do
+  hess <- evalScaledHessLag
+  nlpState <- ask
+  let scale = isScale nlpState
+  return (hessFBarToHessF scale hess)
+
+
+evalScaledHessLambdaG :: forall x p g . (View x, View g, View p)
+                         => NlpSolver x p g (M x x DMatrix)
+evalScaledHessLambdaG = do
+  x0bar <- getInput (const id) "x0" :: NlpSolver x p g (J x (Vector Double))
+  pbar <- getInput (const id) "p" :: NlpSolver x p g (J p (Vector Double))
+  lamGbar <- getInput (const id) "lam_g0" :: NlpSolver x p g (J g (Vector Double))
+  nlpState <- ask
+  let solver = isSolver nlpState :: C.NlpSolver
+  liftIO $ do
+    hessLag <- C.nlpSolver_hessLag solver
+    C.ioInterfaceFunction_setInput__0 hessLag (unJ (v2d x0bar)) "x"
+    C.ioInterfaceFunction_setInput__0 hessLag (unJ (v2d pbar)) "p"
+    C.ioInterfaceFunction_setInput__0 hessLag (unJ (v2d lamGbar)) "lam_g"
+    C.ioInterfaceFunction_setInput__0 hessLag 0.0 "lam_f"
+    C.function_evaluate hessLag
+    hess' <- C.ioInterfaceFunction_output__0 hessLag "hess"
+    return (mkM hess')
+
+
+-- | only valid at solution
+evalHessLambdaG :: forall x p g . (View x, View g, View p)
+                   => NlpSolver x p g (M x x DMatrix)
+evalHessLambdaG = do
+  hess <- evalScaledHessLambdaG
+  nlpState <- ask
+  let scale = isScale nlpState
+  return (hessLamGBarToHessLamG scale hess)
+
 
 
 evalKKT :: (View x, View p, View g) => NlpSolver x p g (KKT x g)
 evalKKT = do
   (gradF,f) <- evalGradF
   (jacG, g) <- evalJacG
-  hessL <- evalHessLag
+  hessF <- evalHessF
+  hessLambdaG <- evalHessLambdaG
+  hessLag <- evalHessLag
   return $
     KKT
     { kktF = f
     , kktJacG = jacG
     , kktG = g
     , kktGradF = gradF
-    , kktHessLag = hessL
+    , kktHessLag = hessLag
+    , kktHessF = hessF
+    , kktHessLambdaG = hessLambdaG
     }
+
 
 evalScaledKKT :: (View x, View p, View g) => NlpSolver x p g (KKT x g)
 evalScaledKKT = do
   (gradF,f) <- evalScaledGradF
   (jacG, g) <- evalScaledJacG
   hessL <- evalScaledHessLag
+  hessF <- evalScaledHessF
+  hessLambdaG <- evalScaledHessLambdaG
   return $
     KKT
     { kktF = f
@@ -324,6 +392,8 @@ evalScaledKKT = do
     , kktG = g
     , kktGradF = gradF
     , kktHessLag = hessL
+    , kktHessF = hessF
+    , kktHessLambdaG = hessLambdaG
     }
 
 

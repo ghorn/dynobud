@@ -88,7 +88,9 @@ data Nlp' x p g a =
 
 data KKT x g =
   KKT
-  { kktHessLag :: M x x DMatrix
+  { kktHessLag :: M x x DMatrix -- unscaled version only valid at solution
+  , kktHessF :: M x x DMatrix
+  , kktHessLambdaG :: M x x DMatrix -- unscaled version only valid at solution
   , kktJacG :: M g x DMatrix
   , kktG :: J g DMatrix
   , kktGradF :: J x DMatrix
