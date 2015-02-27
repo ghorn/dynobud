@@ -97,13 +97,13 @@ runMe = do
   kkts <- computeKKTs
   return ((unId (splitJV f), splitJV x, splitJV g), kkts)
 
-data Sdv a = Sdv (J (JV X) a) (J (JV G) a) deriving (Generic)
+data Sdv a = Sdv (J (JV Id) a) (J (JV X) a) (J (JV G) a) deriving (Generic)
 instance View Sdv
 
-expand :: Viewable a => J Sdv a -> (J (JV X) a, J (JV G) a)
-expand sdv' = (x, g)
+expand :: Viewable a => J Sdv a -> (J (JV Id) a, J (JV X) a, J (JV G) a)
+expand sdv = (f, x, g)
   where
-    Sdv x g = split sdv'
+    Sdv f x g = split sdv
 
 main :: IO ()
 main = do
@@ -128,8 +128,7 @@ main = do
   let xopt = case msg of
         Left m -> error m
         Right _ -> xOpt' opt'
-      ScalingDvs obj' user = split (fmapJ exp xopt)
-      Sdv x' g' = split user
+      Sdv obj' x' g' = split (fmapJ exp xopt)
       Id obj = splitJV obj'
       x = splitJV x'
       g = splitJV g'

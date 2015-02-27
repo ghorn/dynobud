@@ -4,13 +4,10 @@
 {-# Language DeriveGeneric #-}
 
 module Dyno.AutoScaling
-       ( ScalingDvs(..)
-       , scalingNlp
+       ( scalingNlp
        , kktScalingInfo
        , beforeAndAfter
        ) where
-
-import GHC.Generics ( Generic )
 
 import Data.List ( minimumBy, maximumBy )
 import Data.Proxy ( Proxy(..) )
@@ -85,13 +82,6 @@ data LogScaling a =
   } deriving Functor
 
 
-data ScalingDvs x a =
-  ScalingDvs
-  { sdvObj :: J (JV Id) a
-  , sdvUser :: J x a
-  } deriving (Generic)
-instance View x => View (ScalingDvs x)
-
 toObjective :: Floating a => LogScaling a -> a
 toObjective (LogScaling hl jg gf) = sum (map sqr hl) + 2*sum (map sqr jg) + sum (map sqr gf)
   where
@@ -105,8 +95,8 @@ toMatrixCoeffs (LogScaling hl jg gf) = LogScaling (f hl) (f jg) (f gf)
 toLogScaling ::
   forall x g sdv a
   . (View x, View g, View sdv, Viewable a, CM.CMatrix a)
-  => KKT x g -> (J sdv a -> (J x a, J g a)) -> J (ScalingDvs sdv) a -> LogScaling (J (JV Id) a)
-toLogScaling kkt expand sdvs' =
+  => KKT x g -> (J sdv a -> (J (JV Id) a, J x a, J g a)) -> J sdv a -> LogScaling (J (JV Id) a)
+toLogScaling kkt expand sdvs =
   LogScaling
   { lsJacG = jacGObjValues
   , lsHessLag = hessLagObjValues
@@ -117,12 +107,12 @@ toLogScaling kkt expand sdvs' =
     hessLagMatValues = toSparse "hessLag" (kktHessLag kkt)
     gradFMatValues = toSparse "gradF" (M.col (kktGradF kkt))
 
-    sdvs = split sdvs'
-    objScale = negate (sdvObj sdvs) -- objective is inverted
+    objScale' :: J (JV Id) a
     x :: J x a
     g' :: J g a
-    (x,g') = expand (sdvUser sdvs)
-    -- constraints are inverted
+    (objScale', x, g') = expand sdvs
+    -- constraints and objective are inverted
+    objScale = negate objScale'
     g = negate g'
 
     reproxy :: J f a -> Proxy f
@@ -166,7 +156,7 @@ toSum rowVec colVec (rowi,colj,value)
 scalingNlp ::
  forall x g sdv
  . (View x, View g, View sdv)
- => KKT x g -> (J sdv SX -> (J x SX, J g SX)) -> Nlp' (ScalingDvs sdv) JNone JNone SX
+ => KKT x g -> (J sdv SX -> (J (JV Id) SX, J x SX, J g SX)) -> Nlp' sdv JNone JNone SX
 scalingNlp kkt expand =
   Nlp'
   { nlpBX' = jfill (Nothing, Nothing)
@@ -181,7 +171,7 @@ scalingNlp kkt expand =
   , nlpFG' = fg
   }
   where
-    fg :: J (ScalingDvs sdv) SX -> J JNone SX -> (J (JV Id) SX, J JNone SX)
+    fg :: J sdv SX -> J JNone SX -> (J (JV Id) SX, J JNone SX)
     fg sdvs _ = (obj, cat JNone)
       where
         obj = toObjective $ toLogScaling kkt expand sdvs
@@ -190,8 +180,8 @@ scalingNlp kkt expand =
 beforeAndAfter
   :: (View x, View g, View sdv)
      => KKT x g
-     -> (J sdv DMatrix -> (J x DMatrix, J g DMatrix))
-     -> J (ScalingDvs sdv) (V.Vector Double)
+     -> (J sdv DMatrix -> (J (JV Id) DMatrix, J x DMatrix, J g DMatrix))
+     -> J sdv (V.Vector Double)
      -> IO ()
 beforeAndAfter kkts expand scalingSol = do
   let ls0 = fmap (unId . splitJV . d2v) $ toLogScaling kkts expand (v2d (jfill 0))
