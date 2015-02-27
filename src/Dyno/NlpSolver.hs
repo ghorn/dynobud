@@ -36,11 +36,11 @@ module Dyno.NlpSolver
        , getLamG
        , getStat
        , getNlpOut'
-         -- * kkt conditions, unscaled is in user units, scaled is the internal one
-       , evalUnscaledGradF
-       , evalUnscaledJacG
-       , evalUnscaledHessLag
-       , evalUnscaledKKT
+         -- * kkt conditions, evalKKT is in user units, evalScaledKKT is the internal one
+       , evalGradF
+       , evalJacG
+       , evalHessLag
+       , evalKKT
        , evalScaledGradF
        , evalScaledJacG
        , evalScaledHessLag
@@ -233,9 +233,9 @@ evalScaledGradF = do
     f' <- C.ioInterfaceFunction_output__0 gradF "f"
     return ((mkJ gradF'), (mkJ f'))
 
-evalUnscaledGradF :: forall x p g . (View x, View g, View p)
-                     => NlpSolver x p g (J x DMatrix, J (JV Id) DMatrix)
-evalUnscaledGradF = do
+evalGradF :: forall x p g . (View x, View g, View p)
+             => NlpSolver x p g (J x DMatrix, J (JV Id) DMatrix)
+evalGradF = do
   nlpState <- ask
   let scale = isScale nlpState
   (gradF, f) <- evalScaledGradF
@@ -261,9 +261,9 @@ evalScaledJacG = do
     g' <- C.ioInterfaceFunction_output__0 jacG "g"
     return (mkM jacG', mkJ g')
 
-evalUnscaledJacG :: forall x p g . (View x, View g, View p)
-                    => NlpSolver x p g (M g x DMatrix, J g DMatrix)
-evalUnscaledJacG = do
+evalJacG :: forall x p g . (View x, View g, View p)
+            => NlpSolver x p g (M g x DMatrix, J g DMatrix)
+evalJacG = do
   (jacG, g) <- evalScaledJacG
 
   nlpState <- ask
@@ -289,20 +289,20 @@ evalScaledHessLag = do
     hess' <- C.ioInterfaceFunction_output__0 hessLag "hess"
     return (mkM hess')
 
-evalUnscaledHessLag :: forall x p g . (View x, View g, View p)
+evalHessLag :: forall x p g . (View x, View g, View p)
                        => NlpSolver x p g (M x x DMatrix)
-evalUnscaledHessLag = do
+evalHessLag = do
   hess <- evalScaledHessLag
   nlpState <- ask
   let scale = isScale nlpState
   return (hessLagBarToHessLag scale hess)
 
 
-evalUnscaledKKT :: (View x, View p, View g) => NlpSolver x p g (KKT x g)
-evalUnscaledKKT = do
-  (gradF,f) <- evalUnscaledGradF
-  (jacG, g) <- evalUnscaledJacG
-  hessL <- evalUnscaledHessLag
+evalKKT :: (View x, View p, View g) => NlpSolver x p g (KKT x g)
+evalKKT = do
+  (gradF,f) <- evalGradF
+  (jacG, g) <- evalJacG
+  hessL <- evalHessLag
   return $
     KKT
     { kktF = f

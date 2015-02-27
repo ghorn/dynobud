@@ -77,7 +77,7 @@ quietSolver = ipoptSolver { options = [ ("print_time", Opt False)
 computeKKTs :: NlpSolver (JV X) (JV None) (JV G)
                (KKT (JV X) (JV G), KKT (JV X) (JV G))
 computeKKTs = do
-  kktU <- evalUnscaledKKT
+  kktU <- evalKKT
   kktS <- evalScaledKKT
   return (kktU, kktS)
 
