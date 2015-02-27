@@ -12,7 +12,9 @@ module Dyno.DirectCollocation.Types
        , CollTrajCov(..)
        , CollOcpCovConstraints(..)
        , fillCollTraj
+       , fillCollTraj'
        , fmapCollTraj
+       , fmapCollTraj'
        , fmapStage
        , fmapCollPoint
        , fillCollConstraints
@@ -120,8 +122,17 @@ fillCollTraj ::
   (Vectorize x, Vectorize z, Vectorize u, Vectorize p,
    Dim n, Dim deg, Show a)
   => x a -> z a -> u a -> p a -> a -> CollTraj x z u p n deg (Vector a)
-fillCollTraj x z u p t =
-  fmapCollTraj
+fillCollTraj x = fillCollTraj' x x
+
+-- | first argument maps over the non-collocation points
+fillCollTraj' ::
+  forall x z u p n deg a .
+  (Vectorize x, Vectorize z, Vectorize u, Vectorize p,
+   Dim n, Dim deg, Show a)
+  => x a -> x a -> z a -> u a -> p a -> a -> CollTraj x z u p n deg (Vector a)
+fillCollTraj' x' x z u p t =
+  fmapCollTraj'
+  (const x')
   (const x)
   (const z)
   (const u)
@@ -144,11 +155,31 @@ fmapCollTraj ::
   -> (a -> b)
   -> CollTraj x1 z1 u1 p1 n deg (Vector a)
   -> CollTraj x2 z2 u2 p2 n deg (Vector b)
-fmapCollTraj fx fz fu fp ft (CollTraj tf1 p stages1 xf) = CollTraj tf2 (fj fp p) stages2 (fj fx xf)
+fmapCollTraj fx = fmapCollTraj' fx fx
+
+-- | first argument maps over the non-collocation points
+fmapCollTraj' ::
+  forall x1 x2 z1 z2 u1 u2 p1 p2 n deg a b .
+  ( Vectorize x1, Vectorize x2
+  , Vectorize z1, Vectorize z2
+  , Vectorize u1, Vectorize u2
+  , Vectorize p1, Vectorize p2
+  , Dim n, Dim deg
+  , Show a, Show b )
+  => (x1 a -> x2 b)
+  -> (x1 a -> x2 b)
+  -> (z1 a -> z2 b)
+  -> (u1 a -> u2 b)
+  -> (p1 a -> p2 b)
+  -> (a -> b)
+  -> CollTraj x1 z1 u1 p1 n deg (Vector a)
+  -> CollTraj x2 z2 u2 p2 n deg (Vector b)
+fmapCollTraj' fx' fx fz fu fp ft (CollTraj tf1 p stages1 xf) =
+  CollTraj tf2 (fj fp p) stages2 (fj fx' xf)
   where
     tf2 :: J (JV Id) (Vector b)
     tf2 = catJV $ fmap ft (splitJV tf1)
-    stages2 = cat $ fmapJVec (fmapStage fx fz fu) (split stages1)
+    stages2 = cat $ fmapJVec (fmapStage fx' fx fz fu) (split stages1)
 
     fj :: (Vectorize f1, Vectorize f2)
           => (f1 a -> f2 b)
@@ -166,11 +197,12 @@ fmapStage :: forall x1 x2 z1 z2 u1 u2 deg a b .
              , Dim deg
              , Show a, Show b )
              => (x1 a -> x2 b)
+             -> (x1 a -> x2 b)
              -> (z1 a -> z2 b)
              -> (u1 a -> u2 b)
              -> CollStage (JV x1) (JV z1) (JV u1) deg (Vector a)
              -> CollStage (JV x2) (JV z2) (JV u2) deg (Vector b)
-fmapStage fx fz fu (CollStage x0 points0) = CollStage (fj fx x0) points1
+fmapStage fx' fx fz fu (CollStage x0 points0) = CollStage (fj fx' x0) points1
   where
     points1 = cat $ fmapJVec (fmapCollPoint fx fz fu) (split points0)
 

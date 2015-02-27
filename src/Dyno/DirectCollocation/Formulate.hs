@@ -200,7 +200,8 @@ makeCollProblem ocp = do
                         -> J (JV Id) MX)
            (callStageFun :: (J (JV Id) :*: J (JV p) :*: J (JVec deg (JV Id)) :*: J (JV x) :*: J (JVec deg (JTuple (JV x) (JV z))) :*: J (JVec deg (JV u))) MX
                       -> (J (JVec deg (JV r)) :*: J (JVec deg (JV o)) :*: J (JVec deg (JV h)) :*: J (JV x)) MX)
-        , nlpBX' = cat $ fillCollTraj
+        , nlpBX' = cat $ fillCollTraj'
+                   (fill (Nothing, Nothing))
                    (ocpXbnd ocp)
                    (ocpZbnd ocp)
                    (ocpUbnd ocp)
