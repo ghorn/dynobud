@@ -54,10 +54,11 @@ kktScalingInfo kkt =
   , showOne "gradF   " (M.col (kktGradF kkt))
   ]
   where
-    showOne name m = printf "%s size (%5d, %5d), nonzeros %7d/%10d (%6.2f %%), min: %s, max: %s"
-                     name r c nz (r*c)
-                     (100 * fromIntegral nz / fromIntegral (r*c) :: Double)
-                     min' max'
+    showOne name m =
+      printf "%s size (%5d, %5d), nonzeros %7d/%10d (%6.2f %%), min: %s, max: %s, ratio: %s"
+      name r c nz (r*c)
+      (100 * fromIntegral nz / fromIntegral (r*c) :: Double)
+      min' max' ratio
       where
         byAbs x y = compare (abs x) (abs y)
         min' = case d of
@@ -66,6 +67,9 @@ kktScalingInfo kkt =
         max' = case d of
           [] -> "      N/A"
           ds -> printf "% 8.2e" (maximumBy byAbs ds)
+        ratio = case d of
+          [] -> "      N/A"
+          ds -> printf "% 8.2e" (minimumBy byAbs ds / maximumBy byAbs ds)
 
         nz = length d
         (_,_,d) = unzip3 (toSparse name m)
@@ -200,14 +204,18 @@ beforeAndAfter kkts expand scalingSol =
       ls :: LogScaling Double
       ls = fmap (unId . splitJV . d2v) $ toLogScaling kkts expand (v2d scalingSol)
       LogScaling hessLag jacG gradF = toMatrixCoeffs ls :: LogScaling Double
-      minMax name xs = printf "%s min: %s, max: %s" name min' max'
+      minMax name xs = printf "%s min: %s, max: %s, ratio: %s" name min' max' ratio
         where
+          -- protect against empty list
           min' = case xs of
             [] -> "N/A"
             xs' -> printf "% 8.2e" (minimum xs')
           max' = case xs of
             [] -> "N/A"
             xs' -> printf "% 8.2e" (maximum xs')
+          ratio = case xs of
+            [] -> "N/A"
+            xs' -> printf "% 8.2e" (minimum xs' / maximum xs')
 
 
 
