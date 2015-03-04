@@ -52,7 +52,7 @@ import Dyno.Ocp ( OcpPhase(..), OcpPhaseWithCov(..) )
 
 import Dyno.DirectCollocation.Types
 import Dyno.DirectCollocation.Dynamic ( DynPlotPoints, dynPlotPoints )
-import Dyno.DirectCollocation.Quadratures ( QuadratureRoots, mkTaus, interpolate, timesFromTaus )
+import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..), mkTaus, interpolate, timesFromTaus )
 import Dyno.DirectCollocation.Robust
 
 data CollProblem x z u p r c h o n deg =
@@ -91,9 +91,14 @@ makeCollProblem roots ocp = do
       cijs = lagrangeDerivCoeffs (0 TV.<| taus)
 
       interpolate' :: (J (JV x) :*: J (JVec deg (JV x))) MX -> J (JV x) MX
-      interpolate' (x0 :*: xs) = interpolate taus x0 (unJVec (split xs))
+      interpolate' (x0 :*: xs) = case roots of
+        Legendre -> interpolate taus x0 (unJVec (split xs))
+        Radau -> TV.tvlast $ unJVec $ split xs
+
       interpolateScalar' :: (J (JV Id) :*: J (JVec deg (JV Id))) MX -> J (JV Id) MX
-      interpolateScalar' (x0 :*: xs) = interpolate taus x0 (unJVec (split xs))
+      interpolateScalar' (x0 :*: xs) = case roots of
+        Legendre -> interpolate taus x0 (unJVec (split xs))
+        Radau -> TV.tvlast $ unJVec $ split xs
 
   interpolateFun <- toMXFun "interpolate (JV x)" interpolate' >>= expandMXFun
   interpolateScalarFun <- toMXFun "interpolate (JV Id)" interpolateScalar' >>= expandMXFun
