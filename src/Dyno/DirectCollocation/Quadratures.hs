@@ -20,7 +20,7 @@ import qualified Data.Foldable as F
 import Data.Serialize ( Serialize(..) )
 import Linear.V
 
-import JacobiRoots ( shiftedLegendreRoots ) --, shiftedRadauRoots )
+import JacobiRoots ( shiftedLegendreRoots, shiftedRadauRoots )
 
 import Dyno.View.View ( View, J )
 import Dyno.TypeVecs ( Vec )
@@ -39,9 +39,10 @@ mkTaus quadratureRoots = case taus of
   Nothing -> error "makeTaus: too high degree"
   where
     deg = reflectDim (Proxy :: Proxy deg)
+    taus :: Maybe (V.Vector Double)
     taus = case quadratureRoots of
       Legendre -> shiftedLegendreRoots deg
-      Radau -> error "radau not yet supported" -- shiftedRadauRoots (deg-1) ++ [1.0]
+      Radau -> fmap (`V.snoc` 1.0) (shiftedRadauRoots (deg-1))
 
 
 -- todo: code duplication

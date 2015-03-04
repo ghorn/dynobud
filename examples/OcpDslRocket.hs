@@ -6,6 +6,7 @@ import Control.Monad ( void )
 --import Control.Concurrent ( threadDelay )
 
 import Dyno.Solvers
+import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..) )
 
 import Dynoplot.Callback
 
@@ -85,7 +86,7 @@ main = void $ withCallback go
     deg = 3
     tbnds = (Just 0.2, Just 6)
     --tbnds = (Just 1.5, Just 1.5)
-    go cb = solveStaticOcp ipoptSolver myDae mayer boundaryConditions myOcp tbnds n deg (Just cb')
+    go cb = solveStaticOcp Radau ipoptSolver myDae mayer boundaryConditions myOcp tbnds n deg (Just cb')
       where
         cb' meta x = cb (x, meta)
         --cb' meta x = threadDelay 200000 >> cb (x, meta)

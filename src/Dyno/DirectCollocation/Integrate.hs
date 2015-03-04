@@ -35,7 +35,7 @@ import Dyno.Solvers ( Solver )
 import Dyno.NlpSolver ( runNlpSolver, liftIO, solve
                       , setX0, setLbg, setUbg, setP, setLbx, setUbx, getX )
 import Dyno.DirectCollocation.Types ( CollStage(..), CollPoint(..) )
-import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..), mkTaus, interpolate, timesFromTaus )
+import Dyno.DirectCollocation.Quadratures ( QuadratureRoots, mkTaus, interpolate, timesFromTaus )
 
 
 
@@ -142,16 +142,14 @@ withIntegrator ::
   forall x z u p r deg n b .
   (Dim n, Dim deg, Vectorize x, Vectorize p, Vectorize u, Vectorize z, Vectorize r)
   => Proxy (n, deg)
+  -> QuadratureRoots
   -> x Double
   -> (x Sxe -> x Sxe -> z Sxe -> u Sxe -> p Sxe -> Sxe -> r Sxe)
   -> Solver
   -> ((x Double -> Either (u Double) (Vec n (Vec deg (u Double))) -> p Double -> Double -> IO (x Double)) -> IO b)
   -> IO b
-withIntegrator _ initialX dae solver userFun = do
+withIntegrator _ roots initialX dae solver userFun = do
   let -- the collocation points
-      roots :: QuadratureRoots
-      roots = Legendre
-
       taus :: Vec deg Double
       taus = mkTaus roots
 

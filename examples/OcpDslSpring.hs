@@ -6,6 +6,7 @@ import Control.Monad ( void )
 
 import Dyno.Solvers
 
+import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..) )
 import Dynoplot.Callback
 import ExampleDsl.OcpMonad
 
@@ -66,6 +67,6 @@ main = void $ withCallback go
     n = 100
     deg = 3
     tbnds = (Just 4, Just 4)
-    go cb = solveStaticOcp ipoptSolver myDae mayer boundaryConditions myOcp tbnds n deg (Just cb')
+    go cb = solveStaticOcp Legendre ipoptSolver myDae mayer boundaryConditions myOcp tbnds n deg (Just cb')
       where
         cb' meta x = cb (x, meta)

@@ -23,6 +23,7 @@ import Dyno.Server.Accessors
 
 import Dyno.Ocp
 import Dyno.DirectCollocation
+import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..) )
 
 data PendX a = PendX { pX  :: a
                      , pY  :: a
@@ -135,7 +136,7 @@ solver2 = ipoptSolver { options = [("expand", Opt True)] }
 
 main :: IO ()
 main = do
-  cp  <- makeCollProblem pendOcp
+  cp  <- makeCollProblem Legendre pendOcp
   let nlp = cpNlp cp
   _ <- solveNlp' solver (nlp { nlpX0' = guess }) Nothing
 --  _ <- solveNlp solver2 (nlp { nlpX0' = guess }) Nothing

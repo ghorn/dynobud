@@ -52,7 +52,7 @@ import Dyno.Ocp ( OcpPhase(..), OcpPhaseWithCov(..) )
 
 import Dyno.DirectCollocation.Types
 import Dyno.DirectCollocation.Dynamic ( DynPlotPoints, dynPlotPoints )
-import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..), mkTaus, interpolate, timesFromTaus )
+import Dyno.DirectCollocation.Quadratures ( QuadratureRoots, mkTaus, interpolate, timesFromTaus )
 import Dyno.DirectCollocation.Robust
 
 data CollProblem x z u p r c h o n deg =
@@ -77,13 +77,10 @@ makeCollProblem ::
   forall x z u p r o c h deg n .
   (Dim deg, Dim n, Vectorize x, Vectorize p, Vectorize u, Vectorize z,
    Vectorize r, Vectorize o, Vectorize h, Vectorize c)
-  => OcpPhase x z u p r o c h
+  => QuadratureRoots -> OcpPhase x z u p r o c h
   -> IO (CollProblem x z u p r c h o n deg)
-makeCollProblem ocp = do
+makeCollProblem roots ocp = do
   let -- the collocation points
-      roots :: QuadratureRoots
-      roots = Legendre
-
       taus :: Vec deg Double
       taus = mkTaus roots
 
@@ -278,13 +275,12 @@ makeCollCovProblem ::
    Vectorize sr, Vectorize sw, Vectorize sz, Vectorize sx,
    Vectorize r, Vectorize o, Vectorize h, Vectorize c,
    View sh, Vectorize shr, View sc)
-  => OcpPhase x z u p r o c h
+  => QuadratureRoots
+  -> OcpPhase x z u p r o c h
   -> OcpPhaseWithCov (OcpPhase x z u p r o c h) sx sz sw sr sh shr sc
   -> IO (CollCovProblem x z u p r o c h n deg sx sw sh shr sc)
-makeCollCovProblem ocp ocpCov = do
+makeCollCovProblem roots ocp ocpCov = do
   let -- the collocation points
-      roots = Legendre
-
       taus :: Vec deg Double
       taus = mkTaus roots
 
@@ -299,7 +295,7 @@ makeCollCovProblem ocp ocpCov = do
   lagrangeFun <- toSXFun "cov lagrange" $ \(x0:*:x1:*:x2:*:x3) ->
     sxCatJV $ Id $ ocpCovLagrange ocpCov (unId (sxSplitJV x0)) (sxSplitJV x1) x2 (unId (sxSplitJV x3))
 
-  cp0 <- makeCollProblem ocp
+  cp0 <- makeCollProblem roots ocp
 
   robustify <- mkRobustifyFunction (ocpCovProjection ocpCov) (ocpCovRobustifyPathC ocpCov)
 

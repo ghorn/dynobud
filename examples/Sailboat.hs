@@ -258,7 +258,7 @@ solver = ipoptSolver
 
 main :: IO ()
 main = do
-  cp <- makeCollProblem ocp
+  cp <- makeCollProblem Legendre ocp
   let nlp = cpNlp cp
   ZMQ.withContext $ \context ->
     withPublisher context urlDynoPlot $ \sendDynoPlotMsg -> do

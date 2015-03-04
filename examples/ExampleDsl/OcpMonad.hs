@@ -476,7 +476,8 @@ devec :: Vectorize f => SX -> f SXElement
 devec = sxSplitJV . mkJ
 
 solveStaticOcp ::
-  Solver
+  QuadratureRoots
+  -> Solver
   -> (SXElement -> DaeMonad ())
   -> (forall a m . (Floating a, Monad m) => a -> (String -> m a) -> (String -> m a) -> m a)
   -> ((String -> BCMonad SXElement) -> (String -> BCMonad SXElement) -> BCMonad ())
@@ -485,7 +486,7 @@ solveStaticOcp ::
   -> Int -> Int
   -> Maybe (CollTrajMeta -> DynPlotPoints Double -> IO Bool)
   -> IO (Either String String)
-solveStaticOcp solverStuff dae mayer bc ocp tbnds n deg cb =
+solveStaticOcp roots solverStuff dae mayer bc ocp tbnds n deg cb =
   reifyOcpPhase dae mayer bc ocp tbnds woo
     where
-      woo ocpphase meta = solveOcp solverStuff n deg (cb <*> pure meta) ocpphase
+      woo ocpphase meta = solveOcp roots solverStuff n deg (cb <*> pure meta) ocpphase

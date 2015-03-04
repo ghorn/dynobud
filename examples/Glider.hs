@@ -18,6 +18,7 @@ import Dyno.NlpUtils
 import Dyno.Ocp
 import Dyno.DirectCollocation
 import Dyno.DirectCollocation.Dynamic ( toMeta )
+import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..) )
 
 import Glider.Aircraft
 import Glider.AeroCoeffs
@@ -108,7 +109,7 @@ bc (AcX x0 v0 dcm0 w0 cs) _ = AcX x0 (v0 - V3 30 0 0) (dcm0 - eye3) w0 cs
 
 main :: IO ()
 main = do
-  cp <- makeCollProblem ocp
+  cp <- makeCollProblem Legendre ocp
   let nlp = cpNlp cp
   withCallback $ \cb -> do
     let guess = jfill 1

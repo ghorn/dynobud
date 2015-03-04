@@ -20,21 +20,22 @@ import Dyno.Nlp ( Nlp'(..) )
 import Dyno.DirectCollocation.Formulate ( CollProblem(..), makeCollProblem )
 import Dyno.DirectCollocation.Types ( CollTraj(..) )
 import Dyno.DirectCollocation.Dynamic ( DynPlotPoints )
+import Dyno.DirectCollocation.Quadratures ( QuadratureRoots )
 import qualified Dyno.TypeVecs as TV
 
 solveOcp ::
   forall x z u p r o c h .
   (Vectorize x, Vectorize z, Vectorize u, Vectorize p,
    Vectorize r, Vectorize o, Vectorize c, Vectorize h)
-  => Solver -> Int -> Int -> Maybe (DynPlotPoints Double -> IO Bool)
+  => QuadratureRoots -> Solver -> Int -> Int -> Maybe (DynPlotPoints Double -> IO Bool)
   -> OcpPhase x z u p r o c h
   -> IO (Either String String)
-solveOcp solverStuff n deg cb0 ocp =
+solveOcp roots solverStuff n deg cb0 ocp =
   TV.reifyDim n $ \(Proxy :: Proxy n) ->
   TV.reifyDim deg $ \(Proxy :: Proxy deg) -> do
     let guess :: J (CollTraj x z u p n deg) (Vector Double)
         guess = jfill 1
-    cp <- makeCollProblem ocp
+    cp <- makeCollProblem roots ocp
     let nlp = cpNlp cp
         toPlotPoints = cpPlotPoints cp
     --_ <- solveNlp' solverStuff (nlp {nlpX0' = guess}) (fmap (. ctToDynamic) cb)
