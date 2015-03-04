@@ -7,11 +7,13 @@ import Test.Framework ( ColorMode(..), RunnerOptions'(..), TestOptions'(..), def
 
 import VectorizeTests ( vectorizeTests )
 import ViewTests ( viewTests )
+import IntegrationTests ( integrationTests )
 
 main :: IO ()
 main = do
   defaultMainWithOpts
-    [ vectorizeTests
+    [ integrationTests
+    , vectorizeTests
     , viewTests
     ]
     opts
