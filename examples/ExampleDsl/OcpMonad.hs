@@ -242,12 +242,11 @@ reifyOcpPhase ::
   -> ((String -> BCMonad SXElement) -> (String -> BCMonad SXElement) -> BCMonad ())
   -> (SXElement -> (String -> OcpMonad SXElement) -> OcpMonad ())
   -> (Maybe Double, Maybe Double)
-  -> Int -> Int
   -> (forall x z u p r o c h .
       (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize r, Vectorize o, Vectorize c, Vectorize h)
       => OcpPhase x z u p r o c h -> CollTrajMeta -> IO ret)
   -> IO ret
-reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
+reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds f = do
   time <- sxElementSym "_t"
   endT <- sxElementSym "T"
   let time' = sxElementToSX time
@@ -396,20 +395,16 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds n deg f = do
              , ctmU = NameTreeNode ("", "") (zip (F.toList unames) (map NameTreeLeaf [0..]))
              , ctmP = NameTreeNode ("", "") (zip (F.toList pnames) (map NameTreeLeaf [0..]))
              , ctmO = NameTreeNode ("", "") (zip (F.toList onames) (map NameTreeLeaf [0..]))
-             , ctmN = n
-             , ctmDeg = deg
-             , ctmNx = V.length xnames
-             , ctmNz = V.length znames
-             , ctmNu = V.length unames
-             , ctmNp = V.length pnames
-             , ctmNo = V.length onames
-             , ctmNsx = 0
-             , ctmQuadRoots = Legendre -- TODO: make this an input
              }
-  TV.reifyDim (ctmNx meta) $ \(Proxy :: Proxy nx) ->
-    TV.reifyDim (ctmNz meta) $ \(Proxy :: Proxy nz) ->
-    TV.reifyDim (ctmNu meta) $ \(Proxy :: Proxy nu) ->
-    TV.reifyDim (ctmNp meta) $ \(Proxy :: Proxy np) ->
+      ctmNx = V.length xnames
+      ctmNz = V.length znames
+      ctmNu = V.length unames
+      ctmNp = V.length pnames
+
+  TV.reifyDim (ctmNx) $ \(Proxy :: Proxy nx) ->
+    TV.reifyDim (ctmNz) $ \(Proxy :: Proxy nz) ->
+    TV.reifyDim (ctmNu) $ \(Proxy :: Proxy nu) ->
+    TV.reifyDim (ctmNp) $ \(Proxy :: Proxy np) ->
     TV.reifyDim (V.length daeResidual) $ \(Proxy :: Proxy nr) ->
     TV.reifyDim (V.length onames) $ \(Proxy :: Proxy no) ->
     TV.reifyDim (V.length bcs) $ \(Proxy :: Proxy nc) ->
@@ -491,6 +486,6 @@ solveStaticOcp ::
   -> Maybe (CollTrajMeta -> DynPlotPoints Double -> IO Bool)
   -> IO (Either String String)
 solveStaticOcp solverStuff dae mayer bc ocp tbnds n deg cb =
-  reifyOcpPhase dae mayer bc ocp tbnds n deg woo
+  reifyOcpPhase dae mayer bc ocp tbnds woo
     where
       woo ocpphase meta = solveOcp solverStuff n deg (cb <*> pure meta) ocpphase

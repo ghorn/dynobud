@@ -266,7 +266,7 @@ main = do
       let guess = cat initialGuess
           proxy :: Proxy (CollTraj SbX SbZ SbU SbP NCollStages CollDeg)
           proxy = Proxy
-          meta = toMeta (cpRoots cp) (Proxy :: Proxy SbO) proxy
+          meta = toMeta (Proxy :: Proxy SbO) proxy
 
           callback :: J (CollTraj SbX SbZ SbU SbP NCollStages CollDeg) (Vector Double)
                       -> IO Bool

@@ -118,7 +118,7 @@ main = do
           plotPoints <- cpPlotPoints cp traj
           let proxy :: Proxy (CollTraj AcX None AcU None NCollStages CollDeg)
               proxy = Proxy
-          cb (plotPoints, toMeta (cpRoots cp) (Proxy :: Proxy None) proxy)
+          cb (plotPoints, toMeta (Proxy :: Proxy None) proxy)
 
     (msg,_) <- solveNlp' ipoptSolver (nlp { nlpX0' = guess }) (Just cb')
     case msg of Left msg' -> putStrLn $ "optimization failed, message: " ++ msg'

@@ -149,15 +149,6 @@ data CollTrajMeta = CollTrajMeta { ctmX :: NameTree
                                  , ctmU :: NameTree
                                  , ctmP :: NameTree
                                  , ctmO :: NameTree
-                                 , ctmNx :: Int
-                                 , ctmNz :: Int
-                                 , ctmNu :: Int
-                                 , ctmNp :: Int
-                                 , ctmNo :: Int
-                                 , ctmNsx :: Int
-                                 , ctmN :: Int
-                                 , ctmDeg :: Int
-                                 , ctmQuadRoots :: QuadratureRoots
                                  } deriving (Eq, Generic, Show)
 instance Serialize CollTrajMeta
 
@@ -195,30 +186,18 @@ toMeta :: forall x z u p o n deg .
           (Lookup (x ()), Lookup (z ()), Lookup (u ()), Lookup (p ()), Lookup (o ()),
            Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize o,
            Dim n, Dim deg)
-          => QuadratureRoots -> Proxy o -> Proxy (CollTraj x z u p n deg) -> CollTrajMeta
-toMeta roots _ _ =
+          => Proxy o -> Proxy (CollTraj x z u p n deg) -> CollTrajMeta
+toMeta _ _ =
   CollTrajMeta { ctmX = namesFromAccTree $ accessors (jfill () :: J (JV x) (Vector ()))
                , ctmZ = namesFromAccTree $ accessors (jfill () :: J (JV z) (Vector ()))
                , ctmU = namesFromAccTree $ accessors (jfill () :: J (JV u) (Vector ()))
                , ctmP = namesFromAccTree $ accessors (jfill () :: J (JV p) (Vector ()))
                , ctmO = namesFromAccTree $ accessors (jfill () :: J (JV o) (Vector ()))
-               , ctmNx = size (Proxy :: Proxy (JV x))
-               , ctmNz = size (Proxy :: Proxy (JV z))
-               , ctmNu = size (Proxy :: Proxy (JV u))
-               , ctmNp = size (Proxy :: Proxy (JV p))
-               , ctmNo = size (Proxy :: Proxy (JV o))
-               , ctmNsx = 0
-               , ctmN = reflectDim (Proxy :: Proxy n)
-               , ctmDeg = reflectDim (Proxy :: Proxy deg)
-               , ctmQuadRoots = roots
                }
 
 toMetaCov :: forall sx x z u p o n deg .
           (Lookup (x ()), Lookup (z ()), Lookup (u ()), Lookup (p ()), Lookup (o ()),
            Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize o,
-           Vectorize sx,
            Dim n, Dim deg)
-          => QuadratureRoots -> Proxy o -> Proxy (CollTrajCov sx x z u p n deg) -> CollTrajMeta
-toMetaCov roots _ _ = meta0 { ctmNsx = size (Proxy :: Proxy (JV sx)) }
-  where
-    meta0 = toMeta roots (Proxy :: Proxy o) (Proxy :: Proxy (CollTraj x z u p n deg))
+          => Proxy o -> Proxy (CollTrajCov sx x z u p n deg) -> CollTrajMeta
+toMetaCov _ _ = toMeta (Proxy :: Proxy o) (Proxy :: Proxy (CollTraj x z u p n deg))
