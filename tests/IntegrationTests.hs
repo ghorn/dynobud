@@ -96,8 +96,8 @@ pendOde (PendX theta omega) (PendP mass) t = PendX omega ((9.8 * sin theta + for
 
 solver :: Solver
 solver = ipoptSolver { options = [ ("expand", Opt True)
-                                 , ("linear_solver", Opt "ma86")
-                                 , ("ma86_order", Opt "metis")
+                                 --, ("linear_solver", Opt "ma86")
+                                 --, ("ma86_order", Opt "metis")
                                  , ("tol", Opt (1e-11 :: Double))
                                  ] }
 
