@@ -14,9 +14,9 @@ import Data.Vector ( Vector )
 import Dyno.View.View ( J, jfill )
 import Dyno.Vectorize ( Vectorize )
 import Dyno.Ocp ( OcpPhase )
-import Dyno.NlpUtils ( solveNlp' )
+import Dyno.NlpUtils ( solveNlp )
 import Dyno.Solvers ( Solver )
-import Dyno.Nlp ( Nlp'(..) )
+import Dyno.Nlp ( Nlp(..) )
 import Dyno.DirectCollocation.Formulate ( CollProblem(..), makeCollProblem )
 import Dyno.DirectCollocation.Types ( CollTraj(..) )
 import Dyno.DirectCollocation.Dynamic ( DynPlotPoints )
@@ -38,10 +38,10 @@ solveOcp roots solverStuff n deg cb0 ocp =
     cp <- makeCollProblem roots ocp
     let nlp = cpNlp cp
         toPlotPoints = cpPlotPoints cp
-    --_ <- solveNlp' solverStuff (nlp {nlpX0' = guess}) (fmap (. ctToDynamic) cb)
+    --_ <- solveNlp solverStuff (nlp {nlpX0 = guess}) (fmap (. ctToDynamic) cb)
     let cb = case cb0 of
           Nothing -> Nothing
           Just cb' -> Just $ \x -> toPlotPoints x >>= cb'
 
-    (res, _) <- solveNlp' solverStuff (nlp {nlpX0' = guess}) cb
+    (res, _) <- solveNlp solverStuff (nlp {nlpX0 = guess}) cb
     return res

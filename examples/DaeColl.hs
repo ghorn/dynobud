@@ -138,6 +138,6 @@ main :: IO ()
 main = do
   cp  <- makeCollProblem Legendre pendOcp
   let nlp = cpNlp cp
-  _ <- solveNlp' solver (nlp { nlpX0' = guess }) Nothing
---  _ <- solveNlp solver2 (nlp { nlpX0' = guess }) Nothing
+  _ <- solveNlp solver (nlp { nlpX0 = guess }) Nothing
+--  _ <- solveNlp solver2 (nlp { nlpX0 = guess }) Nothing
   return ()

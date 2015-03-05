@@ -312,10 +312,10 @@ main = do
 --            sendOptTelemMsg "opt_telem" (encodeProto optTelemMsg)
             return True
 
-      (msg0,opt0') <- solveNlp' solver (nlp { nlpX0' = guess }) (Just callback)
+      (msg0,opt0') <- solveNlp solver (nlp { nlpX0 = guess }) (Just callback)
       opt0 <- case msg0 of Left msg' -> error msg'
                            Right _ -> return opt0'
-      let CollTraj endTime' _ _ xf = split (xOpt' opt0)
+      let CollTraj endTime' _ _ xf = split (xOpt opt0)
           endTime = unId $ splitJV endTime'
           V2 pxF _ = xP $ splitJV xf
       printf "optimal velocity: %.2f m/s\n" (pxF / endTime)

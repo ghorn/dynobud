@@ -19,7 +19,6 @@ import Data.ByteString.Char8 ( pack )
 
 import Dyno.Vectorize
 import Dyno.Nlp
-import Dyno.NlpSolver ( SXElement )
 import Dyno.NlpUtils
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
@@ -104,14 +103,14 @@ atan2' (Point x y) = atan2 y x
 
 ----worst :: Vectorize f => f Double -> Double
 ----worst = V.toList (fmap abs)
---  
+--
 --blah :: IO ()
 --blah = do
 ----  putStrLn $ "gmin90: " ++ show (minimum $ F.toList $ gMin90 g0)
 ----  putStrLn $ "gmin90: " ++ show (maximum $ F.toList $ gMin90 g0)
 --  print $ gMean0 g0
 --  print $ g360 g0
-    
+
 
 guess :: X Double
 guess =
@@ -140,75 +139,61 @@ guess =
             p0 = Point px py
             px = cos q
             py = sin q
-            
 
-myNlp :: Nlp X None G SXElement
-myNlp = Nlp { nlpFG = fg
-            , nlpBX = bx
-            , nlpBG = bg
-            , nlpX0 = guess
-            , nlpP = None
-            , nlpLamX0 = Nothing
-            , nlpLamG0 = Nothing
-            , nlpScaleF = Nothing
-            , nlpScaleX = Nothing
-            , nlpScaleG = Nothing
-            }
+
+bx :: X Bounds
+bx = X
+     { xR = (Just (segment0/2), Nothing)
+     , xPoints = fill $ Point (Just (-5), Just 5) (Just (-5), Just 5)
+     , xStages = TV.mkVec' $ stage0 : replicate (nsteps-1) otherStages
+     }
   where
-    
-    bx :: X Bounds
-    bx = X
-         { xR = (Just (segment0/2), Nothing)
-         , xPoints = fill $ Point (Just (-5), Just 5) (Just (-5), Just 5)
-         , xStages = TV.mkVec' $ stage0 : replicate (nsteps-1) otherStages
-         }
-      where
-        stage0 =
-          Stage
-          { sTheta = (Just 0, Just 0)
-          , sMean = Point (Just (-3), Just 3) (Just (-3), Just 3)
-          , sPhis = fill (Just 0, Just (pi/2))
-          }
-        otherStages =
-          Stage
-          { sTheta = (Just (-4*pi), Just (4*pi))
-          , sMean = Point (Just (-3), Just 3) (Just (-3), Just 3)
-          , sPhis = fill (Just 0, Just (pi/2))
-          }
+    stage0 =
+      Stage
+      { sTheta = (Just 0, Just 0)
+      , sMean = Point (Just (-3), Just 3) (Just (-3), Just 3)
+      , sPhis = fill (Just 0, Just (pi/2))
+      }
+    otherStages =
+      Stage
+      { sTheta = (Just (-4*pi), Just (4*pi))
+      , sMean = Point (Just (-3), Just 3) (Just (-3), Just 3)
+      , sPhis = fill (Just 0, Just (pi/2))
+      }
 
 
-    bg :: G Bounds
-    bg = G
-         { gMin90 = fill (Just 0.8, Nothing)
-         , gEqualR = fill (Just 0, Just 0)
-         , gMean0 = fill (Just 0, Just 0)
-         , g360s = TV.mkVec' $ map (\q -> (Just (q - pi), Just (q + pi)))
-                   $ linspace 0 (2*pi) npoints
-         , gStages = TV.mkVec' $ stage0 : replicate (nsteps-2) midStages ++ [stageF]
-         , gCloseMean = TV.mkVec' $ replicate (nsteps - 1) (fill (Just (-deltaMean), Just deltaMean)) ++ [fill (Nothing, Nothing)]
-         , gCloseTheta = TV.mkVec' $ replicate (nsteps - 1) (Just (-deltaTheta), Just deltaTheta) ++ [(Nothing, Nothing)]
-         }
-      where
-        deltaTheta = pi / fromIntegral nsteps
-        deltaMean = 4 / fromIntegral nsteps
-        stage0 = StageCon
-                 { scOuters = fill $ Point (Nothing, Just 1) (Nothing, Just 0)
-                 , scInners = fill (Just 0, Nothing)
-                 }
-        stageF = StageCon
-                 { scOuters = fill $ Point (Nothing, Just 0) (Nothing, Just 1)
-                 , scInners = fill (Just 0, Nothing)
-                 }
-        midStages = StageCon
-                    { scOuters = fill $ Point (Nothing, Just 1) (Nothing, Just 1)
-                    , scInners = fill (Just 0, Nothing)
-                    }
+bg :: G Bounds
+bg = G
+     { gMin90 = fill (Just 0.8, Nothing)
+     , gEqualR = fill (Just 0, Just 0)
+     , gMean0 = fill (Just 0, Just 0)
+     , g360s = TV.mkVec' $ map (\q -> (Just (q - pi), Just (q + pi)))
+               $ linspace 0 (2*pi) npoints
+     , gStages = TV.mkVec' $ stage0 : replicate (nsteps-2) midStages ++ [stageF]
+     , gCloseMean = TV.mkVec' $ replicate (nsteps - 1) (fill (Just (-deltaMean), Just deltaMean)) ++ [fill (Nothing, Nothing)]
+     , gCloseTheta = TV.mkVec' $ replicate (nsteps - 1) (Just (-deltaTheta), Just deltaTheta) ++ [(Nothing, Nothing)]
+     }
+  where
+    deltaTheta = pi / fromIntegral nsteps
+    deltaMean = 4 / fromIntegral nsteps
+    stage0 = StageCon
+             { scOuters = fill $ Point (Nothing, Just 1) (Nothing, Just 0)
+             , scInners = fill (Just 0, Nothing)
+             }
+    stageF = StageCon
+             { scOuters = fill $ Point (Nothing, Just 0) (Nothing, Just 1)
+             , scInners = fill (Just 0, Nothing)
+             }
+    midStages = StageCon
+                { scOuters = fill $ Point (Nothing, Just 1) (Nothing, Just 1)
+                , scInners = fill (Just 0, Nothing)
+                }
 
 dot :: Num a => Point a -> Point a -> a
 dot (Point x0 y0) (Point x1 y1) = x0*x1 + y0*y1
 
-fg :: forall a . Floating a => X a -> None a -> (a, G a)
-fg (X r points stages) _ = (f, g)
+fg :: forall a . Floating a => X a -> (a, G a)
+fg (X r points stages) = (f, g)
   where
     ds :: Vec NPoints (Point a)
     ds = zipWithNext (\x0 x1 -> x1 - x0) points
@@ -238,7 +223,7 @@ fg (X r points stages) _ = (f, g)
       where
         rot :: Point a -> Point a
         rot (Point x y) = mean + Point (x*cos(theta) + y*sin(theta)) (-x*sin(theta) + y*cos(theta))
-        
+
         points' :: Vec NPoints (Point a)
         points' = fmap rot points
 
@@ -262,7 +247,7 @@ main =
     putStrLn $ "# design vars: " ++ show (vlength (Proxy :: Proxy X))
     putStrLn $ "# constraints: " ++ show (vlength (Proxy :: Proxy G))
     iters <- newIORef 0
-    _ <- solveNlp solver myNlp $ Just $ \x -> do
+    _ <- solveNlpV solver fg bx bg guess $ Just $ \x -> do
       k <- readIORef iters
       writeIORef iters (k + 1)
       let msg = SofaMessage
@@ -275,4 +260,3 @@ main =
       send publisher sofaChannel msg
       return True
     return ()
-

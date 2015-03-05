@@ -35,7 +35,7 @@ module Dyno.NlpSolver
        , getLamX
        , getLamG
        , getStat
-       , getNlpOut'
+       , getNlpOut
          -- * kkt conditions, evalKKT is in user units, evalScaledKKT is the internal one
        , evalGradF
        , evalJacG
@@ -96,7 +96,7 @@ import Dyno.View.M ( M )
 import qualified Dyno.View.M as M
 import Dyno.View.Symbolic ( Symbolic, sym, mkScheme, mkFunction )
 import Dyno.View.Viewable ( Viewable )
-import Dyno.Nlp ( NlpOut'(..), KKT(..) )
+import Dyno.Nlp ( NlpOut(..), KKT(..) )
 import Dyno.NlpScaling ( ScaleFuns(..), scaledFG, mkScaleFuns )
 import Dyno.Solvers ( Solver(..) )
 
@@ -443,25 +443,25 @@ solve = do
     else Left solveStatus
 
 -- | solve with current inputs, return lots of info on success, or message on failure
-solve' :: (View x, View g) => NlpSolver x p g (Either String String, NlpOut' x g (Vector Double))
+solve' :: (View x, View g) => NlpSolver x p g (Either String String, NlpOut x g (Vector Double))
 solve' = do
   solveStatus <- solve
-  nlpOut <- getNlpOut'
+  nlpOut <- getNlpOut
   return (solveStatus, nlpOut)
 
-getNlpOut' :: (View x, View g) => NlpSolver x p g (NlpOut' x g (Vector Double))
-getNlpOut' = do
+getNlpOut :: (View x, View g) => NlpSolver x p g (NlpOut x g (Vector Double))
+getNlpOut = do
   fopt <- getF
   xopt <- getX
   gopt <- getG
   lamXOpt <- getLamX
   lamGOpt <- getLamG
-  let nlpOut = NlpOut' { fOpt' = fopt
-                       , xOpt' = xopt
-                       , gOpt' = gopt
-                       , lambdaXOpt' = lamXOpt
-                       , lambdaGOpt' = lamGOpt
-                       }
+  let nlpOut = NlpOut { fOpt = fopt
+                      , xOpt = xopt
+                      , gOpt = gopt
+                      , lambdaXOpt = lamXOpt
+                      , lambdaGOpt = lamGOpt
+                      }
   return nlpOut
 
 

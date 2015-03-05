@@ -32,7 +32,7 @@ import Dyno.View.View ( View(..), J )
 import Dyno.View.JV ( splitJV )
 import Dyno.TypeVecs ( Dim )
 import Dyno.Solvers
-import Dyno.Nlp ( Nlp'(..), NlpOut'(..) )
+import Dyno.Nlp ( Nlp(..), NlpOut(..) )
 import Dyno.NlpUtils
 
 import Dyno.Ocp
@@ -191,8 +191,8 @@ runIntegration _ _ roots ode x0 p tf = do
   cp  <- makeCollProblem roots (toOcpPhase ode x0 p tf)
   let guess :: CollTraj x None None p n deg (Vector Double)
       guess = makeGuessSim roots tf x0 (\x _ -> ode x p 0) (\_ _ -> None) p
-      nlp = (cpNlp cp) { nlpX0' = cat guess }
-  (msg, opt') <- solveNlp' solver nlp Nothing
+      nlp = (cpNlp cp) { nlpX0 = cat guess }
+  (msg, opt') <- solveNlp solver nlp Nothing
   return $ case msg of
     Left m -> Left m
-    Right _ -> Right (toXf (xOpt' opt'))
+    Right _ -> Right (toXf (xOpt opt'))

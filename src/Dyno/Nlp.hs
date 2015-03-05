@@ -6,24 +6,23 @@
 module Dyno.Nlp
        ( Bounds
        , Nlp(..),  NlpOut(..)
-       , Nlp'(..), NlpOut'(..)
        , KKT(..)
        ) where
 
-import GHC.Generics ( Generic, Generic1 )
+import GHC.Generics ( Generic )
 
 import Casadi.DMatrix ( DMatrix )
 import qualified Data.Vector as V
 import Data.Serialize ( Serialize(..) )
 
-import Dyno.Vectorize ( Vectorize(..), Id )
+import Dyno.Vectorize ( Id )
 import Dyno.View.View ( View(..), J )
 import Dyno.View.JV ( JV )
 import Dyno.View.M ( M )
 
 type Bounds = (Maybe Double, Maybe Double)
 
--- | user-friendly NLP
+-- | nonlinear program (NLP)
 --
 -- >  minimize         f(x,p)
 -- >     x
@@ -35,62 +34,36 @@ type Bounds = (Maybe Double, Maybe Double)
 --
 data Nlp x p g a =
   Nlp
-  { nlpFG :: x a -> p a -> (a, g a)
-  , nlpBX :: x Bounds
-  , nlpBG :: g Bounds
-  , nlpX0 :: x Double
-  , nlpP  :: p Double
-  , nlpLamX0 :: Maybe (x Double)
-  , nlpLamG0 :: Maybe (g Double)
+  { nlpFG :: J x a -> J p a -> (J (JV Id) a, J g a)
+  , nlpBX :: J x (V.Vector Bounds)
+  , nlpBG :: J g (V.Vector Bounds)
+  , nlpX0 :: J x (V.Vector Double)
+  , nlpP  :: J p (V.Vector Double)
+  , nlpLamX0 :: Maybe (J x (V.Vector Double))
+  , nlpLamG0 :: Maybe (J g (V.Vector Double))
   , nlpScaleF :: Maybe Double
-  , nlpScaleX :: Maybe (x Double)
-  , nlpScaleG :: Maybe (g Double)
+  , nlpScaleX :: Maybe (J x (V.Vector Double))
+  , nlpScaleG :: Maybe (J g (V.Vector Double))
   }
 
+-- | NLP output
 data NlpOut x g a =
   NlpOut
-  { fOpt :: a
-  , xOpt :: x a
-  , gOpt :: g a
-  , lambdaXOpt :: x a
-  , lambdaGOpt :: g a
-  } deriving (Eq, Show, Functor, Generic, Generic1)
-instance (Vectorize x, Vectorize g) => Vectorize (NlpOut x g)
-instance (Vectorize x, Vectorize g, Serialize a) => Serialize (NlpOut x g a) where
-  put = put . V.toList . vectorize
-  get = fmap (devectorize . V.fromList) get
-
--- | NLP using Views
-data NlpOut' x g a =
-  NlpOut'
-  { fOpt' :: J (JV Id) a
-  , xOpt' :: J x a
-  , gOpt' :: J g a
-  , lambdaXOpt' :: J x a
-  , lambdaGOpt' :: J g a
+  { fOpt :: J (JV Id) a
+  , xOpt :: J x a
+  , gOpt :: J g a
+  , lambdaXOpt :: J x a
+  , lambdaGOpt :: J g a
   } deriving (Eq, Show, Generic)
-instance (View x, View g, Serialize a) => Serialize (NlpOut' x g (V.Vector a))
-
-data Nlp' x p g a =
-  Nlp'
-  { nlpFG' :: J x a -> J p a -> (J (JV Id) a, J g a)
-  , nlpBX' :: J x (V.Vector Bounds)
-  , nlpBG' :: J g (V.Vector Bounds)
-  , nlpX0' :: J x (V.Vector Double)
-  , nlpP'  :: J p (V.Vector Double)
-  , nlpLamX0' :: Maybe (J x (V.Vector Double))
-  , nlpLamG0' :: Maybe (J g (V.Vector Double))
-  , nlpScaleF' :: Maybe Double
-  , nlpScaleX' :: Maybe (J x (V.Vector Double))
-  , nlpScaleG' :: Maybe (J g (V.Vector Double))
-  }
+instance (View x, View g, Serialize a) => Serialize (NlpOut x g (V.Vector a))
 
 
+-- | Karush–Kuhn–Tucker (KKT) matrix
 data KKT x g =
   KKT
-  { kktHessLag :: M x x DMatrix -- unscaled version only valid at solution
+  { kktHessLag :: M x x DMatrix -- ^ unscaled version only valid at solution
   , kktHessF :: M x x DMatrix
-  , kktHessLambdaG :: M x x DMatrix -- unscaled version only valid at solution
+  , kktHessLambdaG :: M x x DMatrix -- ^ unscaled version only valid at solution
   , kktJacG :: M g x DMatrix
   , kktG :: J g DMatrix
   , kktGradF :: J x DMatrix

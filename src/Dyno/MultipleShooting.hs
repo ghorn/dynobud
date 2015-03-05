@@ -29,7 +29,7 @@ import Dyno.View.JVec ( JVec(..) )
 import Dyno.View.Fun ( MXFun, toMXFun, call )
 import Dyno.View.Scheme ( Scheme )
 import Dyno.Vectorize ( Vectorize, Id )
-import Dyno.Nlp ( Bounds, Nlp'(..) )
+import Dyno.Nlp ( Bounds, Nlp(..) )
 
 
 data IntegratorIn x u p a = IntegratorIn (J (JV x) a) (J (JV u) a) (J (JV p) a)
@@ -92,7 +92,7 @@ simulate n ode x0' u p t h = xf
 makeMsNlp ::
   forall x u p n
   . (Dim n, Vectorize x, Vectorize u, Vectorize p, Additive x)
-  => MsOcp x u p -> IO (Nlp' (MsDvs x u p n) JNone (MsConstraints x n) MX)
+  => MsOcp x u p -> IO (Nlp (MsDvs x u p n) JNone (MsConstraints x n) MX)
 makeMsNlp msOcp = do
   let n = reflectDim (Proxy :: Proxy n)
       integrate (IntegratorIn x0 u p) = IntegratorOut (catJV' (simulate nsteps ode x0' u' p' 0 dt))
@@ -108,17 +108,17 @@ makeMsNlp msOcp = do
   let _ = integrator :: MXFun (IntegratorIn x u p) (IntegratorOut x) -- just for type signature
 
   let nlp =
-        Nlp'
-        { nlpFG' = fg
-        , nlpBX' = bx
-        , nlpBG' = bg
-        , nlpX0' = x0
-        , nlpP' = cat JNone
-        , nlpLamX0' = Nothing
-        , nlpLamG0' = Nothing
-        , nlpScaleF' = Nothing
-        , nlpScaleX' = Nothing
-        , nlpScaleG' = Nothing
+        Nlp
+        { nlpFG = fg
+        , nlpBX = bx
+        , nlpBG = bg
+        , nlpX0 = x0
+        , nlpP = cat JNone
+        , nlpLamX0 = Nothing
+        , nlpLamG0 = Nothing
+        , nlpScaleF = Nothing
+        , nlpScaleX = Nothing
+        , nlpScaleG = Nothing
         }
 
       x0 :: J (MsDvs x u p n) (V.Vector Double)

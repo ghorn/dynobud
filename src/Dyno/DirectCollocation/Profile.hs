@@ -19,8 +19,8 @@ import Dyno.DirectCollocation.Types ( CollTraj, CollOcpConstraints )
 import Dyno.DirectCollocation.Formulate ( CollProblem(..), makeCollProblem )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots )
 import qualified Dyno.TypeVecs as TV
-import Dyno.NlpUtils ( solveNlp' )
-import Dyno.Nlp ( Nlp'(..), NlpOut'(..) )
+import Dyno.NlpUtils ( solveNlp )
+import Dyno.Nlp ( Nlp(..), NlpOut(..) )
 
 data ProfileReport =
   ProfileReport
@@ -29,7 +29,7 @@ data ProfileReport =
 
 toProfileReport ::
   Either String String
-  -> NlpOut' (CollTraj x z u p n deg) (CollOcpConstraints n deg x r c h) (Vector Double)
+  -> NlpOut (CollTraj x z u p n deg) (CollOcpConstraints n deg x r c h) (Vector Double)
   -> IO ProfileReport
 toProfileReport _ _ = return ProfileReport
 
@@ -63,5 +63,5 @@ profileOne ::
 profileOne roots ocp guess solver = do
   cp <- makeCollProblem roots ocp
   let nlp = cpNlp cp
-  x <- solveNlp' solver (nlp { nlpX0' = guess }) Nothing
+  x <- solveNlp solver (nlp { nlpX0 = guess }) Nothing
   uncurry toProfileReport x

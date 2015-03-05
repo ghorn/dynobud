@@ -47,7 +47,7 @@ import Dyno.Vectorize ( Vectorize(..), Id(..), fill, vlength, vzipWith )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs )
-import Dyno.Nlp ( Nlp'(..), Bounds )
+import Dyno.Nlp ( Nlp(..), Bounds )
 import Dyno.Ocp ( OcpPhase(..), OcpPhaseWithCov(..) )
 
 import Dyno.DirectCollocation.Types
@@ -57,7 +57,7 @@ import Dyno.DirectCollocation.Robust
 
 data CollProblem x z u p r c h o n deg =
   CollProblem
-  { cpNlp :: Nlp' (CollTraj x z u p n deg) JNone (CollOcpConstraints n deg x r c h) MX
+  { cpNlp :: Nlp (CollTraj x z u p n deg) JNone (CollOcpConstraints n deg x r c h) MX
   , cpOcp :: OcpPhase x z u p r o c h
   , cpPlotPoints :: J (CollTraj x z u p n deg) (Vector Double) -> IO (DynPlotPoints Double)
   , cpHellaOutputs :: J (CollTraj x z u p n deg) (Vector Double)
@@ -136,9 +136,7 @@ makeCollProblem roots ocp = do
   outputFun <- toMXFun "stageOutputs" $ outputFunction callInterpolate cijs taus dynFun
 
   -- prepare callbacks
-  let nlpX0 = jfill 0 :: J (CollTraj x z u p n deg) (Vector Double)
-
-      f :: J (JV o) DMatrix ->  J (JV x) DMatrix
+  let f :: J (JV o) DMatrix ->  J (JV x) DMatrix
            -> (J (JV o) (Vector Double), J (JV x) (Vector Double))
       f o' x' = (d2v o', d2v x')
 
@@ -193,8 +191,8 @@ makeCollProblem roots ocp = do
             devec = fmap (\(x,y) -> (splitJV x, splitJV y))
         return $ fmap (\(x,y) -> (devec x, splitJV y)) outputs
 
-  let nlp = Nlp' {
-        nlpFG' =
+  let nlp = Nlp {
+        nlpFG =
            getFg taus
            (bcFun :: SXFun (J (JV x) :*: J (JV x)) (J (JV c)))
            (mayerFun :: SXFun (J (JV Id) :*: (J (JV x) :*: (J (JV x)))) (J (JV Id)))
@@ -202,31 +200,31 @@ makeCollProblem roots ocp = do
                         -> J (JV Id) MX)
            (callStageFun :: (J (JV Id) :*: J (JV p) :*: J (JVec deg (JV Id)) :*: J (JV x) :*: J (JVec deg (JTuple (JV x) (JV z))) :*: J (JVec deg (JV u))) MX
                       -> (J (JVec deg (JV r)) :*: J (JVec deg (JV o)) :*: J (JVec deg (JV h)) :*: J (JV x)) MX)
-        , nlpBX' = cat $ fillCollTraj'
-                   (fill (Nothing, Nothing))
-                   (ocpXbnd ocp)
-                   (ocpZbnd ocp)
-                   (ocpUbnd ocp)
-                   (ocpPbnd ocp)
-                   (ocpTbnd ocp)
-        , nlpBG' = cat (getBg ocp)
-        , nlpX0' = nlpX0
-        , nlpP' = cat JNone
-        , nlpLamX0' = Nothing
-        , nlpLamG0' = Nothing
-        , nlpScaleF' = ocpObjScale ocp
-        , nlpScaleX' = Just $ cat $ fillCollTraj
-                       (fromMaybe (fill 1) (ocpXScale ocp))
-                       (fromMaybe (fill 1) (ocpZScale ocp))
-                       (fromMaybe (fill 1) (ocpUScale ocp))
-                       (fromMaybe (fill 1) (ocpPScale ocp))
-                       (fromMaybe       1  (ocpTScale ocp))
+        , nlpBX = cat $ fillCollTraj'
+                  (fill (Nothing, Nothing))
+                  (ocpXbnd ocp)
+                  (ocpZbnd ocp)
+                  (ocpUbnd ocp)
+                  (ocpPbnd ocp)
+                  (ocpTbnd ocp)
+        , nlpBG = cat (getBg ocp)
+        , nlpX0 = jfill 0 :: J (CollTraj x z u p n deg) (Vector Double) -- todo: don't do that
+        , nlpP = cat JNone
+        , nlpLamX0 = Nothing
+        , nlpLamG0 = Nothing
+        , nlpScaleF = ocpObjScale ocp
+        , nlpScaleX = Just $ cat $ fillCollTraj
+                      (fromMaybe (fill 1) (ocpXScale ocp))
+                      (fromMaybe (fill 1) (ocpZScale ocp))
+                      (fromMaybe (fill 1) (ocpUScale ocp))
+                      (fromMaybe (fill 1) (ocpPScale ocp))
+                      (fromMaybe       1  (ocpTScale ocp))
 
-        , nlpScaleG' = Just $ cat $ fillCollConstraints
-                       (fromMaybe (fill 1) (ocpXScale ocp))
-                       (fromMaybe (fill 1) (ocpResidualScale ocp))
-                       (fromMaybe (fill 1) (ocpBcScale ocp))
-                       (fromMaybe (fill 1) (ocpPathCScale ocp))
+        , nlpScaleG = Just $ cat $ fillCollConstraints
+                      (fromMaybe (fill 1) (ocpXScale ocp))
+                      (fromMaybe (fill 1) (ocpResidualScale ocp))
+                      (fromMaybe (fill 1) (ocpBcScale ocp))
+                      (fromMaybe (fill 1) (ocpPathCScale ocp))
         }
       evalQuadratures :: Vec n (Vec deg Double) -> Double -> IO Double
       evalQuadratures qs' tf' = do
@@ -255,7 +253,7 @@ makeCollProblem roots ocp = do
 
 data CollCovProblem x z u p r o c h n deg sx sw sh shr sc =
   CollCovProblem
-  { ccpNlp :: Nlp'
+  { ccpNlp :: Nlp
               (CollTrajCov sx x z u p n deg)
               JNone
               (CollOcpCovConstraints n deg x r c h sh shr sc) MX
@@ -328,7 +326,7 @@ makeCollCovProblem roots ocp ocpCov = do
         (shFun :: SXFun (J (JV x) :*: J (Cov (JV sx))) (J sh))
         (lagrangeFun :: SXFun (J (JV Id) :*: J (JV x) :*: J (Cov (JV sx)) :*: J (JV Id)) (J (JV Id)))
         (mayerFun :: SXFun (J (JV Id) :*: (J (JV x) :*: (J (JV x) :*: (J (Cov (JV sx)) :*: J (Cov (JV sx)))))) (J (JV Id)))
-        (nlpFG' nlp0)
+        (nlpFG nlp0)
 
   computeCovariancesFun' <- toMXFun "compute covariances" computeCovariances
   -- callbacks
@@ -352,41 +350,41 @@ makeCollCovProblem roots ocp ocpCov = do
         return (outputs, fmap d2v covs, d2v pF)
 
       nlp =
-        Nlp'
-        { nlpFG' = fg
-        , nlpBX' = cat $ CollTrajCov (ocpCovS0bnd ocpCov) (nlpBX' nlp0)
-        , nlpBG' = cat $ CollOcpCovConstraints
-                   { cocNormal = nlpBG' nlp0
-                   , cocCovPathC = jreplicate (ocpCovShBnds ocpCov)
-                   , cocCovRobustPathC = jreplicate robustPathCUb
-                   , cocSbc = ocpCovSbcBnds ocpCov
-                   }
-        , nlpX0' = cat $ CollTrajCov (jfill 0) (nlpX0' nlp0)
-        , nlpP' = cat JNone
-        , nlpLamX0' = Nothing
-        , nlpLamG0' = Nothing
-        , nlpScaleF' = ocpObjScale ocp
-        , nlpScaleX' = Just $ cat $
-                       CollTrajCov (fromMaybe (jfill 1) (ocpCovSScale ocpCov)) $
-                       cat $ fillCollTraj
-                       (fromMaybe (fill 1) (ocpXScale ocp))
-                       (fromMaybe (fill 1) (ocpZScale ocp))
-                       (fromMaybe (fill 1) (ocpUScale ocp))
-                       (fromMaybe (fill 1) (ocpPScale ocp))
-                       (fromMaybe       1  (ocpTScale ocp))
+        Nlp
+        { nlpFG = fg
+        , nlpBX = cat $ CollTrajCov (ocpCovS0bnd ocpCov) (nlpBX nlp0)
+        , nlpBG = cat $ CollOcpCovConstraints
+                  { cocNormal = nlpBG nlp0
+                  , cocCovPathC = jreplicate (ocpCovShBnds ocpCov)
+                  , cocCovRobustPathC = jreplicate robustPathCUb
+                  , cocSbc = ocpCovSbcBnds ocpCov
+                  }
+        , nlpX0 = cat $ CollTrajCov (jfill 0) (nlpX0 nlp0)
+        , nlpP = cat JNone
+        , nlpLamX0 = Nothing
+        , nlpLamG0 = Nothing
+        , nlpScaleF = ocpObjScale ocp
+        , nlpScaleX = Just $ cat $
+                      CollTrajCov (fromMaybe (jfill 1) (ocpCovSScale ocpCov)) $
+                      cat $ fillCollTraj
+                      (fromMaybe (fill 1) (ocpXScale ocp))
+                      (fromMaybe (fill 1) (ocpZScale ocp))
+                      (fromMaybe (fill 1) (ocpUScale ocp))
+                      (fromMaybe (fill 1) (ocpPScale ocp))
+                      (fromMaybe       1  (ocpTScale ocp))
 
-        , nlpScaleG' = Just $ cat $ CollOcpCovConstraints
-                       { cocNormal = cat $ fillCollConstraints
-                                     (fromMaybe (fill 1) (ocpXScale ocp))
-                                     (fromMaybe (fill 1) (ocpResidualScale ocp))
-                                     (fromMaybe (fill 1) (ocpBcScale ocp))
-                                     (fromMaybe (fill 1) (ocpPathCScale ocp))
-                       , cocCovPathC = jreplicate (fromMaybe (jfill 1) (ocpCovPathCScale ocpCov))
-                       , cocCovRobustPathC = jreplicate $
-                                             fromMaybe (jfill 1) $
-                                             fmap catJV (ocpCovRobustPathCScale ocpCov)
-                       , cocSbc = fromMaybe (jfill 1) (ocpCovSbcScale ocpCov)
-                       }
+        , nlpScaleG = Just $ cat $ CollOcpCovConstraints
+                      { cocNormal = cat $ fillCollConstraints
+                                    (fromMaybe (fill 1) (ocpXScale ocp))
+                                    (fromMaybe (fill 1) (ocpResidualScale ocp))
+                                    (fromMaybe (fill 1) (ocpBcScale ocp))
+                                    (fromMaybe (fill 1) (ocpPathCScale ocp))
+                      , cocCovPathC = jreplicate (fromMaybe (jfill 1) (ocpCovPathCScale ocpCov))
+                      , cocCovRobustPathC = jreplicate $
+                                            fromMaybe (jfill 1) $
+                                            fmap catJV (ocpCovRobustPathCScale ocpCov)
+                      , cocSbc = fromMaybe (jfill 1) (ocpCovSbcScale ocpCov)
+                      }
         }
   computeSensitivitiesFun' <- toMXFun "compute sensitivities" computeSensitivities
   return $ CollCovProblem { ccpNlp = nlp

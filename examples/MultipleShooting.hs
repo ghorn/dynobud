@@ -77,12 +77,12 @@ ode (X x v) (U u) _p _t = X v (-x -0.1*v + u)
 -- run the thing
 main :: IO ()
 main = do
-  myNlp <- makeMsNlp ocp :: IO (Nlp' (MsDvs X U P 40) JNone (MsConstraints X 40) MX)
-  (msg,opt') <- solveNlp' ipoptSolver myNlp Nothing
+  myNlp <- makeMsNlp ocp :: IO (Nlp (MsDvs X U P 40) JNone (MsConstraints X 40) MX)
+  (msg,opt') <- solveNlp ipoptSolver myNlp Nothing
   opt <- case msg of
           Left err -> error err
           Right _ -> return opt'
-  let xopt = split $ xOpt' opt
+  let xopt = split $ xOpt opt
       splitXU xu = (splitJV x, splitJV u)
         where
           JTuple x u = split xu

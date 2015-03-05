@@ -47,8 +47,8 @@ import Dyno.View.JV ( JV )
 import Dyno.View.JVec ( JVec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.Solvers ( Solver )
-import Dyno.NlpUtils ( solveNlp' )
-import Dyno.Nlp ( Nlp'(..), NlpOut'(..), Bounds)
+import Dyno.NlpUtils ( solveNlp )
+import Dyno.Nlp ( Nlp(..), NlpOut(..), Bounds)
 
 import ExampleDsl.LogsAndErrors
 import ExampleDsl.Types
@@ -150,7 +150,7 @@ toG :: Dim ng => S.Seq (Constraint SXElement) -> Vec ng (SXElement, Bounds)
 toG nlpConstraints' = TV.mkVec $ V.fromList $ F.toList $ fmap constr nlpConstraints'
 
 buildNlp :: forall nx ng .
-            (Dim nx, Dim ng) => NlpMonadState -> IO (Nlp' (JVec nx (JV Id)) JNone (JVec ng (JV Id)) MX)
+            (Dim nx, Dim ng) => NlpMonadState -> IO (Nlp (JVec nx (JV Id)) JNone (JVec ng (JV Id)) MX)
 buildNlp state = do
   obj <- case nlpObj state of
     Objective obj' -> return obj'
@@ -175,24 +175,24 @@ buildNlp state = do
         where
           ret = callMX sxfun (V.singleton (unJ x))
 
-  return Nlp' { nlpFG' = fg
-              , nlpBX' = mkJ (TV.unVec xbnd)
-              , nlpBG' = mkJ (TV.unVec gbnd)
-              , nlpX0' = jfill 0
-              , nlpP' = cat JNone
-              , nlpScaleF' = Nothing
-              , nlpScaleX' = Nothing
-              , nlpScaleG' = Nothing
-              , nlpLamX0' = Nothing
-              , nlpLamG0' = Nothing
-              }
+  return Nlp { nlpFG = fg
+             , nlpBX = mkJ (TV.unVec xbnd)
+             , nlpBG = mkJ (TV.unVec gbnd)
+             , nlpX0 = jfill 0
+             , nlpP = cat JNone
+             , nlpScaleF = Nothing
+             , nlpScaleX = Nothing
+             , nlpScaleG = Nothing
+             , nlpLamX0 = Nothing
+             , nlpLamG0 = Nothing
+             }
 
 
 reifyNlp ::
   forall r .
   NlpMonad () -> Maybe (Vector Double -> IO Bool) -> M.Map String Double
   -> (forall x g . (View x, View g)
-      => Nlp' x JNone g MX -> Maybe (J x (Vector Double) -> IO Bool) -> NlpMonadState -> IO r)
+      => Nlp x JNone g MX -> Maybe (J x (Vector Double) -> IO Bool) -> NlpMonadState -> IO r)
   -> IO r
 reifyNlp nlpmonad cb x0map f = do
   (ret,logs,state) <- build nlpmonad
@@ -209,8 +209,8 @@ reifyNlp nlpmonad cb x0map f = do
   TV.reifyDim nx $ \(Proxy :: Proxy nx) ->
 --  TV.reifyDim np $ \(Proxy :: Proxy np) ->
     TV.reifyDim ng $ \(Proxy :: Proxy ng) -> do
-      nlp0 <- buildNlp state :: IO (Nlp' (JVec nx (JV Id)) JNone (JVec ng (JV Id)) MX)
-      let nlp = nlp0 { nlpX0' = mkJ x0 }
+      nlp0 <- buildNlp state :: IO (Nlp (JVec nx (JV Id)) JNone (JVec ng (JV Id)) MX)
+      let nlp = nlp0 { nlpX0 = mkJ x0 }
       f nlp (fmap (. unJ) cb) state
 
 
@@ -227,11 +227,11 @@ solveStaticNlp solverStuff nlp x0' callback = reifyNlp nlp callback x0 foo
 
     foo ::
       (View x, View p, View g) =>
-      Nlp' x p g MX -> Maybe (J x (Vector Double) -> IO Bool) -> NlpMonadState ->
+      Nlp x p g MX -> Maybe (J x (Vector Double) -> IO Bool) -> NlpMonadState ->
       IO (Either String String, Double, [(String,Double)])
     foo nlp' cb' state = do
-      (ret,nlpOut) <- solveNlp' solverStuff nlp' cb'
-      let fopt = V.head (unJ (fOpt' nlpOut)) :: Double
-          xopt = F.toList $ unJ (xOpt' nlpOut) :: [Double]
+      (ret,nlpOut) <- solveNlp solverStuff nlp' cb'
+      let fopt = V.head (unJ (fOpt nlpOut)) :: Double
+          xopt = F.toList $ unJ (xOpt nlpOut) :: [Double]
           xnames = map fst (F.toList (nlpX state)) :: [String]
       return (ret, fopt, zip xnames xopt)

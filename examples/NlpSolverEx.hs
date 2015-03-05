@@ -28,21 +28,21 @@ data G a = G a deriving (Functor, Generic1, Show)
 instance Vectorize X
 instance Vectorize G
 
-myNlp :: Nlp' (JV X) (JV None) (JV G) MX
-myNlp = Nlp' { nlpFG' = fg
-             , nlpBX' = catJV bx
-             , nlpBG' = catJV bg
-             , nlpX0' = catJV x0
-             , nlpP' = catJV None
-             , nlpLamX0' = Nothing
-             , nlpLamG0' = Nothing
-             , nlpScaleF' = Just 9.86
-             , nlpScaleX' = Just $ catJV $ (X (4.7e-3) (4.7e4))
-             , nlpScaleG' = Just $ catJV $ (G 4.7)
---             , nlpScaleF' = Just 1
---             , nlpScaleX' = Just $ catJV (X 1 1)
---             , nlpScaleG' = Just $ catJV (G 1) -- 1)
-             }
+myNlp :: Nlp (JV X) (JV None) (JV G) MX
+myNlp = Nlp { nlpFG = fg
+            , nlpBX = catJV bx
+            , nlpBG = catJV bg
+            , nlpX0 = catJV x0
+            , nlpP = catJV None
+            , nlpLamX0 = Nothing
+            , nlpLamG0 = Nothing
+            , nlpScaleF = Just 9.86
+            , nlpScaleX = Just $ catJV $ (X (4.7e-3) (4.7e4))
+            , nlpScaleG = Just $ catJV $ (G 4.7)
+--            , nlpScaleF = Just 1
+--            , nlpScaleX = Just $ catJV (X 1 1)
+--            , nlpScaleG = Just $ catJV (G 1) -- 1)
+            }
   where
     x0 :: X Double
     x0 = X 0 0
@@ -88,9 +88,9 @@ runMe = do
   let opt = case msg of
         Left m -> error m
         Right _ -> opt'
-      f = fOpt' opt
-      x = xOpt' opt
-      g = gOpt' opt
+      f = fOpt opt
+      x = xOpt opt
+      g = gOpt opt
   getX >>= setX0
   getLamX >>= setLamX0
   getLamG >>= setLamG0
@@ -124,10 +124,10 @@ main = do
   putStrLn $ "scaled hessLag:   " ++ show (kktHessLag kktS)
 
   let snlp = scalingNlp kktU expand
-  (msg,opt') <- solveNlp' quietSolver snlp Nothing
+  (msg,opt') <- solveNlp quietSolver snlp Nothing
   let xopt = case msg of
         Left m -> error m
-        Right _ -> xOpt' opt'
+        Right _ -> xOpt opt'
       Sdv obj' x' g' = split (fmapJ exp xopt)
       Id obj = splitJV obj'
       x = splitJV x'

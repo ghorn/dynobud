@@ -25,7 +25,7 @@ import Dyno.View.Unsafe.View ( mkJ, unJ )
 import Dyno.View.Unsafe.M ( unM )
 
 import Dyno.Vectorize ( Id(..) )
-import Dyno.Nlp ( KKT(..), Nlp'(..) )
+import Dyno.Nlp ( KKT(..), Nlp(..) )
 import Dyno.View.View ( View(..), J, JNone(..), v2d, d2v, jfill)
 import Dyno.View.Viewable ( Viewable )
 import qualified Dyno.View.M as M
@@ -173,19 +173,19 @@ toSum rowVec colVec (rowi,colj,value)
 scalingNlp ::
  forall x g sdv
  . (View x, View g, View sdv)
- => KKT x g -> (J sdv SX -> (J (JV Id) SX, J x SX, J g SX)) -> Nlp' sdv JNone JNone SX
+ => KKT x g -> (J sdv SX -> (J (JV Id) SX, J x SX, J g SX)) -> Nlp sdv JNone JNone SX
 scalingNlp kkt expand =
-  Nlp'
-  { nlpBX' = jfill (Nothing, Nothing)
-  , nlpBG' = cat JNone
-  , nlpX0' = jfill 0 -- unit scaling, initially
-  , nlpP' = cat JNone
-  , nlpLamX0' = Nothing
-  , nlpLamG0' = Nothing
-  , nlpScaleF' = Nothing
-  , nlpScaleX' = Nothing
-  , nlpScaleG' = Nothing
-  , nlpFG' = fg
+  Nlp
+  { nlpBX = jfill (Nothing, Nothing)
+  , nlpBG = cat JNone
+  , nlpX0 = jfill 0 -- unit scaling, initially
+  , nlpP = cat JNone
+  , nlpLamX0 = Nothing
+  , nlpLamG0 = Nothing
+  , nlpScaleF = Nothing
+  , nlpScaleX = Nothing
+  , nlpScaleG = Nothing
+  , nlpFG = fg
   }
   where
     fg :: J sdv SX -> J JNone SX -> (J (JV Id) SX, J JNone SX)

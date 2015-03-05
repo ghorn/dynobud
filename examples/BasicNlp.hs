@@ -1,5 +1,5 @@
 -- | Minimize the Rosenbrock function (plus a trivial constraint) using
--- the more complicated NLP' interface.
+-- the View-based NLP interface.
 -- Unfortunately, at the moment there only types here are (JV ) compound types
 -- so the use of Views aren't fully illustrated.
 -- todo: comment up the multiple shooting code as an example
@@ -30,18 +30,18 @@ data G a = G a deriving (Functor, Generic, Generic1, Show)
 instance Vectorize X
 instance Vectorize G
 
-myNlp :: Nlp' (JV X) JNone (JV G) MX
-myNlp = Nlp' { nlpFG' = fg
-             , nlpBX' = bx
-             , nlpBG' = bg
-             , nlpX0' = x0
-             , nlpP' = cat JNone
-             , nlpLamX0' = Nothing
-             , nlpLamG0' = Nothing
-             , nlpScaleF' = Nothing
-             , nlpScaleX' = Nothing
-             , nlpScaleG' = Nothing
-             }
+myNlp :: Nlp (JV X) JNone (JV G) MX
+myNlp = Nlp { nlpFG = fg
+            , nlpBX = bx
+            , nlpBG = bg
+            , nlpX0 = x0
+            , nlpP = cat JNone
+            , nlpLamX0 = Nothing
+            , nlpLamG0 = Nothing
+            , nlpScaleF = Nothing
+            , nlpScaleX = Nothing
+            , nlpScaleG = Nothing
+            }
   where
     x0 :: J (JV X) (V.Vector Double)
     x0 = catJV $ X (-8) (-8)
@@ -64,5 +64,5 @@ myNlp = Nlp' { nlpFG' = fg
 
 main :: IO ()
 main = do
-  opt <- solveNlp' ipoptSolver myNlp Nothing
+  opt <- solveNlp ipoptSolver myNlp Nothing
   print opt

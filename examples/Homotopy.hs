@@ -15,7 +15,7 @@ import Casadi.MX ( MX )
 import Dyno.View.View ( J )
 import Dyno.View.JV ( JV, catJV, catJV', splitJV, splitJV' )
 import Dyno.Vectorize ( Vectorize, Id )
-import Dyno.Nlp ( Nlp'(..), Bounds )
+import Dyno.Nlp ( Nlp(..), Bounds )
 import Dyno.NlpUtils ( HomotopyParams(..), solveNlpHomotopy )
 import Dyno.Solvers
 
@@ -36,18 +36,18 @@ instance Vectorize X
 instance Vectorize G
 instance Vectorize P
 
-myNlp :: Nlp' (JV X) (JV P) (JV G) MX
-myNlp = Nlp' { nlpFG' = fg
-             , nlpBX' = bx
-             , nlpBG' = bg
-             , nlpX0' = x0
-             , nlpP' = catJV $ P (-2) 0
-             , nlpLamX0' = Nothing
-             , nlpLamG0' = Nothing
-             , nlpScaleF' = Nothing
-             , nlpScaleX' = Nothing
-             , nlpScaleG' = Nothing
-             }
+myNlp :: Nlp (JV X) (JV P) (JV G) MX
+myNlp = Nlp { nlpFG = fg
+            , nlpBX = bx
+            , nlpBG = bg
+            , nlpX0 = x0
+            , nlpP = catJV $ P (-2) 0
+            , nlpLamX0 = Nothing
+            , nlpLamG0 = Nothing
+            , nlpScaleF = Nothing
+            , nlpScaleX = Nothing
+            , nlpScaleG = Nothing
+            }
   where
     x0 :: J (JV X) (V.Vector Double)
     x0 = catJV $ X (-8) (-8)

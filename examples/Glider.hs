@@ -121,7 +121,7 @@ main = do
               proxy = Proxy
           cb (plotPoints, toMeta (Proxy :: Proxy None) proxy)
 
-    (msg,_) <- solveNlp' ipoptSolver (nlp { nlpX0' = guess }) (Just cb')
+    (msg,_) <- solveNlp ipoptSolver (nlp { nlpX0 = guess }) (Just cb')
     case msg of Left msg' -> putStrLn $ "optimization failed, message: " ++ msg'
                 Right _ -> putStrLn "optimization succeeded"
 --    let xopt = xOpt opt
