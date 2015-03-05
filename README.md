@@ -32,19 +32,7 @@ To install dependencies, you may need to do something like this:
     >> cabal install happy
     >> cabal install gtk2hs-buildtools
 
-    >> sudo apt-get install coinor-libipopt-dev
-    >> sudo apt-get install liblapack-dev
-    >> sudo apt-get install libblas-dev
-    >> sudo apt-get install libglpk-dev
-    >> sudo apt-get install libgl1-mesa-dev
-    >> sudo apt-get install libglu1-mesa-dev
-    >> sudo apt-get install freeglut3-dev
-    >> sudo apt-get install libzmq3-dev
-    >> sudo apt-get install libglib2.0-dev
-    >> sudo apt-get install libcairo2-dev
-    >> sudo apt-get install libpango1.0-dev
-    >> sudo apt-get install libgtk2.0-dev
-    >> sudo apt-get install libgsl0-dev
+    >> sudo apt-get install coinor-libipopt-dev liblapack-dev libblas-dev libglpk-dev libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev libzmq3-dev libglib2.0-dev libcairo2-dev libpango1.0-dev libgtk2.0-dev libgsl0-dev
 
 To build dynobud from source
 
