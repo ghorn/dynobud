@@ -4,8 +4,8 @@
 
 This library has a few distinct features, which may later be broken into separate packages:
 * high-level, strongly-typed interface to CasADi
-* NLP modeling/solving (examples/Basic.hs, examples/BasicJ.hs)
-* OCP modeling/solving (examles/Glider.hs)
+* NLP modeling/solving (examples/EasyNlp.hs, examples/BasicNlp.hs, examples/SofaExpando.hs)
+* OCP modeling/solving (examles/Glider.hs, examples/DaeColl.hs)
 * proof of concept monadic NLP/OCP modeling DSL (examples/{NlpDsl.hs,OcpDslRocket.hs})
 * live plotter for OCP solving (examples/Dynoplot.hs)
 
