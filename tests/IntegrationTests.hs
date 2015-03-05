@@ -166,8 +166,8 @@ compareIntegration pn pdeg ode x0 p tf = HUnit.assert $ do
         (Left ml, _)       -> HUnit.assertString $ "legendre solve failed with: " ++ show ml
         (_, Left mr)       -> HUnit.assertString $ "legendre solve failed with: " ++ show mr
         (Right xL, Right xR) ->
-          case ( 1e-5 >= worstErr xL xGsl
-               , 1e-5 >= worstErr xR xGsl
+          case ( 1e-6 >= worstErr xL xGsl
+               , 1e-6 >= worstErr xR xGsl
                ) of
            ( True,  True) -> HUnit.assert True
            (False, False) -> HUnit.assertString $ "legendre and radau have insufficient accuracy: "
