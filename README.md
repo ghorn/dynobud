@@ -1,5 +1,7 @@
 ## dynobud - your dynamic optimization buddy
 
+[![Build Status](https://secure.travis-ci.org/ghorn/dynobud.png?branch=master)](http://travis-ci.org/ghorn/dynobud)
+
 This library has a few distinct features, which may later be broken into separate packages:
 * high-level, strongly-typed interface to CasADi
 * NLP modeling/solving (examples/Basic.hs, examples/BasicJ.hs)
