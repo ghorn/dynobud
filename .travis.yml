@@ -13,6 +13,7 @@ before_install:
  - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
    # casadi:
  - travis_retry sudo apt-get install -qq coinor-libipopt-dev gcc g++ gfortran git cmake liblapack-dev pkg-config libmumps-seq-dev
+ - cd ..
  - git clone https://github.com/casadi/casadi.git
  - cd casadi
  - mkdir build
@@ -22,6 +23,7 @@ before_install:
  - make install
  - export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:~/casadi_install/lib/pkgconfig
  - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/casadi_install/lib
+ - cd ../../dynobud
 
 install:
  - cabal --version
