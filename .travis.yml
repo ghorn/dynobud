@@ -12,7 +12,7 @@ before_install:
  - travis_retry sudo apt-get install cabal-install-$CABALVER ghc-$GHCVER # see note about happy/alex
  - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
    # casadi:
- - travis_retry sudo apt-get install -qq coinor-libipopt-dev gcc g++ gfortran git cmake liblapack-dev pkg-config libmumps-seq-dev
+ - travis_retry sudo apt-get install -qq coinor-libipopt-dev gcc g++ gfortran git cmake liblapack-dev pkg-config libmumps-seq-dev libglpk-dev libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev libzmq3-dev libglib2.0-dev libcairo2-dev libpango1.0-dev libgtk2.0-dev libgsl0-dev
  - cd ..
  - git clone https://github.com/casadi/casadi.git
  - cd casadi
@@ -29,6 +29,9 @@ install:
  - cabal --version
  - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
  - travis_retry cabal update
+ - cabal install alex
+ - cabal install happy
+ - cabal install gtk2hs-buildtools
  - cabal install --only-dependencies -fexamples --enable-tests --enable-benchmarks
 
 # Here starts the actual work to be performed for the package under test; any command which exits with a non-zero exit code causes the build to fail.
