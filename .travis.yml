@@ -18,8 +18,11 @@ before_install:
  - travis_retry sudo apt-get update
  - travis_retry sudo apt-get install libzmq3-dev=4.0.5-1chl1~precise1
 
+   # some dependencies
+ - travis_retry sudo apt-get install -qq pkg-config libglpk-dev libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev libglib2.0-dev libcairo2-dev libpango1.0-dev libgtk2.0-dev libgsl0-dev liblapack-dev libblas-dev
+
    # casadi from source:
-# - travis_retry sudo apt-get install -qq coinor-libipopt-dev gcc g++ gfortran git cmake liblapack-dev pkg-config libmumps-seq-dev libglpk-dev libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev libglib2.0-dev libcairo2-dev libpango1.0-dev libgtk2.0-dev libgsl0-dev
+# - travis_retry sudo apt-get install -qq gcc g++ gfortran git cmake coinor-libipopt-dev libmumps-dev libmumps-seq-dev
 # - cd ..
 # - git clone https://github.com/casadi/casadi.git
 # - cd casadi
@@ -37,9 +40,6 @@ before_install:
  - sudo dpkg -i libcasadi-shared-2.2.0-x86_64.deb
  - sudo apt-get install -f
  - rm libcasadi-shared-2.2.0-x86_64.deb
-
-   # some dependencies
- - travis_retry sudo apt-get install -qq pkg-config libglpk-dev libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev libglib2.0-dev libcairo2-dev libpango1.0-dev libgtk2.0-dev libgsl0-dev
 
 
 install:
