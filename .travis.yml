@@ -12,7 +12,7 @@ before_install:
  - travis_retry sudo apt-get install cabal-install-$CABALVER ghc-$GHCVER # see note about happy/alex
  - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
    # casadi:
- - travis_retry sudo apt-get install -qq coinor-libipopt-dev gcc g++ gfortran git cmake liblapack-dev pkg-config
+ - travis_retry sudo apt-get install -qq coinor-libipopt-dev gcc g++ gfortran git cmake liblapack-dev pkg-config libmumps-seq-dev
  - git clone https://github.com/casadi/casadi.git
  - cd casadi
  - mkdir build
@@ -47,4 +47,3 @@ script:
       echo "expected '$SRC_TGZ' not found";
       exit 1;
    fi
-
