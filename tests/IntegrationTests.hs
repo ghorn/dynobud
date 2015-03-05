@@ -94,9 +94,6 @@ pendOde (PendX theta omega) (PendP mass) t = PendX omega ((9.8 * sin theta + for
   where
     force = 0.3 * sin t
 
---type NCollStages = 80
---type CollDeg = 3
-
 solver :: Solver
 solver = ipoptSolver { options = [ ("expand", Opt True)
                                  , ("linear_solver", Opt "ma86")
