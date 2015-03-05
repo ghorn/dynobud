@@ -13,24 +13,34 @@ before_install:
  - travis_retry sudo apt-get install cabal-install-$CABALVER ghc-$GHCVER # see note about happy/alex
  - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
 
-   # zeromq
+   # zeromq 4
  - travis_retry sudo add-apt-repository -y ppa:chris-lea/zeromq
  - travis_retry sudo apt-get update
  - travis_retry sudo apt-get install libzmq3-dev=4.0.5-1chl1~precise1
 
-   # casadi:
- - travis_retry sudo apt-get install -qq coinor-libipopt-dev gcc g++ gfortran git cmake liblapack-dev pkg-config libmumps-seq-dev libglpk-dev libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev libzmq3-dev libglib2.0-dev libcairo2-dev libpango1.0-dev libgtk2.0-dev libgsl0-dev
- - cd ..
- - git clone https://github.com/casadi/casadi.git
- - cd casadi
- - mkdir build
- - cd build
- - cmake -DCMAKE_INSTALL_PREFIX=~/casadi_install ..
- - make
- - make install
- - export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:~/casadi_install/lib/pkgconfig
- - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/casadi_install/lib
- - cd ../../dynobud
+   # casadi from source:
+# - travis_retry sudo apt-get install -qq coinor-libipopt-dev gcc g++ gfortran git cmake liblapack-dev pkg-config libmumps-seq-dev libglpk-dev libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev libglib2.0-dev libcairo2-dev libpango1.0-dev libgtk2.0-dev libgsl0-dev
+# - cd ..
+# - git clone https://github.com/casadi/casadi.git
+# - cd casadi
+# - mkdir build
+# - cd build
+# - cmake -DCMAKE_INSTALL_PREFIX=~/casadi_install ..
+# - make
+# - make install
+# - export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:~/casadi_install/lib/pkgconfig
+# - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/casadi_install/lib
+# - cd ../../dynobud
+
+   # casadi from .deb
+ - wget http://github.com/casadi/casadi/releases/download/2.2.0/libcasadi-shared-2.2.0-x86_64.deb
+ - sudo dpkg -i libcasadi-shared-2.2.0-x86_64.deb
+ - sudo apt-get install -f
+ - rm libcasadi-shared-2.2.0-x86_64.deb
+
+   # some dependencies
+ - travis_retry sudo apt-get install -qq pkg-config libglpk-dev libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev libglib2.0-dev libcairo2-dev libpango1.0-dev libgtk2.0-dev libgsl0-dev
+
 
 install:
  - cabal --version
