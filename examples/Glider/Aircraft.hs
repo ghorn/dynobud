@@ -9,7 +9,7 @@ import GHC.Generics ( Generic, Generic1 )
 
 import Linear
 
-import PlotHo.Accessors ( Lookup )
+import Accessors ( Lookup )
 
 import Dyno.Vectorize
 

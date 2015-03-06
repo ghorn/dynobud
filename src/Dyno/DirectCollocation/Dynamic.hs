@@ -28,7 +28,7 @@ import qualified Data.Tree as Tree
 import Data.Serialize ( Serialize(..) )
 import Linear.V
 
-import PlotHo.Accessors ( AccessorTree(..), Lookup(..), accessors )
+import Accessors ( AccessorTree(..), Lookup(..), accessors )
 
 import Dyno.View.Unsafe.View ( unJ, unJ' )
 

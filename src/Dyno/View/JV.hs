@@ -21,7 +21,7 @@ import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
 
-import PlotHo.Accessors ( Lookup(..) )
+import Accessors ( Lookup(..) )
 
 import Dyno.View.Unsafe.View ( mkJ, unJ )
 

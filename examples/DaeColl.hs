@@ -11,7 +11,7 @@ import GHC.Generics ( Generic, Generic1 )
 
 import Data.Vector ( Vector )
 
-import PlotHo.Accessors
+import Accessors
 
 import Dyno.Vectorize
 import Dyno.View.View ( J, jfill )

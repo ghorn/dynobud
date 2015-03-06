@@ -35,7 +35,7 @@ import qualified Linear
 import SpatialMath ( Euler )
 import SpatialMathT ( V3T, Rot )
 
-import PlotHo.Accessors ( Lookup )
+import Accessors ( Lookup )
 
 -- | a length-0 vectorizable type
 data None a = None

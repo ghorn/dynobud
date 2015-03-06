@@ -10,7 +10,7 @@ import GHC.Generics ( Generic, Generic1 )
 import Data.Foldable ( Foldable )
 import Linear
 
-import PlotHo.Accessors ( Lookup )
+import Accessors ( Lookup )
 
 import Dyno.Vectorize
 

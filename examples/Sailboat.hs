@@ -26,7 +26,7 @@ import qualified Data.ByteString.Char8 as BS8
 import qualified Data.Serialize as Ser
 import Text.Printf ( printf )
 
-import PlotHo.Accessors ( Lookup )
+import Accessors ( Lookup )
 
 import Dyno.Vectorize
 import Dyno.View.View ( View(..), J )
