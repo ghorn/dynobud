@@ -23,21 +23,16 @@ data ListViewInfo a = ListViewInfo { lviName :: String
                                    , lviMarked :: Bool
                                    }
 
---data XAxisType a = XAxisTime
---                 | XAxisCounter
---                 | XAxisStaticCounter
---                 | XAxisFun (String, a -> Double)
-
 data AxisScaling = LogScaling
                  | LinearScaling
 
 -- what the graph should draw
-data GraphInfo =
+data GraphInfo a =
   GraphInfo { giXScaling :: AxisScaling
             , giYScaling :: AxisScaling
             , giXRange :: Maybe (Double,Double)
             , giYRange :: Maybe (Double,Double)
-            , giGetters :: [(String, DynPlotPoints Double -> [[(Double,Double)]])]
+            , giGetters :: [(String, a -> [[(Double,Double)]])]
             }
 
 data Message = Message (DynPlotPoints Double) Int NominalDiffTime CollTrajMeta

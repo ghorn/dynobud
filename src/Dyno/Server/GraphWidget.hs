@@ -116,7 +116,7 @@ newGraph channame msgStore = do
 
 
 newSignalSelectorArea ::
-  CC.MVar GraphInfo -> Gtk.ListStore Message -> IO () -> IO Gtk.ScrolledWindow
+  CC.MVar (GraphInfo (DynPlotPoints Double)) -> Gtk.ListStore Message -> IO () -> IO Gtk.ScrolledWindow
 newSignalSelectorArea graphInfoMVar msgStore redraw = do
   treeStore <- Gtk.treeStoreNew []
   treeview <- Gtk.treeViewNewWithModel treeStore
@@ -217,7 +217,7 @@ newSignalSelectorArea graphInfoMVar msgStore redraw = do
 
 
 
-makeOptionsWidget :: CC.MVar GraphInfo -> IO () -> IO Gtk.VBox
+makeOptionsWidget :: CC.MVar (GraphInfo (DynPlotPoints Double)) -> IO () -> IO Gtk.VBox
 makeOptionsWidget graphInfoMVar redraw = do
   -- user selectable range
   xRange <- Gtk.entryNew
