@@ -2,15 +2,22 @@
 {-# Language ScopedTypeVariables #-}
 
 module Dyno.Server.Server
-       ( newChannel
+       ( Channel
+       , XAxisType(..)
+       , newChannel
+       , newHistoryChannel
        , runPlotter
-       , Channel
        ) where
 
 import qualified GHC.Stats
 
+import Control.Monad ( when )
 import qualified Control.Concurrent as CC
+import qualified Data.Foldable as F
+import qualified Data.IORef as IORef
+import Data.Time ( NominalDiffTime, getCurrentTime, diffUTCTime )
 import Data.Tree ( Tree )
+import qualified Data.Tree as Tree
 import Graphics.UI.Gtk ( AttrOp( (:=) ) )
 import qualified Graphics.UI.Gtk as Gtk
 import Text.Printf ( printf )
@@ -18,7 +25,9 @@ import Text.Read ( readMaybe )
 import System.Glib.Signals ( on )
 --import System.IO ( withFile, IOMode ( WriteMode ) )
 --import qualified Data.ByteString.Lazy as BSL
+import qualified Data.Sequence as S
 
+import Accessors
 
 import Dyno.Server.PlotTypes ( Channel(..) )
 import Dyno.Server.GraphWidget ( newGraph )
@@ -31,6 +40,7 @@ newChannel ::
   -> IO (Channel a, a -> IO ())
 newChannel name sameSignalTree toSignalTree = do
   msgStore <- Gtk.listStoreNew []
+  maxHist <- IORef.newIORef 0
 
   let newMessage :: a -> IO ()
       newMessage next = do
@@ -45,6 +55,122 @@ newChannel name sameSignalTree toSignalTree = do
                         , chanMsgStore = msgStore
                         , chanSameSignalTree = sameSignalTree
                         , chanToSignalTree = toSignalTree
+                        , chanMaxHistory = maxHist
+                        }
+
+  return (retChan, newMessage)
+
+
+data History a = History (S.Seq (a, Int, NominalDiffTime))
+
+type SignalTree a = Tree.Forest (String, String, Maybe (History a -> [[(Double, Double)]]))
+
+data XAxisType =
+  XAxisTime
+  | XAxisCount
+  | XAxisTime0
+  | XAxisCount0
+
+sameHistorySignalTree :: Lookup a => XAxisType -> a -> a -> Bool
+sameHistorySignalTree xaxisType x y = hx == hy
+  where
+    hx = map (fmap f) $ historySignalTree x xaxisType
+    hy = map (fmap f) $ historySignalTree y xaxisType
+
+    f (n1, n2, mg) = (n1, n2, fmap (const ()) mg)
+
+historySignalTree :: forall a . Lookup a => a -> XAxisType -> SignalTree a
+historySignalTree x axisType = case accessors x of
+  (ATGetter _) -> error "makeSignalTree: got an accessor right away"
+  d -> Tree.subForest $ head $ makeSignalTree' "" "" d
+  where
+    makeSignalTree' :: String -> String -> AccessorTree a -> SignalTree a
+    makeSignalTree' myName parentName (Data (pn,_) children) =
+      [Tree.Node
+       (myName, parentName, Nothing)
+       (concatMap (\(getterName,child) -> makeSignalTree' getterName pn child) children)
+      ]
+    makeSignalTree' myName parentName (ATGetter getter) =
+      [Tree.Node (myName, parentName, Just (toHistoryGetter getter)) []]
+    toHistoryGetter :: (a -> Double) -> History a -> [[(Double, Double)]]
+    toHistoryGetter = case axisType of
+      XAxisTime   -> timeGetter
+      XAxisTime0  -> timeGetter0
+      XAxisCount  -> countGetter
+      XAxisCount0 -> countGetter0
+
+    timeGetter  get (History s) = [map (\(val, _, time) -> (realToFrac time, get val)) (F.toList s)]
+    timeGetter0 get (History s) = [map (\(val, _, time) -> (realToFrac time - time0, get val)) (F.toList s)]
+      where
+        time0 :: Double
+        time0 = case S.viewl s of
+          (_, _, time0') S.:< _ -> realToFrac time0'
+          S.EmptyL -> 0
+    countGetter  get (History s) = [map (\(val, k, _) -> (fromIntegral k, get val)) (F.toList s)]
+    countGetter0 get (History s) = [map (\(val, k, _) -> (fromIntegral k - k0, get val)) (F.toList s)]
+      where
+        k0 :: Double
+        k0 = case S.viewl s of
+          (_, k0', _) S.:< _ -> realToFrac k0'
+          S.EmptyL -> 0
+
+newHistoryChannel ::
+  forall a
+  . Lookup a
+  => String
+  -> XAxisType
+  -> IO (Channel (History a), a -> Bool -> IO ())
+newHistoryChannel name xaxisType = do
+  time0 <- getCurrentTime >>= IORef.newIORef
+  counter <- IORef.newIORef 0
+  maxHist <- IORef.newIORef 200
+
+  msgStore <- Gtk.listStoreNew []
+
+  let newMessage :: a -> Bool -> IO ()
+      newMessage next reset = do
+        -- grab the time and counter
+        time <- getCurrentTime
+        when reset $ do
+          IORef.writeIORef time0 time
+          IORef.writeIORef counter 0
+
+        k <- IORef.readIORef counter
+        time0' <- IORef.readIORef time0
+
+        IORef.writeIORef counter (k+1)
+        Gtk.postGUIAsync $ do
+          let val = (next, k, diffUTCTime time time0')
+          size <- Gtk.listStoreGetSize msgStore
+          if size == 0
+            then Gtk.listStorePrepend msgStore (History (S.singleton val))
+            else do History vals0 <- Gtk.listStoreGetValue msgStore 0
+                    maxHistory <- IORef.readIORef maxHist
+                    let undropped = vals0 S.|> val
+                        dropped = S.drop (S.length undropped - maxHistory) undropped
+                    Gtk.listStoreSetValue msgStore 0 (History dropped)
+
+          when reset $ Gtk.listStoreSetValue msgStore 0 (History (S.singleton val))
+
+  let -- todo: cache this so i don't have to keep building an accessor tree to compare
+      sst :: History a -> History a -> Bool
+      sst (History x) (History y) = case (S.viewr x, S.viewr y) of
+        (_ S.:> (x',_,_), _ S.:> (y',_,_)) -> sameHistorySignalTree xaxisType x' y'
+        _ -> error "sameSignalTree got an empty history :("
+
+      tst :: History a -> [Tree ( String
+                                , String
+                                , Maybe (History a -> [[(Double, Double)]])
+                                )]
+      tst (History x) = case (S.viewr x) of
+        (_ S.:> (x',_,_)) -> historySignalTree x' xaxisType
+        S.EmptyR -> error "toSignalTree got an empty history"
+
+  let retChan = Channel { chanName = name
+                        , chanMsgStore = msgStore
+                        , chanSameSignalTree = sst
+                        , chanToSignalTree = tst
+                        , chanMaxHistory = maxHist
                         }
 
   return (retChan, newMessage)
@@ -155,9 +281,13 @@ newChannelWidget channel graphWindowsToBeKilled = do
   Gtk.entrySetText entryEntry "200"
   let updateMaxHistory = do
         txt <- Gtk.get entryEntry Gtk.entryText
+        let reset = Gtk.entrySetText entryEntry "(max)"
         case readMaybe txt :: Maybe Int of
-          Just k -> putStrLn $ "yeah this doesn't really have much effect to be honest, but i got this: " ++ show k
-          Nothing -> putStrLn $ "max history: couldn't make an Int out of \"" ++ show txt ++ "\""
+          Nothing ->
+            putStrLn ("max history: couldn't make an Int out of \"" ++ show txt ++ "\"") >> reset
+          Just 0  -> putStrLn ("max history: must be greater than 0") >> reset
+          Just k  -> IORef.writeIORef (chanMaxHistory channel) k
+
   _ <- on entryEntry Gtk.entryActivate updateMaxHistory
   updateMaxHistory
 

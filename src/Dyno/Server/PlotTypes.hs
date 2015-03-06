@@ -11,6 +11,7 @@ module Dyno.Server.PlotTypes
 
 import Data.Tree ( Tree )
 import qualified Graphics.UI.Gtk as Gtk
+import Data.IORef ( IORef )
 
 data ListViewInfo a =
   ListViewInfo
@@ -40,4 +41,5 @@ data Channel a =
                                            , String
                                            , Maybe (a -> [[(Double, Double)]])
                                            )]
+          , chanMaxHistory :: IORef Int
           }
