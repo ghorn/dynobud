@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
+{-# Language ScopedTypeVariables #-}
 
 module Dyno.Server.Server
        ( newChannel
@@ -6,9 +7,12 @@ module Dyno.Server.Server
        , Channel
        ) where
 
+import qualified GHC.Stats
+
 import qualified Control.Concurrent as CC
 import qualified Data.IORef as IORef
 import Data.Time ( getCurrentTime, diffUTCTime )
+import Data.Tree ( Tree )
 import Graphics.UI.Gtk ( AttrOp( (:=) ) )
 import qualified Graphics.UI.Gtk as Gtk
 import Text.Printf ( printf )
@@ -17,28 +21,30 @@ import System.Glib.Signals ( on )
 --import System.IO ( withFile, IOMode ( WriteMode ) )
 --import qualified Data.ByteString.Lazy as BSL
 
-import qualified GHC.Stats
 
 import Dyno.Server.PlotTypes ( Channel(..), Message(..) )
 import Dyno.Server.GraphWidget ( newGraph )
-import Dyno.DirectCollocation.Dynamic ( CollTrajMeta(..), DynPlotPoints )
 
-newChannel :: String -> IO (Channel, (DynPlotPoints Double, CollTrajMeta) -> IO ())
-newChannel name = do
+newChannel ::
+  forall a
+  . String
+  -> (a -> a -> Bool)
+  -> (a -> [Tree (String,String,Maybe (a -> [[(Double, Double)]]))])
+  -> IO (Channel a, a -> IO ())
+newChannel name sameSignalTree toSignalTree = do
   time0 <- getCurrentTime
 
   msgStore <- Gtk.listStoreNew []
   counter <- IORef.newIORef 0
 
-  let newMessage :: (DynPlotPoints Double, CollTrajMeta) -> IO ()
-      newMessage (newTrajs, newMeta) = do
+  let newMessage :: a -> IO ()
+      newMessage next = do
         -- grab the time and counter
         time <- getCurrentTime
         k <- IORef.readIORef counter
         IORef.writeIORef counter (k+1)
         Gtk.postGUIAsync $ do
-          let pps = newTrajs
-              val = Message pps k (diffUTCTime time time0) newMeta
+          let val = Message next k (diffUTCTime time time0)
           size <- Gtk.listStoreGetSize msgStore
           if size == 0
             then Gtk.listStorePrepend msgStore val
@@ -46,11 +52,14 @@ newChannel name = do
 
   let retChan = Channel { chanName = name
                         , chanMsgStore = msgStore
+                        , chanSameSignalTree = sameSignalTree
+                        , chanToSignalTree = toSignalTree
                         }
 
   return (retChan, newMessage)
 
-runPlotter :: Channel -> [CC.ThreadId] -> IO ()
+
+runPlotter :: forall a . Channel a -> [CC.ThreadId] -> IO ()
 runPlotter channel backgroundThreadsToKill = do
   statsEnabled <- GHC.Stats.getGCStatsEnabled
 
@@ -115,7 +124,8 @@ runPlotter channel backgroundThreadsToKill = do
 
 
 -- the list of channels
-newChannelWidget :: Channel -> CC.MVar [Gtk.Window] -> IO Gtk.VBox
+newChannelWidget :: Channel a
+                    -> CC.MVar [Gtk.Window] -> IO Gtk.VBox
 newChannelWidget channel graphWindowsToBeKilled = do
   vbox <- Gtk.vBoxNew False 4
 
@@ -134,7 +144,11 @@ newChannelWidget channel graphWindowsToBeKilled = do
   -- button to make a new graph
   buttonNew <- Gtk.buttonNewWithLabel "new graph"
   _ <- Gtk.onClicked buttonNew $ do
-    graphWin <- newGraph (chanName channel) (chanMsgStore channel)
+    graphWin <- newGraph
+                (chanName channel)
+                (chanSameSignalTree channel)
+                (chanToSignalTree channel)
+                (chanMsgStore channel)
 
     -- add this window to the list to be killed on exit
     CC.modifyMVar_ graphWindowsToBeKilled (return . (graphWin:))

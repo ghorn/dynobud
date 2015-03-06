@@ -6,13 +6,11 @@
 module Dyno.DirectCollocation.Dynamic
        ( DynPlotPoints
        , CollTrajMeta(..)
-       , MetaTree
-       , forestFromMeta
+       , newCollocationChannel
        , toMeta
        , toMetaCov
        , dynPlotPoints
        , catDynPlotPoints
---       , toPlotTree
        , NameTree(..)
        ) where
 
@@ -38,9 +36,35 @@ import Dyno.View.View
 import Dyno.View.JVec ( JVec(..) )
 import qualified Dyno.TypeVecs as TV
 import Dyno.TypeVecs ( Vec )
-
 import Dyno.DirectCollocation.Types
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots, mkTaus )
+import Dyno.Server.Server ( Channel, newChannel )
+
+
+newCollocationChannel ::
+  String -> IO ( Channel (DynPlotPoints Double, CollTrajMeta)
+               , (DynPlotPoints Double, CollTrajMeta) -> IO ()
+               )
+newCollocationChannel name = newChannel name sameMeta toSignalTree
+  where
+    toSignalTree ::
+      (DynPlotPoints Double, CollTrajMeta)
+      -> [Tree ( String
+               , String
+               , Maybe ((DynPlotPoints Double, CollTrajMeta) -> [[(Double, Double)]])
+               )]
+    toSignalTree = forestFromMeta . snd
+
+sameMeta :: (DynPlotPoints Double, CollTrajMeta)
+            -> (DynPlotPoints Double, CollTrajMeta)
+            -> Bool
+sameMeta (_,ctm0) (_,ctm1) =
+  and [ ctmX ctm0 == ctmX ctm1
+      , ctmZ ctm0 == ctmZ ctm1
+      , ctmU ctm0 == ctmU ctm1
+      , ctmP ctm0 == ctmP ctm1
+      , ctmO ctm0 == ctmO ctm1
+      ]
 
 
 data DynPlotPoints a = DynPlotPoints
@@ -163,7 +187,7 @@ namesFromAccTree' k0 (nm, Data names ats) = (k, (nm, NameTreeNode names children
     (k, children) = mapAccumL namesFromAccTree' k0 ats
 
 
-type MetaTree a = Tree.Forest (String, String, Maybe (DynPlotPoints a -> [[(a,a)]]))
+type MetaTree a = Tree.Forest (String, String, Maybe ((DynPlotPoints a, CollTrajMeta) -> [[(a,a)]]))
 
 forestFromMeta :: CollTrajMeta -> MetaTree Double
 forestFromMeta meta = [xTree,zTree,uTree,oTree,xdTree]
@@ -175,10 +199,10 @@ forestFromMeta meta = [xTree,zTree,uTree,oTree,xdTree]
     xdTree = blah (\(DynPlotPoints _ _ _ _ xd) -> xd) "diff state derivatives" (ctmX meta)
 
     blah :: (c -> [[(t, V.Vector t)]]) -> String -> NameTree ->
-            Tree (String, String, Maybe (c -> [[(t, t)]]))
+            Tree (String, String, Maybe ((c,CollTrajMeta) -> [[(t, t)]]))
     blah f myname (NameTreeNode (nm1,_) children) =
       Tree.Node (myname,nm1,Nothing) $ map (uncurry (blah f)) children
-    blah f myname (NameTreeLeaf k) = Tree.Node (myname,"",Just (woo . f)) []
+    blah f myname (NameTreeLeaf k) = Tree.Node (myname,"",Just (woo . f . fst)) []
       where
         woo = map (map (\(t,x) -> (t, x V.! k)))
 

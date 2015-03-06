@@ -11,8 +11,8 @@ import qualified System.ZMQ4 as ZMQ
 import System.Console.CmdArgs ( (&=), Data, Typeable )
 import qualified System.Console.CmdArgs as CA
 
-import Dyno.Server.Server ( runPlotter, newChannel )
-import Dyno.DirectCollocation.Dynamic ( DynPlotPoints, CollTrajMeta )
+import Dyno.Server.Server ( runPlotter )
+import Dyno.DirectCollocation.Dynamic ( DynPlotPoints, CollTrajMeta, newCollocationChannel )
 
 import Dynoplot.Channel ( dynoplotUrl, dynoplotChannelName )
 
@@ -40,7 +40,7 @@ main = do
   putStrLn $ "using ip \""++ip'++"\""
   putStrLn $ "using channel \""++channel'++"\""
 
-  (c0, writeMe) <- newChannel channel'
+  (c0, writeMe) <- newCollocationChannel channel'
 
   listenerTid0 <- CC.forkIO (sub ip' writeMe channel')
   runPlotter c0 [listenerTid0]

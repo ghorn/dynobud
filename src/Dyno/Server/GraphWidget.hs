@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
+{-# Language ScopedTypeVariables #-}
 
 module Dyno.Server.GraphWidget
        ( newGraph
@@ -18,26 +19,15 @@ import qualified Graphics.Rendering.Chart as Chart
 
 import Dyno.Server.PlotChart ( AxisScaling(..), displayChart, chartGtkUpdateCanvas )
 import Dyno.Server.PlotTypes ( GraphInfo(..), ListViewInfo(..), Message(..) )
-import Dyno.DirectCollocation.Dynamic ( CollTrajMeta(..), DynPlotPoints, MetaTree, forestFromMeta )
-
--- This only concerns if we should rebuild the plot tree or not.
--- The devectorization won't break because we always use the
--- new meta to get the plot points
-sameMeta :: Maybe CollTrajMeta -> Maybe CollTrajMeta -> Bool
-sameMeta Nothing Nothing = True
-sameMeta (Just ctm0) (Just ctm1) =
-  and [ ctmX ctm0 == ctmX ctm1
-      , ctmZ ctm0 == ctmZ ctm1
-      , ctmU ctm0 == ctmU ctm1
-      , ctmP ctm0 == ctmP ctm1
-      , ctmO ctm0 == ctmO ctm1
-      ]
-sameMeta _ _ = False
-
 
 -- make a new graph window
-newGraph :: String -> Gtk.ListStore Message -> IO Gtk.Window
-newGraph channame msgStore = do
+newGraph ::
+  forall a
+  . String
+  -> (a -> a -> Bool)
+  -> (a -> [Tree.Tree (String, String, Maybe (a -> [[(Double, Double)]]))])
+  -> Gtk.ListStore (Message a) -> IO Gtk.Window
+newGraph channame sameSignalTree forestFromMeta msgStore = do
   win <- Gtk.windowNew
 
   _ <- Gtk.set win [ Gtk.containerBorderWidth := 8
@@ -50,7 +40,7 @@ newGraph channame msgStore = do
                                         , giXRange = Nothing
                                         , giYRange = Nothing
                                         , giGetters = []
-                                        }
+                                        } :: IO (CC.MVar (GraphInfo a))
 
   let makeRenderable :: IO (Chart.Renderable ())
       makeRenderable = do
@@ -60,9 +50,10 @@ newGraph channame msgStore = do
         namePcs <- if size == 0
                    then return []
                    else do
-                     Message datalog _ _ _ <- Gtk.listStoreGetValue msgStore 0
-                     let f (name,getter) = (name, getter datalog :: [[(Double,Double)]])
-                     return (map f (giGetters gi) :: [(String, [[(Double,Double)]])])
+                     Message datalog _ _ <- Gtk.listStoreGetValue msgStore 0
+                     let ret :: [(String, [[(Double,Double)]])]
+                         ret = map (fmap (\g -> g datalog)) (giGetters gi)
+                     return ret
         return $ displayChart (giXScaling gi, giYScaling gi) (giXRange gi, giYRange gi) namePcs
 
   -- chart drawing area
@@ -86,7 +77,7 @@ newGraph channame msgStore = do
 
 
   -- the signal selector
-  treeview' <- newSignalSelectorArea graphInfoMVar msgStore redraw
+  treeview' <- newSignalSelectorArea sameSignalTree forestFromMeta graphInfoMVar msgStore redraw
   treeview <- Gtk.expanderNew "signals"
   Gtk.set treeview [ Gtk.containerChild := treeview'
                    , Gtk.expanderExpanded := True
@@ -116,8 +107,13 @@ newGraph channame msgStore = do
 
 
 newSignalSelectorArea ::
-  CC.MVar (GraphInfo (DynPlotPoints Double)) -> Gtk.ListStore Message -> IO () -> IO Gtk.ScrolledWindow
-newSignalSelectorArea graphInfoMVar msgStore redraw = do
+  forall a
+  . (a -> a -> Bool)
+  -> (a -> [Tree.Tree (String, String, Maybe (a -> [[(Double, Double)]]))])
+  -> CC.MVar (GraphInfo a)
+  -> Gtk.ListStore (Message a)
+  -> IO () -> IO Gtk.ScrolledWindow
+newSignalSelectorArea sameSignalTree forestFromMeta graphInfoMVar msgStore redraw = do
   treeStore <- Gtk.treeStoreNew []
   treeview <- Gtk.treeViewNewWithModel treeStore
 
@@ -177,10 +173,11 @@ newSignalSelectorArea graphInfoMVar msgStore redraw = do
 
 
   -- rebuild the signal tree
-  let rebuildSignalTree :: MetaTree Double -> IO ()
+  let rebuildSignalTree :: [Tree.Tree (String, String, Maybe (a -> [[(Double, Double)]]))]
+                           -> IO ()
       rebuildSignalTree meta = do
         let mkTreeNode (name,typeName,maybeget) = ListViewInfo name typeName maybeget False
-            newTrees :: [Tree.Tree (ListViewInfo (DynPlotPoints Double))]
+            newTrees :: [Tree.Tree (ListViewInfo a)]
             newTrees = map (fmap mkTreeNode) meta
         Gtk.treeStoreClear treeStore
         Gtk.treeStoreInsertForest treeStore [] 0 newTrees
@@ -189,23 +186,25 @@ newSignalSelectorArea graphInfoMVar msgStore redraw = do
   oldMetaRef <- IORef.newIORef Nothing
   let maybeRebuildSignalTree newMeta = do
         oldMeta <- IORef.readIORef oldMetaRef
-        unless (sameMeta oldMeta (Just newMeta)) $ do
+        let sameSignalTree' Nothing _ = False
+            sameSignalTree' (Just x) y = sameSignalTree x y
+        unless (sameSignalTree' oldMeta newMeta) $ do
           IORef.writeIORef oldMetaRef (Just newMeta)
           rebuildSignalTree (forestFromMeta newMeta)
 
   -- on insert or change, rebuild the signal tree
   _ <- on msgStore Gtk.rowChanged $ \_ changedPath -> do
-    Message _ _ _ newMeta <- Gtk.listStoreGetValue msgStore (Gtk.listStoreIterToIndex changedPath)
-    maybeRebuildSignalTree newMeta >> redraw
+    Message newMsg _ _ <- Gtk.listStoreGetValue msgStore (Gtk.listStoreIterToIndex changedPath)
+    maybeRebuildSignalTree newMsg >> redraw
   _ <- on msgStore Gtk.rowInserted $ \_ changedPath -> do
-    Message _ _ _ newMeta <- Gtk.listStoreGetValue msgStore (Gtk.listStoreIterToIndex changedPath)
-    maybeRebuildSignalTree newMeta >> redraw
+    Message newMsg _ _ <- Gtk.listStoreGetValue msgStore (Gtk.listStoreIterToIndex changedPath)
+    maybeRebuildSignalTree newMsg >> redraw
 
   -- rebuild the signal tree right now if it exists
   size <- Gtk.listStoreGetSize msgStore
   when (size > 0) $ do
-    Message _ _ _ newMeta <- Gtk.listStoreGetValue msgStore 0
-    maybeRebuildSignalTree newMeta >> redraw
+    Message newMsg _ _ <- Gtk.listStoreGetValue msgStore 0
+    maybeRebuildSignalTree newMsg >> redraw
 
 
   scroll <- Gtk.scrolledWindowNew Nothing Nothing
@@ -217,7 +216,7 @@ newSignalSelectorArea graphInfoMVar msgStore redraw = do
 
 
 
-makeOptionsWidget :: CC.MVar (GraphInfo (DynPlotPoints Double)) -> IO () -> IO Gtk.VBox
+makeOptionsWidget :: CC.MVar (GraphInfo a) -> IO () -> IO Gtk.VBox
 makeOptionsWidget graphInfoMVar redraw = do
   -- user selectable range
   xRange <- Gtk.entryNew

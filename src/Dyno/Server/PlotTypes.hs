@@ -8,20 +8,19 @@ module Dyno.Server.PlotTypes
        , GraphInfo(..)
        , ListViewInfo(..)
        , AxisScaling(..)
-       , MetaTree
---       , XAxisType(..)
        ) where
 
 import Data.Time ( NominalDiffTime )
+import Data.Tree ( Tree )
 import qualified Graphics.UI.Gtk as Gtk
 
-import Dyno.DirectCollocation.Dynamic ( DynPlotPoints, CollTrajMeta, MetaTree )
-
-data ListViewInfo a = ListViewInfo { lviName :: String
-                                   , lviType :: String
-                                   , lviGetter :: Maybe (a -> [[(Double,Double)]])
-                                   , lviMarked :: Bool
-                                   }
+data ListViewInfo a =
+  ListViewInfo
+  { lviName :: String
+  , lviType :: String
+  , lviGetter :: Maybe (a -> [[(Double,Double)]])
+  , lviMarked :: Bool
+  }
 
 data AxisScaling = LogScaling
                  | LinearScaling
@@ -35,8 +34,14 @@ data GraphInfo a =
             , giGetters :: [(String, a -> [[(Double,Double)]])]
             }
 
-data Message = Message (DynPlotPoints Double) Int NominalDiffTime CollTrajMeta
-data Channel =
+data Message a = Message a Int NominalDiffTime
+
+data Channel a =
   Channel { chanName :: String
-          , chanMsgStore :: Gtk.ListStore Message
+          , chanMsgStore :: Gtk.ListStore (Message a)
+          , chanSameSignalTree :: a -> a -> Bool
+          , chanToSignalTree :: a -> [Tree ( String
+                                           , String
+                                           , Maybe (a -> [[(Double, Double)]])
+                                           )]
           }
