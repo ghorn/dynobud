@@ -18,7 +18,7 @@ import qualified Data.Text as T
 import qualified Graphics.Rendering.Chart as Chart
 
 import Dyno.Server.PlotChart ( AxisScaling(..), displayChart, chartGtkUpdateCanvas )
-import Dyno.Server.PlotTypes ( GraphInfo(..), ListViewInfo(..), Message(..) )
+import Dyno.Server.PlotTypes ( GraphInfo(..), ListViewInfo(..) )
 
 -- make a new graph window
 newGraph ::
@@ -26,7 +26,7 @@ newGraph ::
   . String
   -> (a -> a -> Bool)
   -> (a -> [Tree.Tree (String, String, Maybe (a -> [[(Double, Double)]]))])
-  -> Gtk.ListStore (Message a) -> IO Gtk.Window
+  -> Gtk.ListStore a -> IO Gtk.Window
 newGraph channame sameSignalTree forestFromMeta msgStore = do
   win <- Gtk.windowNew
 
@@ -50,7 +50,7 @@ newGraph channame sameSignalTree forestFromMeta msgStore = do
         namePcs <- if size == 0
                    then return []
                    else do
-                     Message datalog _ _ <- Gtk.listStoreGetValue msgStore 0
+                     datalog <- Gtk.listStoreGetValue msgStore 0
                      let ret :: [(String, [[(Double,Double)]])]
                          ret = map (fmap (\g -> g datalog)) (giGetters gi)
                      return ret
@@ -111,7 +111,7 @@ newSignalSelectorArea ::
   . (a -> a -> Bool)
   -> (a -> [Tree.Tree (String, String, Maybe (a -> [[(Double, Double)]]))])
   -> CC.MVar (GraphInfo a)
-  -> Gtk.ListStore (Message a)
+  -> Gtk.ListStore a
   -> IO () -> IO Gtk.ScrolledWindow
 newSignalSelectorArea sameSignalTree forestFromMeta graphInfoMVar msgStore redraw = do
   treeStore <- Gtk.treeStoreNew []
@@ -194,16 +194,16 @@ newSignalSelectorArea sameSignalTree forestFromMeta graphInfoMVar msgStore redra
 
   -- on insert or change, rebuild the signal tree
   _ <- on msgStore Gtk.rowChanged $ \_ changedPath -> do
-    Message newMsg _ _ <- Gtk.listStoreGetValue msgStore (Gtk.listStoreIterToIndex changedPath)
+    newMsg <- Gtk.listStoreGetValue msgStore (Gtk.listStoreIterToIndex changedPath)
     maybeRebuildSignalTree newMsg >> redraw
   _ <- on msgStore Gtk.rowInserted $ \_ changedPath -> do
-    Message newMsg _ _ <- Gtk.listStoreGetValue msgStore (Gtk.listStoreIterToIndex changedPath)
+    newMsg <- Gtk.listStoreGetValue msgStore (Gtk.listStoreIterToIndex changedPath)
     maybeRebuildSignalTree newMsg >> redraw
 
   -- rebuild the signal tree right now if it exists
   size <- Gtk.listStoreGetSize msgStore
   when (size > 0) $ do
-    Message newMsg _ _ <- Gtk.listStoreGetValue msgStore 0
+    newMsg <- Gtk.listStoreGetValue msgStore 0
     maybeRebuildSignalTree newMsg >> redraw
 
 

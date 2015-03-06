@@ -4,13 +4,11 @@
 
 module Dyno.Server.PlotTypes
        ( Channel(..)
-       , Message(..)
        , GraphInfo(..)
        , ListViewInfo(..)
        , AxisScaling(..)
        ) where
 
-import Data.Time ( NominalDiffTime )
 import Data.Tree ( Tree )
 import qualified Graphics.UI.Gtk as Gtk
 
@@ -34,11 +32,9 @@ data GraphInfo a =
             , giGetters :: [(String, a -> [[(Double,Double)]])]
             }
 
-data Message a = Message a Int NominalDiffTime
-
 data Channel a =
   Channel { chanName :: String
-          , chanMsgStore :: Gtk.ListStore (Message a)
+          , chanMsgStore :: Gtk.ListStore a
           , chanSameSignalTree :: a -> a -> Bool
           , chanToSignalTree :: a -> [Tree ( String
                                            , String

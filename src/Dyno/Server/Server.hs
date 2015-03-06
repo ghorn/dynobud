@@ -10,8 +10,6 @@ module Dyno.Server.Server
 import qualified GHC.Stats
 
 import qualified Control.Concurrent as CC
-import qualified Data.IORef as IORef
-import Data.Time ( getCurrentTime, diffUTCTime )
 import Data.Tree ( Tree )
 import Graphics.UI.Gtk ( AttrOp( (:=) ) )
 import qualified Graphics.UI.Gtk as Gtk
@@ -22,33 +20,26 @@ import System.Glib.Signals ( on )
 --import qualified Data.ByteString.Lazy as BSL
 
 
-import Dyno.Server.PlotTypes ( Channel(..), Message(..) )
+import Dyno.Server.PlotTypes ( Channel(..) )
 import Dyno.Server.GraphWidget ( newGraph )
 
 newChannel ::
   forall a
   . String
   -> (a -> a -> Bool)
-  -> (a -> [Tree (String,String,Maybe (a -> [[(Double, Double)]]))])
+  -> (a -> [Tree (String, String, Maybe (a -> [[(Double, Double)]]))])
   -> IO (Channel a, a -> IO ())
 newChannel name sameSignalTree toSignalTree = do
-  time0 <- getCurrentTime
-
   msgStore <- Gtk.listStoreNew []
-  counter <- IORef.newIORef 0
 
   let newMessage :: a -> IO ()
       newMessage next = do
         -- grab the time and counter
-        time <- getCurrentTime
-        k <- IORef.readIORef counter
-        IORef.writeIORef counter (k+1)
         Gtk.postGUIAsync $ do
-          let val = Message next k (diffUTCTime time time0)
           size <- Gtk.listStoreGetSize msgStore
           if size == 0
-            then Gtk.listStorePrepend msgStore val
-            else Gtk.listStoreSetValue msgStore 0 val
+            then Gtk.listStorePrepend msgStore next
+            else Gtk.listStoreSetValue msgStore 0 next
 
   let retChan = Channel { chanName = name
                         , chanMsgStore = msgStore
