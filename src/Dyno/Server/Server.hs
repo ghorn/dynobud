@@ -11,6 +11,8 @@ import qualified Data.IORef as IORef
 import Data.Time ( getCurrentTime, diffUTCTime )
 import Graphics.UI.Gtk ( AttrOp( (:=) ) )
 import qualified Graphics.UI.Gtk as Gtk
+import Text.Printf ( printf )
+import Text.Read ( readMaybe )
 import System.Glib.Signals ( on )
 --import System.IO ( withFile, IOMode ( WriteMode ) )
 --import qualified Data.ByteString.Lazy as BSL
@@ -87,11 +89,11 @@ runPlotter channel backgroundThreadsToKill = do
 
   --------------- main widget -----------------
   -- button to clear history
-  buttonClear <- Gtk.buttonNewWithLabel "clear history"
-  _ <- Gtk.onClicked buttonClear $ do
+  buttonDoNothing <- Gtk.buttonNewWithLabel "this button does absolutely nothing"
+  _ <- Gtk.onClicked buttonDoNothing $ do
     --let clearChan (Channel {chanSeq=cs}) = void (CC.swapMVar cs Seq.empty)
-    let clearChan _ = putStrLn "yeah, history clear doesn't really exist lol"
-    clearChan channel
+    let doNothing _ = putStrLn "seriously, it does nothing"
+    doNothing channel
 
   -- list of channels
   chanWidget <- newChannelWidget channel graphWindowsToBeKilled
@@ -100,9 +102,11 @@ runPlotter channel backgroundThreadsToKill = do
   vbox <- Gtk.vBoxNew False 4
   Gtk.set vbox [ Gtk.containerChild := statsLabel
                , Gtk.boxChildPacking statsLabel := Gtk.PackNatural
-               , Gtk.containerChild := buttonClear
+               , Gtk.containerChild := buttonDoNothing
                , Gtk.containerChild := chanWidget
-               ]
+               ] -- ++ concatMap (\x -> [Gtk.containerChild := x
+                 --                     , Gtk.boxChildPacking x := Gtk.PackNatural
+                 --                     ]) [chanWidget]
 
   -- add widget to window and show
   _ <- Gtk.set win [ Gtk.containerChild := vbox ]
@@ -111,73 +115,105 @@ runPlotter channel backgroundThreadsToKill = do
 
 
 -- the list of channels
-newChannelWidget :: Channel -> CC.MVar [Gtk.Window] -> IO Gtk.TreeView
+newChannelWidget :: Channel -> CC.MVar [Gtk.Window] -> IO Gtk.VBox
 newChannelWidget channel graphWindowsToBeKilled = do
-  -- create a new tree model
-  model <- Gtk.listStoreNew [channel]
-  treeview <- Gtk.treeViewNewWithModel model
-  Gtk.treeViewSetHeadersVisible treeview True
+  vbox <- Gtk.vBoxNew False 4
 
-  -- add some columns
-  col0 <- Gtk.treeViewColumnNew
-  col1 <- Gtk.treeViewColumnNew
-  col2 <- Gtk.treeViewColumnNew
-  col3 <- Gtk.treeViewColumnNew
+  nameBox' <- Gtk.hBoxNew False 4
+  nameBox <- labeledWidget (chanName channel) nameBox'
 
-  Gtk.treeViewColumnSetTitle col0 "channel"
-  Gtk.treeViewColumnSetTitle col1 "history"
-  Gtk.treeViewColumnSetTitle col2 "new"
-  Gtk.treeViewColumnSetTitle col3 "save"
+  buttonsBox <- Gtk.hBoxNew False 4
 
-  renderer0 <- Gtk.cellRendererTextNew
-  renderer1 <- Gtk.cellRendererTextNew
-  renderer2 <- Gtk.cellRendererToggleNew
-  renderer3 <- Gtk.cellRendererToggleNew
+  -- button to clear history
+  buttonAlsoDoNothing <- Gtk.buttonNewWithLabel "also do nothing"
+  _ <- Gtk.onClicked buttonAlsoDoNothing $ do
+    putStrLn "i promise, nothing happens"
+    -- CC.modifyMVar_ logData (const (return S.empty))
+    return ()
 
-  Gtk.cellLayoutPackStart col0 renderer0 True
-  Gtk.cellLayoutPackStart col1 renderer1 True
-  Gtk.cellLayoutPackStart col2 renderer2 True
-  Gtk.cellLayoutPackStart col3 renderer3 True
-
-  Gtk.cellLayoutSetAttributes col0 renderer0 model $ \lv -> [ Gtk.cellText := chanName lv]
-  Gtk.cellLayoutSetAttributes col2 renderer2 model $ const [ Gtk.cellToggleActive := False]
-  Gtk.cellLayoutSetAttributes col3 renderer3 model $ const [ Gtk.cellToggleActive := False]
-
-
-  _ <- Gtk.treeViewAppendColumn treeview col0
-  _ <- Gtk.treeViewAppendColumn treeview col1
-  _ <- Gtk.treeViewAppendColumn treeview col2
-  _ <- Gtk.treeViewAppendColumn treeview col3
-
-  -- spawn a new graph when a checkbox is clicked
-  _ <- on renderer2 Gtk.cellToggled $ \pathStr -> do
-    let (i:_) = Gtk.stringToTreePath pathStr
-    lv <- Gtk.listStoreGetValue model i
-    graphWin <- newGraph (chanName lv) (chanMsgStore lv)
+  -- button to make a new graph
+  buttonNew <- Gtk.buttonNewWithLabel "new graph"
+  _ <- Gtk.onClicked buttonNew $ do
+    graphWin <- newGraph (chanName channel) (chanMsgStore channel)
 
     -- add this window to the list to be killed on exit
     CC.modifyMVar_ graphWindowsToBeKilled (return . (graphWin:))
 
 
---  -- save all channel data when this button is pressed
---  _ <- on renderer3 Gtk.cellToggled $ \pathStr -> do
---    let (i:_) = Gtk.stringToTreePath pathStr
---    lv <- Gtk.listStoreGetValue model i
---    let writerThread = do
---          bct <- chanGetByteStrings (lvChan lv)
---          let filename = chanName (lvChan lv) ++ "_log.dat"
---              blah _      sizes [] = return (reverse sizes)
---              blah handle sizes ((x,_,_):xs) = do
---                BSL.hPut handle x
---                blah handle (BSL.length x : sizes) xs
---          putStrLn $ "trying to write file \"" ++ filename ++ "\"..."
---          sizes <- withFile filename WriteMode $ \handle -> blah handle [] bct
---          putStrLn $ "finished writing file, wrote " ++ show (length sizes) ++ " protos"
---
---          putStrLn "writing file with sizes..."
---          writeFile (filename ++ ".sizes") (unlines $ map show sizes)
---          putStrLn "done"
---    _ <- CC.forkIO writerThread
-    return ()
+  -- entry to set history length
+  entryAndLabel <- Gtk.hBoxNew False 4
+  entryLabel <- Gtk.vBoxNew False 4 >>= labeledWidget "max history:"
+  entryEntry <- Gtk.entryNew
+  Gtk.set entryEntry [ Gtk.entryEditable := True
+                     , Gtk.widgetSensitive := True
+                     ]
+  Gtk.entrySetText entryEntry "200"
+  let updateMaxHistory = do
+        txt <- Gtk.get entryEntry Gtk.entryText
+        case readMaybe txt :: Maybe Int of
+          Just k -> putStrLn $ "yeah this doesn't really have much effect to be honest, but i got this: " ++ show k
+          Nothing -> putStrLn $ "max history: couldn't make an Int out of \"" ++ show txt ++ "\""
+  _ <- on entryEntry Gtk.entryActivate updateMaxHistory
+  updateMaxHistory
 
-  return treeview
+
+  Gtk.set entryAndLabel [ Gtk.containerChild := entryLabel
+                        , Gtk.boxChildPacking entryLabel := Gtk.PackNatural
+                        , Gtk.containerChild := entryEntry
+                        , Gtk.boxChildPacking entryEntry := Gtk.PackNatural
+                        ]
+
+
+  -- put all the buttons/entries together
+  Gtk.set buttonsBox [ Gtk.containerChild := buttonNew
+                     , Gtk.boxChildPacking buttonNew := Gtk.PackNatural
+                     , Gtk.containerChild := buttonAlsoDoNothing
+                     , Gtk.boxChildPacking buttonAlsoDoNothing := Gtk.PackNatural
+                     , Gtk.containerChild := entryAndLabel
+                     , Gtk.boxChildPacking entryAndLabel := Gtk.PackNatural
+                     ]
+
+  Gtk.set vbox [ Gtk.containerChild := nameBox
+               , Gtk.boxChildPacking   nameBox := Gtk.PackNatural
+               , Gtk.containerChild := buttonsBox
+               , Gtk.boxChildPacking   buttonsBox := Gtk.PackNatural
+               ]
+
+  return vbox
+
+
+----  -- save all channel data when this button is pressed
+----  _ <- on renderer3 Gtk.cellToggled $ \pathStr -> do
+----    let (i:_) = Gtk.stringToTreePath pathStr
+----    lv <- Gtk.listStoreGetValue model i
+----    let writerThread = do
+----          bct <- chanGetByteStrings (lvChan lv)
+----          let filename = chanName (lvChan lv) ++ "_log.dat"
+----              blah _      sizes [] = return (reverse sizes)
+----              blah handle sizes ((x,_,_):xs) = do
+----                BSL.hPut handle x
+----                blah handle (BSL.length x : sizes) xs
+----          putStrLn $ "trying to write file \"" ++ filename ++ "\"..."
+----          sizes <- withFile filename WriteMode $ \handle -> blah handle [] bct
+----          putStrLn $ "finished writing file, wrote " ++ show (length sizes) ++ " protos"
+----
+----          putStrLn "writing file with sizes..."
+----          writeFile (filename ++ ".sizes") (unlines $ map show sizes)
+----          putStrLn "done"
+----    _ <- CC.forkIO writerThread
+--    return ()
+--
+--  return treeview
+
+
+-- helper to make an hbox with a label
+labeledWidget :: Gtk.WidgetClass a => String -> a -> IO Gtk.HBox
+labeledWidget name widget = do
+  label <- Gtk.labelNew (Just name)
+  hbox <- Gtk.hBoxNew False 4
+  Gtk.set hbox [ Gtk.containerChild := label
+               , Gtk.containerChild := widget
+               , Gtk.boxChildPacking label := Gtk.PackNatural
+--               , Gtk.boxChildPacking widget := Gtk.PackNatural
+               ]
+  return hbox
