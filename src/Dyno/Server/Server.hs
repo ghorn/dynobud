@@ -51,11 +51,6 @@ newChannel name = do
 runPlotter :: Channel -> [CC.ThreadId] -> IO ()
 runPlotter channel backgroundThreadsToKill = do
   statsEnabled <- GHC.Stats.getGCStatsEnabled
-  if statsEnabled
-    then do putStrLn "stats enabled"
-            stats <- GHC.Stats.getGCStats
-            print stats
-    else putStrLn "stats not enabled"
 
   _ <- Gtk.initGUI
   _ <- Gtk.timeoutAddFull (CC.yield >> return True) Gtk.priorityDefault 50
@@ -66,9 +61,24 @@ runPlotter channel backgroundThreadsToKill = do
                    , Gtk.windowTitle := "Plot-ho-matic"
                    ]
 
+  statsLabel <- Gtk.labelNew (Nothing :: Maybe String)
+  let statsWorker = do
+        CC.threadDelay 500000
+        msg <- if statsEnabled
+               then do
+                 stats <- GHC.Stats.getGCStats
+                 return $ printf "The current memory usage is %.2f MB"
+                   ((realToFrac (GHC.Stats.currentBytesUsed stats) :: Double) /(1024*1024))
+               else return "(enable GHC statistics with +RTS -T)"
+        Gtk.postGUISync $ Gtk.labelSetText statsLabel ("Welcome to Plot-ho-matic!\n" ++ msg)
+        statsWorker
+
+  statsThread <- CC.forkIO statsWorker
   -- on close, kill all the windows and threads
   graphWindowsToBeKilled <- CC.newMVar []
+
   let killEverything = do
+        CC.killThread statsThread
         gws <- CC.readMVar graphWindowsToBeKilled
         mapM_ Gtk.widgetDestroy gws
         mapM_ CC.killThread backgroundThreadsToKill
@@ -88,7 +98,9 @@ runPlotter channel backgroundThreadsToKill = do
 
   -- vbox to hold buttons
   vbox <- Gtk.vBoxNew False 4
-  Gtk.set vbox [ Gtk.containerChild := buttonClear
+  Gtk.set vbox [ Gtk.containerChild := statsLabel
+               , Gtk.boxChildPacking statsLabel := Gtk.PackNatural
+               , Gtk.containerChild := buttonClear
                , Gtk.containerChild := chanWidget
                ]
 
