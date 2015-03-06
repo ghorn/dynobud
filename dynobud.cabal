@@ -55,7 +55,6 @@ library
                        Dyno.Solvers
 --                       Dyno.Sqp.Sqp
 --                       Dyno.Sqp.LineSearch
-                       Dyno.Server.Accessors
                        Dyno.Server.GraphWidget
                        Dyno.Server.PlotChart
                        Dyno.Server.PlotTypes
@@ -87,7 +86,8 @@ library
                        data-default-class,
                        distributive,
                        text,
-                       process
+                       process,
+                       Plot-ho-matic >= 0.4.1.0
 --                       cplex
   hs-source-dirs:      src
   default-language:    Haskell2010
@@ -309,6 +309,7 @@ executable daeColl
   default-language:    Haskell2010
   build-depends:       dynobud,
                        base >=4.6 && < 5,
+                       Plot-ho-matic >= 0.4.1.0,
                        vector
   ghc-options:         -threaded -O2
 
@@ -330,6 +331,7 @@ executable glider
                        bytestring,
                        cereal,
                        vector,
+                       Plot-ho-matic >= 0.4.1.0,
                        zeromq4-haskell
   ghc-options:         -threaded -O2
 
@@ -349,6 +351,7 @@ executable sailboat
                        cereal,
                        vector,
                        semigroups,
+                       Plot-ho-matic >= 0.4.1.0,
                        zeromq4-haskell
   ghc-options:         -threaded -O2
 

@@ -11,6 +11,8 @@ import GHC.Generics ( Generic, Generic1 )
 
 import Data.Vector ( Vector )
 
+import PlotHo.Accessors
+
 import Dyno.Vectorize
 import Dyno.View.View ( J, jfill )
 import Dyno.TypeVecs
@@ -19,8 +21,6 @@ import Dyno.Solvers
 --import Dyno.Sqp.LineSearch
 import Dyno.Nlp
 import Dyno.NlpUtils
-import Dyno.Server.Accessors
-
 import Dyno.Ocp
 import Dyno.DirectCollocation
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..) )

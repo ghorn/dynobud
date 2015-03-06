@@ -9,8 +9,9 @@ import GHC.Generics ( Generic, Generic1 )
 
 import Linear
 
+import PlotHo.Accessors ( Lookup )
+
 import Dyno.Vectorize
-import Dyno.Server.Accessors ( Lookup(..) )
 
 import Glider.AeroCoeffs
 

@@ -10,7 +10,8 @@ import GHC.Generics ( Generic, Generic1 )
 import Data.Foldable ( Foldable )
 import Linear
 
-import Dyno.Server.Accessors ( Lookup(..) )
+import PlotHo.Accessors ( Lookup )
+
 import Dyno.Vectorize
 
 atan2' :: Floating a => a -> a -> a

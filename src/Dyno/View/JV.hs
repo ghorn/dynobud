@@ -21,12 +21,13 @@ import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
 
+import PlotHo.Accessors ( Lookup(..) )
+
 import Dyno.View.Unsafe.View ( mkJ, unJ )
 
 import Dyno.View.View ( View(..), J )
 import Dyno.View.Viewable ( Viewable(..) )
 import Dyno.Vectorize ( Vectorize(..), Id, vlength )
-import Dyno.Server.Accessors ( Lookup(..) )
 
 -- | views into Vectorizable things
 newtype JV f a = JV { unJV :: f a } deriving (Functor, Generic, Generic1)
@@ -42,6 +43,7 @@ instance Vectorize f => View (JV f) where
       ks = V.fromList (take (n+1) [0..])
       n = size (Proxy :: Proxy (JV f))
 
+-- todo: pretty sure this is not needed anymore
 instance (Vectorize f, Lookup (f a)) => Lookup (J (JV f) (Vector a)) where
   toAccessorTree x g = toAccessorTree (devectorize (unJ x) :: f a) (devectorize . unJ . g)
 

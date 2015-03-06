@@ -28,9 +28,10 @@ import qualified Data.Tree as Tree
 import Data.Serialize ( Serialize(..) )
 import Linear.V
 
+import PlotHo.Accessors ( AccessorTree(..), Lookup(..), accessors )
+
 import Dyno.View.Unsafe.View ( unJ, unJ' )
 
-import Dyno.Server.Accessors ( AccessorTree(..), Lookup(..), accessors )
 import Dyno.Vectorize ( Vectorize, Id(..) )
 import Dyno.View.JV
 import Dyno.View.View
@@ -156,7 +157,7 @@ namesFromAccTree :: AccessorTree a -> NameTree
 namesFromAccTree x = (\(_,(_,y)) -> y) $ namesFromAccTree' 0 ("",x)
 
 namesFromAccTree' :: Int -> (String, AccessorTree a) -> (Int, (String, NameTree))
-namesFromAccTree' k (nm, Getter _) = (k+1, (nm, NameTreeLeaf k))
+namesFromAccTree' k (nm, ATGetter _) = (k+1, (nm, NameTreeLeaf k))
 namesFromAccTree' k0 (nm, Data names ats) = (k, (nm, NameTreeNode names children))
   where
     (k, children) = mapAccumL namesFromAccTree' k0 ats

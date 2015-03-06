@@ -12,9 +12,10 @@ import Data.Vector ( Vector )
 import qualified Data.Vector as V
 import qualified Data.Foldable as F
 
+import PlotHo.Accessors ( Lookup, flatten, accessors )
+
 import Dyno.View.Unsafe.View ( unJ )
 
-import Dyno.Server.Accessors ( Lookup, flatten, accessors )
 import Dyno.TypeVecs ( Vec )
 import Dyno.Vectorize ( Vectorize, fill )
 import Dyno.View.View ( View(..) )
