@@ -55,10 +55,6 @@ library
                        Dyno.Solvers
 --                       Dyno.Sqp.Sqp
 --                       Dyno.Sqp.LineSearch
-                       Dyno.Server.GraphWidget
-                       Dyno.Server.PlotChart
-                       Dyno.Server.PlotTypes
-                       Dyno.Server.Server
 
   other-modules:
 
@@ -75,18 +71,10 @@ library
                        hmatrix,
                        linear >= 1.3.1.1,
                        reflection >= 1.3.2,
-                       lens,
                        cereal,
-                       time,
-                       gtk >= 0.13,
-                       glib,
-                       Chart-cairo >= 1.3.3,
-                       cairo,
-                       Chart >= 1.3.3,
-                       data-default-class,
                        distributive,
-                       text,
                        process,
+                       Plot-ho-matic >= 0.5.0.0,
                        generic-accessors >= 0.1.0.0
 --                       cplex
   hs-source-dirs:      src
@@ -370,6 +358,7 @@ executable dynoplot
                        cereal,
                        bytestring,
                        zeromq4-haskell,
+                       Plot-ho-matic >= 0.5.0.0,
                        cmdargs
   ghc-options:         -O2
 

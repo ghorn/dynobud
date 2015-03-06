@@ -6,7 +6,7 @@
 module Dyno.DirectCollocation.Dynamic
        ( DynPlotPoints
        , CollTrajMeta(..)
-       , newCollocationChannel
+       , addCollocationChannel
        , toMeta
        , toMetaCov
        , dynPlotPoints
@@ -27,6 +27,7 @@ import Data.Serialize ( Serialize(..) )
 import Linear.V
 
 import Accessors ( AccessorTree(..), Lookup(..), accessors )
+import PlotHo ( Plotter, addChannel )
 
 import Dyno.View.Unsafe.View ( unJ, unJ' )
 
@@ -38,14 +39,11 @@ import qualified Dyno.TypeVecs as TV
 import Dyno.TypeVecs ( Vec )
 import Dyno.DirectCollocation.Types
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots, mkTaus )
-import Dyno.Server.Server ( Channel, newChannel )
 
 
-newCollocationChannel ::
-  String -> IO ( Channel (DynPlotPoints Double, CollTrajMeta)
-               , (DynPlotPoints Double, CollTrajMeta) -> IO ()
-               )
-newCollocationChannel name = newChannel name sameMeta toSignalTree
+addCollocationChannel ::
+  String -> (((DynPlotPoints Double, CollTrajMeta) -> IO ()) -> IO ()) -> Plotter ()
+addCollocationChannel name action = addChannel name sameMeta toSignalTree action
   where
     toSignalTree ::
       (DynPlotPoints Double, CollTrajMeta)

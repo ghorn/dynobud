@@ -3,7 +3,6 @@
 
 module Main ( main ) where
 
-import qualified Control.Concurrent as CC
 import Control.Monad ( when, forever )
 import Data.ByteString.Char8 ( pack )
 import Data.Serialize
@@ -11,8 +10,9 @@ import qualified System.ZMQ4 as ZMQ
 import System.Console.CmdArgs ( (&=), Data, Typeable )
 import qualified System.Console.CmdArgs as CA
 
-import Dyno.Server.Server ( runPlotter )
-import Dyno.DirectCollocation.Dynamic ( DynPlotPoints, CollTrajMeta, newCollocationChannel )
+import PlotHo ( runPlotter )
+
+import Dyno.DirectCollocation.Dynamic ( DynPlotPoints, CollTrajMeta, addCollocationChannel )
 
 import Dynoplot.Channel ( dynoplotUrl, dynoplotChannelName )
 
@@ -40,10 +40,8 @@ main = do
   putStrLn $ "using ip \""++ip'++"\""
   putStrLn $ "using channel \""++channel'++"\""
 
-  (c0, writeMe) <- newCollocationChannel channel'
+  runPlotter $ addCollocationChannel channel' (\w -> sub ip' w channel')
 
-  listenerTid0 <- CC.forkIO (sub ip' writeMe channel')
-  runPlotter c0 [listenerTid0]
 
 data VisArgs = VisArgs { ip :: String
                        , channel :: String
