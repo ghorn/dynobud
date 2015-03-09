@@ -14,7 +14,7 @@ module ViewTests
 import GHC.Generics ( Generic1 )
 
 import Data.Proxy ( Proxy(..) )
-import Data.Serialize ( encode, decode )
+import Data.Binary ( encode, decodeOrFail )
 import qualified Data.Traversable as T
 import qualified Data.Packed.Matrix as Mat
 import qualified Numeric.LinearAlgebra ( ) -- for Eq Matrix
@@ -371,9 +371,9 @@ prop_serializeDeserialize =
       m0 <- arbitrary :: Gen (M f g DMatrix)
       let m1 = encode m0
       return $
-        case decode m1 of
-         Left msg -> counterexample ("deserialization failure " ++ show msg) False
-         Right m2 -> beEqual m0 m2
+        case decodeOrFail m1 of
+         Left (_,_,msg) -> counterexample ("deserialization failure " ++ show msg) False
+         Right (_,_,m2) -> beEqual m0 m2
 
 prop_vsplitTup :: Test
 prop_vsplitTup =

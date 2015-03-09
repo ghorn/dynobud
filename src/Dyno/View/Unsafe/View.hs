@@ -20,22 +20,16 @@ import GHC.Generics
 import qualified Data.Foldable as F
 import qualified Data.Sequence as Seq
 import Data.Proxy ( Proxy(..) )
-import Data.Vector ( Vector )
 import qualified Data.Vector as V
-import Data.Serialize ( Serialize(..) )
+import Data.Binary ( Binary(..) )
 
 import qualified Casadi.CMatrix as CM
-import Casadi.DMatrix ( DMatrix )
 
 import Dyno.View.Viewable ( Viewable(..) )
 
 newtype J (f :: * -> *) (a :: *) = UnsafeJ { unsafeUnJ :: a } deriving (Eq, Generic)
 
-instance (Serialize a, View f) => Serialize (J f (Vector a)) where
-  put = put . V.toList . unJ
-  get = fmap (mkJ . V.fromList) get
-
-instance (View f) => Serialize (J f DMatrix) where
+instance (View f, Binary a, Viewable a) => Binary (J f a) where
   put = put . unJ
   get = fmap mkJ get
 

@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -Wall -fno-warn-orphans #-}
+{-# OPTIONS_GHC -Wall #-}
 {-# Language ScopedTypeVariables #-}
 {-# Language DeriveGeneric #-}
 {-# Language PolyKinds #-}
@@ -23,7 +23,7 @@ import Data.Vector ( Vector )
 import qualified Data.Vector as V
 import qualified Data.Foldable as F
 import qualified Data.Tree as Tree
-import Data.Serialize ( Serialize(..) )
+import Data.Binary ( Binary )
 import Linear.V
 
 import Accessors ( AccessorTree(..), Lookup(..), accessors )
@@ -72,10 +72,7 @@ data DynPlotPoints a = DynPlotPoints
                        [[(a, Vector a)]]
                        [[(a, Vector a)]]
                      deriving (Show, Generic)
-instance Serialize a => Serialize (DynPlotPoints a)
-instance Serialize a => Serialize (Vector a) where
-  get = fmap V.fromList get
-  put = put . V.toList
+instance Binary a => Binary (DynPlotPoints a)
 
 catDynPlotPoints :: [DynPlotPoints a] -> DynPlotPoints a
 catDynPlotPoints pps =
@@ -165,7 +162,7 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs =
 data NameTree = NameTreeNode (String,String) [(String,NameTree)]
               | NameTreeLeaf Int
               deriving (Show, Eq, Generic)
-instance Serialize NameTree
+instance Binary NameTree
 
 data CollTrajMeta = CollTrajMeta { ctmX :: NameTree
                                  , ctmZ :: NameTree
@@ -173,7 +170,7 @@ data CollTrajMeta = CollTrajMeta { ctmX :: NameTree
                                  , ctmP :: NameTree
                                  , ctmO :: NameTree
                                  } deriving (Eq, Generic, Show)
-instance Serialize CollTrajMeta
+instance Binary CollTrajMeta
 
 namesFromAccTree :: AccessorTree a -> NameTree
 namesFromAccTree x = (\(_,(_,y)) -> y) $ namesFromAccTree' 0 ("",x)

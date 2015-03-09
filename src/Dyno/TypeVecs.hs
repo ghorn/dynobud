@@ -50,7 +50,8 @@ import Data.Foldable ( Foldable )
 import Data.Traversable ( Traversable )
 import qualified Data.Traversable as T
 import qualified Data.Vector as V
-import Data.Serialize ( Serialize(..) )
+import Data.Vector.Binary () -- instances
+import Data.Binary ( Binary(..) )
 import Linear.Vector
 import Linear.V ( Dim(..) )
 import Data.Proxy
@@ -62,9 +63,9 @@ import Dyno.Vectorize
 -- length-indexed vectors using phantom types
 newtype Vec (n :: k) a = MkVec (V.Vector a)
                 deriving (Eq, Ord, Functor, Traversable, Foldable, Generic, Generic1)
-instance (Dim n, Serialize a) => Serialize (Vec n a) where
-  put = put . V.toList . unVec
-  get = fmap (mkVec . V.fromList) get
+instance (Dim n, Binary a) => Binary (Vec n a) where
+  put = put . unVec
+  get = fmap mkVec get
 
 instance Dim n => Distributive (Vec n) where
   distribute f = mkVec $ V.generate (reflectDim (Proxy :: Proxy n))

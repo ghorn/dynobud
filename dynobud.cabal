@@ -60,18 +60,19 @@ library
 
   build-depends:       base >=4.6 && < 5,
                        casadi-bindings-core >= 2.2.0.2,
-                       casadi-bindings >= 2.2.0.6,
+                       casadi-bindings >= 2.2.0.8,
 --                       casadi-bindings-internal,
                        jacobi-roots >=0.2 && <0.3,
                        spatial-math >= 0.2.1.0,
                        vector >=0.10,
+                       vector-binary-instances,
                        data-default,
                        mtl >=2.2.1,
                        containers >=0.5,
                        hmatrix,
                        linear >= 1.3.1.1,
                        reflection >= 1.3.2,
-                       cereal,
+                       binary,
                        distributive,
                        process,
                        Plot-ho-matic >= 0.5.0.0,
@@ -135,7 +136,7 @@ executable sofa-viz-2000
                        not-gloss >= 0.7.0.1,
                        stm,
                        containers,
-                       cereal,
+                       binary,
                        linear,
                        bytestring,
                        zeromq4-haskell,
@@ -156,7 +157,7 @@ executable sofa-expand-o-matic
                        casadi-bindings-core,
                        zeromq4-haskell,
                        bytestring,
-                       cereal,
+                       binary,
                        linear,
                        base >= 4.6 && < 5
   ghc-options:         -threaded -O2
@@ -209,7 +210,7 @@ executable ocpDslSpring
                      , lens
                      , bytestring
                      , zeromq4-haskell
-                     , cereal
+                     , binary
                      , mtl
   ghc-options:         -threaded -O2
 
@@ -233,7 +234,7 @@ executable ocpDslRocket
                      , lens
                      , bytestring
                      , zeromq4-haskell
-                     , cereal
+                     , binary
                      , mtl
 
   ghc-options:         -threaded -O2
@@ -317,7 +318,7 @@ executable glider
                        containers,
                        linear,
                        bytestring,
-                       cereal,
+                       binary,
                        vector,
                        generic-accessors >= 0.1.0.0,
                        zeromq4-haskell
@@ -336,7 +337,7 @@ executable sailboat
                        containers,
                        linear,
                        bytestring,
-                       cereal,
+                       binary,
                        vector,
                        semigroups,
                        generic-accessors >= 0.1.0.0,
@@ -355,7 +356,7 @@ executable dynoplot
                        base >=4.6 && < 5,
                        containers,
                        vector,
-                       cereal,
+                       binary,
                        bytestring,
                        zeromq4-haskell,
                        Plot-ho-matic >= 0.5.0.0,
@@ -415,7 +416,7 @@ test-suite unit-tests
                        test-framework-quickcheck2,
                        vector,
                        linear,
-                       cereal,
+                       binary,
                        casadi-bindings,
                        hmatrix,
                        hmatrix-gsl,

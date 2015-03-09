@@ -17,7 +17,7 @@ import GHC.Generics ( Generic )
 import Data.Proxy ( Proxy(..) )
 import qualified Data.Vector as V
 import qualified Data.Foldable as F
-import Data.Serialize ( Serialize(..) )
+import Data.Binary ( Binary )
 import Linear.V
 
 import JacobiRoots ( shiftedLegendreRoots, shiftedRadauRoots )
@@ -28,7 +28,7 @@ import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeXis )
 
 data QuadratureRoots = Legendre | Radau deriving (Show, Eq, Ord, Enum, Generic)
-instance Serialize QuadratureRoots
+instance Binary QuadratureRoots
 
 mkTaus ::
   forall deg a

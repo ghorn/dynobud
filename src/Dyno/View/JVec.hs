@@ -11,20 +11,17 @@ module Dyno.View.JVec
        , reifyJVec
        ) where
 
-import qualified Data.Foldable as F
 import qualified Data.Sequence as Seq
 import Data.Proxy ( Proxy(..) )
 import Linear.V ( Dim(..) )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
-import Data.Serialize ( Serialize(..) )
 
 import Dyno.View.Unsafe.View ( mkJ, unJ )
 
-import Dyno.TypeVecs ( Vec, unVec, mkVec, mkVec', reifyVector )
+import Dyno.TypeVecs ( Vec, unVec, mkVec, reifyVector )
 import Dyno.View.Viewable ( Viewable(..) )
 import Dyno.View.View ( View(..), J )
-
 
 -- | vectors in View
 newtype JVec (n :: k) f a = JVec { unJVec :: Vec n (J f a) } deriving ( Show, Eq )
@@ -43,9 +40,6 @@ instance (Dim n, View f) => View (JVec n f) where
     where
       n = reflectDim (Proxy :: Proxy n)
       m = size (Proxy :: Proxy f)
-instance (Dim n, Serialize (J f a)) => Serialize (JVec n f a) where
-  get = fmap (JVec . mkVec') get
-  put = put . F.toList . unJVec
 
 jreplicate' :: forall a n f . (Dim n, View f) => J f a -> JVec n f a
 jreplicate' el =  ret
