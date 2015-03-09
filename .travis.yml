@@ -57,7 +57,7 @@ install:
 # - cabal install alex
 # - cabal install happy
  - cabal install gtk2hs-buildtools
- - cabal install --only-dependencies -fexamples --enable-tests --enable-benchmarks
+ - cabal install -j1 --only-dependencies -fexamples --enable-tests --enable-benchmarks
 
 # Here starts the actual work to be performed for the package under test; any command which exits with a non-zero exit code causes the build to fail.
 script:
