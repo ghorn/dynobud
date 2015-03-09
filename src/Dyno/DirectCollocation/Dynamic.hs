@@ -17,11 +17,12 @@ module Dyno.DirectCollocation.Dynamic
 import GHC.Generics ( Generic )
 
 import Data.Proxy ( Proxy(..) )
-import Data.List ( mapAccumL, unzip5 )
+import Data.List ( mapAccumL )
 import Data.Tree ( Tree(..) )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
 import qualified Data.Foldable as F
+import qualified Data.Traversable as T
 import qualified Data.Tree as Tree
 import Data.Binary ( Binary )
 import Linear.V
@@ -64,24 +65,25 @@ sameMeta (_,ctm0) (_,ctm1) =
       , ctmO ctm0 == ctmO ctm1
       ]
 
-
 data DynPlotPoints a = DynPlotPoints
-                       [[(a, Vector a)]]
-                       [[(a, Vector a)]]
-                       [[(a, Vector a)]]
-                       [[(a, Vector a)]]
-                       [[(a, Vector a)]]
-                     deriving (Show, Generic)
+                       (Vector (Vector (a, Vector a)))
+                       (Vector (Vector (a, Vector a)))
+                       (Vector (Vector (a, Vector a)))
+                       (Vector (Vector (a, Vector a)))
+                       (Vector (Vector (a, Vector a)))
+                     deriving Generic
+
 instance Binary a => Binary (DynPlotPoints a)
 
-catDynPlotPoints :: [DynPlotPoints a] -> DynPlotPoints a
+catDynPlotPoints :: V.Vector (DynPlotPoints a) -> DynPlotPoints a
 catDynPlotPoints pps =
   DynPlotPoints
-  (concatMap (\(DynPlotPoints x _ _ _ _) -> x) pps)
-  (concatMap (\(DynPlotPoints _ x _ _ _) -> x) pps)
-  (concatMap (\(DynPlotPoints _ _ x _ _) -> x) pps)
-  (concatMap (\(DynPlotPoints _ _ _ x _) -> x) pps)
-  (concatMap (\(DynPlotPoints _ _ _ _ x) -> x) pps)
+  (V.concatMap (\(DynPlotPoints x _ _ _ _) -> x) pps)
+  (V.concatMap (\(DynPlotPoints _ x _ _ _) -> x) pps)
+  (V.concatMap (\(DynPlotPoints _ _ x _ _) -> x) pps)
+  (V.concatMap (\(DynPlotPoints _ _ _ x _) -> x) pps)
+  (V.concatMap (\(DynPlotPoints _ _ _ _ x) -> x) pps)
+
 
 dynPlotPoints ::
   forall x z u p o n deg a .
@@ -92,7 +94,7 @@ dynPlotPoints ::
   -> Vec n (Vec deg (J (JV o) (Vector a), J (JV x) (Vector a)), J (JV x) (Vector a))
   -> DynPlotPoints a
 dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs =
-  DynPlotPoints (xss++[[(tf,unJ xf)]]) zss uss oss xdss
+  DynPlotPoints xss' zss uss oss xdss
   where
     nStages = size (Proxy :: Proxy (JVec n (JV Id)))
     tf,h :: a
@@ -104,33 +106,45 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs =
 
     stages :: Vec n (CollStage (JV x) (JV z) (JV u) deg (Vector a))
     stages = fmap split (unJVec (split stages'))
-    (xss,zss,uss,oss,xdss) = unzip5 $ F.toList $ f 0 $ zip (F.toList stages) (F.toList outputs)
+
+    xss' = xss `V.snoc` (V.singleton (tf, unJ xf))
+
+    xss,zss,uss,oss,xdss :: Vector (Vector (a, Vector a))
+    (xss,zss,uss,oss,xdss) = V.unzip5 xzuoxds
+
+    -- todo: check this final time tf'' against expected tf
+    (_tf'', xzuoxds) = T.mapAccumL f 0 $ V.zip (TV.unVec stages) (TV.unVec outputs)
 
 
-    -- todo: check this final time against expected tf
     f :: a
-         -> [( CollStage (JV x) (JV z) (JV u) deg (Vector a)
-             , (Vec deg (J (JV o) (Vector a), J (JV x) (Vector a)), J (JV x) (Vector a))
-             )]
-         -> [( [(a,Vector a)]
-             , [(a,Vector a)]
-             , [(a,Vector a)]
-             , [(a,Vector a)]
-             , [(a,Vector a)]
-             )]
-    f _ [] = []
-    f t0 ((CollStage x0 xzus', (xdos, xnext)) : css) = (xs,zs,us,os,xds) : f tnext css
+         -> ( CollStage (JV x) (JV z) (JV u) deg (Vector a)
+            , (Vec deg (J (JV o) (Vector a), J (JV x) (Vector a)), J (JV x) (Vector a))
+            )
+         -> ( a
+            , ( V.Vector (a, V.Vector a)
+              , V.Vector (a, V.Vector a)
+              , V.Vector (a, V.Vector a)
+              , V.Vector (a, V.Vector a)
+              , V.Vector (a, V.Vector a)
+              )
+            )
+    f t0 (CollStage x0 xzus', (xdos, xnext)) = (tnext, (xs,zs,us,os,xds))
       where
         tnext = t0 + h
         xzus0 = fmap split (unJVec (split xzus')) :: Vec deg (CollPoint (JV x) (JV z) (JV u) (Vector a))
 
-        xs :: [(a,Vector a)]
-        xs = (t0,unJ x0):xs'++[(tnext,unJ xnext)]
+        xs :: V.Vector (a, V.Vector a)
+        xs = (t0, unJ x0) `V.cons` xs' `V.snoc` (tnext,unJ xnext)
 
-        xs',zs,us,os,xds :: [(a,Vector a)]
-        (xs',zs,us,os,xds) = unzip5 $ F.toList $ TV.tvzipWith3 g xzus0 xdos taus
+        xs',zs,us,os,xds :: Vector (a, Vector a)
+        (xs',zs,us,os,xds) = V.unzip5 $ TV.unVec $ TV.tvzipWith3 g xzus0 xdos taus
 
-        g (CollPoint x z u) (o,x') tau = ( (t,unJ' "x" x), (t,unJ' "z" z), (t,unJ' "u" u), (t,unJ' "o" o), (t,unJ' "x'" x') )
+        g (CollPoint x z u) (o,x') tau = ( (t,unJ' "x" x)
+                                         , (t,unJ' "z" z)
+                                         , (t,unJ' "u" u)
+                                         , (t,unJ' "o" o)
+                                         , (t,unJ' "x'" x')
+                                         )
           where
             t = t0 + h*tau
 
@@ -193,13 +207,16 @@ forestFromMeta meta = [xTree,zTree,uTree,oTree,xdTree]
     oTree  = blah (\(DynPlotPoints _ _ _ o _ ) ->  o) "outputs" (ctmO meta)
     xdTree = blah (\(DynPlotPoints _ _ _ _ xd) -> xd) "diff state derivatives" (ctmX meta)
 
-    blah :: (c -> [[(t, V.Vector t)]]) -> String -> NameTree ->
-            Tree (String, String, Maybe ((c,CollTrajMeta) -> [[(t, t)]]))
+    blah :: forall f c t
+            . (Functor f, F.Foldable f)
+            => (c -> f (f (t, Vector t))) -> String -> NameTree
+            -> Tree (String, String, Maybe ((c,CollTrajMeta) -> [[(t, t)]]))
     blah f myname (NameTreeNode (nm1,_) children) =
       Tree.Node (myname,nm1,Nothing) $ map (uncurry (blah f)) children
     blah f myname (NameTreeLeaf k) = Tree.Node (myname,"",Just (woo . f . fst)) []
       where
-        woo = map (map (\(t,x) -> (t, x V.! k)))
+        woo :: f (f (t, Vector t)) -> [[(t, t)]]
+        woo = F.toList . fmap (F.toList . fmap (\(t,x) -> (t, x V.! k)))
 
 
 toMeta :: forall x z u p o n deg .
