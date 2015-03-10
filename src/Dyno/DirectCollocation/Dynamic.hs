@@ -32,9 +32,9 @@ import PlotHo ( Plotter, addChannel )
 
 import Dyno.View.Unsafe.View ( unJ, unJ' )
 
-import Dyno.Vectorize ( Vectorize, Id(..) )
-import Dyno.View.JV
-import Dyno.View.View
+import Dyno.Vectorize ( Vectorize, Id(..), fill )
+import Dyno.View.JV ( JV, splitJV )
+import Dyno.View.View ( View(..), J )
 import Dyno.View.JVec ( JVec(..) )
 import qualified Dyno.TypeVecs as TV
 import Dyno.TypeVecs ( Vec )
@@ -225,11 +225,11 @@ toMeta :: forall x z u p o n deg .
            Dim n, Dim deg)
           => Proxy o -> Proxy (CollTraj x z u p n deg) -> CollTrajMeta
 toMeta _ _ =
-  CollTrajMeta { ctmX = namesFromAccTree $ accessors (jfill () :: J (JV x) (Vector ()))
-               , ctmZ = namesFromAccTree $ accessors (jfill () :: J (JV z) (Vector ()))
-               , ctmU = namesFromAccTree $ accessors (jfill () :: J (JV u) (Vector ()))
-               , ctmP = namesFromAccTree $ accessors (jfill () :: J (JV p) (Vector ()))
-               , ctmO = namesFromAccTree $ accessors (jfill () :: J (JV o) (Vector ()))
+  CollTrajMeta { ctmX = namesFromAccTree $ accessors (fill () :: x ())
+               , ctmZ = namesFromAccTree $ accessors (fill () :: z ())
+               , ctmU = namesFromAccTree $ accessors (fill () :: u ())
+               , ctmP = namesFromAccTree $ accessors (fill () :: p ())
+               , ctmO = namesFromAccTree $ accessors (fill () :: o ())
                }
 
 toMetaCov :: forall sx x z u p o n deg .

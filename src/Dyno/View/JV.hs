@@ -1,7 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE InstanceSigs #-}
@@ -20,8 +18,6 @@ import qualified Data.Sequence as Seq
 import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
-
-import Accessors ( Lookup(..) )
 
 import Dyno.View.Unsafe.View ( mkJ, unJ )
 
@@ -42,10 +38,6 @@ instance Vectorize f => View (JV f) where
     where
       ks = V.fromList (take (n+1) [0..])
       n = size (Proxy :: Proxy (JV f))
-
--- todo: pretty sure this is not needed anymore
-instance (Vectorize f, Lookup (f a)) => Lookup (J (JV f) (Vector a)) where
-  toAccessorTree x g = toAccessorTree (devectorize (unJ x) :: f a) (devectorize . unJ . g)
 
 splitJV :: Vectorize f => J (JV f) (Vector a) -> f a
 splitJV = devectorize . unJ
