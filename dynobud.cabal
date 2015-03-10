@@ -75,8 +75,8 @@ library
                        binary,
                        distributive,
                        process,
-                       Plot-ho-matic >= 0.5.0.0,
-                       generic-accessors >= 0.1.0.0
+                       Plot-ho-matic >= 0.5.0.2,
+                       generic-accessors >= 0.1.0.1
 --                       cplex
   hs-source-dirs:      src
   default-language:    Haskell2010
