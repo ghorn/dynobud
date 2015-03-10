@@ -2,22 +2,22 @@
 
 # The following enables several GHC versions to be tested; often it's enough to test only against the last release in a major GHC version. Feel free to omit lines listings versions you don't need/want testing for.
 env:
- - CABALVER=1.18 GHCVER=7.8.3
+  - CABALVER=1.18 GHCVER=7.8.3
 # - CABALVER=1.22 GHCVER=7.10.1
   global:
-    - secure: kbkJf+ukAlZMIcbTD/jIGt6p51nkm2VERZ7jHKQ0betHPyQtBz7Ly43bge4oggRP6s9cDoobFSMendQHTuV5Kyv+BHnQTBpReryOzFMqP3Bm0ZGlZzbn+v2Z1HisDIHGK2kLk3iQyO4S8+Pc/yqbJYVf4iUxh+tUoB11/aCmE3k=
+    - secure: "kbkJf+ukAlZMIcbTD/jIGt6p51nkm2VERZ7jHKQ0betHPyQtBz7Ly43bge4oggRP6s9cDoobFSMendQHTuV5Kyv+BHnQTBpReryOzFMqP3Bm0ZGlZzbn+v2Z1HisDIHGK2kLk3iQyO4S8+Pc/yqbJYVf4iUxh+tUoB11/aCmE3k="
     - IPOPT_DEFAULT_LINEAR_SOLVER=ma57
     - LD_LIBRARY_PATH=/home/travis/build/libhsl
 
 # Note: the distinction between `before_install` and `install` is not important.
 before_install:
-    # hsl linear solvers
-  - pushd ../../ && git clone https://github.com/casadi/testbot.git
-  - pushd testbot && recipes/setup.sh && popd
-  - travis_retry testbot/recipes/fetch.sh libhsl.tar.gz && mkdir libhsl && tar -xvf libhsl.tar.gz -C libhsl
-  - mkdir -p /home/travis/build/casadi/testbot
-  - ls -al
-  - popd
+   # hsl linear solvers
+ - pushd ../../ && git clone https://github.com/casadi/testbot.git
+ - pushd testbot && recipes/setup.sh && popd
+ - travis_retry testbot/recipes/fetch.sh libhsl.tar.gz && mkdir libhsl && tar -xvf libhsl.tar.gz -C libhsl
+ - mkdir -p /home/travis/build/casadi/testbot
+ - ls -al
+ - popd
 
    # ghc/cabal
  - travis_retry sudo add-apt-repository -y ppa:hvr/ghc
