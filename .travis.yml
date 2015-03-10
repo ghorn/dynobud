@@ -4,9 +4,21 @@
 env:
  - CABALVER=1.18 GHCVER=7.8.3
 # - CABALVER=1.22 GHCVER=7.10.1
+  global:
+    - secure: "kbkJf+ukAlZMIcbTD/jIGt6p51nkm2VERZ7jHKQ0betHPyQtBz7Ly43bge4oggRP6s9cDoobFSMendQHTuV5Kyv+BHnQTBpReryOzFMqP3Bm0ZGlZzbn+v2Z1HisDIHGK2kLk3iQyO4S8+Pc/yqbJYVf4iUxh+tUoB11/aCmE3k="
+    - IPOPT_DEFAULT_LINEAR_SOLVER=ma57
+    - LD_LIBRARY_PATH=/home/travis/build/libhsl
 
 # Note: the distinction between `before_install` and `install` is not important.
 before_install:
+    # hsl linear solvers
+  - pushd ../../ && git clone https://github.com/casadi/testbot.git
+  - pushd testbot && recipes/setup.sh && popd
+  - travis_retry testbot/recipes/fetch.sh libhsl.tar.gz && mkdir libhsl && tar -xvf libhsl.tar.gz -C libhsl
+  - mkdir -p /home/travis/build/casadi/testbot
+  - ls -al
+  - popd
+
    # ghc/cabal
  - travis_retry sudo add-apt-repository -y ppa:hvr/ghc
  - travis_retry sudo apt-get update
@@ -64,7 +76,7 @@ script:
  - if [ -f configure.ac ]; then autoreconf -i; fi
  - cabal configure -fexamples --enable-tests --enable-benchmarks -v2  # -v2 provides useful information for debugging
  - cabal build   # this builds all libraries and executables (including tests/benchmarks)
- - cabal test --show-details=always --test-option=travis
+ - cabal test --show-details=always
 # - cabal check # complains about -O2
  - cabal sdist   # tests that a source-distribution can be generated
 
