@@ -361,7 +361,7 @@ executable dynoplot
                        zeromq4-haskell,
                        Plot-ho-matic >= 0.5.0.0,
                        cmdargs
-  ghc-options:         -O2
+  ghc-options:         -O2 -with-rtsopts=-T
 
 --test-suite lp_tests
 --  type: exitcode-stdio-1.0
