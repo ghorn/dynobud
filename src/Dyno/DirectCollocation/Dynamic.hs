@@ -150,29 +150,6 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs =
 
 
 
-
---toPlotTree :: forall x z u .
---              (Lookup (x Double), Lookup (z Double), Lookup (u Double),
---               Vectorize x, Vectorize z, Vectorize u) =>
---              Tree (String, String, Maybe (PlotPointsL x z u Double -> [[(Double, Double)]]))
---toPlotTree = Node ("trajectory", "trajectory", Nothing) [xtree, ztree, utree]
---  where
---    xtree :: Tree ( String, String, Maybe (PlotPointsL x z u Double -> [[(Double, Double)]]))
---    xtree = toGetterTree (\(PlotPointsL x _ _) -> x) "differential states" $ accessors (fill 0)
---
---    ztree :: Tree ( String, String, Maybe (PlotPointsL x z u Double -> [[(Double, Double)]]))
---    ztree = toGetterTree (\(PlotPointsL _ z _) -> z) "algebraic variables" $ accessors (fill 0)
---
---    utree :: Tree ( String, String, Maybe (PlotPointsL x z u Double -> [[(Double, Double)]]))
---    utree = toGetterTree (\(PlotPointsL _ _ u) -> u) "controls" $ accessors (fill 0)
---
---    toGetterTree toXs name (Getter f) = Node (name, name, Just g) []
---      where
---        g = map (map (second f)) . toXs
---    toGetterTree toXs name (Data (_,name') children) =
---      Node (name, name', Nothing) $ map (uncurry (toGetterTree toXs)) children
-
-
 data NameTree = NameTreeNode (String,String) [(String,NameTree)]
               | NameTreeLeaf Int
               deriving (Show, Eq, Generic)
