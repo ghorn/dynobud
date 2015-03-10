@@ -2,6 +2,7 @@
 
 module Main ( main ) where
 
+import System.Environment ( getArgs )
 import Data.Monoid ( mempty )
 import Test.Framework ( ColorMode(..), RunnerOptions'(..), TestOptions'(..), defaultMainWithOpts )
 
@@ -11,12 +12,15 @@ import IntegrationTests ( integrationTests )
 
 main :: IO ()
 main = do
-  defaultMainWithOpts
-    [ integrationTests
-    , vectorizeTests
-    , viewTests
-    ]
-    opts
+  args <- getArgs
+  let tests0 = [ vectorizeTests
+               , viewTests
+               ]
+      tests
+        | "travis" `elem` args = tests0
+        | otherwise            = integrationTests : tests0
+
+  defaultMainWithOpts tests opts
 
 opts :: RunnerOptions' Maybe
 opts = mempty { ropt_color_mode = Just ColorAlways
