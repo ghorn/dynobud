@@ -5,7 +5,7 @@ env:
  - CABALVER=1.18 GHCVER=7.8.3
 # - CABALVER=1.22 GHCVER=7.10.1
   global:
-    - secure: "kbkJf+ukAlZMIcbTD/jIGt6p51nkm2VERZ7jHKQ0betHPyQtBz7Ly43bge4oggRP6s9cDoobFSMendQHTuV5Kyv+BHnQTBpReryOzFMqP3Bm0ZGlZzbn+v2Z1HisDIHGK2kLk3iQyO4S8+Pc/yqbJYVf4iUxh+tUoB11/aCmE3k="
+    - secure: kbkJf+ukAlZMIcbTD/jIGt6p51nkm2VERZ7jHKQ0betHPyQtBz7Ly43bge4oggRP6s9cDoobFSMendQHTuV5Kyv+BHnQTBpReryOzFMqP3Bm0ZGlZzbn+v2Z1HisDIHGK2kLk3iQyO4S8+Pc/yqbJYVf4iUxh+tUoB11/aCmE3k=
     - IPOPT_DEFAULT_LINEAR_SOLVER=ma57
     - LD_LIBRARY_PATH=/home/travis/build/libhsl
 
