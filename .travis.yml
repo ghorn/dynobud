@@ -69,6 +69,7 @@ install:
  - travis_retry cabal update
 # - cabal install alex
 # - cabal install happy
+ - cabal install OpenGLRaw # do this first cause it sometimes mysteriously fails
  - cabal install gtk2hs-buildtools
  - cabal install --only-dependencies -fexamples --enable-tests --enable-benchmarks
 
