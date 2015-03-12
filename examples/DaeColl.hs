@@ -109,8 +109,8 @@ xbnd = PendX { pX =  (Just (-10), Just 10)
 ubnd :: PendU Bounds
 ubnd = PendU (Just (-40), Just 40)
 
-bc :: Floating a => PendX a -> PendX a -> None a -> PendP a -> Vec 8 a
-bc (PendX x0 y0 vx0 vy0) (PendX xf yf vxf vyf) _ _ =
+bc :: Floating a => PendX a -> PendX a -> None a -> PendP a -> a -> Vec 8 a
+bc (PendX x0 y0 vx0 vy0) (PendX xf yf vxf vyf) _ _ _ =
   mkVec'
   [ x0
   , y0 + r

@@ -396,6 +396,7 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds f = do
                                     , svector (V.fromList xFs)
                                     , svector V.empty
                                     , svector V.empty
+                                    , svector (V.singleton endT)
                                     ])
                         (V.singleton (svector bcs))
   setOption bcFunSX "name" "boundaryConditions"
@@ -454,8 +455,8 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds f = do
                     -> SXElement
         mayerFun endT'' x0 xF qF p = sxToSXElement $ V.head $ callSX mayerFunSX (V.fromList [sxElementToSX endT'', vec x0, vec xF, vec qF, vec p])
 
-        bcFun :: Vec nx SXElement -> Vec nx SXElement -> Vec 0 SXElement -> Vec np SXElement -> Vec nc SXElement
-        bcFun x0 xF qF p = devec $ V.head $ callSX bcFunSX (V.fromList [vec x0, vec xF, vec qF, vec p])
+        bcFun :: Vec nx SXElement -> Vec nx SXElement -> Vec 0 SXElement -> Vec np SXElement -> SXElement -> Vec nc SXElement
+        bcFun x0 xF qF p t = devec $ V.head $ callSX bcFunSX (V.fromList [vec x0, vec xF, vec qF, vec p, sxElementToSX t])
 
         ocpPhase =
           OcpPhase { ocpMayer = mayerFun

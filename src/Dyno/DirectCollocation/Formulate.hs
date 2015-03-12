@@ -126,7 +126,7 @@ makeCollProblem roots ocp = do
       callInterpolateQ :: J (JV q) MX -> Vec deg (J (JV q) MX) -> J (JV q) MX
       callInterpolateQ q0 qs = call interpolateQFun (q0 :*: cat (JVec qs))
 
-  bcFun <- toSXFun "bc" $ \(x0:*:x1:*:x2:*:x3) -> sxCatJV $ ocpBc ocp (sxSplitJV x0) (sxSplitJV x1) (sxSplitJV x2) (sxSplitJV x3)
+  bcFun <- toSXFun "bc" $ \(x0:*:x1:*:x2:*:x3:*:x4) -> sxCatJV $ ocpBc ocp (sxSplitJV x0) (sxSplitJV x1) (sxSplitJV x2) (sxSplitJV x3) (unId (sxSplitJV x4))
   mayerFun <- toSXFun "mayer" $ \(x0:*:x1:*:x2:*:x3:*:x4) ->
     sxCatJV $ Id $ ocpMayer ocp (unId (sxSplitJV x0)) (sxSplitJV x1) (sxSplitJV x2) (sxSplitJV x3) (sxSplitJV x4)
 
@@ -215,7 +215,7 @@ makeCollProblem roots ocp = do
   let nlp = Nlp {
         nlpFG =
            getFg taus
-           (bcFun :: SXFun (J (JV x) :*: J (JV x) :*: J (JV q) :*: J (JV p)) (J (JV c)))
+           (bcFun :: SXFun (J (JV x) :*: J (JV x) :*: J (JV q) :*: J (JV p) :*: J (JV Id)) (J (JV c)))
            (mayerFun :: SXFun (J (JV Id) :*: (J (JV x) :*: (J (JV x)) :*: (J (JV q)) :*: (J (JV p)))) (J (JV Id)))
            (callLagQuadFun :: (J (JV p) :*: J (JVec deg (CollPoint (JV x) (JV z) (JV u))) :*: J (JVec deg (JV o)) :*: J (JV Id) :*: J (JVec deg (JV Id))) MX
                         -> J (JV Id) MX)
@@ -424,7 +424,7 @@ getFg ::
   (Dim deg, Dim n, Vectorize x, Vectorize z, Vectorize u, Vectorize p,
    Vectorize r, Vectorize o, Vectorize c, Vectorize h, Vectorize q)
   => Vec deg Double
-  -> SXFun (J (JV x) :*: J (JV x) :*: J (JV q) :*: J (JV p)) (J (JV c))
+  -> SXFun (J (JV x) :*: J (JV x) :*: J (JV q) :*: J (JV p) :*: J (JV Id)) (J (JV c))
   -> SXFun
       (J (JV Id) :*: J (JV x) :*: J (JV x) :*: J (JV q) :*: J (JV p)) (J (JV Id))
   -> ((J (JV p) :*: J (JVec deg (CollPoint (JV x) (JV z) (JV u))) :*: J (JVec deg (JV o)) :*: J (JV Id) :*: J (JVec deg (JV Id))) MX ->
@@ -481,7 +481,7 @@ getFg taus bcFun mayerFun lagQuadFun quadFun stageFun collTraj _ = (obj, cat g)
         { coCollPoints = cat $ JVec dcs
         , coContinuity = cat $ JVec integratorMatchingConstraints
         , coPathC = cat $ JVec hs
-        , coBc = call bcFun (x0 :*: xf :*: finalQuadratures :*: parm)
+        , coBc = call bcFun (x0 :*: xf :*: finalQuadratures :*: parm :*: tf)
         }
 
     integratorMatchingConstraints :: Vec n (J (JV x) MX) -- THIS SHOULD BE A NONLINEAR FUNCTION

@@ -85,8 +85,8 @@ data OcpPhase x z u p r o c h q =
     --
     -- > f(x'(t), x(t), z(t), u(t), p, t) == 0
   , ocpDae :: x Sxe -> x Sxe -> z Sxe -> u Sxe -> p Sxe -> Sxe -> (r Sxe, o Sxe)
-    -- | the boundary conditions @clb <= c(x(0), x(T), q(T)) <= cub@
-  , ocpBc :: x Sxe -> x Sxe -> q Sxe -> p Sxe -> c Sxe
+    -- | the boundary conditions @clb <= c(x(0), x(T), q(T), T) <= cub@
+  , ocpBc :: x Sxe -> x Sxe -> q Sxe -> p Sxe -> Sxe -> c Sxe
     -- | the path constraints @h(x(t), z(t), u(t), p, t)@
   , ocpPathC :: x Sxe -> z Sxe -> u Sxe -> p Sxe -> o Sxe -> Sxe -> h Sxe
     -- | the boundary condition bounds @clb <= c(x(0), x(T)) <= cub@

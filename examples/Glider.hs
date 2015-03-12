@@ -105,8 +105,8 @@ ubnd =
                   , csFlaps = (Just (d2r (-0.01)), Just (d2r 0.01))
                   }
 
-bc :: Floating a => AcX a -> AcX a -> None a -> None a -> AcX a
-bc (AcX x0 v0 dcm0 w0 cs) _ _ _ = AcX x0 (v0 - V3 30 0 0) (dcm0 - eye3) w0 cs
+bc :: Floating a => AcX a -> AcX a -> None a -> None a -> a -> AcX a
+bc (AcX x0 v0 dcm0 w0 cs) _ _ _ _ = AcX x0 (v0 - V3 30 0 0) (dcm0 - eye3) w0 cs
 
 main :: IO ()
 main = do

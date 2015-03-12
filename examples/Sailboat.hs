@@ -157,10 +157,11 @@ data SbBc a  = SbBc { bcPeriodicGamma :: a
                     , bcP0 :: V2 a
                     }
                     deriving (Functor, Generic, Generic1, Show)
-bc :: Num a => SbX a -> SbX a -> None a -> SbP a -> SbBc a
+bc :: Num a => SbX a -> SbX a -> None a -> SbP a -> a -> SbBc a
 bc
   (SbX gamma0 p0@(V2 _ pz0) (V2 vx0 vz0))
   (SbX gammaF    (V2 _ pzF) (V2 vxF vzF))
+  _
   _
   _
   = SbBc
