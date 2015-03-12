@@ -29,8 +29,8 @@ import Dynoplot.Callback ( withCallback )
 type NCollStages = 100
 type CollDeg = 2
 
-mayer :: Floating a => a -> AcX a -> AcX a -> a
-mayer _ _ _ = 0
+mayer :: Floating a => a -> AcX a -> AcX a -> None a -> None a -> a
+mayer _ _ _ _ _ = 0
 
 lagrange :: Floating a => AcX a -> None a -> AcU a -> None a -> None a -> a -> a -> a
 lagrange (AcX _ _ _ _ (AcU surfs)) _ (AcU surfs') _ _ _ _ =
@@ -56,9 +56,10 @@ dae x' x _ u _ _ = (aircraftDae (mass, inertia) fcs mcs refs x' x u, None)
     mcs = bettyMc
     refs = bettyRefs
 
-ocp :: OcpPhase AcX None AcU None AcX None AcX None
+ocp :: OcpPhase AcX None AcU None AcX None AcX None None
 ocp = OcpPhase { ocpMayer = mayer
                , ocpLagrange = lagrange
+               , ocpQuadratures = \_ _ _ _ _ _ _ -> None
                , ocpDae = dae
                , ocpBc = bc
                , ocpPathC = pathc
@@ -104,8 +105,8 @@ ubnd =
                   , csFlaps = (Just (d2r (-0.01)), Just (d2r 0.01))
                   }
 
-bc :: Floating a => AcX a -> AcX a -> AcX a
-bc (AcX x0 v0 dcm0 w0 cs) _ = AcX x0 (v0 - V3 30 0 0) (dcm0 - eye3) w0 cs
+bc :: Floating a => AcX a -> AcX a -> None a -> None a -> AcX a
+bc (AcX x0 v0 dcm0 w0 cs) _ _ _ = AcX x0 (v0 - V3 30 0 0) (dcm0 - eye3) w0 cs
 
 main :: IO ()
 main = do
@@ -119,7 +120,7 @@ main = do
           plotPoints <- cpPlotPoints cp traj
           let proxy :: Proxy (CollTraj AcX None AcU None NCollStages CollDeg)
               proxy = Proxy
-          cb (plotPoints, toMeta (Proxy :: Proxy None) proxy)
+          cb (plotPoints, toMeta (Proxy :: Proxy None) (Proxy :: Proxy None) proxy)
 
     (msg,_) <- solveNlp ipoptSolver (nlp { nlpX0 = guess }) (Just cb')
     case msg of Left msg' -> putStrLn $ "optimization failed, message: " ++ msg'

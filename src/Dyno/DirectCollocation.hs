@@ -24,11 +24,11 @@ import Dyno.DirectCollocation.Quadratures ( QuadratureRoots )
 import qualified Dyno.TypeVecs as TV
 
 solveOcp ::
-  forall x z u p r o c h .
+  forall x z u p r o c h q .
   (Vectorize x, Vectorize z, Vectorize u, Vectorize p,
-   Vectorize r, Vectorize o, Vectorize c, Vectorize h)
+   Vectorize r, Vectorize o, Vectorize c, Vectorize h, Vectorize q)
   => QuadratureRoots -> Solver -> Int -> Int -> Maybe (DynPlotPoints Double -> IO Bool)
-  -> OcpPhase x z u p r o c h
+  -> OcpPhase x z u p r o c h q
   -> IO (Either String String)
 solveOcp roots solverStuff n deg cb0 ocp =
   TV.reifyDim n $ \(Proxy :: Proxy n) ->

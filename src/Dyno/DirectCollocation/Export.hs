@@ -26,7 +26,7 @@ import Dyno.DirectCollocation.Types ( CollTraj(..), CollStage(..), CollPoint(..)
 import Dyno.DirectCollocation.Quadratures ( timesFromTaus )
 
 toMatlab ::
-  forall x z u p r c h o n deg
+  forall x z u p r c h o q n deg
   . ( Lookup (x Double), Vectorize x
     , Lookup (z Double), Vectorize z
     , Lookup (u Double), Vectorize u
@@ -35,7 +35,7 @@ toMatlab ::
     , Dim deg
     , Dim n
     )
-  => CollProblem x z u p r c h o n deg
+  => CollProblem x z u p r c h o q n deg
   -> CollTraj x z u p n deg (Vector Double)
   -> IO String
 toMatlab cp ct@(CollTraj tf' p' stages' xf) = do

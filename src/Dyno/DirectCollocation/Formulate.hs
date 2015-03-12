@@ -55,10 +55,10 @@ import Dyno.DirectCollocation.Dynamic ( DynPlotPoints, dynPlotPoints )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..), mkTaus, interpolate, timesFromTaus )
 import Dyno.DirectCollocation.Robust
 
-data CollProblem x z u p r c h o n deg =
+data CollProblem x z u p r c h o q n deg =
   CollProblem
   { cpNlp :: Nlp (CollTraj x z u p n deg) JNone (CollOcpConstraints n deg x r c h) MX
-  , cpOcp :: OcpPhase x z u p r o c h
+  , cpOcp :: OcpPhase x z u p r o c h q
   , cpPlotPoints :: J (CollTraj x z u p n deg) (Vector Double) -> IO (DynPlotPoints Double)
   , cpHellaOutputs :: J (CollTraj x z u p n deg) (Vector Double)
                       -> IO ( DynPlotPoints Double
@@ -74,11 +74,11 @@ data CollProblem x z u p r c h o n deg =
   }
 
 makeCollProblem ::
-  forall x z u p r o c h deg n .
+  forall x z u p r o c h q deg n .
   (Dim deg, Dim n, Vectorize x, Vectorize p, Vectorize u, Vectorize z,
-   Vectorize r, Vectorize o, Vectorize h, Vectorize c)
-  => QuadratureRoots -> OcpPhase x z u p r o c h
-  -> IO (CollProblem x z u p r c h o n deg)
+   Vectorize r, Vectorize o, Vectorize h, Vectorize c, Vectorize q)
+  => QuadratureRoots -> OcpPhase x z u p r o c h q
+  -> IO (CollProblem x z u p r c h o q n deg)
 makeCollProblem roots ocp = do
   let -- the collocation points
       taus :: Vec deg Double
@@ -95,12 +95,25 @@ makeCollProblem roots ocp = do
         Legendre -> interpolate taus x0 (unJVec (split xs))
         Radau -> TV.tvlast $ unJVec $ split xs
 
+      interpolateq' :: (J (JV q) :*: J (JVec deg (JV q))) MX -> J (JV q) MX
+      interpolateq' (q0 :*: qs) = case roots of
+        Legendre -> interpolate taus q0 (unJVec (split qs))
+        Radau -> TV.tvlast $ unJVec $ split qs
+
       interpolateScalar' :: (J (JV Id) :*: J (JVec deg (JV Id))) MX -> J (JV Id) MX
       interpolateScalar' (x0 :*: xs) = case roots of
         Legendre -> interpolate taus x0 (unJVec (split xs))
         Radau -> TV.tvlast $ unJVec $ split xs
 
+      dynamicsFunction (t :*: parm :*: x' :*: collPoint) = (sxCatJV r) :*: (sxCatJV o)
+        where
+          CollPoint x z u = split collPoint
+          (r,o) = ocpDae ocp
+                  (sxSplitJV x') (sxSplitJV x) (sxSplitJV z) (sxSplitJV u)
+                  (sxSplitJV parm) (unId (sxSplitJV t))
+
   interpolateFun <- toMXFun "interpolate (JV x)" interpolate' >>= expandMXFun
+  interpolateQFun <- toMXFun "interpolate (JV q)" interpolateq' >>= expandMXFun
   interpolateScalarFun <- toMXFun "interpolate (JV Id)" interpolateScalar' >>= expandMXFun
   let callInterpolateScalar :: J (JV Id) MX -> Vec deg (J (JV Id) MX) -> J (JV Id) MX
       callInterpolateScalar x0 xs = call interpolateScalarFun (x0 :*: cat (JVec xs))
@@ -108,20 +121,26 @@ makeCollProblem roots ocp = do
       callInterpolate :: J (JV x) MX -> Vec deg (J (JV x) MX) -> J (JV x) MX
       callInterpolate x0 xs = call interpolateFun (x0 :*: cat (JVec xs))
 
-  bcFun <- toSXFun "bc" $ \(x0:*:x1) -> sxCatJV $ ocpBc ocp (sxSplitJV x0) (sxSplitJV x1)
-  mayerFun <- toSXFun "mayer" $ \(x0:*:x1:*:x2) ->
-    sxCatJV $ Id $ ocpMayer ocp (unId (sxSplitJV x0)) (sxSplitJV x1) (sxSplitJV x2)
+      callInterpolateQ :: J (JV q) MX -> Vec deg (J (JV q) MX) -> J (JV q) MX
+      callInterpolateQ q0 qs = call interpolateQFun (q0 :*: cat (JVec qs))
+
+  bcFun <- toSXFun "bc" $ \(x0:*:x1:*:x2:*:x3) -> sxCatJV $ ocpBc ocp (sxSplitJV x0) (sxSplitJV x1) (sxSplitJV x2) (sxSplitJV x3)
+  mayerFun <- toSXFun "mayer" $ \(x0:*:x1:*:x2:*:x3:*:x4) ->
+    sxCatJV $ Id $ ocpMayer ocp (unId (sxSplitJV x0)) (sxSplitJV x1) (sxSplitJV x2) (sxSplitJV x3) (sxSplitJV x4)
+
   lagrangeFun <- toSXFun "lagrange" $ \(x0:*:x1:*:x2:*:x3:*:x4:*:x5:*:x6) ->
     sxCatJV $ Id $ ocpLagrange ocp (sxSplitJV x0) (sxSplitJV x1) (sxSplitJV x2) (sxSplitJV x3) (sxSplitJV x4) (unId (sxSplitJV x5)) (unId (sxSplitJV x6))
-  quadFun <- toMXFun "quadratures" $ evaluateQuadraturesFunction lagrangeFun callInterpolateScalar cijs n
---  let callQuadFun = call quadFun
+  lagQuadFun <- toMXFun "lagrange quadratures" $ evaluateQuadraturesFunction lagrangeFun callInterpolateScalar cijs n
+  callLagQuadFun <- fmap call (expandMXFun lagQuadFun) -- necessary to discard unused outputs
+
+  quadratureDotFun <- toSXFun "quadrature derivative" $ \(x0:*:x1:*:x2:*:x3:*:x4:*:x5:*:x6) ->
+    sxCatJV $ ocpQuadratures ocp (sxSplitJV x0) (sxSplitJV x1) (sxSplitJV x2) (sxSplitJV x3) (sxSplitJV x4) (unId (sxSplitJV x5)) (unId (sxSplitJV x6))
+  quadFun <- toMXFun "quadratures" $ evaluateQuadraturesFunction quadratureDotFun callInterpolateQ cijs n
   callQuadFun <- fmap call (expandMXFun quadFun) -- necessary to discard unused outputs
+
   genericQuadraturesFun <- toMXFun "generic quadratures" $ genericQuadraturesFunction callInterpolateScalar cijs n
 
-  dynFun <- toSXFun "dynamics" $ dynamicsFunction $
-            \x0 x1 x2 x3 x4 x5 ->
-            let (r,o) = ocpDae ocp (sxSplitJV x0) (sxSplitJV x1) (sxSplitJV x2) (sxSplitJV x3) (sxSplitJV x4) (unId (sxSplitJV x5))
-            in (sxCatJV r, sxCatJV o)
+  dynFun <- toSXFun "dynamics" dynamicsFunction
 
   pathConFun <- toSXFun "pathConstraints" $ pathConFunction $
                 \x0 x1 x2 x3 x4 x5 -> sxCatJV $ ocpPathC ocp (sxSplitJV x0) (sxSplitJV x1) (sxSplitJV x2) (sxSplitJV x3) (sxSplitJV x4) (unId (sxSplitJV x5))
@@ -194,10 +213,12 @@ makeCollProblem roots ocp = do
   let nlp = Nlp {
         nlpFG =
            getFg taus
-           (bcFun :: SXFun (J (JV x) :*: J (JV x)) (J (JV c)))
-           (mayerFun :: SXFun (J (JV Id) :*: (J (JV x) :*: (J (JV x)))) (J (JV Id)))
-           (callQuadFun :: (J (JV p) :*: J (JVec deg (CollPoint (JV x) (JV z) (JV u))) :*: J (JVec deg (JV o)) :*: J (JV Id) :*: J (JVec deg (JV Id))) MX
+           (bcFun :: SXFun (J (JV x) :*: J (JV x) :*: J (JV q) :*: J (JV p)) (J (JV c)))
+           (mayerFun :: SXFun (J (JV Id) :*: (J (JV x) :*: (J (JV x)) :*: (J (JV q)) :*: (J (JV p)))) (J (JV Id)))
+           (callLagQuadFun :: (J (JV p) :*: J (JVec deg (CollPoint (JV x) (JV z) (JV u))) :*: J (JVec deg (JV o)) :*: J (JV Id) :*: J (JVec deg (JV Id))) MX
                         -> J (JV Id) MX)
+           (callQuadFun :: (J (JV p) :*: J (JVec deg (CollPoint (JV x) (JV z) (JV u))) :*: J (JVec deg (JV o)) :*: J (JV Id) :*: J (JVec deg (JV Id))) MX
+                        -> J (JV q) MX)
            (callStageFun :: (J (JV Id) :*: J (JV p) :*: J (JVec deg (JV Id)) :*: J (JV x) :*: J (JVec deg (JTuple (JV x) (JV z))) :*: J (JVec deg (JV u))) MX
                       -> (J (JVec deg (JV r)) :*: J (JVec deg (JV o)) :*: J (JVec deg (JV h)) :*: J (JV x)) MX)
         , nlpBX = cat $ fillCollTraj'
@@ -273,14 +294,14 @@ data CollCovProblem x z u p r o c h n deg sx sw sh shr sc =
   }
 
 makeCollCovProblem ::
-  forall x z u p r o c h sx sz sw sr sh shr sc deg n .
+  forall x z u p r o c h q sx sz sw sr sh shr sc deg n .
   (Dim deg, Dim n, Vectorize x, Vectorize p, Vectorize u, Vectorize z,
    Vectorize sr, Vectorize sw, Vectorize sz, Vectorize sx,
-   Vectorize r, Vectorize o, Vectorize h, Vectorize c,
+   Vectorize r, Vectorize o, Vectorize h, Vectorize c, Vectorize q,
    View sh, Vectorize shr, View sc)
   => QuadratureRoots
-  -> OcpPhase x z u p r o c h
-  -> OcpPhaseWithCov (OcpPhase x z u p r o c h) sx sz sw sr sh shr sc
+  -> OcpPhase x z u p r o c h q
+  -> OcpPhaseWithCov (OcpPhase x z u p r o c h q) sx sz sw sr sh shr sc
   -> IO (CollCovProblem x z u p r o c h n deg sx sw sh shr sc)
 makeCollCovProblem roots ocp ocpCov = do
   let -- the collocation points
@@ -396,20 +417,22 @@ makeCollCovProblem roots ocp ocpCov = do
                           }
 
 getFg ::
-  forall z x u p r o c h n deg .
+  forall z x u p r o c h q n deg .
   (Dim deg, Dim n, Vectorize x, Vectorize z, Vectorize u, Vectorize p,
-   Vectorize r, Vectorize o, Vectorize c, Vectorize h)
+   Vectorize r, Vectorize o, Vectorize c, Vectorize h, Vectorize q)
   => Vec deg Double
-  -> SXFun (J (JV x) :*: J (JV x)) (J (JV c))
+  -> SXFun (J (JV x) :*: J (JV x) :*: J (JV q) :*: J (JV p)) (J (JV c))
   -> SXFun
-      (J (JV Id) :*: J (JV x) :*: J (JV x)) (J (JV Id))
+      (J (JV Id) :*: J (JV x) :*: J (JV x) :*: J (JV q) :*: J (JV p)) (J (JV Id))
   -> ((J (JV p) :*: J (JVec deg (CollPoint (JV x) (JV z) (JV u))) :*: J (JVec deg (JV o)) :*: J (JV Id) :*: J (JVec deg (JV Id))) MX ->
       (J (JV Id)) MX)
+  -> ((J (JV p) :*: J (JVec deg (CollPoint (JV x) (JV z) (JV u))) :*: J (JVec deg (JV o)) :*: J (JV Id) :*: J (JVec deg (JV Id))) MX ->
+      (J (JV q)) MX)
   -> ((J (JV Id) :*: J (JV p) :*: J (JVec deg (JV Id)) :*: J (JV x) :*: J (JVec deg (JTuple (JV x) (JV z))) :*: J (JVec deg (JV u))) MX -> (J (JVec deg (JV r)) :*: J (JVec deg (JV o)) :*: J (JVec deg (JV h)) :*: J (JV x)) MX)
   -> J (CollTraj x z u p n deg) MX
   -> J JNone MX
   -> (J (JV Id) MX, J (CollOcpConstraints n deg x r c h) MX)
-getFg taus bcFun mayerFun quadFun stageFun collTraj _ = (obj, cat g)
+getFg taus bcFun mayerFun lagQuadFun quadFun stageFun collTraj _ = (obj, cat g)
   where
     -- split up the design vars
     CollTraj tf parm stages' xf = split collTraj
@@ -421,14 +444,15 @@ getFg taus bcFun mayerFun quadFun stageFun collTraj _ = (obj, cat g)
 
     obj = objLagrange + objMayer
 
-    objMayer = call mayerFun (tf :*: x0 :*: xf)
+    objMayer = call mayerFun (tf :*: x0 :*: xf :*: finalQuadratures :*: parm)
 
     objLagrange :: J (JV Id) MX
-    objLagrange = F.sum $ TV.tvzipWith3 oneStage spstagesPoints outputs times'
-    oneStage :: J (JVec deg (CollPoint (JV x) (JV z) (JV u))) MX -> J (JVec deg (JV o)) MX -> J (JVec deg (JV Id)) MX
-                -> J (JV Id) MX
-    oneStage stagePoints stageOutputs stageTimes =
-      quadFun (parm :*: stagePoints :*: stageOutputs :*: dt :*: stageTimes)
+    objLagrange = F.sum $ TV.tvzipWith3 (oneStage lagQuadFun) spstagesPoints outputs times'
+
+    finalQuadratures :: J (JV q) MX
+    finalQuadratures = F.sum $ TV.tvzipWith3 (oneStage quadFun) spstagesPoints outputs times'
+    oneStage qfun stagePoints stageOutputs stageTimes =
+      qfun (parm :*: stagePoints :*: stageOutputs :*: dt :*: stageTimes)
 
     -- timestep
     dt = tf / fromIntegral n
@@ -454,7 +478,7 @@ getFg taus bcFun mayerFun quadFun stageFun collTraj _ = (obj, cat g)
         { coCollPoints = cat $ JVec dcs
         , coContinuity = cat $ JVec integratorMatchingConstraints
         , coPathC = cat $ JVec hs
-        , coBc = call bcFun (x0 :*: xf)
+        , coBc = call bcFun (x0 :*: xf :*: finalQuadratures :*: parm)
         }
 
     integratorMatchingConstraints :: Vec n (J (JV x) MX) -- THIS SHOULD BE A NONLINEAR FUNCTION
@@ -570,9 +594,9 @@ getFgCov
 
 
 
-getBg :: forall x z u p r o c h deg n .
+getBg :: forall x z u p r o c h q deg n .
   (Dim n, Dim deg, Vectorize x, Vectorize r, Vectorize c, Vectorize h)
-  => OcpPhase x z u p r o c h
+  => OcpPhase x z u p r o c h q
   -> CollOcpConstraints n deg x r c h (Vector Bounds)
 getBg ocp =
   CollOcpConstraints
@@ -585,16 +609,16 @@ getBg ocp =
     hbnds = catJV (ocpPathCBnds ocp)
 
 evaluateQuadraturesFunction ::
-  forall x z u p o deg .
-  (Dim deg, View x, View z, View u, View o, View p)
-  => SXFun (J x :*: J z :*: J u :*: J p :*: J o :*: J (JV Id) :*: J (JV Id)) (J (JV Id))
-  -> (J (JV Id) MX -> Vec deg (J (JV Id) MX) -> J (JV Id) MX)
+  forall x z u p o q deg .
+  (Dim deg, View x, View z, View u, View o, View p, View q)
+  => SXFun (J x :*: J z :*: J u :*: J p :*: J o :*: J (JV Id) :*: J (JV Id)) (J q)
+  -> (J q MX -> Vec deg (J q MX) -> J q MX)
   -> Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
   -> Int
   -> (J p :*: J (JVec deg (CollPoint x z u)) :*: J (JVec deg o) :*: J (JV Id) :*: J (JVec deg (JV Id))) MX
-  -> J (JV Id) MX
+  -> J q MX
 evaluateQuadraturesFunction f interpolate' cijs' n (p :*: stage' :*: outputs' :*: dt :*: stageTimes') =
-  dt * qnext
+  M.uncol $ M.ms (M.col qnext) dt
   where
     tf = dt * fromIntegral n
 
@@ -607,12 +631,13 @@ evaluateQuadraturesFunction f interpolate' cijs' n (p :*: stage' :*: outputs' :*
     stageTimes :: Vec deg (J (JV Id) MX)
     stageTimes = unJVec (split stageTimes')
 
-    qnext :: J (JV Id) MX
-    qnext = interpolate' 0 qs
-
-    qdots :: Vec deg (J (JV Id) MX)
+    qdots :: Vec deg (J q MX)
     qdots = TV.tvzipWith3 (\(CollPoint x z u) o t -> call f (x:*:z:*:u:*:p:*:o:*:t:*:tf)) stage outputs stageTimes
 
+    qnext :: J q MX
+    qnext = interpolate' (0 :: J q MX) qs
+
+    qs :: Vec deg (J q MX)
     qs = cijInvFr !* qdots
 
     cijs :: Vec deg (Vec deg Double)
@@ -627,7 +652,7 @@ evaluateQuadraturesFunction f interpolate' cijs' n (p :*: stage' :*: outputs' :*
     cijInv :: Vec deg (Vec deg Double)
     cijInv = TV.mkVec' (map TV.mkVec' (Mat.toLists cijInv'))
 
-    cijInvFr :: Vec deg (Vec deg (J (JV Id) MX))
+    cijInvFr :: Vec deg (Vec deg (J q MX))
     cijInvFr = fmap (fmap realToFrac) cijInv
 
 
@@ -646,11 +671,11 @@ genericQuadraturesFunction interpolate' cijs' n (qdots' :*: tf) =
   where
     dt = tf / fromIntegral n
 
-    qnext :: J (JV Id) MX
-    qnext = interpolate' 0 qs
-
     qdots :: Vec deg (J (JV Id) MX)
     qdots = unJVec $ split qdots'
+
+    qnext :: J (JV Id) MX
+    qnext = interpolate' 0 qs
 
     qs = cijInvFr !* qdots
 
@@ -692,18 +717,6 @@ interpolateXDots ::
   -> Vec deg (J x a)
 interpolateXDots cjks xs = TV.tvtail $ interpolateXDots' cjks xs
 
-
--- dynamics residual and outputs
-dynamicsFunction ::
-  forall x z u p r o a . (View x, View z, View u, View r, View o, Viewable a)
-  => (J x a -> J x a -> J z a -> J u a -> J p a -> J (JV Id) a -> (J r a, J o a))
-  -> (J (JV Id) :*: J p :*: J x :*: J (CollPoint x z u)) a
-  -> (J r :*: J o) a
-dynamicsFunction dae (t :*: parm :*: x' :*: collPoint) =
-  r :*: o
-  where
-    CollPoint x z u = split collPoint
-    (r,o) = dae x' x z u parm t
 
 -- path constraints
 pathConFunction ::

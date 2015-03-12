@@ -60,13 +60,14 @@ toOcpPhase ::
   (Vectorize x, Vectorize p)
   => (forall a . Floating a => x a -> p a -> a -> x a)
   -> x Double -> p Double -> Double
-  -> OcpPhase x None None p x None x None
+  -> OcpPhase x None None p x None x None None
 toOcpPhase ode x0 p tf =
   OcpPhase
-  { ocpMayer = \_ _ _ -> 0
+  { ocpMayer = \_ _ _ _ _ -> 0
   , ocpLagrange = \_ _ _ _ _ _ _ -> 0
   , ocpDae = \x' x _ _ pp t -> ((ode x pp t) `minus` x', None)
-  , ocpBc = \x0' _ -> x0'
+  , ocpQuadratures = \_ _ _ _ _ _ _ -> None
+  , ocpBc = \x0' _ _ _ -> x0'
   , ocpPathC = \_ _ _ _ _ _ -> None
   , ocpPathCBnds = None
   , ocpBcBnds =  fmap (\x -> (Just x, Just x)) x0

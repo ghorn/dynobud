@@ -33,11 +33,11 @@ toProfileReport ::
   -> IO ProfileReport
 toProfileReport _ _ = return ProfileReport
 
-profile :: forall x z u p r o c h .
+profile :: forall x z u p r o c h q .
   (Vectorize x, Vectorize z, Vectorize u, Vectorize p,
-   Vectorize r, Vectorize o, Vectorize c, Vectorize h)
+   Vectorize r, Vectorize o, Vectorize c, Vectorize h, Vectorize q)
   => QuadratureRoots
-  -> OcpPhase x z u p r o c h
+  -> OcpPhase x z u p r o c h q
   -> (forall deg n . (Dim deg, Dim n) => J (CollTraj x z u p n deg) (Vector Double))
   -> Solver
   -> [(Int,Int)]
@@ -51,12 +51,12 @@ profile roots ocp guess solver range = do
   mapM go range
 
 profileOne ::
-  forall x z u p r o c h n deg .
+  forall x z u p r o c h q n deg .
   (Vectorize x, Vectorize z, Vectorize u, Vectorize p,
-   Vectorize r, Vectorize o, Vectorize c, Vectorize h,
+   Vectorize r, Vectorize o, Vectorize c, Vectorize h, Vectorize q,
    Dim n, Dim deg)
   => QuadratureRoots
-  -> OcpPhase x z u p r o c h
+  -> OcpPhase x z u p r o c h q
   -> J (CollTraj x z u p n deg) (Vector Double)
   -> Solver
   -> IO ProfileReport

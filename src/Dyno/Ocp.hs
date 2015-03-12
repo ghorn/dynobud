@@ -31,16 +31,18 @@ class OcpPhaseClass a where
   type O a :: * -> *
   type C a :: * -> *
   type H a :: * -> *
+  type Q a :: * -> *
 
-instance OcpPhaseClass (OcpPhase x z u p r o c h) where
-  type X (OcpPhase x z u p r o c h) = x
-  type Z (OcpPhase x z u p r o c h) = z
-  type U (OcpPhase x z u p r o c h) = u
-  type P (OcpPhase x z u p r o c h) = p
-  type R (OcpPhase x z u p r o c h) = r
-  type O (OcpPhase x z u p r o c h) = o
-  type C (OcpPhase x z u p r o c h) = c
-  type H (OcpPhase x z u p r o c h) = h
+instance OcpPhaseClass (OcpPhase x z u p r o c h q) where
+  type X (OcpPhase x z u p r o c h q) = x
+  type Z (OcpPhase x z u p r o c h q) = z
+  type U (OcpPhase x z u p r o c h q) = u
+  type P (OcpPhase x z u p r o c h q) = p
+  type R (OcpPhase x z u p r o c h q) = r
+  type O (OcpPhase x z u p r o c h q) = o
+  type C (OcpPhase x z u p r o c h q) = c
+  type H (OcpPhase x z u p r o c h q) = h
+  type Q (OcpPhase x z u p r o c h q) = q
 
 -- | One stage of an optimal control problem, solvable as a stand-alone optimal control problem.
 --
@@ -66,23 +68,25 @@ instance OcpPhaseClass (OcpPhase x z u p r o c h) where
 --
 -- boundary conditions:
 --
--- > c(x(0), x(T)) == 0
+-- > c(x(0), x(T), q(T), p) == 0
 --
 -- perhaps this should be:
 --
 -- > c(x(0), 0, x(T), T) == 0
-data OcpPhase x z u p r o c h =
+data OcpPhase x z u p r o c h q =
   OcpPhase
-  { -- | the Mayer term @Jm(T, x(0), x(T))@
-    ocpMayer :: Sxe -> x Sxe -> x Sxe -> Sxe
+  { -- | the Mayer term @Jm(T, x(0), x(T), q(T), p)@
+    ocpMayer :: Sxe -> x Sxe -> x Sxe -> q Sxe -> p Sxe -> Sxe
     -- | the Lagrange term @Jl(x(t),z(t),u(t),p,o,t,T)@
   , ocpLagrange :: x Sxe -> z Sxe -> u Sxe -> p Sxe -> o Sxe -> Sxe -> Sxe -> Sxe
+    -- | derivative of quadrature state @q(x(t),z(t),u(t),p,o,t,T)@
+  , ocpQuadratures :: x Sxe -> z Sxe -> u Sxe -> p Sxe -> o Sxe -> Sxe -> Sxe -> q Sxe
     -- | fully implicit differential-algebraic equation of the form:
     --
     -- > f(x'(t), x(t), z(t), u(t), p, t) == 0
   , ocpDae :: x Sxe -> x Sxe -> z Sxe -> u Sxe -> p Sxe -> Sxe -> (r Sxe, o Sxe)
-    -- | the boundary conditions @clb <= c(x(0), x(T)) <= cub@
-  , ocpBc :: x Sxe -> x Sxe -> c Sxe
+    -- | the boundary conditions @clb <= c(x(0), x(T), q(T)) <= cub@
+  , ocpBc :: x Sxe -> x Sxe -> q Sxe -> p Sxe -> c Sxe
     -- | the path constraints @h(x(t), z(t), u(t), p, t)@
   , ocpPathC :: x Sxe -> z Sxe -> u Sxe -> p Sxe -> o Sxe -> Sxe -> h Sxe
     -- | the boundary condition bounds @clb <= c(x(0), x(T)) <= cub@

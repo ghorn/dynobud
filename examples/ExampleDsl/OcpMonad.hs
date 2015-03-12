@@ -6,6 +6,7 @@
 {-# Language GeneralizedNewtypeDeriving #-}
 {-# Language FlexibleContexts #-}
 {-# Language RankNTypes #-}
+{-# Language DataKinds #-}
 
 module ExampleDsl.OcpMonad
        ( OcpMonad
@@ -243,8 +244,10 @@ reifyOcpPhase ::
   -> (SXElement -> (String -> OcpMonad SXElement) -> OcpMonad ())
   -> (Maybe Double, Maybe Double)
   -> (forall x z u p r o c h .
-      (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize r, Vectorize o, Vectorize c, Vectorize h)
-      => OcpPhase x z u p r o c h -> CollTrajMeta -> IO ret)
+      ( Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize r, Vectorize o
+      , Vectorize c, Vectorize h
+      )
+      => OcpPhase x z u p r o c h (Vec 0) -> CollTrajMeta -> IO ret)
   -> IO ret
 reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds f = do
   time <- sxElementSym "_t"
@@ -354,7 +357,12 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds f = do
           (Left errmsg, logs) ->
             error $ unlines $ ("" : map show logs) ++ ["","mayer monad failure: " ++ show errmsg]
           (Right ret, _) -> ret
-  mayerFunSX <- sxFunction (V.fromList [svector (V.singleton endT), svector (V.fromList x0s), svector (V.fromList xFs)])
+  mayerFunSX <- sxFunction (V.fromList [ svector (V.singleton endT)
+                                       , svector (V.fromList x0s)
+                                       , svector (V.fromList xFs)
+                                       , svector V.empty
+                                       , svector V.empty
+                                       ])
                            (V.singleton (svector (V.singleton mayerObj)))
   setOption mayerFunSX "name" "mayer"
   soInit mayerFunSX
@@ -384,7 +392,11 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds f = do
         ((Left errmsg, logs),_) ->
           error $ unlines $ ("" : map show logs) ++ ["","boundary condition monad failure: " ++ show errmsg]
         ((Right _,_), ret) -> V.unzip $ V.fromList $ map constr $ F.toList ret
-  bcFunSX <- sxFunction (V.fromList [svector (V.fromList x0s), svector (V.fromList xFs)])
+  bcFunSX <- sxFunction (V.fromList [ svector (V.fromList x0s)
+                                    , svector (V.fromList xFs)
+                                    , svector V.empty
+                                    , svector V.empty
+                                    ])
                         (V.singleton (svector bcs))
   setOption bcFunSX "name" "boundaryConditions"
   soInit bcFunSX
@@ -395,6 +407,7 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds f = do
              , ctmU = NameTreeNode ("", "") (zip (F.toList unames) (map NameTreeLeaf [0..]))
              , ctmP = NameTreeNode ("", "") (zip (F.toList pnames) (map NameTreeLeaf [0..]))
              , ctmO = NameTreeNode ("", "") (zip (F.toList onames) (map NameTreeLeaf [0..]))
+             , ctmQ = NameTreeNode ("", "") []
              }
       ctmNx = V.length xnames
       ctmNz = V.length znames
@@ -437,16 +450,17 @@ reifyOcpPhase daeMonad mayerMonad bcMonad ocpMonad tbnds f = do
         pathConstraintFun x z u p o t =
           devec $ V.head $ callSX pathcFunSX (V.fromList [vec x, vec z, vec u, vec p, vec o, sxElementToSX t])
 
-        mayerFun :: SXElement -> Vec nx SXElement -> Vec nx SXElement
+        mayerFun :: SXElement -> Vec nx SXElement -> Vec nx SXElement -> Vec 0 SXElement -> Vec np SXElement
                     -> SXElement
-        mayerFun endT'' x0 xF = sxToSXElement $ V.head $ callSX mayerFunSX (V.fromList [sxElementToSX endT'', vec x0, vec xF])
+        mayerFun endT'' x0 xF qF p = sxToSXElement $ V.head $ callSX mayerFunSX (V.fromList [sxElementToSX endT'', vec x0, vec xF, vec qF, vec p])
 
-        bcFun :: Vec nx SXElement -> Vec nx SXElement -> Vec nc SXElement
-        bcFun x0 xF = devec $ V.head $ callSX bcFunSX (V.fromList [vec x0, vec xF])
+        bcFun :: Vec nx SXElement -> Vec nx SXElement -> Vec 0 SXElement -> Vec np SXElement -> Vec nc SXElement
+        bcFun x0 xF qF p = devec $ V.head $ callSX bcFunSX (V.fromList [vec x0, vec xF, vec qF, vec p])
 
         ocpPhase =
           OcpPhase { ocpMayer = mayerFun
                    , ocpLagrange = lagrangeFun
+                   , ocpQuadratures = \_ _ _ _ _ _ _ -> fill 0
                    , ocpDae = daeFun
                    , ocpBc = bcFun
                    , ocpBcBnds = devectorize bcbnds

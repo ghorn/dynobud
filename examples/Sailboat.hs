@@ -157,10 +157,12 @@ data SbBc a  = SbBc { bcPeriodicGamma :: a
                     , bcP0 :: V2 a
                     }
                     deriving (Functor, Generic, Generic1, Show)
-bc :: Num a => SbX a -> SbX a -> SbBc a
+bc :: Num a => SbX a -> SbX a -> None a -> SbP a -> SbBc a
 bc
   (SbX gamma0 p0@(V2 _ pz0) (V2 vx0 vz0))
   (SbX gammaF    (V2 _ pzF) (V2 vxF vzF))
+  _
+  _
   = SbBc
     { bcPeriodicGamma = gamma0 + gammaF
     , bcPeriodicPz = pz0 - pzF
@@ -169,8 +171,8 @@ bc
     , bcP0 = p0
     }
 
-mayer :: Floating a => a -> SbX a -> SbX a -> a
-mayer tf _ (SbX _ (V2 pxF _) _) = - pxF / tf
+mayer :: Floating a => a -> SbX a -> SbX a -> None a -> SbP a -> a
+mayer tf _ (SbX _ (V2 pxF _) _) _ _ = - pxF / tf
 
 lagrange :: Floating a => SbX a -> SbZ a -> SbU a -> SbP a -> SbO a -> a -> a -> a
 lagrange _ _ (SbU omega alpha) _ _ _ _ = 1e-3*omega*omega + 1e-3*alpha*alpha
@@ -193,9 +195,10 @@ xbnd = SbX
 pathc :: t -> t1 -> t2 -> t3 -> t4 -> t5 -> None a
 pathc _ _ _ _ _ _ = None
 
-ocp :: OcpPhase SbX SbZ SbU SbP SbR SbO SbBc None
+ocp :: OcpPhase SbX SbZ SbU SbP SbR SbO SbBc None None
 ocp = OcpPhase { ocpMayer = mayer
                , ocpLagrange = lagrange
+               , ocpQuadratures = \_ _ _ _ _ _ _ -> None
                , ocpDae = sbDae
                , ocpBc = bc
                , ocpPathC = pathc
@@ -267,7 +270,7 @@ main = do
       let guess = cat initialGuess
           proxy :: Proxy (CollTraj SbX SbZ SbU SbP NCollStages CollDeg)
           proxy = Proxy
-          meta = toMeta (Proxy :: Proxy SbO) proxy
+          meta = toMeta (Proxy :: Proxy None) (Proxy :: Proxy SbO) proxy
 
           callback :: J (CollTraj SbX SbZ SbU SbP NCollStages CollDeg) (Vector Double)
                       -> IO Bool

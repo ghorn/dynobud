@@ -63,6 +63,7 @@ sameMeta (_,ctm0) (_,ctm1) =
       , ctmU ctm0 == ctmU ctm1
       , ctmP ctm0 == ctmP ctm1
       , ctmO ctm0 == ctmO ctm1
+      , ctmQ ctm0 == ctmQ ctm1
       ]
 
 data DynPlotPoints a = DynPlotPoints
@@ -160,6 +161,7 @@ data CollTrajMeta = CollTrajMeta { ctmX :: NameTree
                                  , ctmU :: NameTree
                                  , ctmP :: NameTree
                                  , ctmO :: NameTree
+                                 , ctmQ :: NameTree
                                  } deriving (Eq, Generic, Show)
 instance Binary CollTrajMeta
 
@@ -196,22 +198,23 @@ forestFromMeta meta = [xTree,zTree,uTree,oTree,xdTree]
         woo = F.toList . fmap (F.toList . fmap (\(t,x) -> (t, x V.! k)))
 
 
-toMeta :: forall x z u p o n deg .
-          (Lookup (x ()), Lookup (z ()), Lookup (u ()), Lookup (p ()), Lookup (o ()),
-           Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize o,
+toMeta :: forall x z u p o q n deg .
+          (Lookup (x ()), Lookup (z ()), Lookup (u ()), Lookup (p ()), Lookup (o ()), Lookup (q ()),
+           Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize o, Vectorize q,
            Dim n, Dim deg)
-          => Proxy o -> Proxy (CollTraj x z u p n deg) -> CollTrajMeta
-toMeta _ _ =
+          => Proxy o -> Proxy q -> Proxy (CollTraj x z u p n deg) -> CollTrajMeta
+toMeta _ _ _ =
   CollTrajMeta { ctmX = namesFromAccTree $ accessors (fill () :: x ())
                , ctmZ = namesFromAccTree $ accessors (fill () :: z ())
                , ctmU = namesFromAccTree $ accessors (fill () :: u ())
                , ctmP = namesFromAccTree $ accessors (fill () :: p ())
                , ctmO = namesFromAccTree $ accessors (fill () :: o ())
+               , ctmQ = namesFromAccTree $ accessors (fill () :: q ())
                }
 
-toMetaCov :: forall sx x z u p o n deg .
-          (Lookup (x ()), Lookup (z ()), Lookup (u ()), Lookup (p ()), Lookup (o ()),
-           Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize o,
+toMetaCov :: forall sx x z u p o q n deg .
+          (Lookup (x ()), Lookup (z ()), Lookup (u ()), Lookup (p ()), Lookup (o ()), Lookup (q ()),
+           Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize o, Vectorize q,
            Dim n, Dim deg)
-          => Proxy o -> Proxy (CollTrajCov sx x z u p n deg) -> CollTrajMeta
-toMetaCov _ _ = toMeta (Proxy :: Proxy o) (Proxy :: Proxy (CollTraj x z u p n deg))
+          => Proxy o -> Proxy q -> Proxy (CollTrajCov sx x z u p n deg) -> CollTrajMeta
+toMetaCov po pq _ = toMeta po pq (Proxy :: Proxy (CollTraj x z u p n deg))
