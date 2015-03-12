@@ -75,8 +75,10 @@ data CollProblem x z u p r c h o q n deg =
 
 makeCollProblem ::
   forall x z u p r o c h q deg n .
-  (Dim deg, Dim n, Vectorize x, Vectorize p, Vectorize u, Vectorize z,
-   Vectorize r, Vectorize o, Vectorize h, Vectorize c, Vectorize q)
+  ( Dim deg, Dim n
+  , Vectorize x, Vectorize p, Vectorize u, Vectorize z
+  , Vectorize r, Vectorize o, Vectorize h, Vectorize c, Vectorize q
+  )
   => QuadratureRoots -> OcpPhase x z u p r o c h q
   -> IO (CollProblem x z u p r c h o q n deg)
 makeCollProblem roots ocp = do
@@ -295,10 +297,11 @@ data CollCovProblem x z u p r o c h n deg sx sw sh shr sc =
 
 makeCollCovProblem ::
   forall x z u p r o c h q sx sz sw sr sh shr sc deg n .
-  (Dim deg, Dim n, Vectorize x, Vectorize p, Vectorize u, Vectorize z,
-   Vectorize sr, Vectorize sw, Vectorize sz, Vectorize sx,
-   Vectorize r, Vectorize o, Vectorize h, Vectorize c, Vectorize q,
-   View sh, Vectorize shr, View sc)
+  ( Dim deg, Dim n, Vectorize x, Vectorize p, Vectorize u, Vectorize z
+  , Vectorize sr, Vectorize sw, Vectorize sz, Vectorize sx
+  , Vectorize r, Vectorize o, Vectorize h, Vectorize c, Vectorize q
+  , View sh, Vectorize shr, View sc
+  )
   => QuadratureRoots
   -> OcpPhase x z u p r o c h q
   -> OcpPhaseWithCov (OcpPhase x z u p r o c h q) sx sz sw sr sh shr sc
