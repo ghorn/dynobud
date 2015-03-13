@@ -423,17 +423,26 @@ getFg ::
   forall z x u p r o c h q n deg .
   (Dim deg, Dim n, Vectorize x, Vectorize z, Vectorize u, Vectorize p,
    Vectorize r, Vectorize o, Vectorize c, Vectorize h, Vectorize q)
+  -- taus
   => Vec deg Double
+  -- bcFun
   -> SXFun (J (JV x) :*: J (JV x) :*: J (JV q) :*: J (JV p) :*: J (JV Id)) (J (JV c))
+  -- mayerFun
   -> SXFun
       (J (JV Id) :*: J (JV x) :*: J (JV x) :*: J (JV q) :*: J (JV p)) (J (JV Id))
+  -- lagQuadFun
   -> ((J (JV p) :*: J (JVec deg (CollPoint (JV x) (JV z) (JV u))) :*: J (JVec deg (JV o)) :*: J (JV Id) :*: J (JVec deg (JV Id))) MX ->
       (J (JV Id)) MX)
+  -- quadFun
   -> ((J (JV p) :*: J (JVec deg (CollPoint (JV x) (JV z) (JV u))) :*: J (JVec deg (JV o)) :*: J (JV Id) :*: J (JVec deg (JV Id))) MX ->
       (J (JV q)) MX)
+  -- stageFun
   -> ((J (JV Id) :*: J (JV p) :*: J (JVec deg (JV Id)) :*: J (JV x) :*: J (JVec deg (JTuple (JV x) (JV z))) :*: J (JVec deg (JV u))) MX -> (J (JVec deg (JV r)) :*: J (JVec deg (JV o)) :*: J (JVec deg (JV h)) :*: J (JV x)) MX)
+  -- collTraj
   -> J (CollTraj x z u p n deg) MX
+  -- parameter
   -> J JNone MX
+  -- (objective, constraints)
   -> (J (JV Id) MX, J (CollOcpConstraints n deg x r c h) MX)
 getFg taus bcFun mayerFun lagQuadFun quadFun stageFun collTraj _ = (obj, cat g)
   where
