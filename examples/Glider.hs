@@ -17,7 +17,8 @@ import Dyno.Nlp
 import Dyno.NlpUtils
 
 import Dyno.Ocp
-import Dyno.DirectCollocation
+import Dyno.DirectCollocation.Formulate
+import Dyno.DirectCollocation.Types
 import Dyno.DirectCollocation.Dynamic ( toMeta )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..) )
 

@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
+{-# Language TypeFamilies #-}
 {-# Language ScopedTypeVariables #-}
 {-# Language DeriveGeneric #-}
 {-# Language PolyKinds #-}
@@ -8,7 +9,6 @@ module Dyno.DirectCollocation.Dynamic
        , CollTrajMeta(..)
        , addCollocationChannel
        , toMeta
-       , toMetaCov
        , dynPlotPoints
        , catDynPlotPoints
        , NameTree(..)
@@ -40,6 +40,7 @@ import qualified Dyno.TypeVecs as TV
 import Dyno.TypeVecs ( Vec )
 import Dyno.DirectCollocation.Types
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots, mkTaus )
+import Dyno.Ocp
 
 
 addCollocationChannel ::
@@ -87,11 +88,16 @@ catDynPlotPoints pps =
 
 
 dynPlotPoints ::
-  forall x z u p o n deg a .
-  (Dim n, Dim deg, Real a, Fractional a, Show a,
-   Vectorize x, Vectorize z, Vectorize u, Vectorize o, Vectorize p)
+  forall ocp x z u p o n deg a .
+  ( Dim n, Dim deg, Real a, Fractional a, Show a
+  , X ocp ~ x
+  , Z ocp ~ z
+  , U ocp ~ u
+  , P ocp ~ p
+  , Vectorize x, Vectorize z, Vectorize u, Vectorize o, Vectorize p
+  )
   => QuadratureRoots
-  -> CollTraj x z u p n deg (Vector a)
+  -> CollTraj ocp n deg (Vector a)
   -> Vec n (Vec deg (J (JV o) (Vector a), J (JV x) (Vector a)), J (JV x) (Vector a))
   -> DynPlotPoints a
 dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs =
@@ -198,23 +204,23 @@ forestFromMeta meta = [xTree,zTree,uTree,oTree,xdTree]
         woo = F.toList . fmap (F.toList . fmap (\(t,x) -> (t, x V.! k)))
 
 
-toMeta :: forall x z u p o q n deg .
-          (Lookup (x ()), Lookup (z ()), Lookup (u ()), Lookup (p ()), Lookup (o ()), Lookup (q ()),
-           Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize o, Vectorize q,
-           Dim n, Dim deg)
-          => Proxy o -> Proxy q -> Proxy (CollTraj x z u p n deg) -> CollTrajMeta
-toMeta _ _ _ =
-  CollTrajMeta { ctmX = namesFromAccTree $ accessors (fill () :: x ())
-               , ctmZ = namesFromAccTree $ accessors (fill () :: z ())
-               , ctmU = namesFromAccTree $ accessors (fill () :: u ())
-               , ctmP = namesFromAccTree $ accessors (fill () :: p ())
-               , ctmO = namesFromAccTree $ accessors (fill () :: o ())
-               , ctmQ = namesFromAccTree $ accessors (fill () :: q ())
-               }
-
-toMetaCov :: forall sx x z u p o q n deg .
-          (Lookup (x ()), Lookup (z ()), Lookup (u ()), Lookup (p ()), Lookup (o ()), Lookup (q ()),
-           Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize o, Vectorize q,
-           Dim n, Dim deg)
-          => Proxy o -> Proxy q -> Proxy (CollTrajCov sx x z u p n deg) -> CollTrajMeta
-toMetaCov po pq _ = toMeta po pq (Proxy :: Proxy (CollTraj x z u p n deg))
+toMeta :: forall ocp x z u p o q .
+          ( Lookup (x ()), Lookup (z ()), Lookup (u ()), Lookup (p ()), Lookup (o ()), Lookup (q ())
+          , Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize o, Vectorize q
+          , X ocp ~ x
+          , Z ocp ~ z
+          , U ocp ~ u
+          , P ocp ~ p
+          , O ocp ~ o
+          , Q ocp ~ q
+          )
+          => Proxy ocp -> CollTrajMeta
+toMeta _ =
+  CollTrajMeta
+  { ctmX = namesFromAccTree $ accessors (fill () :: x ())
+  , ctmZ = namesFromAccTree $ accessors (fill () :: z ())
+  , ctmU = namesFromAccTree $ accessors (fill () :: u ())
+  , ctmP = namesFromAccTree $ accessors (fill () :: p ())
+  , ctmO = namesFromAccTree $ accessors (fill () :: o ())
+  , ctmQ = namesFromAccTree $ accessors (fill () :: q ())
+  }

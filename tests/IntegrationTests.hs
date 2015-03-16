@@ -1,15 +1,12 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language ScopedTypeVariables #-}
-{-# Language RankNTypes #-}
-{-# Language FlexibleInstances #-}
+{-# Language DataKinds #-}
+{-# Language TypeFamilies #-}
+{-# Language PolyKinds #-}
 {-# Language DeriveFunctor #-}
 {-# Language DeriveGeneric #-}
-{-# Language DataKinds #-}
-{-# Language PolyKinds #-}
-{-# Language GADTs #-}
-{-# Language DeriveGeneric #-}
-{-# Language FlexibleInstances #-}
-{-# Language PolyKinds #-}
+{-# Language RankNTypes #-}
+{-# Language FlexibleContexts #-}
 
 module IntegrationTests
        ( integrationTests
@@ -56,36 +53,60 @@ minus = over (-)
 --divv :: (Vectorize f, Fractional a) => f a -> f a -> f a
 --divv = over (/)
 
-toOcpPhase ::
-  (Vectorize x, Vectorize p)
-  => (forall a . Floating a => x a -> p a -> a -> x a)
+
+data IntegrationOcp x p
+type instance X (IntegrationOcp x p) = x
+type instance Z (IntegrationOcp x p) = None
+type instance U (IntegrationOcp x p) = None
+type instance P (IntegrationOcp x p) = p
+type instance R (IntegrationOcp x p) = x
+type instance O (IntegrationOcp x p) = None
+type instance C (IntegrationOcp x p) = x
+type instance H (IntegrationOcp x p) = None
+type instance Q (IntegrationOcp x p) = None
+
+runIntegration ::
+  forall x p deg n
+  . ( Vectorize x, Vectorize p, Dim deg, Dim n )
+  => Proxy n -> Proxy deg
+  -> QuadratureRoots
+  -> (forall a . Floating a => x a -> p a -> a -> x a)
   -> x Double -> p Double -> Double
-  -> OcpPhase x None None p x None x None None
-toOcpPhase ode x0 p tf =
-  OcpPhase
-  { ocpMayer = \_ _ _ _ _ -> 0
-  , ocpLagrange = \_ _ _ _ _ _ _ -> 0
-  , ocpDae = \x' x _ _ pp t -> ((ode x pp t) `minus` x', None)
-  , ocpQuadratures = \_ _ _ _ _ _ _ -> None
-  , ocpBc = \x0' _ _ _ _ -> x0'
-  , ocpPathC = \_ _ _ _ _ _ -> None
-  , ocpPathCBnds = None
-  , ocpBcBnds =  fmap (\x -> (Just x, Just x)) x0
-  , ocpXbnd = fill (Nothing, Nothing)
-  , ocpUbnd = None
-  , ocpZbnd = None
-  , ocpPbnd = fmap (\x -> (Just x, Just x)) p
-  , ocpTbnd = (Just tf, Just tf)
-  , ocpObjScale      = Nothing
-  , ocpTScale        = Nothing
-  , ocpXScale        = Nothing
-  , ocpZScale        = Nothing
-  , ocpUScale        = Nothing
-  , ocpPScale        = Nothing
-  , ocpResidualScale = Nothing
-  , ocpBcScale       = Nothing
-  , ocpPathCScale    = Nothing
-  }
+  -> IO (Either String (x Double))
+runIntegration _ _ roots ode x0 p tf = do
+  let ocp :: OcpPhase (IntegrationOcp x p)
+      ocp = OcpPhase
+        { ocpMayer = \_ _ _ _ _ -> 0
+        , ocpLagrange = \_ _ _ _ _ _ _ -> 0
+        , ocpDae = \x' x _ _ pp t -> ((ode x pp t) `minus` x', None)
+        , ocpQuadratures = \_ _ _ _ _ _ _ -> None
+        , ocpBc = \x0' _ _ _ _ -> x0'
+        , ocpPathC = \_ _ _ _ _ _ -> None
+        , ocpPathCBnds = None
+        , ocpBcBnds =  fmap (\x -> (Just x, Just x)) x0
+        , ocpXbnd = fill (Nothing, Nothing)
+        , ocpUbnd = None
+        , ocpZbnd = None
+        , ocpPbnd = fmap (\x -> (Just x, Just x)) p
+        , ocpTbnd = (Just tf, Just tf)
+        , ocpObjScale      = Nothing
+        , ocpTScale        = Nothing
+        , ocpXScale        = Nothing
+        , ocpZScale        = Nothing
+        , ocpUScale        = Nothing
+        , ocpPScale        = Nothing
+        , ocpResidualScale = Nothing
+        , ocpBcScale       = Nothing
+        , ocpPathCScale    = Nothing
+        }
+  cp  <- makeCollProblem roots ocp :: IO (CollProblem (IntegrationOcp x p) n deg)
+  let guess :: CollTraj (IntegrationOcp x p) n deg (Vector Double)
+      guess = makeGuessSim roots tf x0 (\x _ -> ode x p 0) (\_ _ -> None) p
+      nlp = (cpNlp cp) { nlpX0 = cat guess }
+  (msg, opt') <- solveNlp solver nlp Nothing
+  return $ case msg of
+    Left m -> Left m
+    Right _ -> Right (toXf (xOpt opt'))
 
 
 
@@ -128,8 +149,9 @@ rk45 f h p x0 = devectorize $ sv $ last sol
     f' :: Double -> SV.Vector Double -> SV.Vector Double
     f' t x = vs $ vectorize $ f (devectorize (sv x)) p t
 
-toXf :: (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Dim n, Dim deg)
-        => J (CollTraj x z u p n deg) (Vector Double)-> x Double
+toXf :: ( Vectorize (X ocp), Vectorize (Z ocp), Vectorize (U ocp), Vectorize (P ocp)
+        , Dim n, Dim deg
+        ) => J (CollTraj ocp n deg) (Vector Double)-> X ocp Double
 toXf traj = splitJV xf
   where
     CollTraj _ _ _ xf = split traj
@@ -175,22 +197,3 @@ compareIntegration pn pdeg ode x0 p tf = HUnit.assert $ do
            ( True, False) -> HUnit.assertString $ "radau has insufficient accuracy failed: "
                                                   ++ show (worstErr xR xGsl)
   return ret :: IO HUnit.Assertion
-
-
-runIntegration ::
-  forall x p n deg
-  . (Vectorize x, Vectorize p, Dim n, Dim deg)
-  => Proxy n
-  -> Proxy deg
-  -> QuadratureRoots
-  -> (forall a . Floating a => x a -> p a -> a -> x a)
-  -> x Double -> p Double -> Double -> IO (Either String (x Double))
-runIntegration _ _ roots ode x0 p tf = do
-  cp  <- makeCollProblem roots (toOcpPhase ode x0 p tf)
-  let guess :: CollTraj x None None p n deg (Vector Double)
-      guess = makeGuessSim roots tf x0 (\x _ -> ode x p 0) (\_ _ -> None) p
-      nlp = (cpNlp cp) { nlpX0 = cat guess }
-  (msg, opt') <- solveNlp solver nlp Nothing
-  return $ case msg of
-    Left m -> Left m
-    Right _ -> Right (toXf (xOpt opt'))

@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
+{-# Language TypeFamilies #-}
 {-# Language ScopedTypeVariables #-}
 {-# Language TypeOperators #-}
 {-# Language DeriveGeneric #-}
@@ -27,6 +28,7 @@ import Casadi.DMatrix ( DMatrix )
 import qualified Dyno.View.Unsafe.M as M ( mkM, blockSplit )
 
 import Dyno.SXElement ( SXElement, sxSplitJV, sxCatJV )
+import Dyno.Ocp
 import Dyno.View.View ( View(..), J, JNone(..), JTuple(..), fromDMatrix )
 import Dyno.View.JV ( JV, catJV', splitJV' )
 import Dyno.View.HList ( (:*:)(..) )
@@ -64,14 +66,19 @@ instance (View xe, View we, Dim n) => Scheme (CovarianceSensitivities xe we n)
 type Sxe = SXElement
 
 mkComputeSensitivities ::
-  forall x z u p sx sz sw sr deg n .
-  (Dim deg, Dim n, Vectorize x, Vectorize p, Vectorize u, Vectorize z,
-   Vectorize sr, Vectorize sw, Vectorize sz, Vectorize sx)
+  forall ocp x z u p sx sz sw sr deg n .
+  ( Dim deg, Dim n, Vectorize x, Vectorize p, Vectorize u, Vectorize z
+  , Vectorize sr, Vectorize sw, Vectorize sz, Vectorize sx
+  , X ocp ~ x
+  , Z ocp ~ z
+  , U ocp ~ u
+  , P ocp ~ p
+  )
   => QuadratureRoots
   -> (x Sxe -> x Sxe -> z Sxe -> u Sxe -> p Sxe -> Sxe
       -> sx Sxe -> sx Sxe -> sz Sxe -> sw Sxe
       -> sr Sxe)
-  -> IO (J (CollTraj x z u p n deg) MX -> CovarianceSensitivities (JV sx) (JV sw) n MX)
+  -> IO (J (CollTraj ocp n deg) MX -> CovarianceSensitivities (JV sx) (JV sw) n MX)
 mkComputeSensitivities roots covDae = do
   let -- the collocation points
       taus :: Vec deg Double
@@ -104,7 +111,7 @@ mkComputeSensitivities roots covDae = do
         where
           y0 :*: y1 = call sensitivityStageFun (dt :*: p :*: stagetimes :*: x0 :*: xzus)
 
-  let computeAllSensitivities :: J (CollTraj x z u p n deg) MX
+  let computeAllSensitivities :: J (CollTraj ocp n deg) MX
              -> CovarianceSensitivities (JV sx) (JV sw) n MX
       computeAllSensitivities collTraj = CovarianceSensitivities (M.vcat' fs) (M.vcat' ws)
         where
@@ -139,18 +146,24 @@ mkComputeSensitivities roots covDae = do
 
 -- todo: calculate by first multiplying all the Fs
 mkComputeCovariances ::
-  forall z x u p sx sw n deg .
-  (Dim deg, Dim n, Vectorize x, Vectorize z, Vectorize u, Vectorize p,
-   Vectorize sx, Vectorize sw)
+  forall ocp x z u p sx sw n deg .
+  ( Dim deg, Dim n
+  , Vectorize x, Vectorize z, Vectorize u, Vectorize p
+  , Vectorize sx, Vectorize sw
+  , X ocp ~ x
+  , Z ocp ~ z
+  , U ocp ~ u
+  , P ocp ~ p
+  )
   => (M (JV sx) (JV sx) MX -> M (JV sx) (JV sw) MX -> J (Cov (JV sw)) MX -> J (JV Id) MX
       -> M (JV sx) (JV sx) MX)
-  -> (J (CollTraj x z u p n deg) MX -> CovarianceSensitivities (JV sx) (JV sw) n MX)
+  -> (J (CollTraj ocp n deg) MX -> CovarianceSensitivities (JV sx) (JV sw) n MX)
   -> J (Cov (JV sw)) DMatrix
-  -> IO (J (CollTrajCov sx x z u p n deg) MX -> J (CovTraj sx n) MX)
+  -> IO (J (CollTrajCov sx ocp n deg) MX -> J (CovTraj sx n) MX)
 mkComputeCovariances c2d computeSens qc' = do
   propOneCovFun <- toMXFun "propogate one covariance" (propOneCov c2d)
 
-  let computeCovs :: J (CollTrajCov sx x z u p n deg) MX -> J (CovTraj sx n) MX
+  let computeCovs :: J (CollTrajCov sx ocp n deg) MX -> J (CovTraj sx n) MX
       computeCovs collTrajCov = cat covTraj
         where
           CollTrajCov p0 collTraj = split collTrajCov

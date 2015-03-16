@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language ScopedTypeVariables #-}
+{-# Language TypeFamilies #-}
 {-# Language RankNTypes #-}
 
 module Dyno.DirectCollocation.Profile
@@ -13,7 +14,7 @@ import Linear.V ( Dim(..) )
 
 import Dyno.View.View ( J )
 import Dyno.Vectorize ( Vectorize )
-import Dyno.Ocp ( OcpPhase )
+import Dyno.Ocp
 import Dyno.Solvers ( Solver )
 import Dyno.DirectCollocation.Types ( CollTraj, CollOcpConstraints )
 import Dyno.DirectCollocation.Formulate ( CollProblem(..), makeCollProblem )
@@ -29,16 +30,26 @@ data ProfileReport =
 
 toProfileReport ::
   Either String String
-  -> NlpOut (CollTraj x z u p n deg) (CollOcpConstraints n deg x r c h) (Vector Double)
+  -> NlpOut (CollTraj ocp n deg) (CollOcpConstraints ocp n deg) (Vector Double)
   -> IO ProfileReport
 toProfileReport _ _ = return ProfileReport
 
-profile :: forall x z u p r o c h q .
-  (Vectorize x, Vectorize z, Vectorize u, Vectorize p,
-   Vectorize r, Vectorize o, Vectorize c, Vectorize h, Vectorize q)
+profile :: forall ocp x z u p r o c h q .
+  ( Vectorize x, Vectorize z, Vectorize u, Vectorize p
+  , Vectorize r, Vectorize o, Vectorize c, Vectorize h, Vectorize q
+  , x ~ X ocp
+  , q ~ Q ocp
+  , h ~ H ocp
+  , c ~ C ocp
+  , o ~ O ocp
+  , r ~ R ocp
+  , p ~ P ocp
+  , u ~ U ocp
+  , z ~ Z ocp
+  )
   => QuadratureRoots
-  -> OcpPhase x z u p r o c h q
-  -> (forall deg n . (Dim deg, Dim n) => J (CollTraj x z u p n deg) (Vector Double))
+  -> OcpPhase ocp
+  -> (forall deg n . (Dim deg, Dim n) => J (CollTraj ocp n deg) (Vector Double))
   -> Solver
   -> [(Int,Int)]
   -> IO [ProfileReport]
@@ -47,17 +58,27 @@ profile roots ocp guess solver range = do
       go (n,deg) =
         TV.reifyDim n   $ \(Proxy :: Proxy n  ) ->
         TV.reifyDim deg $ \(Proxy :: Proxy deg) ->
-        profileOne roots ocp (guess :: J (CollTraj x z u p n deg) (Vector Double)) solver
+        profileOne roots ocp (guess :: J (CollTraj ocp n deg) (Vector Double)) solver
   mapM go range
 
 profileOne ::
-  forall x z u p r o c h q n deg .
-  (Vectorize x, Vectorize z, Vectorize u, Vectorize p,
-   Vectorize r, Vectorize o, Vectorize c, Vectorize h, Vectorize q,
-   Dim n, Dim deg)
+  forall ocp x z u p r o c h q n deg .
+  ( Vectorize x, Vectorize z, Vectorize u, Vectorize p
+  , Vectorize r, Vectorize o, Vectorize c, Vectorize h, Vectorize q
+  , Dim n, Dim deg
+  , x ~ X ocp
+  , q ~ Q ocp
+  , h ~ H ocp
+  , c ~ C ocp
+  , o ~ O ocp
+  , r ~ R ocp
+  , p ~ P ocp
+  , u ~ U ocp
+  , z ~ Z ocp
+  )
   => QuadratureRoots
-  -> OcpPhase x z u p r o c h q
-  -> J (CollTraj x z u p n deg) (Vector Double)
+  -> OcpPhase ocp
+  -> J (CollTraj ocp n deg) (Vector Double)
   -> Solver
   -> IO ProfileReport
 profileOne roots ocp guess solver = do

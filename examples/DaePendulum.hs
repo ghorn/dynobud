@@ -10,6 +10,7 @@ module Main where
 
 import GHC.Generics ( Generic, Generic1 )
 
+import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 
 import Accessors
@@ -21,8 +22,12 @@ import Dyno.Solvers
 import Dyno.Nlp
 import Dyno.NlpUtils
 import Dyno.Ocp
-import Dyno.DirectCollocation
+import Dyno.DirectCollocation.Formulate ( CollProblem(..), makeCollProblem )
+import Dyno.DirectCollocation.Types ( CollTraj )
+import Dyno.DirectCollocation.Dynamic ( toMeta )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..) )
+
+import Dynoplot.Callback ( withCallback )
 
 data PendOcp
 type instance X PendOcp = PendX
@@ -56,6 +61,8 @@ instance Vectorize PendO
 instance Lookup (PendX ())
 instance Lookup (PendZ ())
 instance Lookup (PendU ())
+instance Lookup (PendO ())
+instance Lookup (PendP ())
 
 mayer :: Num a => t -> PendX a -> PendX a -> None a -> PendP a -> a
 mayer _ _ _ _ _ = 0
@@ -139,7 +146,7 @@ guess :: J (CollTraj PendOcp NCollStages CollDeg) (Vector Double)
 guess = jfill 1
 
 solver :: Solver
-solver = ipoptSolver
+solver = ipoptSolver { options = [("linear_solver", Opt "ma86")]}
 
 solver2 :: Solver
 solver2 = ipoptSolver { options = [("expand", Opt True)] }
@@ -148,7 +155,12 @@ solver2 = ipoptSolver { options = [("expand", Opt True)] }
 main :: IO ()
 main = do
   cp  <- makeCollProblem Legendre pendOcp
-  let nlp = cpNlp cp
-  _ <- solveNlp solver (nlp { nlpX0 = guess }) Nothing
+  withCallback $ \send -> do
+    let nlp = cpNlp cp
+        meta = toMeta (Proxy :: Proxy PendOcp)
+        cb' traj = do
+          plotPoints <- cpPlotPoints cp traj
+          send (plotPoints, meta)
+    _ <- solveNlp solver (nlp { nlpX0 = guess }) (Just cb')
 --  _ <- solveNlp solver2 (nlp { nlpX0 = guess }) Nothing
-  return ()
+    return ()

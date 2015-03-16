@@ -3,6 +3,7 @@
 -- \Used with permission.
 
 {-# OPTIONS_GHC -Wall #-}
+{-# Language TypeFamilies #-}
 {-# Language ScopedTypeVariables #-}
 {-# Language FlexibleInstances #-}
 {-# Language DeriveFunctor #-}
@@ -35,10 +36,21 @@ import Dyno.Solvers
 import Dyno.NlpUtils
 import Dyno.Nlp
 import Dyno.Ocp
-import Dyno.DirectCollocation
+import Dyno.DirectCollocation.Formulate
+import Dyno.DirectCollocation.Types
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..) )
-import Dyno.DirectCollocation.Formulate ( makeGuess )
 import Dyno.DirectCollocation.Dynamic
+
+data SailboatOcp
+type instance X SailboatOcp = SbX
+type instance Z SailboatOcp = SbZ
+type instance U SailboatOcp = SbU
+type instance P SailboatOcp = SbP
+type instance R SailboatOcp = SbR
+type instance O SailboatOcp = SbO
+type instance C SailboatOcp = SbBc
+type instance H SailboatOcp = None
+type instance Q SailboatOcp = None
 
 data SbX a = SbX { xGamma :: a
                  , xP :: V2 a
@@ -196,7 +208,7 @@ xbnd = SbX
 pathc :: t -> t1 -> t2 -> t3 -> t4 -> t5 -> None a
 pathc _ _ _ _ _ _ = None
 
-ocp :: OcpPhase SbX SbZ SbU SbP SbR SbO SbBc None None
+ocp :: OcpPhase SailboatOcp
 ocp = OcpPhase { ocpMayer = mayer
                , ocpLagrange = lagrange
                , ocpQuadratures = \_ _ _ _ _ _ _ -> None
@@ -241,7 +253,7 @@ withPublisher context url f =
                                                ])
     f send
 
-initialGuess :: CollTraj SbX SbZ SbU SbP NCollStages CollDeg (Vector Double)
+initialGuess :: CollTraj SailboatOcp NCollStages CollDeg (Vector Double)
 initialGuess = makeGuess Legendre tf guessX (const SbZ) guessU SbP
   where
     tf = 20
@@ -269,12 +281,9 @@ main = do
     withPublisher context urlDynoPlot $ \sendDynoPlotMsg -> do
 --    withPublisher context urlOptTelem $ \sendOptTelemMsg -> do
       let guess = cat initialGuess
-          proxy :: Proxy (CollTraj SbX SbZ SbU SbP NCollStages CollDeg)
-          proxy = Proxy
-          meta = toMeta (Proxy :: Proxy None) (Proxy :: Proxy SbO) proxy
+          meta = toMeta (Proxy :: Proxy SailboatOcp)
 
-          callback :: J (CollTraj SbX SbZ SbU SbP NCollStages CollDeg) (Vector Double)
-                      -> IO Bool
+          callback :: J (CollTraj SailboatOcp NCollStages CollDeg) (Vector Double) -> IO Bool
           callback traj = do
             plotPoints <- cpPlotPoints cp traj
             -- dynoplot

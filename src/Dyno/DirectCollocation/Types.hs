@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language ScopedTypeVariables #-}
 {-# Language DeriveGeneric #-}
+{-# Language FlexibleContexts #-}
 {-# Language PolyKinds #-}
 
 module Dyno.DirectCollocation.Types
@@ -29,6 +30,7 @@ import qualified Data.Foldable as F
 import Linear.V ( Dim(..) )
 import Data.Vector ( Vector )
 
+import Dyno.Ocp
 import Dyno.View.Viewable ( Viewable )
 import Dyno.View.View ( View(..), J, jfill )
 import Dyno.View.JVec ( JVec(..), jreplicate )
@@ -38,39 +40,43 @@ import Dyno.Vectorize ( Vectorize(..), Id )
 
 
 -- design variables
-data CollTraj x z u p n deg a =
-  CollTraj (J (JV Id) a) (J (JV p) a) (J (JVec n (CollStage (JV x) (JV z) (JV u) deg)) a) (J (JV x) a)
-  deriving (Eq, Generic, Show)
-  -- endtime, params, coll stages, xf
+data CollTraj ocp n deg a =
+  CollTraj
+  { ctTf :: J (JV Id) a
+  , ctP :: J (JV (P ocp)) a
+  , ctStages :: J (JVec n (CollStage (JV (X ocp)) (JV (Z ocp)) (JV (U ocp)) deg)) a
+  , ctXf :: J (JV (X ocp)) a
+  } deriving (Eq, Generic, Show)
 
 -- design variables
-data CollTrajCov sx x z u p n deg a =
-  CollTrajCov (J (Cov (JV sx)) a) (J (CollTraj x z u p n deg) a)
+data CollTrajCov sx ocp n deg a =
+  CollTrajCov (J (Cov (JV sx)) a) (J (CollTraj ocp n deg) a)
   deriving (Eq, Generic, Show)
-  -- endtime, params, coll stages, xf
 
-data CollStage x z u deg a = CollStage (J x a) (J (JVec deg (CollPoint x z u)) a)
-                           deriving (Eq, Generic, Show)
+data CollStage x z u deg a =
+  CollStage (J x a) (J (JVec deg (CollPoint x z u)) a)
+  deriving (Eq, Generic, Show)
 
-data CollPoint x z u a = CollPoint (J x a) (J z a) (J u a)
-                       deriving (Eq, Generic, Show)
+data CollPoint x z u a =
+  CollPoint (J x a) (J z a) (J u a)
+  deriving (Eq, Generic, Show)
 
 -- constraints
 data CollStageConstraints x deg r a =
   CollStageConstraints (J (JVec deg (JV r)) a) (J (JV x) a)
   deriving (Eq, Generic, Show)
 
-data CollOcpConstraints n deg x r c h a =
+data CollOcpConstraints ocp n deg a =
   CollOcpConstraints
-  { coCollPoints :: J (JVec n (JVec deg (JV r))) a
-  , coContinuity :: J (JVec n (JV x)) a
-  , coPathC :: J (JVec n (JVec deg (JV h))) a
-  , coBc :: J (JV c) a
+  { coCollPoints :: J (JVec n (JVec deg (JV (R ocp)))) a
+  , coContinuity :: J (JVec n (JV (X ocp))) a
+  , coPathC :: J (JVec n (JVec deg (JV (H ocp)))) a
+  , coBc :: J (JV (C ocp)) a
   } deriving (Eq, Generic, Show)
 
-data CollOcpCovConstraints n deg x r c h sh shr sc a =
+data CollOcpCovConstraints ocp n deg sh shr sc a =
   CollOcpCovConstraints
-  { cocNormal :: J (CollOcpConstraints n deg x r c h) a
+  { cocNormal :: J (CollOcpConstraints ocp n deg ) a
   , cocCovPathC :: J (JVec n sh) a
   , cocCovRobustPathC :: J (JVec n (JV shr)) a
   , cocSbc :: J sc a
@@ -79,23 +85,27 @@ data CollOcpCovConstraints n deg x r c h sh shr sc a =
 -- View instances
 instance (View x, View z, View u) => View (CollPoint x z u)
 instance (View x, View z, View u, Dim deg) => View (CollStage x z u deg)
-instance (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Dim n, Dim deg) =>
-         View (CollTraj x z u p n deg)
-instance ( Vectorize sx, Vectorize x, Vectorize z, Vectorize u, Vectorize p
-         , Dim n, Dim deg ) =>
-         View (CollTrajCov sx x z u p n deg)
+instance ( Vectorize (X ocp), Vectorize (Z ocp), Vectorize (U ocp), Vectorize (P ocp)
+         , Dim n, Dim deg
+         ) =>  View (CollTraj ocp n deg)
+instance ( Vectorize (X ocp), Vectorize (Z ocp), Vectorize (U ocp), Vectorize (P ocp)
+         , Vectorize sx
+         , Dim n, Dim deg
+         ) => View (CollTrajCov sx ocp n deg)
 
 instance (Vectorize x, Vectorize r, Dim deg) => View (CollStageConstraints x deg r)
-instance (Vectorize x, Vectorize r, Dim n, Dim deg, Vectorize c, Vectorize h) =>
-         View (CollOcpConstraints n deg x r c h)
-instance ( Vectorize x, Vectorize r, Dim n, Dim deg, Vectorize c, Vectorize h
+instance ( Vectorize (X ocp), Vectorize (R ocp), Vectorize (C ocp), Vectorize (H ocp)
+         , Dim n, Dim deg
+         ) => View (CollOcpConstraints ocp n deg)
+instance ( Vectorize (X ocp), Vectorize (R ocp), Vectorize (C ocp), Vectorize (H ocp)
+         , Dim n, Dim deg
          , View sh, Vectorize shr, View sc
-         ) => View (CollOcpCovConstraints n deg x r c h sh shr sc)
+         ) => View (CollOcpCovConstraints ocp n deg sh shr sc)
 
 
 getXzus ::
-  (Vectorize x, Vectorize z, Vectorize u, Dim n, Dim deg)
-  => CollTraj x z u p n deg (Vector a) -> ([[x a]], [[z a]], [[u a]])
+  (Vectorize (X ocp), Vectorize (Z ocp), Vectorize (U ocp), Dim n, Dim deg)
+  => CollTraj ocp n deg (Vector a) -> ([[X ocp a]], [[Z ocp a]], [[U ocp a]])
 getXzus (CollTraj _ _ stages xf) = (xs ++ [[splitJV xf]], zs, us)
   where
     (xs, zs, us) = unzip3 $ map (getXzus' . split) (F.toList (unJVec (split stages)))
@@ -108,10 +118,10 @@ getXzus' (CollStage x0 xzus) = (splitJV x0 : xs, zs, us)
     f (CollPoint x z u) = (splitJV x, splitJV z, splitJV u)
 
 fillCollConstraints ::
-  forall x r c h n deg a .
-  ( Vectorize x, Vectorize r, Vectorize h, Vectorize c
+  forall ocp n deg a .
+  ( Vectorize (X ocp), Vectorize (R ocp), Vectorize (H ocp), Vectorize (C ocp)
   , Dim n, Dim deg )
-  => x a -> r a -> c a -> h a -> CollOcpConstraints n deg x r c h (Vector a)
+  => X ocp a -> R ocp a -> C ocp a -> H ocp a -> CollOcpConstraints ocp n deg (Vector a)
 fillCollConstraints x r c h =
   CollOcpConstraints
   { coCollPoints = jreplicate $ jreplicate $ catJV r
@@ -122,19 +132,20 @@ fillCollConstraints x r c h =
 
 
 fillCollTraj ::
-  forall x z u p n deg a .
-  ( Vectorize x, Vectorize z, Vectorize u, Vectorize p
+  forall ocp n deg a .
+  ( Vectorize (X ocp), Vectorize (Z ocp), Vectorize (U ocp), Vectorize (P ocp)
   , Dim n, Dim deg )
-  => x a -> z a -> u a -> p a -> a -> CollTraj x z u p n deg (Vector a)
+  => X ocp a -> Z ocp a -> U ocp a -> P ocp a -> a
+  -> CollTraj ocp n deg (Vector a)
 fillCollTraj x = fillCollTraj' x x
 
 -- | first x argument fills the non-collocation points
 fillCollTraj' ::
-  forall x z u p n deg a .
-  ( Vectorize x, Vectorize z, Vectorize u, Vectorize p
+  forall ocp n deg a .
+  ( Vectorize (X ocp), Vectorize (Z ocp), Vectorize (U ocp), Vectorize (P ocp)
   , Dim n, Dim deg )
-  => x a -> x a -> z a -> u a -> p a -> a
-  -> CollTraj x z u p n deg (Vector a)
+  => X ocp a -> X ocp a -> Z ocp a -> U ocp a -> P ocp a -> a
+  -> CollTraj ocp n deg (Vector a)
 fillCollTraj' x' x z u p t =
   fmapCollTraj'
   (const x')
@@ -143,40 +154,40 @@ fillCollTraj' x' x z u p t =
   (const u)
   (const p)
   (const t)
-  (split (jfill () :: J (CollTraj x z u p n deg) (Vector ())))
+  (split (jfill () :: J (CollTraj ocp n deg) (Vector ())))
 
 fmapCollTraj ::
-  forall x1 x2 z1 z2 u1 u2 p1 p2 n deg a b .
-  ( Vectorize x1, Vectorize x2
-  , Vectorize z1, Vectorize z2
-  , Vectorize u1, Vectorize u2
-  , Vectorize p1, Vectorize p2
+  forall ocp1 ocp2 n deg a b .
+  ( Vectorize (X ocp1), Vectorize (X ocp2)
+  , Vectorize (Z ocp1), Vectorize (Z ocp2)
+  , Vectorize (U ocp1), Vectorize (U ocp2)
+  , Vectorize (P ocp1), Vectorize (P ocp2)
   , Dim n, Dim deg )
-  => (x1 a -> x2 b)
-  -> (z1 a -> z2 b)
-  -> (u1 a -> u2 b)
-  -> (p1 a -> p2 b)
+  => (X ocp1 a -> X ocp2 b)
+  -> (Z ocp1 a -> Z ocp2 b)
+  -> (U ocp1 a -> U ocp2 b)
+  -> (P ocp1 a -> P ocp2 b)
   -> (a -> b)
-  -> CollTraj x1 z1 u1 p1 n deg (Vector a)
-  -> CollTraj x2 z2 u2 p2 n deg (Vector b)
+  -> CollTraj ocp1 n deg (Vector a)
+  -> CollTraj ocp2 n deg (Vector b)
 fmapCollTraj fx = fmapCollTraj' fx fx
 
 -- | first x argument maps over the non-collocation points
 fmapCollTraj' ::
-  forall x1 x2 z1 z2 u1 u2 p1 p2 n deg a b .
-  ( Vectorize x1, Vectorize x2
-  , Vectorize z1, Vectorize z2
-  , Vectorize u1, Vectorize u2
-  , Vectorize p1, Vectorize p2
+  forall ocp1 ocp2 n deg a b .
+  ( Vectorize (X ocp1), Vectorize (X ocp2)
+  , Vectorize (Z ocp1), Vectorize (Z ocp2)
+  , Vectorize (U ocp1), Vectorize (U ocp2)
+  , Vectorize (P ocp1), Vectorize (P ocp2)
   , Dim n, Dim deg )
-  => (x1 a -> x2 b)
-  -> (x1 a -> x2 b)
-  -> (z1 a -> z2 b)
-  -> (u1 a -> u2 b)
-  -> (p1 a -> p2 b)
+  => (X ocp1 a -> X ocp2 b)
+  -> (X ocp1 a -> X ocp2 b)
+  -> (Z ocp1 a -> Z ocp2 b)
+  -> (U ocp1 a -> U ocp2 b)
+  -> (P ocp1 a -> P ocp2 b)
   -> (a -> b)
-  -> CollTraj x1 z1 u1 p1 n deg (Vector a)
-  -> CollTraj x2 z2 u2 p2 n deg (Vector b)
+  -> CollTraj ocp1 n deg (Vector a)
+  -> CollTraj ocp2 n deg (Vector b)
 fmapCollTraj' fx' fx fz fu fp ft (CollTraj tf1 p stages1 xf) =
   CollTraj tf2 (fj fp p) stages2 (fj fx' xf)
   where

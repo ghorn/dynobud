@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
+{-# Language TypeFamilies #-}
 {-# Language ScopedTypeVariables #-}
 {-# Language PolyKinds #-}
 
@@ -16,6 +17,7 @@ import Accessors ( Lookup, flatten, accessors )
 
 import Dyno.View.Unsafe.View ( unJ )
 
+import Dyno.Ocp
 import Dyno.TypeVecs ( Vec )
 import Dyno.Vectorize ( Vectorize, fill )
 import Dyno.View.View ( View(..) )
@@ -26,17 +28,22 @@ import Dyno.DirectCollocation.Types ( CollTraj(..), CollStage(..), CollPoint(..)
 import Dyno.DirectCollocation.Quadratures ( timesFromTaus )
 
 toMatlab ::
-  forall x z u p r c h o q n deg
+  forall ocp x z u p o n deg
   . ( Lookup (x Double), Vectorize x
     , Lookup (z Double), Vectorize z
     , Lookup (u Double), Vectorize u
     , Lookup (o Double), Vectorize o
     , Lookup (p Double), Vectorize p
+    , X ocp ~ x
+    , Z ocp ~ z
+    , U ocp ~ u
+    , P ocp ~ p
+    , O ocp ~ o
     , Dim deg
     , Dim n
     )
-  => CollProblem x z u p r c h o q n deg
-  -> CollTraj x z u p n deg (Vector Double)
+  => CollProblem ocp n deg
+  -> CollTraj ocp n deg (Vector Double)
   -> IO String
 toMatlab cp ct@(CollTraj tf' p' stages' xf) = do
   outs <- cpOutputs cp (cat ct)
