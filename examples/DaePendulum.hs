@@ -16,13 +16,12 @@ import Data.Vector ( Vector )
 import Accessors
 
 import Dyno.Vectorize
-import Dyno.View.View ( J, jfill )
-import Dyno.TypeVecs
+import Dyno.View.View ( View(..), J )
 import Dyno.Solvers
 import Dyno.Nlp
 import Dyno.NlpUtils
 import Dyno.Ocp
-import Dyno.DirectCollocation.Formulate ( CollProblem(..), makeCollProblem )
+import Dyno.DirectCollocation.Formulate ( CollProblem(..), makeCollProblem, makeGuess )
 import Dyno.DirectCollocation.Types ( CollTraj )
 import Dyno.DirectCollocation.Dynamic ( toMeta )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..) )
@@ -36,7 +35,7 @@ type instance U PendOcp = PendU
 type instance P PendOcp = PendP
 type instance R PendOcp = PendR
 type instance O PendOcp = PendO
-type instance C PendOcp = Vec 8
+type instance C PendOcp = PendBc
 type instance H PendOcp = None
 type instance Q PendOcp = None
 
@@ -44,12 +43,14 @@ data PendX a = PendX { pX  :: a
                      , pY  :: a
                      , pVx :: a
                      , pVy :: a
+                     , pTorque :: a
                      } deriving (Functor, Generic, Generic1, Show)
 data PendZ a = PendZ { pTau :: a}  deriving (Functor, Generic, Generic1, Show)
-data PendU a = PendU { pTorque :: a } deriving (Functor, Generic, Generic1, Show)
+data PendU a = PendU { pTorqueDot :: a } deriving (Functor, Generic, Generic1, Show)
 data PendP a = PendP { pMass :: a } deriving (Functor, Generic, Generic1, Show)
-data PendR a = PendR a a a a a deriving (Functor, Generic, Generic1, Show)
+data PendR a = PendR a a a a a a deriving (Functor, Generic, Generic1, Show)
 data PendO a = PendO deriving (Functor, Generic, Generic1, Show)
+data PendBc a = PendBc (PendX a) (PendX a) deriving (Functor, Generic, Generic1, Show)
 
 instance Vectorize PendX
 instance Vectorize PendZ
@@ -57,6 +58,7 @@ instance Vectorize PendU
 instance Vectorize PendP
 instance Vectorize PendR
 instance Vectorize PendO
+instance Vectorize PendBc
 
 instance Lookup (PendX ())
 instance Lookup (PendZ ())
@@ -64,27 +66,29 @@ instance Lookup (PendU ())
 instance Lookup (PendO ())
 instance Lookup (PendP ())
 
-mayer :: Num a => t -> PendX a -> PendX a -> None a -> PendP a -> a
-mayer _ _ _ _ _ = 0
+mayer :: a -> PendX a -> PendX a -> None a -> PendP a -> a
+mayer tf _ _ _ _ = tf
 
 lagrange :: Floating a => PendX a -> PendZ a -> PendU a -> PendP a -> PendO a -> a -> a -> a
-lagrange x _ u _ _ _ _ = vx*vx + vy*vy + 1e-4*torque**2
+lagrange _ _ u _ _ _ tf = 1e-3*torque'**2 / tf
   where
-    PendX _ _ vx vy = x
-    PendU torque = u
+    PendU torque' = u
 
 r :: Floating a => a
 r = 0.3
 
 pendDae :: Floating a => PendX a -> PendX a -> PendZ a -> PendU a -> PendP a -> a -> (PendR a, PendO a)
-pendDae (PendX x' y' vx' vy') (PendX x y vx vy) (PendZ tau) (PendU torque) (PendP m) _ =
-  (PendR (x' - vx) (y' - vy)
-   (m*vx' + x*tau - fx)
-   (m*vy' + y*tau - fy)
-   (x*vx' + y*vy' + (vx*vx + vy*vy))
-  , PendO
-  )
+pendDae (PendX x' y' vx' vy' torque') (PendX x y vx vy torque)
+  (PendZ tau) (PendU uTorque') (PendP m) _ = (residual, outputs)
   where
+    residual =
+      PendR (x' - vx) (y' - vy)
+        (m*vx' + x*tau - fx)
+        (m*vy' + y*tau - fy)
+        (x*vx' + y*vy' + (vx*vx + vy*vy))
+        (torque' - uTorque')
+    outputs = PendO
+
     fx =  torque*y
     fy = -torque*x + m*9.8
 
@@ -96,57 +100,85 @@ pendOcp = OcpPhase { ocpMayer = mayer
                    , ocpBc = bc
                    , ocpPathC = pathc
                    , ocpPathCBnds = None
-                   , ocpBcBnds = fill (Just 0, Just 0)
+                   , ocpBcBnds = bcBnds
                    , ocpXbnd = xbnd
                    , ocpUbnd = ubnd
-                   , ocpZbnd = fill (Nothing, Nothing)
+                   , ocpZbnd = PendZ (Just (-200), Just 200)
                    , ocpPbnd = PendP (Just 0.3, Just 0.3)
-                   , ocpTbnd = (Just 4, Just 10)
+                   , ocpTbnd = (Just 0.1, Just 5)
                    , ocpObjScale      = Nothing
                    , ocpTScale        = Nothing
-                   , ocpXScale        = Nothing
-                   , ocpZScale        = Nothing
-                   , ocpUScale        = Nothing
-                   , ocpPScale        = Nothing
+                   , ocpXScale        = Just pendXScale
+                   , ocpZScale        = Just (PendZ 10)
+                   , ocpUScale        = Just (PendU 50)
+                   , ocpPScale        = Just (PendP 0.3)
                    , ocpResidualScale = Nothing
-                   , ocpBcScale       = Nothing
-                   , ocpPathCScale    = Nothing
+                   , ocpBcScale       = Just $ PendBc pendXScale pendXScale
+                   , ocpPathCScale    = Just None
                    }
+pendXScale :: PendX Double
+pendXScale = PendX 0.3 0.3 1 1 10
 
 pathc :: Floating a => PendX a -> PendZ a -> PendU a -> PendP a -> PendO a -> a -> None a
 pathc _ _ _ _ _ _ = None
 
 xbnd :: PendX Bounds
-xbnd = PendX { pX =  (Just (-10), Just 10)
-             , pY =  (Just (-10), Just 10)
-             , pVx = (Just (-10), Just 10)
-             , pVy = (Just (-10), Just 10)
+xbnd = PendX { pX =  (Nothing, Nothing)
+             , pY =  (Nothing, Nothing)
+             , pVx = (Nothing, Nothing)
+             , pVy = (Nothing, Nothing)
+             , pTorque = (Just (-30), Just 30)
              }
 
 ubnd :: PendU Bounds
-ubnd = PendU (Just (-40), Just 40)
+ubnd = PendU (Just (-100), Just 100)
 
-bc :: Floating a => PendX a -> PendX a -> None a -> PendP a -> a -> Vec 8 a
-bc (PendX x0 y0 vx0 vy0) (PendX xf yf vxf vyf) _ _ _ =
-  mkVec'
-  [ x0
-  , y0 + r
-  , vx0
-  , vy0
-  , xf
-  , yf - r
-  , vxf
-  , vyf
-  ]
+bc :: Floating a => PendX a -> PendX a -> None a -> PendP a -> a -> PendBc a
+bc x0 xf _ _ _ = PendBc x0 xf
 
-type NCollStages = 80
+bcBnds :: PendBc Bounds
+bcBnds =
+  PendBc
+  (PendX
+   { pX = (Just 0, Just 0)
+   , pY = (Just (-r), Just (-r))
+   , pVx = (Just 0, Just 0)
+   , pVy = (Just 0, Just 0)
+   , pTorque = (Nothing, Nothing)
+   })
+  (PendX
+   { pX = (Nothing, Nothing) -- LICQ
+   , pY = (Just r, Just r)
+   , pVx = (Just 0, Just 0)
+   , pVy = (Nothing, Nothing) -- LICQ
+   , pTorque = (Nothing, Nothing)
+   })
+
+type NCollStages = 120
 type CollDeg = 3
 
 guess :: J (CollTraj PendOcp NCollStages CollDeg) (Vector Double)
-guess = jfill 1
+guess = cat $ makeGuess Radau tf guessX guessZ guessU parm
+  where
+    tf = 1
+    guessX t = PendX { pX =   r * sin q
+                     , pY = - r * cos q
+                     , pVx = r*w*cos q
+                     , pVy = r*w*sin q
+                     , pTorque = 0
+                     }
+      where
+        q = pi*t/tf
+        w = pi/tf
+    guessZ _ = PendZ {pTau = 0}
+    guessU _ = PendU {pTorqueDot = 0}
+    parm = PendP 0.3
 
 solver :: Solver
-solver = ipoptSolver { options = [("linear_solver", Opt "ma86")]}
+solver = ipoptSolver { options = [ ("expand", Opt True)
+                                 , ("linear_solver", Opt "ma86")
+                                 , ("ma86_order", Opt "metis")
+                                 ]}
 
 solver2 :: Solver
 solver2 = ipoptSolver { options = [("expand", Opt True)] }
