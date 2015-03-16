@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
+{-# Language TypeFamilies #-}
 {-# Language DataKinds #-}
 
 module Main ( main ) where
@@ -29,6 +30,17 @@ import Dynoplot.Callback ( withCallback )
 type NCollStages = 100
 type CollDeg = 2
 
+data GliderOcp
+type instance X GliderOcp = AcX
+type instance Z GliderOcp = None
+type instance U GliderOcp = AcU
+type instance P GliderOcp = None
+type instance R GliderOcp = AcX
+type instance O GliderOcp = None
+type instance C GliderOcp = AcX
+type instance H GliderOcp = None
+type instance Q GliderOcp = None
+
 mayer :: Floating a => a -> AcX a -> AcX a -> None a -> None a -> a
 mayer _ _ _ _ _ = 0
 
@@ -56,7 +68,7 @@ dae x' x _ u _ _ = (aircraftDae (mass, inertia) fcs mcs refs x' x u, None)
     mcs = bettyMc
     refs = bettyRefs
 
-ocp :: OcpPhase AcX None AcU None AcX None AcX None None
+ocp :: OcpPhase GliderOcp
 ocp = OcpPhase { ocpMayer = mayer
                , ocpLagrange = lagrange
                , ocpQuadratures = \_ _ _ _ _ _ _ -> None
@@ -112,15 +124,13 @@ main :: IO ()
 main = do
   cp <- makeCollProblem Legendre ocp
   let nlp = cpNlp cp
-  withCallback $ \cb -> do
-    let guess = jfill 1
+  withCallback $ \send -> do
+    let guess = jfill 1 :: J (CollTraj GliderOcp NCollStages CollDeg) (Vector Double)
+        meta = toMeta (Proxy :: Proxy GliderOcp)
 
-        cb' :: J (CollTraj AcX None AcU None NCollStages CollDeg) (Vector Double) -> IO Bool
         cb' traj = do
           plotPoints <- cpPlotPoints cp traj
-          let proxy :: Proxy (CollTraj AcX None AcU None NCollStages CollDeg)
-              proxy = Proxy
-          cb (plotPoints, toMeta (Proxy :: Proxy None) (Proxy :: Proxy None) proxy)
+          send (plotPoints, meta)
 
     (msg,_) <- solveNlp ipoptSolver (nlp { nlpX0 = guess }) (Just cb')
     case msg of Left msg' -> putStrLn $ "optimization failed, message: " ++ msg'

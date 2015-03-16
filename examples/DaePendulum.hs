@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
+{-# Language TypeFamilies #-}
 {-# Language FlexibleInstances #-}
 {-# Language DeriveFunctor #-}
 {-# Language DeriveGeneric #-}
@@ -17,13 +18,22 @@ import Dyno.Vectorize
 import Dyno.View.View ( J, jfill )
 import Dyno.TypeVecs
 import Dyno.Solvers
---import Dyno.Sqp.Sqp
---import Dyno.Sqp.LineSearch
 import Dyno.Nlp
 import Dyno.NlpUtils
 import Dyno.Ocp
 import Dyno.DirectCollocation
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..) )
+
+data PendOcp
+type instance X PendOcp = PendX
+type instance Z PendOcp = PendZ
+type instance U PendOcp = PendU
+type instance P PendOcp = PendP
+type instance R PendOcp = PendR
+type instance O PendOcp = PendO
+type instance C PendOcp = Vec 8
+type instance H PendOcp = None
+type instance Q PendOcp = None
 
 data PendX a = PendX { pX  :: a
                      , pY  :: a
@@ -71,7 +81,7 @@ pendDae (PendX x' y' vx' vy') (PendX x y vx vy) (PendZ tau) (PendU torque) (Pend
     fx =  torque*y
     fy = -torque*x + m*9.8
 
-pendOcp :: OcpPhase PendX PendZ PendU PendP PendR PendO (Vec 8) None None
+pendOcp :: OcpPhase PendOcp
 pendOcp = OcpPhase { ocpMayer = mayer
                    , ocpLagrange = lagrange
                    , ocpQuadratures = \_ _ _ _ _ _ _ -> None
@@ -125,7 +135,7 @@ bc (PendX x0 y0 vx0 vy0) (PendX xf yf vxf vyf) _ _ _ =
 type NCollStages = 80
 type CollDeg = 3
 
-guess :: J (CollTraj PendX PendZ PendU PendP NCollStages CollDeg) (Vector Double)
+guess :: J (CollTraj PendOcp NCollStages CollDeg) (Vector Double)
 guess = jfill 1
 
 solver :: Solver
