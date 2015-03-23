@@ -81,8 +81,8 @@ mkJ' :: forall f a . (View f, Viewable a) => a -> Either String (J f a)
 mkJ' x
   | ny' == 1 && nx == nx' = Right (UnsafeJ x)
   | ny' == 0 && nx == nx' = Right (UnsafeJ (vrecoverDimension x 0))
-  | otherwise = Left $ "mkJ length mismatch: typed size: " ++ show nx ++
-                ", actual size: " ++ show nx'
+  | otherwise = Left $ "mkJ length mismatch: typed size: " ++ show (nx,1::Int) ++
+                ", actual size: " ++ show (nx',ny')
   where
     nx = size (Proxy :: Proxy f)
     nx' = vsize1 x
