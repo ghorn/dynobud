@@ -23,10 +23,10 @@ import qualified Data.Vector as V
 import Data.Vector ( Vector )
 
 import Casadi.CMatrix ( CMatrix )
-import qualified Casadi.CMatrix as CM
 
-import Dyno.View.Unsafe.View ( unsafeUnJ, mkJ )
-import Dyno.View.Unsafe.M ( M(UnsafeM), unM )
+import Dyno.View.Unsafe.View ( unsafeUnJ, mkJ' )
+import Dyno.View.Unsafe.M ( unM, mkM' )
+import qualified Dyno.View.M as M
 
 import Dyno.View.View ( View(..), J )
 import Dyno.View.Viewable ( Viewable )
@@ -47,7 +47,7 @@ instance View x => Scheme (J x) where
   toVector = V.singleton . toFioMat
   sizeList p = [matSizes p]
 
-instance (View f, View g) => Scheme (M f g) where
+instance (View f, View g) => Scheme (M.M f g) where
   numFields = const 1
   fromVector v = case V.toList v of
     [m] -> case fromMat m of Left err -> error $ "Scheme fromVector M error: " ++ err
@@ -59,33 +59,12 @@ instance (View f, View g) => Scheme (M f g) where
 
 instance View f => FunctionIO (J f) where
   toFioMat = unsafeUnJ
-  fromMat x
-    | n1 /= n1' = mismatch
-    | n1 /= 0 && n2 /= n2' = mismatch
-    | n1 == 0 && not (n2 `elem` [0,1]) = mismatch
-    | otherwise = Right (mkJ x)
-    where
-      mismatch = Left $ "length mismatch: typed size: " ++ show (n1',n2') ++
-                 ", actual size: " ++ show (n1,n2)
-      n1' = size (Proxy :: Proxy f)
-      n2' = 1
-      n1 = CM.size1 x
-      n2 = CM.size2 x
+  fromMat = mkJ'
   matSizes = const (size (Proxy :: Proxy f), 1)
 
-instance (View f, View g) => FunctionIO (M f g) where
+instance (View f, View g) => FunctionIO (M.M f g) where
   toFioMat = unM
-  fromMat x
-    | n2 /= n2' = mismatch
-    | n1 /= n1' = mismatch
-    | otherwise = Right (UnsafeM x)
-    where
-      mismatch = Left $ "length mismatch: typed size: " ++ show (n1',n2') ++
-                 ", actual size: " ++ show (n1,n2)
-      n1' = size (Proxy :: Proxy f)
-      n2' = size (Proxy :: Proxy g)
-      n1 = CM.size1 x
-      n2 = CM.size2 x
+  fromMat = mkM'
   matSizes = const (size (Proxy :: Proxy f), size (Proxy :: Proxy g))
 
 class Scheme (f :: * -> *) where
@@ -229,7 +208,7 @@ instance GToVector f a => GToVector (M1 i d f) a where
 instance View f => GToVector (Rec0 (J f a)) a where
   gtoVector = Seq.singleton . unsafeUnJ . unK1
 
-instance (View f, View g) => GToVector (Rec0 (M f g a)) a where
+instance (View f, View g) => GToVector (Rec0 (M.M f g a)) a where
   gtoVector = Seq.singleton . unM . unK1
 
 --instance GToVector U1 a where
