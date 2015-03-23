@@ -48,7 +48,7 @@ profile :: forall ocp x z u p r o c h q .
   , z ~ Z ocp
   )
   => QuadratureRoots
-  -> OcpPhase ocp
+  -> OcpPhase' ocp
   -> (forall deg n . (Dim deg, Dim n) => J (CollTraj ocp n deg) (Vector Double))
   -> Solver
   -> [(Int,Int)]
@@ -77,7 +77,7 @@ profileOne ::
   , z ~ Z ocp
   )
   => QuadratureRoots
-  -> OcpPhase ocp
+  -> OcpPhase' ocp
   -> J (CollTraj ocp n deg) (Vector Double)
   -> Solver
   -> IO ProfileReport

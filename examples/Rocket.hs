@@ -26,7 +26,7 @@ import Dyno.DirectCollocation.Dynamic ( toMeta )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..) )
 import Dynoplot.Callback ( withCallback )
 
-rocketOcp :: OcpPhase RocketOcp
+rocketOcp :: OcpPhase' RocketOcp
 rocketOcp =
   OcpPhase
   { ocpMayer = mayer

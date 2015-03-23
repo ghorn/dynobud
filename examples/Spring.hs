@@ -26,7 +26,7 @@ import Dyno.DirectCollocation.Dynamic ( toMeta )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..) )
 import Dynoplot.Callback ( withCallback )
 
-springOcp :: OcpPhase SpringOcp
+springOcp :: OcpPhase' SpringOcp
 springOcp =
   OcpPhase
   { ocpMayer = mayer

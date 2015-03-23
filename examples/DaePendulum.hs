@@ -92,7 +92,7 @@ pendDae (PendX x' y' vx' vy' torque') (PendX x y vx vy torque)
     fx =  torque*y
     fy = -torque*x + m*9.8
 
-pendOcp :: OcpPhase PendOcp
+pendOcp :: OcpPhase' PendOcp
 pendOcp = OcpPhase { ocpMayer = mayer
                    , ocpLagrange = lagrange
                    , ocpQuadratures = \_ _ _ _ _ _ _ -> None

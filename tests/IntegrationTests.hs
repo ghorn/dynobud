@@ -74,7 +74,7 @@ runIntegration ::
   -> x Double -> p Double -> Double
   -> IO (Either String (x Double))
 runIntegration _ _ roots ode x0 p tf = do
-  let ocp :: OcpPhase (IntegrationOcp x p)
+  let ocp :: OcpPhase' (IntegrationOcp x p)
       ocp = OcpPhase
         { ocpMayer = \_ _ _ _ _ -> 0
         , ocpLagrange = \_ _ _ _ _ _ _ -> 0

@@ -69,7 +69,7 @@ dae x' x _ u _ _ = (aircraftDae (mass, inertia) fcs mcs refs x' x u, None)
     mcs = bettyMc
     refs = bettyRefs
 
-ocp :: OcpPhase GliderOcp
+ocp :: OcpPhase' GliderOcp
 ocp = OcpPhase { ocpMayer = mayer
                , ocpLagrange = lagrange
                , ocpQuadratures = \_ _ _ _ _ _ _ -> None

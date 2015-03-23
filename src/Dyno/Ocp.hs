@@ -4,6 +4,7 @@
 module Dyno.Ocp
        ( OcpPhase(..)
        , OcpPhaseWithCov(..)
+       , OcpPhase'
        , X
        , Z
        , U
@@ -49,6 +50,9 @@ type family H a :: * -> *
 -- | quadrature state
 type family Q a :: * -> *
 
+-- | OcpPhase using type families to compress type parameters
+type OcpPhase' ocp = OcpPhase (X ocp) (Z ocp) (U ocp) (P ocp) (R ocp) (O ocp) (C ocp) (H ocp) (Q ocp)
+
 
 -- | One stage of an optimal control problem, solvable as a stand-alone optimal control problem.
 --
@@ -79,46 +83,46 @@ type family Q a :: * -> *
 -- perhaps this should be:
 --
 -- > c(x(0), 0, x(T), T) == 0
-data OcpPhase ocp =
+data OcpPhase x z u p r o c h q =
   OcpPhase
   { -- | the Mayer term @Jm(T, x(0), x(T), q(T), p)@
-    ocpMayer :: Sxe -> X ocp Sxe -> X ocp Sxe -> Q ocp Sxe -> P ocp Sxe -> Sxe
+    ocpMayer :: Sxe -> x Sxe -> x Sxe -> q Sxe -> p Sxe -> Sxe
     -- | the Lagrange term @Jl(x(t),z(t),u(t),p,o,t,T)@
-  , ocpLagrange :: X ocp Sxe -> Z ocp Sxe -> U ocp Sxe -> P ocp Sxe -> O ocp Sxe -> Sxe -> Sxe -> Sxe
+  , ocpLagrange :: x Sxe -> z Sxe -> u Sxe -> p Sxe -> o Sxe -> Sxe -> Sxe -> Sxe
     -- | derivative of quadrature state @q(x(t),z(t),u(t),p,o,t,T)@
-  , ocpQuadratures :: X ocp Sxe -> Z ocp Sxe -> U ocp Sxe -> P ocp Sxe -> O ocp Sxe -> Sxe -> Sxe -> Q ocp Sxe
+  , ocpQuadratures :: x Sxe -> z Sxe -> u Sxe -> p Sxe -> o Sxe -> Sxe -> Sxe -> q Sxe
     -- | fully implicit differential-algebraic equation of the form:
     --
     -- > f(x'(t), x(t), z(t), u(t), p, t) == 0
-  , ocpDae :: X ocp Sxe -> X ocp Sxe -> Z ocp Sxe -> U ocp Sxe -> P ocp Sxe -> Sxe -> (R ocp Sxe, O ocp Sxe)
+  , ocpDae :: x Sxe -> x Sxe -> z Sxe -> u Sxe -> p Sxe -> Sxe -> (r Sxe, o Sxe)
     -- | the boundary conditions @clb <= c(x(0), x(T), q(T), T) <= cub@
-  , ocpBc :: X ocp Sxe -> X ocp Sxe -> Q ocp Sxe -> P ocp Sxe -> Sxe -> C ocp Sxe
+  , ocpBc :: x Sxe -> x Sxe -> q Sxe -> p Sxe -> Sxe -> c Sxe
     -- | the path constraints @h(x(t), z(t), u(t), p, t)@
-  , ocpPathC :: X ocp Sxe -> Z ocp Sxe -> U ocp Sxe -> P ocp Sxe -> O ocp Sxe -> Sxe -> H ocp Sxe
+  , ocpPathC :: x Sxe -> z Sxe -> u Sxe -> p Sxe -> o Sxe -> Sxe -> h Sxe
     -- | the boundary condition bounds @clb <= c(x(0), x(T)) <= cub@
-  , ocpBcBnds :: C ocp Bounds
+  , ocpBcBnds :: c Bounds
     -- | the path constraint bounds @(hlb, hub)@
-  , ocpPathCBnds :: H ocp Bounds
+  , ocpPathCBnds :: h Bounds
     -- | differential state bounds @(xlb, xub)@
-  , ocpXbnd :: X ocp Bounds
+  , ocpXbnd :: x Bounds
     -- | algebraic variable bounds @(zlb, zub)@
-  , ocpZbnd :: Z ocp Bounds
+  , ocpZbnd :: z Bounds
     -- | control bounds @(ulb, uub)@
-  , ocpUbnd :: U ocp Bounds
+  , ocpUbnd :: u Bounds
     -- | parameter bounds @(plb, pub)@
-  , ocpPbnd :: P ocp Bounds
+  , ocpPbnd :: p Bounds
     -- | time bounds @(Tlb, Tub)@
   , ocpTbnd :: Bounds
     -- | scaling
   , ocpObjScale      :: Maybe Double
   , ocpTScale        :: Maybe Double
-  , ocpXScale        :: Maybe (X ocp Double)
-  , ocpZScale        :: Maybe (Z ocp Double)
-  , ocpUScale        :: Maybe (U ocp Double)
-  , ocpPScale        :: Maybe (P ocp Double)
-  , ocpResidualScale :: Maybe (R ocp Double)
-  , ocpBcScale       :: Maybe (C ocp Double)
-  , ocpPathCScale    :: Maybe (H ocp Double)
+  , ocpXScale        :: Maybe (x Double)
+  , ocpZScale        :: Maybe (z Double)
+  , ocpUScale        :: Maybe (u Double)
+  , ocpPScale        :: Maybe (p Double)
+  , ocpResidualScale :: Maybe (r Double)
+  , ocpBcScale       :: Maybe (c Double)
+  , ocpPathCScale    :: Maybe (h Double)
   }
 
 data OcpPhaseWithCov ocp sx sz sw sr sh shr sc =

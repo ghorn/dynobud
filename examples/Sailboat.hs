@@ -208,7 +208,7 @@ xbnd = SbX
 pathc :: t -> t1 -> t2 -> t3 -> t4 -> t5 -> None a
 pathc _ _ _ _ _ _ = None
 
-ocp :: OcpPhase SailboatOcp
+ocp :: OcpPhase' SailboatOcp
 ocp = OcpPhase { ocpMayer = mayer
                , ocpLagrange = lagrange
                , ocpQuadratures = \_ _ _ _ _ _ _ -> None

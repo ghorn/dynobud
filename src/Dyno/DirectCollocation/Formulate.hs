@@ -60,7 +60,7 @@ data CollProblem ocp n deg =
   { cpNlp :: Nlp (CollTraj ocp n deg)
                  JNone
                  (CollOcpConstraints ocp n deg) MX
-  , cpOcp :: OcpPhase ocp
+  , cpOcp :: OcpPhase' ocp
   , cpPlotPoints :: J (CollTraj ocp n deg) (Vector Double)
                     -> IO (DynPlotPoints Double)
   , cpHellaOutputs :: J (CollTraj ocp n deg) (Vector Double)
@@ -91,7 +91,7 @@ makeCollProblem ::
   , u ~ U ocp
   , z ~ Z ocp
   )
-  => QuadratureRoots -> OcpPhase ocp
+  => QuadratureRoots -> OcpPhase' ocp
   -> IO (CollProblem ocp n deg)
 makeCollProblem roots ocp = do
   let -- the collocation points
@@ -324,7 +324,7 @@ makeCollCovProblem ::
   , z ~ Z ocp
   )
   => QuadratureRoots
-  -> OcpPhase ocp
+  -> OcpPhase' ocp
   -> OcpPhaseWithCov ocp sx sz sw sr sh shr sc
   -> IO (CollCovProblem ocp n deg sx sw sh shr sc)
 makeCollCovProblem roots ocp ocpCov = do
@@ -657,7 +657,7 @@ getBg :: forall ocp x r c h deg n .
   , c ~ C ocp
   , r ~ R ocp
   )
-  => OcpPhase ocp
+  => OcpPhase' ocp
   -> CollOcpConstraints ocp n deg (Vector Bounds)
 getBg ocp =
   CollOcpConstraints
