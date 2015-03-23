@@ -119,7 +119,15 @@ ubnd =
                   }
 
 bc :: Floating a => AcX a -> AcX a -> None a -> None a -> a -> AcX a
-bc (AcX x0 v0 dcm0 w0 cs) _ _ _ _ = AcX x0 (v0 - V3 30 0 0) (dcm0 - eye3) w0 cs
+bc (AcX x0 v0 dcm0 w0 cs) _ _ _ _ = AcX x0 (v0 - V3 30 0 0) (dcm0 - eye3') w0 cs
+
+eye3' :: Num a => M33 a
+eye3' =
+  V3
+  (V3 1 0 0)
+  (V3 0 1 0)
+  (V3 0 0 1)
+
 
 main :: IO ()
 main = do
