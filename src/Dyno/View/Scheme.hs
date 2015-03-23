@@ -30,17 +30,7 @@ import Dyno.View.Unsafe.M ( M(UnsafeM), unM )
 
 import Dyno.View.View ( View(..), J )
 import Dyno.View.Viewable ( Viewable )
---import Dyno.Nats
---import Dyno.View.JVec ( JVec )
 
---data MyScheme a = MyScheme (J (JVec D3 (JV Id)) a) (J (JVec D2 (JV Id)) a) deriving (Generic, Generic1, Show)
---instance Scheme MyScheme
-
---go :: MyScheme MX
---go = fromVector (V.fromList [400,500])
---
---og :: V.Vector MX
---og = toVector go
 
 class FunctionIO (f :: * -> *) where
   fromMat :: (CMatrix a, Viewable a) => a -> Either String (f a)
