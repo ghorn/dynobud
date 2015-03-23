@@ -99,8 +99,8 @@ runIntegration _ _ roots ode x0 p tf = do
         , ocpBcScale       = Nothing
         , ocpPathCScale    = Nothing
         }
-  cp  <- makeCollProblem roots ocp :: IO (CollProblem (IntegrationOcp x p) n deg)
-  let guess :: CollTraj (IntegrationOcp x p) n deg (Vector Double)
+  cp  <- makeCollProblem roots ocp :: IO (CollProblem x None None p x None x None None n deg)
+  let guess :: CollTraj x None None p n deg (Vector Double)
       guess = makeGuessSim roots tf x0 (\x _ -> ode x p 0) (\_ _ -> None) p
       nlp = (cpNlp cp) { nlpX0 = cat guess }
   (msg, opt') <- solveNlp solver nlp Nothing
@@ -149,9 +149,9 @@ rk45 f h p x0 = devectorize $ sv $ last sol
     f' :: Double -> SV.Vector Double -> SV.Vector Double
     f' t x = vs $ vectorize $ f (devectorize (sv x)) p t
 
-toXf :: ( Vectorize (X ocp), Vectorize (Z ocp), Vectorize (U ocp), Vectorize (P ocp)
+toXf :: ( Vectorize x, Vectorize z, Vectorize u, Vectorize p
         , Dim n, Dim deg
-        ) => J (CollTraj ocp n deg) (Vector Double)-> X ocp Double
+        ) => J (CollTraj x z u p n deg) (Vector Double)-> x Double
 toXf traj = splitJV xf
   where
     CollTraj _ _ _ xf = split traj

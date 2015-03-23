@@ -21,7 +21,7 @@ import Dyno.Solvers ( Solver(..), Opt(..), ipoptSolver )
 import Dyno.NlpUtils ( solveNlp )
 import Dyno.Nlp ( Nlp(..) )
 import Dyno.DirectCollocation.Formulate ( CollProblem(..), makeCollProblem )
-import Dyno.DirectCollocation.Types ( CollTraj )
+import Dyno.DirectCollocation.Types ( CollTraj' )
 import Dyno.DirectCollocation.Dynamic ( toMeta )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..) )
 import Dynoplot.Callback ( withCallback )
@@ -136,7 +136,7 @@ lagrange _ _ _ _ (SpringO force obj) _ _ = obj + force*force*1e-4
 solver :: Solver
 solver = ipoptSolver { options = [("expand", Opt True)] }
 
-guess :: J (CollTraj SpringOcp NCollStages CollDeg) (Vector Double)
+guess :: J (CollTraj' SpringOcp NCollStages CollDeg) (Vector Double)
 guess = jfill 1
 
 type NCollStages = 100

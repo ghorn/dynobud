@@ -55,44 +55,35 @@ import Dyno.DirectCollocation.Dynamic ( DynPlotPoints, dynPlotPoints )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..), mkTaus, interpolate, timesFromTaus )
 import Dyno.DirectCollocation.Robust
 
-data CollProblem ocp n deg =
+data CollProblem x z u p r o c h q n deg =
   CollProblem
-  { cpNlp :: Nlp (CollTraj ocp n deg)
+  { cpNlp :: Nlp (CollTraj x z u p n deg)
                  JNone
-                 (CollOcpConstraints ocp n deg) MX
-  , cpOcp :: OcpPhase' ocp
-  , cpPlotPoints :: J (CollTraj ocp n deg) (Vector Double)
+                 (CollOcpConstraints x r c h n deg) MX
+  , cpOcp :: OcpPhase x z u p r o c h q
+  , cpPlotPoints :: J (CollTraj x z u p n deg) (Vector Double)
                     -> IO (DynPlotPoints Double)
-  , cpHellaOutputs :: J (CollTraj ocp n deg) (Vector Double)
+  , cpHellaOutputs :: J (CollTraj x z u p n deg) (Vector Double)
                       -> IO ( DynPlotPoints Double
-                            , Vec n ( Vec deg (J (JV (O ocp)) (Vector Double), J (JV (X ocp)) (Vector Double))
-                                    , J (JV (X ocp)) (Vector Double)
+                            , Vec n ( Vec deg (J (JV o) (Vector Double), J (JV x) (Vector Double))
+                                    , J (JV x) (Vector Double)
                                     )
                             )
-  , cpOutputs :: J (CollTraj ocp n deg) (Vector Double)
-                 -> IO (Vec n (Vec deg (O ocp Double, X ocp Double), X ocp Double))
+  , cpOutputs :: J (CollTraj x z u p n deg) (Vector Double)
+                 -> IO (Vec n (Vec deg (o Double, x Double), x Double))
   , cpTaus :: Vec deg Double
   , cpRoots :: QuadratureRoots
   , cpEvalQuadratures :: Vec n (Vec deg Double) -> Double -> IO Double
   }
 
 makeCollProblem ::
-  forall ocp x z u p r o c h q deg n .
+  forall x z u p r o c h q deg n .
   ( Dim deg, Dim n
   , Vectorize x, Vectorize p, Vectorize u, Vectorize z
   , Vectorize r, Vectorize o, Vectorize h, Vectorize c, Vectorize q
-  , x ~ X ocp
-  , q ~ Q ocp
-  , h ~ H ocp
-  , c ~ C ocp
-  , o ~ O ocp
-  , r ~ R ocp
-  , p ~ P ocp
-  , u ~ U ocp
-  , z ~ Z ocp
   )
-  => QuadratureRoots -> OcpPhase' ocp
-  -> IO (CollProblem ocp n deg)
+  => QuadratureRoots -> OcpPhase x z u p r o c h q
+  -> IO (CollProblem x z u p r o c h q n deg)
 makeCollProblem roots ocp = do
   let -- the collocation points
       taus :: Vec deg Double
@@ -185,7 +176,7 @@ makeCollProblem roots ocp = do
             xdots0 = unJVec (split xdot) :: Vec deg (J (JV x) DMatrix)
         return (TV.tvzipWith f outs0 xdots0, d2v xnext)
 
-      mapOutputFun :: J (CollTraj ocp n deg) (Vector Double)
+      mapOutputFun :: J (CollTraj x z u p n deg) (Vector Double)
                       -> IO (Vec n (Vec deg (J (JV o) (Vector Double), J (JV x) (Vector Double)), J (JV x) (Vector Double)))
       mapOutputFun ct = do
         let CollTraj tf p stages _ = split ct
@@ -201,7 +192,7 @@ makeCollProblem roots ocp = do
         T.sequence $ TV.tvzipWith (callOutputFun p h) vstages ks
 
       getHellaOutputs ::
-        J (CollTraj ocp n deg) (Vector Double)
+        J (CollTraj x z u p n deg) (Vector Double)
         -> IO ( DynPlotPoints Double
               , Vec n ( Vec deg (J (JV o) (Vector Double), J (JV x) (Vector Double))
                       , J (JV x) (Vector Double)
@@ -211,11 +202,11 @@ makeCollProblem roots ocp = do
         outputs <- mapOutputFun traj
         return (dynPlotPoints roots (split traj) outputs, outputs)
 
-      getPlotPoints :: J (CollTraj ocp n deg) (Vector Double)
+      getPlotPoints :: J (CollTraj x z u p n deg) (Vector Double)
                        -> IO (DynPlotPoints Double)
       getPlotPoints traj = fmap fst $ getHellaOutputs traj
 
-      getOutputs :: J (CollTraj ocp n deg) (Vector Double)
+      getOutputs :: J (CollTraj x z u p n deg) (Vector Double)
                     -> IO (Vec n (Vec deg (o Double, x Double), x Double))
       getOutputs traj = do
         outputs <- mapOutputFun traj
@@ -224,7 +215,8 @@ makeCollProblem roots ocp = do
             devec = fmap (\(x,y) -> (splitJV x, splitJV y))
         return $ fmap (\(x,y) -> (devec x, splitJV y)) outputs
 
-  let nlp = Nlp {
+  let nlp :: Nlp (CollTraj x z u p n deg) JNone (CollOcpConstraints x r c h n deg) MX
+      nlp = Nlp {
         nlpFG =
            getFg taus
            (bcFun :: SXFun (J (JV x) :*: J (JV x) :*: J (JV q) :*: J (JV p) :*: J (JV Id)) (J (JV c)))
@@ -243,7 +235,7 @@ makeCollProblem roots ocp = do
                   (ocpPbnd ocp)
                   (ocpTbnd ocp)
         , nlpBG = cat (getBg ocp)
-        , nlpX0 = jfill 0 :: J (CollTraj ocp n deg) (Vector Double) -- todo: don't do that
+        , nlpX0 = jfill 0 :: J (CollTraj x z u p n deg) (Vector Double) -- todo: don't do that
         , nlpP = cat JNone
         , nlpLamX0 = Nothing
         , nlpLamG0 = Nothing
@@ -300,7 +292,7 @@ data CollCovProblem ocp n deg sx sw sh shr sc =
              , J (Cov (JV sx)) (Vector Double)
              )
   , ccpSensitivities :: MXFun
-                        (J (CollTraj ocp n deg))
+                        (J (CollTraj' ocp n deg))
                         (CovarianceSensitivities (JV sx) (JV sw) n)
   , ccpCovariances :: MXFun
                       (J (CollTrajCov sx ocp n deg)) (J (CovTraj sx n))
@@ -441,17 +433,10 @@ makeCollCovProblem roots ocp ocpCov = do
                           }
 
 getFg ::
-  forall ocp x z u p r o c h q n deg .
+  forall x z u p r o c h q n deg .
   ( Dim deg, Dim n
   , Vectorize x, Vectorize z, Vectorize u, Vectorize p
   , Vectorize r, Vectorize o, Vectorize c, Vectorize h, Vectorize q
-  , X ocp ~ x
-  , Z ocp ~ z
-  , U ocp ~ u
-  , R ocp ~ r
-  , H ocp ~ h
-  , C ocp ~ c
-  , P ocp ~ p
   )
   -- taus
   => Vec deg Double
@@ -469,11 +454,11 @@ getFg ::
   -- stageFun
   -> ((J (JV Id) :*: J (JV p) :*: J (JVec deg (JV Id)) :*: J (JV x) :*: J (JVec deg (JTuple (JV x) (JV z))) :*: J (JVec deg (JV u))) MX -> (J (JVec deg (JV r)) :*: J (JVec deg (JV o)) :*: J (JVec deg (JV h)) :*: J (JV x)) MX)
   -- collTraj
-  -> J (CollTraj ocp n deg) MX
+  -> J (CollTraj x z u p n deg) MX
   -- parameter
   -> J JNone MX
   -- (objective, constraints)
-  -> (J (JV Id) MX, J (CollOcpConstraints ocp n deg) MX)
+  -> (J (JV Id) MX, J (CollOcpConstraints x r c h n deg) MX)
 getFg taus bcFun mayerFun lagQuadFun quadFun stageFun collTraj _ = (obj, cat g)
   where
     -- split up the design vars
@@ -584,7 +569,7 @@ getFgCov ::
    -- mayerFun
   -> SXFun
       (J (JV Id) :*: J (JV x) :*: J (JV x) :*: J (Cov (JV sx)) :*: J (Cov (JV sx))) (J (JV Id))
-  -> (J (CollTraj ocp n deg) MX -> J JNone MX -> (J (JV Id) MX, J (CollOcpConstraints ocp n deg) MX)
+  -> (J (CollTraj' ocp n deg) MX -> J JNone MX -> (J (JV Id) MX, J (CollOcpConstraints' ocp n deg) MX)
      )
   -> J (CollTrajCov sx ocp n deg) MX
   -> J JNone MX
@@ -649,16 +634,12 @@ getFgCov
     robustifiedPathC = TV.tvzipWith (robustify gammas parm) x0s covs
 
 
-getBg :: forall ocp x r c h deg n .
+getBg :: forall x z u p r o c h q n deg .
   ( Dim n, Dim deg
   , Vectorize x, Vectorize r, Vectorize c, Vectorize h
-  , x ~ X ocp
-  , h ~ H ocp
-  , c ~ C ocp
-  , r ~ R ocp
   )
-  => OcpPhase' ocp
-  -> CollOcpConstraints ocp n deg (Vector Bounds)
+  => OcpPhase x z u p r o c h q
+  -> CollOcpConstraints x r c h n deg (Vector Bounds)
 getBg ocp =
   CollOcpConstraints
   { coCollPoints = jreplicate (jfill (Just 0, Just 0)) -- dae residual constraint
@@ -667,6 +648,7 @@ getBg ocp =
   , coBc = catJV (ocpBcBnds ocp)
   }
   where
+    hbnds :: J (JV h) (Vector Bounds)
     hbnds = catJV (ocpPathCBnds ocp)
 
 evaluateQuadraturesFunction ::
@@ -942,18 +924,14 @@ stageFunction pathConStageFun dynStageCon
 
 -- | make an initial guess
 makeGuess ::
-  forall ocp x z u p deg n .
+  forall x z u p deg n .
   ( Dim n, Dim deg
   , Vectorize x, Vectorize z, Vectorize u, Vectorize p
-  , X ocp ~ x
-  , Z ocp ~ z
-  , U ocp ~ u
-  , P ocp ~ p
   )
   => QuadratureRoots
   -> Double -> (Double -> x Double) -> (Double -> z Double) -> (Double -> u Double)
   -> p Double
-  -> CollTraj ocp n deg (Vector Double)
+  -> CollTraj x z u p n deg (Vector Double)
 makeGuess quadratureRoots tf guessX guessZ guessU parm =
   CollTraj (jfill tf) (catJV parm) guesses (catJV (guessX tf))
   where
@@ -984,13 +962,9 @@ makeGuess quadratureRoots tf guessX guessZ guessU parm =
 
 -- | make an initial guess
 makeGuessSim ::
-  forall ocp x z u p deg n .
+  forall x z u p deg n .
   ( Dim n, Dim deg
   , Vectorize x, Vectorize z, Vectorize u, Vectorize p
-  , X ocp ~ x
-  , Z ocp ~ z
-  , U ocp ~ u
-  , P ocp ~ p
   )
   => QuadratureRoots
   -> Double
@@ -998,7 +972,7 @@ makeGuessSim ::
   -> (x Double -> u Double -> x Double)
   -> (x Double -> Double -> u Double)
   -> p Double
-  -> CollTraj ocp n deg (Vector Double)
+  -> CollTraj x z u p n deg (Vector Double)
 makeGuessSim quadratureRoots tf x00 ode guessU p =
   CollTraj (jfill tf) (catJV p) (cat (JVec stages)) (catJV xf)
   where

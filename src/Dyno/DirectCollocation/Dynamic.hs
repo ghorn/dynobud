@@ -88,16 +88,12 @@ catDynPlotPoints pps =
 
 
 dynPlotPoints ::
-  forall ocp x z u p o n deg a .
+  forall x z u p o n deg a .
   ( Dim n, Dim deg, Real a, Fractional a, Show a
-  , X ocp ~ x
-  , Z ocp ~ z
-  , U ocp ~ u
-  , P ocp ~ p
   , Vectorize x, Vectorize z, Vectorize u, Vectorize o, Vectorize p
   )
   => QuadratureRoots
-  -> CollTraj ocp n deg (Vector a)
+  -> CollTraj x z u p n deg (Vector a)
   -> Vec n (Vec deg (J (JV o) (Vector a), J (JV x) (Vector a)), J (JV x) (Vector a))
   -> DynPlotPoints a
 dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs =

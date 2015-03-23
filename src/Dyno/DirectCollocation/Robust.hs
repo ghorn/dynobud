@@ -66,19 +66,15 @@ instance (View xe, View we, Dim n) => Scheme (CovarianceSensitivities xe we n)
 type Sxe = SXElement
 
 mkComputeSensitivities ::
-  forall ocp x z u p sx sz sw sr deg n .
+  forall x z u p sx sz sw sr deg n .
   ( Dim deg, Dim n, Vectorize x, Vectorize p, Vectorize u, Vectorize z
   , Vectorize sr, Vectorize sw, Vectorize sz, Vectorize sx
-  , X ocp ~ x
-  , Z ocp ~ z
-  , U ocp ~ u
-  , P ocp ~ p
   )
   => QuadratureRoots
   -> (x Sxe -> x Sxe -> z Sxe -> u Sxe -> p Sxe -> Sxe
       -> sx Sxe -> sx Sxe -> sz Sxe -> sw Sxe
       -> sr Sxe)
-  -> IO (J (CollTraj ocp n deg) MX -> CovarianceSensitivities (JV sx) (JV sw) n MX)
+  -> IO (J (CollTraj x z u p n deg) MX -> CovarianceSensitivities (JV sx) (JV sw) n MX)
 mkComputeSensitivities roots covDae = do
   let -- the collocation points
       taus :: Vec deg Double
@@ -111,7 +107,7 @@ mkComputeSensitivities roots covDae = do
         where
           y0 :*: y1 = call sensitivityStageFun (dt :*: p :*: stagetimes :*: x0 :*: xzus)
 
-  let computeAllSensitivities :: J (CollTraj ocp n deg) MX
+  let computeAllSensitivities :: J (CollTraj x z u p n deg) MX
              -> CovarianceSensitivities (JV sx) (JV sw) n MX
       computeAllSensitivities collTraj = CovarianceSensitivities (M.vcat' fs) (M.vcat' ws)
         where
@@ -157,7 +153,7 @@ mkComputeCovariances ::
   )
   => (M (JV sx) (JV sx) MX -> M (JV sx) (JV sw) MX -> J (Cov (JV sw)) MX -> J (JV Id) MX
       -> M (JV sx) (JV sx) MX)
-  -> (J (CollTraj ocp n deg) MX -> CovarianceSensitivities (JV sx) (JV sw) n MX)
+  -> (J (CollTraj x z u p n deg) MX -> CovarianceSensitivities (JV sx) (JV sw) n MX)
   -> J (Cov (JV sw)) DMatrix
   -> IO (J (CollTrajCov sx ocp n deg) MX -> J (CovTraj sx n) MX)
 mkComputeCovariances c2d computeSens qc' = do

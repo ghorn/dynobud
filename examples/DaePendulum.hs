@@ -22,7 +22,7 @@ import Dyno.Nlp
 import Dyno.NlpUtils
 import Dyno.Ocp
 import Dyno.DirectCollocation.Formulate ( CollProblem(..), makeCollProblem, makeGuess )
-import Dyno.DirectCollocation.Types ( CollTraj )
+import Dyno.DirectCollocation.Types ( CollTraj' )
 import Dyno.DirectCollocation.Dynamic ( toMeta )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..) )
 
@@ -157,7 +157,7 @@ bcBnds =
 type NCollStages = 120
 type CollDeg = 3
 
-guess :: J (CollTraj PendOcp NCollStages CollDeg) (Vector Double)
+guess :: J (CollTraj' PendOcp NCollStages CollDeg) (Vector Double)
 guess = cat $ makeGuess Radau tf guessX guessZ guessU parm
   where
     tf = 1

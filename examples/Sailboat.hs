@@ -253,7 +253,7 @@ withPublisher context url f =
                                                ])
     f send
 
-initialGuess :: CollTraj SailboatOcp NCollStages CollDeg (Vector Double)
+initialGuess :: CollTraj' SailboatOcp NCollStages CollDeg (Vector Double)
 initialGuess = makeGuess Legendre tf guessX (const SbZ) guessU SbP
   where
     tf = 20
@@ -283,7 +283,7 @@ main = do
       let guess = cat initialGuess
           meta = toMeta (Proxy :: Proxy SailboatOcp)
 
-          callback :: J (CollTraj SailboatOcp NCollStages CollDeg) (Vector Double) -> IO Bool
+          callback :: J (CollTraj' SailboatOcp NCollStages CollDeg) (Vector Double) -> IO Bool
           callback traj = do
             plotPoints <- cpPlotPoints cp traj
             -- dynoplot

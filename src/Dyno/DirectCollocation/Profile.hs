@@ -30,26 +30,17 @@ data ProfileReport =
 
 toProfileReport ::
   Either String String
-  -> NlpOut (CollTraj ocp n deg) (CollOcpConstraints ocp n deg) (Vector Double)
+  -> NlpOut (CollTraj x z u p n deg) (CollOcpConstraints x r c h n deg) (Vector Double)
   -> IO ProfileReport
 toProfileReport _ _ = return ProfileReport
 
-profile :: forall ocp x z u p r o c h q .
+profile :: forall x z u p r o c h q .
   ( Vectorize x, Vectorize z, Vectorize u, Vectorize p
   , Vectorize r, Vectorize o, Vectorize c, Vectorize h, Vectorize q
-  , x ~ X ocp
-  , q ~ Q ocp
-  , h ~ H ocp
-  , c ~ C ocp
-  , o ~ O ocp
-  , r ~ R ocp
-  , p ~ P ocp
-  , u ~ U ocp
-  , z ~ Z ocp
   )
   => QuadratureRoots
-  -> OcpPhase' ocp
-  -> (forall deg n . (Dim deg, Dim n) => J (CollTraj ocp n deg) (Vector Double))
+  -> OcpPhase x z u p r o c h q
+  -> (forall deg n . (Dim deg, Dim n) => J (CollTraj x z u p n deg) (Vector Double))
   -> Solver
   -> [(Int,Int)]
   -> IO [ProfileReport]
@@ -58,27 +49,18 @@ profile roots ocp guess solver range = do
       go (n,deg) =
         TV.reifyDim n   $ \(Proxy :: Proxy n  ) ->
         TV.reifyDim deg $ \(Proxy :: Proxy deg) ->
-        profileOne roots ocp (guess :: J (CollTraj ocp n deg) (Vector Double)) solver
+        profileOne roots ocp (guess :: J (CollTraj x z u p n deg) (Vector Double)) solver
   mapM go range
 
 profileOne ::
-  forall ocp x z u p r o c h q n deg .
+  forall x z u p r o c h q n deg .
   ( Vectorize x, Vectorize z, Vectorize u, Vectorize p
   , Vectorize r, Vectorize o, Vectorize c, Vectorize h, Vectorize q
   , Dim n, Dim deg
-  , x ~ X ocp
-  , q ~ Q ocp
-  , h ~ H ocp
-  , c ~ C ocp
-  , o ~ O ocp
-  , r ~ R ocp
-  , p ~ P ocp
-  , u ~ U ocp
-  , z ~ Z ocp
   )
   => QuadratureRoots
-  -> OcpPhase' ocp
-  -> J (CollTraj ocp n deg) (Vector Double)
+  -> OcpPhase x z u p r o c h q
+  -> J (CollTraj x z u p n deg) (Vector Double)
   -> Solver
   -> IO ProfileReport
 profileOne roots ocp guess solver = do

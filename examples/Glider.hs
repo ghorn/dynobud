@@ -126,7 +126,7 @@ main = do
   cp <- makeCollProblem Legendre ocp
   let nlp = cpNlp cp
   withCallback $ \send -> do
-    let guess = jfill 1 :: J (CollTraj GliderOcp NCollStages CollDeg) (Vector Double)
+    let guess = jfill 1 :: J (CollTraj' GliderOcp NCollStages CollDeg) (Vector Double)
         meta = toMeta (Proxy :: Proxy GliderOcp)
 
         cb' traj = do
