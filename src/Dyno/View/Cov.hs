@@ -102,5 +102,5 @@ fromMat :: (View f, CMatrix a, Viewable a) => M f f a -> J (Cov f) a
 fromMat (UnsafeM c) = fromMatrix c
 
 fromMatrix :: (View f, CMatrix a, Viewable a) => a -> J (Cov f) a
-fromMatrix x = mkJ $ CM.getNZ (CM.triu (CM.dense x)) slice'
+fromMatrix x = mkJ $ CM.getNZ (CM.triu (CM.densify x)) slice'
 --fromMatrix x = mkJ $ CM.getNZ (CM.triu x) slice'

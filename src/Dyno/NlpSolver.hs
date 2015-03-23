@@ -77,8 +77,8 @@ import qualified Casadi.Core.Classes.GenericType as C
 import qualified Casadi.Core.Classes.IOInterfaceFunction as C
 
 import Casadi.Callback ( makeCallback )
-import Casadi.DMatrix ( DMatrix, ddata )
-import Casadi.Function ( Function, externalFunction )
+import Casadi.DMatrix ( DMatrix, dnonzeros )
+import Casadi.Function ( Function, externalFunction, generateCode )
 import qualified Casadi.Option as Op
 import qualified Casadi.GenericC as Gen
 import Casadi.SharedObject ( soInit )
@@ -167,7 +167,7 @@ getInput scaleFun name = do
   nlpState <- ask
   dmat <- liftIO $ C.ioInterfaceFunction_input__0 (isSolver nlpState) name
   let scale = scaleFun (isScale nlpState)
-  return (mkJ $ ddata $ unJ $ scale (mkJ dmat))
+  return (mkJ $ dnonzeros $ unJ $ scale (mkJ dmat))
 
 getX0 :: View x => NlpSolver x p g (VD x)
 getX0 = getInput xbarToX "x0"
@@ -201,7 +201,7 @@ getOutput scaleFun name = do
   nlpState <- ask
   dmat <- liftIO $ C.ioInterfaceFunction_output__0 (isSolver nlpState) name
   let scale = scaleFun (isScale nlpState)
-  return (mkJ $ ddata $ unJ $ scale (mkJ dmat))
+  return (mkJ $ dnonzeros $ unJ $ scale (mkJ dmat))
 
 getF :: NlpSolver x p g (VD (JV Id))
 getF = getOutput fbarToF "f"
@@ -487,8 +487,8 @@ newtype NlpSolver (x :: * -> *) (p :: * -> *) (g :: * -> *) a =
 generateAndCompile :: String -> Function -> IO Function
 generateAndCompile name f = do
   putStrLn $ "generating " ++ name ++ ".c"
---  writeFile (name ++ ".c") (generateCode f)
-  C.function_generateCode__3 f (name ++ ".c") True
+  writeFile (name ++ ".c") (generateCode f True)
+--  C.function_generateCode__1 f (name ++ ".c") True
   let cmd = "clang"
       args = ["-fPIC","-shared","-Wall","-Wno-unused-variable",name++".c","-o",name++".so"]
   putStrLn (showCommandForUser cmd args)
@@ -553,7 +553,7 @@ runNlpSolver solverStuff nlpFun scaleX scaleG scaleF callback' (NlpSolver nlpMon
         callbackRet <- case callback' of
           Nothing -> return True
           Just callback -> do
-            xval <- fmap (d2v . xbarToX scale . mkJ . CM.dense) $
+            xval <- fmap (d2v . xbarToX scale . mkJ . CM.densify) $
                     C.ioInterfaceFunction_output__2 function' 0
             callback xval
         interrupt <- readIORef intref

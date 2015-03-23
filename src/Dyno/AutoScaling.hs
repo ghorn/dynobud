@@ -18,7 +18,7 @@ import Text.Printf ( printf )
 
 import Casadi.Sparsity ( getRow, getCol )
 import Casadi.SX ( SX )
-import Casadi.DMatrix ( DMatrix, ddata )
+import Casadi.DMatrix ( DMatrix, dnonzeros )
 import qualified Casadi.CMatrix as CM
 
 import Dyno.View.Unsafe.View ( mkJ, unJ )
@@ -42,7 +42,7 @@ toSparse name mat0
     mat = unM $ M.sparse mat0
 
     sp = CM.sparsity mat
-    dat = ddata mat
+    dat = dnonzeros mat
     row = getRow sp
     col = getCol sp
 

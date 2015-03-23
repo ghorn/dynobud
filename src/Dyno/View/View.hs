@@ -53,7 +53,7 @@ v2d :: View f => J f (V.Vector Double) -> J f DMatrix.DMatrix
 v2d = mkJ . CM.fromDVector . unJ
 
 d2v :: View f => J f DMatrix.DMatrix -> J f (V.Vector Double)
-d2v = mkJ . DMatrix.ddata . CM.dense . unJ
+d2v = mkJ . DMatrix.dnonzeros . CM.densify . unJ
 
 fmapJ :: View f => (a -> b) -> J f (Vector a) -> J f (Vector b)
 fmapJ f = mkJ . V.map f . unJ

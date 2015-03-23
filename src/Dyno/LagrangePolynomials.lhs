@@ -113,8 +113,8 @@ import Casadi.SXFunction ( sxFunction )
 import Casadi.Function ( evalDMatrix )
 import Casadi.SharedObject ( soInit )
 import Casadi.SX ( SX, ssym, sgradient )
-import Casadi.DMatrix ( DMatrix, ddata )
-import Casadi.CMatrix ( dense )
+import Casadi.DMatrix ( DMatrix, dnonzeros )
+import Casadi.CMatrix ( densify )
 
 import Dyno.TypeVecs
 
@@ -281,7 +281,7 @@ runComparison = do
   putStrLn "numeric:"
   vals' <- V.mapM (\tau_i -> evalDMatrix zdotAlg (V.fromList (tau_i : sampleTaus'))) (V.fromList sampleTaus')
   let d2d :: DMatrix -> Double
-      d2d x = case V.toList (ddata (dense x)) of
+      d2d x = case V.toList (dnonzeros (densify x)) of
         [y] -> y
         ys -> error $ "d2d: need length 1, got length " ++ show (length ys)
 

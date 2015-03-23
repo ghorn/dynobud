@@ -49,7 +49,7 @@ module Dyno.View.M
 import qualified Data.Vector as V
 import Data.Proxy ( Proxy(..) )
 import Casadi.CMatrix ( CMatrix )
-import Casadi.DMatrix ( DMatrix, ddata, dsparsify )
+import Casadi.DMatrix ( DMatrix, dnonzeros, dsparsify )
 import qualified Casadi.CMatrix as CM
 import qualified Data.Packed.Matrix as HMat
 import qualified Numeric.LinearAlgebra.HMatrix as HMat
@@ -70,7 +70,7 @@ sparse :: (View f, View g) => M f g DMatrix -> M f g DMatrix
 sparse (UnsafeM m) = mkM (dsparsify m)
 
 dense :: (View f, View g, CMatrix a) => M f g a -> M f g a
-dense (UnsafeM m) = mkM (CM.dense m)
+dense (UnsafeM m) = mkM (CM.densify m)
 
 mm :: (View f, View h, CMatrix a) => M f g a -> M g h a -> M f h a
 mm (UnsafeM m0) (UnsafeM m1) = mkM (CM.mm m0 m1)
@@ -287,7 +287,7 @@ toHMat :: forall n m
        => M n m DMatrix -> HMat.Matrix Double
 toHMat (UnsafeM d) = HMat.trans $ (m HMat.>< n) (V.toList v)
   where
-    v = ddata (CM.dense d)
+    v = dnonzeros (CM.densify d)
     n = size (Proxy :: Proxy n)
     m = size (Proxy :: Proxy m)
 
