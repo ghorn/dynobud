@@ -183,10 +183,26 @@ instance (GFromVector f a, GFromVector g a, GNumFields f, GNumFields g) => GFrom
       reproxy = const (Proxy,Proxy)
       (px, py) = reproxy pxy
 
-instance GFromVector f a => GFromVector (M1 i d f) a where
+instance (Datatype d, GFromVector f a) => GFromVector (D1 d f) a where
+  gfromVector name vs p = ret
+    where
+      ret = M1 $ gfromVector (name ++ "," ++ dname) vs $ reproxy p
+      dname = datatypeName ret
+      reproxy :: Proxy (D1 d f a) -> Proxy (f a)
+      reproxy = const Proxy
+
+instance (Constructor c, GFromVector f a) => GFromVector (C1 c f) a where
+  gfromVector name vs p = ret
+    where
+      ret = M1 $ gfromVector (name ++ "," ++ cname) vs $ reproxy p
+      cname = conName ret
+      reproxy :: Proxy (C1 c f a) -> Proxy (f a)
+      reproxy = const Proxy
+
+instance (GFromVector f a) => GFromVector (S1 s f) a where
   gfromVector name vs = M1 . gfromVector name vs . reproxy
     where
-      reproxy :: Proxy (M1 i d f p) -> Proxy (f p)
+      reproxy :: Proxy (S1 s f a) -> Proxy (f a)
       reproxy = const Proxy
 
 instance (FunctionIO f, Viewable a) => GFromVector (Rec0 (f a)) a where
