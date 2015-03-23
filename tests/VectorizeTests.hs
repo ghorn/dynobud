@@ -49,7 +49,7 @@ data Dims where
            , dProxy :: Proxy (n :: k)
            } -> Dims
 instance Show Dims where
-  show (Dims _ p) = "D" ++ show (reflectDim p)
+  show (Dims _ p) = show (reflectDim p)
 
 instance Arbitrary Dims where
   arbitrary = elements [ d0, d1, d2, d3, d4, d10, d100 ]
