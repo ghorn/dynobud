@@ -1,6 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language ScopedTypeVariables #-}
-{-# Language TypeFamilies #-}
 {-# Language RankNTypes #-}
 
 module Dyno.DirectCollocation.Profile

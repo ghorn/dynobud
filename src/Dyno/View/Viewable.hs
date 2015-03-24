@@ -1,5 +1,4 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language TypeFamilies #-}
 
 module Dyno.View.Viewable
        ( Viewable(..)

@@ -1,5 +1,4 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language TypeFamilies #-}
 {-# Language ScopedTypeVariables #-}
 {-# Language DeriveGeneric #-}
 {-# Language PolyKinds #-}
