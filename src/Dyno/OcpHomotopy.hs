@@ -144,8 +144,11 @@ runOcpHomotopy step0 homotopyParams ocpHomotopy guess roots useStartupCallback u
 
   putStrLn "\ninitial solve done, starting homotopy steps"
   let hcb = if useHomotopyCallback then Just homoCallback else Nothing
+      pscale :: Maybe (J (JV p) (Vector Double))
+      pscale = fmap catJV (ocpPScale ocpHomotopy)
   opt1s <- solveNlpHomotopy step0 homotopyParams
            homotopySolver
+           pscale
            (nlpHomotopy { nlpX0    = homoGuessX
                         , nlpLamX0 = Just homoGuessLX
                         , nlpLamG0 = Just homoGuessLG

@@ -87,5 +87,5 @@ main = do
         printf "X: (%.3f,%.3f), P: (%.3f, %.3f), a: %.4f\n" x y px py alpha
         return ()
       pfs = [catJV (P 2 0), catJV (P 3 0)]
-  opt <- solveNlpHomotopy 1e-3 hp solver myNlp pfs Nothing (Just cbp)
+  opt <- solveNlpHomotopy 1e-3 hp solver Nothing myNlp pfs Nothing (Just cbp)
   print opt

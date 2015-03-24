@@ -12,6 +12,7 @@ module Dyno.NlpUtils
        ) where
 
 import Control.Applicative ( Applicative(..) )
+import Data.Maybe ( fromMaybe )
 import qualified Data.Traversable as T
 import Control.Monad ( when, void )
 import Data.Vector ( Vector )
@@ -57,17 +58,19 @@ data HomotopyParams =
   , iterDecrease :: Int
   }
 
+
 -- | solve a homotopy nlp
 solveNlpHomotopy ::
   forall x p g t a .
   (View x, View p, View g, T.Traversable t, Symbolic a)
   => Double -> HomotopyParams
   -> Solver
+  -> Maybe (J p (Vector Double))
   -> Nlp x p g a -> t (J p (Vector Double)) -> Maybe (J (JTuple x p) (Vector Double) -> IO Bool)
   -> Maybe (J x (Vector Double) -> J p (Vector Double) -> Double -> IO ())
   -> IO (t (NlpOut (JTuple x p) g (Vector Double)))
 solveNlpHomotopy userStep hp
-  solverStuff nlp pFs callback callbackP = do
+  solverStuff pscale nlp pFs callback callbackP = do
   when ((reduction hp) >= 1) $ error $ "homotopy reduction factor " ++ show (reduction hp) ++ " >= 1"
   when ((increase hp)  <= 1) $ error $ "homotopy increase factor "  ++ show (increase hp)  ++ " <= 1"
   let fg :: J (JTuple x p) a -> J JNone a -> (J (JV Id) a, J g a)
@@ -75,7 +78,11 @@ solveNlpHomotopy userStep hp
         where
           JTuple x p = split xp
 
-  runNlpSolver solverStuff fg Nothing (nlpScaleG nlp) (nlpScaleF nlp) callback $ do
+      xpscale :: Maybe (J (JTuple x p) (Vector Double))
+      xpscale = case (nlpScaleX nlp, pscale) of
+        (Nothing, Nothing) -> Nothing
+        (xs, ps) -> Just $ cat $ JTuple (fromMaybe (jfill 1) xs) (fromMaybe (jfill 1) ps)
+  runNlpSolver solverStuff fg xpscale (nlpScaleG nlp) (nlpScaleF nlp) callback $ do
     let (lbx,ubx) = unzipJ (nlpBX nlp)
         (lbg,ubg) = unzipJ (nlpBG nlp)
         p0 = nlpP nlp
