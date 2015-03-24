@@ -102,12 +102,16 @@ where
 
 \begin{code}
 {-# OPTIONS_GHC -Wall #-}
-{-# Language FlexibleContexts #-}
-{-# Language GADTs #-}
+{-# Language PolyKinds #-}
 
-module Dyno.LagrangePolynomials ( lagrangeDerivCoeffs, lagrangeXis, runComparison ) where
+module Dyno.LagrangePolynomials
+       ( lagrangeDerivCoeffs, lagrangeXis, runComparison
+       , interpolate
+       ) where
 
+import qualified Data.Foldable as F
 import qualified Data.Vector as V
+import Linear ( Additive, (^*), sumV )
 
 import Casadi.SXFunction ( sxFunction )
 import Casadi.Function ( evalDMatrix )
@@ -117,6 +121,14 @@ import Casadi.DMatrix ( DMatrix, dnonzeros )
 import Casadi.CMatrix ( densify )
 
 import Dyno.TypeVecs
+
+
+interpolate :: (Additive f, Fractional a) => Vec deg a -> Vec deg (f a) -> a -> f a
+interpolate taus0 xs0 tau1 = sumV [x ^* (lagrangeXis taus0' tau1 k) | (k,x) <- zip [0..] xs0']
+  where
+    taus0' = F.toList taus0
+    xs0' = F.toList xs0
+
 
 lagrangeXis :: Fractional a => [a] -> a -> Int -> a
 lagrangeXis taus tau j =

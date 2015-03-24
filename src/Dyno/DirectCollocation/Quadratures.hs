@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language ScopedTypeVariables #-}
-{-# Language FlexibleContexts #-}
 {-# Language DeriveGeneric #-}
+{-# Language FlexibleContexts #-}
 {-# Language PolyKinds #-}
 
 module Dyno.DirectCollocation.Quadratures

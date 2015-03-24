@@ -28,6 +28,7 @@ library
                        Dyno.DirectCollocation.Export
                        Dyno.DirectCollocation.Formulate
                        Dyno.DirectCollocation.Integrate
+                       Dyno.DirectCollocation.Interpolate
                        Dyno.DirectCollocation.Profile
                        Dyno.DirectCollocation.Quadratures
                        Dyno.DirectCollocation.Robust
