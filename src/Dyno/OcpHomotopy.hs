@@ -104,7 +104,7 @@ runOcpHomotopy ::
                    (Vector Double)))
 runOcpHomotopy step0 homotopyParams ocpHomotopy guess roots useStartupCallback useHomotopyCallback
   startupSolver homotopySolver param0 nominalParams makeCallback = do
-  cp0 <- makeCollProblem roots ocpHomotopy
+  cp0 <- makeCollProblem roots ocpHomotopy guess
   callbackHeh <- makeCallback cp0
   let nlp0 = cpNlp cp0
   let nlpHomotopy :: Nlp
@@ -122,7 +122,7 @@ runOcpHomotopy step0 homotopyParams ocpHomotopy guess roots useStartupCallback u
       scb = if useStartupCallback then Just (callback ["homotopy startup solve"]) else Nothing
 
   putStrLn "running startup solver..."
-  (msg0,opt0') <- solveNlp startupSolver (nlp0 { nlpX0 = guess }) scb
+  (msg0,opt0') <- solveNlp startupSolver nlp0 scb
 
   opt0 <- case msg0 of
     Left msg' -> error msg'

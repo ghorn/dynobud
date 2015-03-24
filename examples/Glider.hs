@@ -12,7 +12,6 @@ import Dyno.View.View
 import Dyno.Solvers
 --import Dyno.Sqp.Sqp
 --import Dyno.Sqp.LineSearch
-import Dyno.Nlp
 import Dyno.NlpUtils
 
 import Dyno.Ocp
@@ -130,17 +129,17 @@ eye3' =
 
 main :: IO ()
 main = do
-  cp <- makeCollProblem Legendre ocp
+  let guess = jfill 1 :: J (CollTraj' GliderOcp NCollStages CollDeg) (Vector Double)
+  cp <- makeCollProblem Legendre ocp guess
   let nlp = cpNlp cp
   withCallback $ \send -> do
-    let guess = jfill 1 :: J (CollTraj' GliderOcp NCollStages CollDeg) (Vector Double)
-        meta = toMeta (cpMetaProxy cp)
+    let meta = toMeta (cpMetaProxy cp)
 
         cb' traj = do
           plotPoints <- cpPlotPoints cp traj
           send (plotPoints, meta)
 
-    (msg,_) <- solveNlp ipoptSolver (nlp { nlpX0 = guess }) (Just cb')
+    (msg,_) <- solveNlp ipoptSolver nlp (Just cb')
     case msg of Left msg' -> putStrLn $ "optimization failed, message: " ++ msg'
                 Right _ -> putStrLn "optimization succeeded"
 --    let xopt = xOpt opt

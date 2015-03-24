@@ -185,13 +185,13 @@ solver2 = ipoptSolver { options = [("expand", Opt True)] }
 
 main :: IO ()
 main = do
-  cp  <- makeCollProblem Legendre pendOcp
+  cp  <- makeCollProblem Legendre pendOcp guess
   withCallback $ \send -> do
     let nlp = cpNlp cp
         meta = toMeta (cpMetaProxy cp)
         cb' traj = do
           plotPoints <- cpPlotPoints cp traj
           send (plotPoints, meta)
-    _ <- solveNlp solver (nlp { nlpX0 = guess }) (Just cb')
---  _ <- solveNlp solver2 (nlp { nlpX0 = guess }) Nothing
+    _ <- solveNlp solver nlp (Just cb')
+--  _ <- solveNlp solver2 nlp Nothing
     return ()

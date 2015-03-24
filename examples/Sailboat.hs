@@ -33,7 +33,7 @@ import Dyno.View.View ( View(..), J )
 import Dyno.View.JV ( splitJV )
 import Dyno.Solvers
 import Dyno.NlpUtils
-import Dyno.Nlp
+import Dyno.Nlp ( NlpOut(..) )
 import Dyno.Ocp
 import Dyno.DirectCollocation.Formulate
 import Dyno.DirectCollocation.Types
@@ -274,13 +274,12 @@ solver = ipoptSolver
 
 main :: IO ()
 main = do
-  cp <- makeCollProblem Legendre ocp
+  cp <- makeCollProblem Legendre ocp (cat initialGuess)
   let nlp = cpNlp cp
   ZMQ.withContext $ \context ->
     withPublisher context urlDynoPlot $ \sendDynoPlotMsg -> do
 --    withPublisher context urlOptTelem $ \sendOptTelemMsg -> do
-      let guess = cat initialGuess
-          meta = toMeta (cpMetaProxy cp)
+      let meta = toMeta (cpMetaProxy cp)
 
           callback :: J (CollTraj' SailboatOcp NCollStages CollDeg) (Vector Double) -> IO Bool
           callback traj = do
@@ -325,7 +324,7 @@ main = do
 --            sendOptTelemMsg "opt_telem" (encodeProto optTelemMsg)
             return True
 
-      (msg0,opt0') <- solveNlp solver (nlp { nlpX0 = guess }) (Just callback)
+      (msg0,opt0') <- solveNlp solver nlp (Just callback)
       opt0 <- case msg0 of Left msg' -> error msg'
                            Right _ -> return opt0'
       let CollTraj endTime' _ _ xf = split (xOpt opt0)

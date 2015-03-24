@@ -84,8 +84,9 @@ makeCollProblem ::
   , Vectorize r, Vectorize o, Vectorize h, Vectorize c, Vectorize q
   )
   => QuadratureRoots -> OcpPhase x z u p r o c h q
+  -> J (CollTraj x z u p n deg) (Vector Double)
   -> IO (CollProblem x z u p r o c h q n deg)
-makeCollProblem roots ocp = do
+makeCollProblem roots ocp guess = do
   let -- the collocation points
       taus :: Vec deg Double
       taus = mkTaus roots
@@ -236,7 +237,7 @@ makeCollProblem roots ocp = do
                   (ocpPbnd ocp)
                   (ocpTbnd ocp)
         , nlpBG = cat (getBg ocp)
-        , nlpX0 = jfill 0 :: J (CollTraj x z u p n deg) (Vector Double) -- todo: don't do that
+        , nlpX0 = guess :: J (CollTraj x z u p n deg) (Vector Double)
         , nlpP = cat JNone
         , nlpLamX0 = Nothing
         , nlpLamG0 = Nothing
@@ -320,8 +321,9 @@ makeCollCovProblem ::
   => QuadratureRoots
   -> OcpPhase' ocp
   -> OcpPhaseWithCov ocp sx sz sw sr sh shr sc
+  -> J (CollTraj x z u p n deg) (Vector Double)
   -> IO (CollCovProblem ocp n deg sx sw sh shr sc)
-makeCollCovProblem roots ocp ocpCov = do
+makeCollCovProblem roots ocp ocpCov guess = do
   let -- the collocation points
       taus :: Vec deg Double
       taus = mkTaus roots
@@ -337,7 +339,7 @@ makeCollCovProblem roots ocp ocpCov = do
   lagrangeFun <- toSXFun "cov lagrange" $ \(x0:*:x1:*:x2:*:x3) ->
     sxCatJV $ Id $ ocpCovLagrange ocpCov (unId (sxSplitJV x0)) (sxSplitJV x1) x2 (unId (sxSplitJV x3))
 
-  cp0 <- makeCollProblem roots ocp
+  cp0 <- makeCollProblem roots ocp guess
 
   robustify <- mkRobustifyFunction (ocpCovProjection ocpCov) (ocpCovRobustifyPathC ocpCov)
 

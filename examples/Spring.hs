@@ -18,7 +18,6 @@ import Dyno.Ocp
 import Dyno.Vectorize ( Vectorize, None(..), fill )
 import Dyno.Solvers ( Solver(..), Opt(..), ipoptSolver )
 import Dyno.NlpUtils ( solveNlp )
-import Dyno.Nlp ( Nlp(..) )
 import Dyno.DirectCollocation.Formulate ( CollProblem(..), makeCollProblem )
 import Dyno.DirectCollocation.Types ( CollTraj' )
 import Dyno.DirectCollocation.Dynamic ( toMeta )
@@ -145,7 +144,7 @@ main :: IO ()
 main = 
   withCallback $ \send -> do
 
-    cp  <- makeCollProblem Legendre springOcp
+    cp  <- makeCollProblem Legendre springOcp guess
     let nlp = cpNlp cp
         meta = toMeta (cpMetaProxy cp)
 
@@ -153,5 +152,5 @@ main =
           plotPoints <- cpPlotPoints cp traj
           send (plotPoints, meta)
 
-    _ <- solveNlp solver (nlp { nlpX0 = guess }) (Just cb')
+    _ <- solveNlp solver nlp (Just cb')
     return ()

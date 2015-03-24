@@ -20,7 +20,7 @@ import Dyno.DirectCollocation.Formulate ( CollProblem(..), makeCollProblem )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots )
 import qualified Dyno.TypeVecs as TV
 import Dyno.NlpUtils ( solveNlp )
-import Dyno.Nlp ( Nlp(..), NlpOut(..) )
+import Dyno.Nlp ( NlpOut(..) )
 
 data ProfileReport =
   ProfileReport
@@ -63,7 +63,7 @@ profileOne ::
   -> Solver
   -> IO ProfileReport
 profileOne roots ocp guess solver = do
-  cp <- makeCollProblem roots ocp
+  cp <- makeCollProblem roots ocp guess
   let nlp = cpNlp cp
-  x <- solveNlp solver (nlp { nlpX0 = guess }) Nothing
+  x <- solveNlp solver nlp Nothing
   uncurry toProfileReport x
