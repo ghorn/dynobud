@@ -4,7 +4,6 @@
 
 module Main ( main ) where
 
-import Data.Proxy ( Proxy(..) )
 import Linear
 import Data.Vector ( Vector )
 
@@ -135,7 +134,7 @@ main = do
   let nlp = cpNlp cp
   withCallback $ \send -> do
     let guess = jfill 1 :: J (CollTraj' GliderOcp NCollStages CollDeg) (Vector Double)
-        meta = toMeta (Proxy :: Proxy GliderOcp)
+        meta = toMeta (cpMetaProxy cp)
 
         cb' traj = do
           plotPoints <- cpPlotPoints cp traj

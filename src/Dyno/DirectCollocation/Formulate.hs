@@ -51,7 +51,7 @@ import Dyno.Nlp ( Nlp(..), Bounds )
 import Dyno.Ocp
 
 import Dyno.DirectCollocation.Types
-import Dyno.DirectCollocation.Dynamic ( DynPlotPoints, dynPlotPoints )
+import Dyno.DirectCollocation.Dynamic ( MetaProxy(..), DynPlotPoints, dynPlotPoints )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..), mkTaus, interpolate, timesFromTaus )
 import Dyno.DirectCollocation.Robust
 
@@ -74,6 +74,7 @@ data CollProblem x z u p r o c h q n deg =
   , cpTaus :: Vec deg Double
   , cpRoots :: QuadratureRoots
   , cpEvalQuadratures :: Vec n (Vec deg Double) -> Double -> IO Double
+  , cpMetaProxy :: MetaProxy x z u p o q
   }
 
 makeCollProblem ::
@@ -275,6 +276,7 @@ makeCollProblem roots ocp = do
                        , cpTaus = taus
                        , cpRoots = roots
                        , cpEvalQuadratures = evalQuadratures
+                       , cpMetaProxy = MetaProxy
                        }
 
 

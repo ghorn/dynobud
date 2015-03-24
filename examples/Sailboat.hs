@@ -17,7 +17,6 @@ module Main ( main
 
 import GHC.Generics ( Generic, Generic1 )
 
-import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 import qualified System.ZMQ4 as ZMQ
 import Linear -- ( V2(..) )
@@ -281,7 +280,7 @@ main = do
     withPublisher context urlDynoPlot $ \sendDynoPlotMsg -> do
 --    withPublisher context urlOptTelem $ \sendOptTelemMsg -> do
       let guess = cat initialGuess
-          meta = toMeta (Proxy :: Proxy SailboatOcp)
+          meta = toMeta (cpMetaProxy cp)
 
           callback :: J (CollTraj' SailboatOcp NCollStages CollDeg) (Vector Double) -> IO Bool
           callback traj = do

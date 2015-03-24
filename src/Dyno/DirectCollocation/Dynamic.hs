@@ -8,6 +8,7 @@ module Dyno.DirectCollocation.Dynamic
        ( DynPlotPoints
        , CollTrajMeta(..)
        , addCollocationChannel
+       , MetaProxy(..)
        , toMeta
        , dynPlotPoints
        , catDynPlotPoints
@@ -40,7 +41,6 @@ import qualified Dyno.TypeVecs as TV
 import Dyno.TypeVecs ( Vec )
 import Dyno.DirectCollocation.Types
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots, mkTaus )
-import Dyno.Ocp
 
 
 addCollocationChannel ::
@@ -200,17 +200,13 @@ forestFromMeta meta = [xTree,zTree,uTree,oTree,xdTree]
         woo = F.toList . fmap (F.toList . fmap (\(t,x) -> (t, x V.! k)))
 
 
-toMeta :: forall ocp x z u p o q .
+data MetaProxy x z u p o q = MetaProxy
+
+toMeta :: forall x z u p o q .
           ( Lookup (x ()), Lookup (z ()), Lookup (u ()), Lookup (p ()), Lookup (o ()), Lookup (q ())
           , Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize o, Vectorize q
-          , X ocp ~ x
-          , Z ocp ~ z
-          , U ocp ~ u
-          , P ocp ~ p
-          , O ocp ~ o
-          , Q ocp ~ q
           )
-          => Proxy ocp -> CollTrajMeta
+          => MetaProxy x z u p o q -> CollTrajMeta
 toMeta _ =
   CollTrajMeta
   { ctmX = namesFromAccTree $ accessors (fill () :: x ())

@@ -8,7 +8,6 @@ module Main ( SpringX(..), SpringU(..), main ) where
 
 import GHC.Generics ( Generic, Generic1 )
 
-import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 
 import Accessors ( Lookup )
@@ -148,7 +147,7 @@ main =
 
     cp  <- makeCollProblem Legendre springOcp
     let nlp = cpNlp cp
-        meta = toMeta (Proxy :: Proxy SpringOcp)
+        meta = toMeta (cpMetaProxy cp)
 
         cb' traj = do
           plotPoints <- cpPlotPoints cp traj

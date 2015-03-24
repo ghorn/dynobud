@@ -10,7 +10,6 @@ module Main where
 
 import GHC.Generics ( Generic, Generic1 )
 
-import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 
 import Accessors
@@ -189,7 +188,7 @@ main = do
   cp  <- makeCollProblem Legendre pendOcp
   withCallback $ \send -> do
     let nlp = cpNlp cp
-        meta = toMeta (Proxy :: Proxy PendOcp)
+        meta = toMeta (cpMetaProxy cp)
         cb' traj = do
           plotPoints <- cpPlotPoints cp traj
           send (plotPoints, meta)
