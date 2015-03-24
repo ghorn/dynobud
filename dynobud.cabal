@@ -23,6 +23,7 @@ library
                        Dyno.TypeVecs
                        Dyno.MultipleShooting
                        Dyno.Ocp
+                       Dyno.OcpHomotopy
                        Dyno.DirectCollocation.Dynamic
                        Dyno.DirectCollocation.Export
                        Dyno.DirectCollocation.Formulate
