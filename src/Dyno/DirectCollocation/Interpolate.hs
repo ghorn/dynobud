@@ -3,6 +3,7 @@
 {-# Language DeriveFunctor #-}
 {-# Language DeriveFoldable #-}
 {-# Language DeriveTraversable #-}
+{-# Language PolyKinds #-}
 
 module Dyno.DirectCollocation.Interpolate
        ( interpolateTraj
