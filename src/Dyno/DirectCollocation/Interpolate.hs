@@ -77,15 +77,15 @@ interpolateTraj ::
     , Vectorize x, Vectorize z, Vectorize u
     )
   => Vec deg0 Double
-  -> Double
   -> CollTraj x z u p n0 deg0 (V.Vector Double)
   -> QuadratureRoots
   -> CollTraj x z u p n1 deg1 (V.Vector Double)
-interpolateTraj taus0 tf traj0 roots1 = traj0 { ctStages = cat (JVec (fmap cat stages1)) }
+interpolateTraj taus0 traj0 roots1 = traj0 { ctStages = cat (JVec (fmap cat stages1)) }
   where
     n0 = reflectDim (Proxy :: Proxy n0)
     n1 = reflectDim (Proxy :: Proxy n1)
 
+    tf = 1.0 -- could be anything, returned traj doesn't use this it uses the correct tf
     dt0 = tf / fromIntegral n0
     dt1 = tf / fromIntegral n1
 
@@ -135,11 +135,10 @@ interpolateConstraints ::
     , Vectorize x, Vectorize r, Vectorize c, Vectorize h
     )
   => Vec deg0 Double
-  -> Double
   -> CollOcpConstraints x r c h n0 deg0 (V.Vector Double)
   -> QuadratureRoots
   -> CollOcpConstraints x r c h n1 deg1 (V.Vector Double)
-interpolateConstraints taus0 tf con0 roots1 = con1
+interpolateConstraints taus0 con0 roots1 = con1
   where
     con1 = CollOcpConstraints
            { coCollPoints =  go' (coCollPoints con0)
@@ -166,6 +165,7 @@ interpolateConstraints taus0 tf con0 roots1 = con1
     n0 = reflectDim (Proxy :: Proxy n0)
     n1 = reflectDim (Proxy :: Proxy n1)
 
+    tf = 1.0 -- could be anything
     dt0 = tf / fromIntegral n0
     dt1 = tf / fromIntegral n1
 
