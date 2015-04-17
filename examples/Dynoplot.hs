@@ -5,8 +5,9 @@ module Main ( main ) where
 
 import Control.Monad ( when, forever )
 import Data.ByteString.Char8 ( pack )
-import Data.ByteString.Lazy ( fromStrict )
-import Data.Binary ( decodeOrFail )
+--import Data.ByteString.Lazy ( fromStrict )
+--import Data.Binary ( decodeOrFail )
+import Data.Serialize ( decode )
 import qualified System.ZMQ4 as ZMQ
 import System.Console.CmdArgs ( (&=), Data, Typeable )
 import qualified System.Console.CmdArgs as CA
@@ -28,9 +29,12 @@ sub ip' writeChan name = ZMQ.withContext $ \context ->
       when mre $ do
         msg <- ZMQ.receive subscriber
         let decoded :: (DynPlotPoints Double, CollTrajMeta)
-            decoded = case decodeOrFail (fromStrict msg) of
-              Left (_,_,err) -> error $ "decode failure: " ++ err
-              Right (_,_,t) -> t
+            decoded = case decode msg of
+              Left err -> error $ "decode failure: " ++ err
+              Right t -> t
+--            decoded = case decodeOrFail (fromStrict msg) of
+--              Left (_,_,err) -> error $ "decode failure: " ++ err
+--              Right (_,_,t) -> t
         writeChan decoded
 
 main :: IO ()

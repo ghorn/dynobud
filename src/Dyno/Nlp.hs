@@ -14,6 +14,7 @@ import GHC.Generics ( Generic )
 import Casadi.DMatrix ( DMatrix )
 import qualified Data.Vector as V
 import Data.Binary ( Binary )
+import Data.Serialize ( Serialize )
 
 import Dyno.Vectorize ( Id )
 import Dyno.View.View ( View(..), J )
@@ -57,6 +58,7 @@ data NlpOut x g a =
   , lambdaGOpt :: J g a
   } deriving (Eq, Show, Generic)
 instance (View x, View g, Binary a, Viewable a) => Binary (NlpOut x g a)
+instance (View x, View g, Serialize a, Viewable a) => Serialize (NlpOut x g a)
 
 
 -- | Karush–Kuhn–Tucker (KKT) matrix
@@ -71,3 +73,4 @@ data KKT x g =
   , kktF :: J (JV Id) DMatrix
   } deriving (Generic, Eq, Show)
 instance (View x, View g) => Binary (KKT x g)
+instance (View x, View g) => Serialize (KKT x g)

@@ -17,7 +17,7 @@ module Sofa.Common
 import GHC.Generics ( Generic, Generic1 )
 
 import qualified Data.Foldable as F
-import Data.Binary
+import Data.Serialize
 
 import Dyno.TypeVecs ( Vec, Dim )
 import qualified Dyno.TypeVecs as TV
@@ -52,8 +52,8 @@ data SofaMessage =
   , smMeanThetas :: [(Point Double, Double)]
   } deriving Generic
 
-instance Binary SofaMessage
-instance Binary a => Binary (Point a)
+instance Serialize SofaMessage
+instance Serialize a => Serialize (Point a)
 
 url :: String
 url = "tcp://127.0.0.1:5563"

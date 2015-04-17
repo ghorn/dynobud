@@ -15,7 +15,8 @@ module Dyno.View.Unsafe.M
 import GHC.Generics ( Generic )
 
 import Data.Proxy
-import Data.Binary ( Binary(..) )
+import qualified Data.Binary as B
+import qualified Data.Serialize as S
 import qualified Data.Foldable as F
 import qualified Data.Vector as V
 import Data.Vector ( Vector )
@@ -30,9 +31,13 @@ import Dyno.View.View ( View(..) )
 newtype M (f :: * -> *) (g :: * -> *) (a :: *) =
   UnsafeM { unM :: a } deriving (Eq, Functor, Generic)
 
-instance (View f, View g) => Binary (M f g DMatrix) where
-  put = put . unM
-  get = fmap mkM get
+instance (View f, View g) => B.Binary (M f g DMatrix) where
+  put = B.put . unM
+  get = fmap mkM B.get
+
+instance (View f, View g) => S.Serialize (M f g DMatrix) where
+  put = S.put . unM
+  get = fmap mkM S.get
 
 instance Show a => Show (M f g a) where
   showsPrec p (UnsafeM x) = showsPrec p x

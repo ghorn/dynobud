@@ -14,7 +14,8 @@ module ViewTests
 import GHC.Generics ( Generic1 )
 
 import Data.Proxy ( Proxy(..) )
-import Data.Binary ( encode, decodeOrFail )
+import qualified Data.Binary as B
+import qualified Data.Serialize as S
 import qualified Data.Traversable as T
 import qualified Data.Packed.Matrix as Mat
 import qualified Numeric.LinearAlgebra ( ) -- for Eq Matrix
@@ -361,19 +362,33 @@ prop_covFromToMat =
           m2 = toMat m1 :: M f f DMatrix
       return $ beEqual m0 m2
 
-prop_serializeDeserialize :: Test
-prop_serializeDeserialize =
-  testProperty "(M f g DMatrix): deserialize . serialize" $
+prop_serializeDeserializeBinary :: Test
+prop_serializeDeserializeBinary =
+  testProperty "(M f g DMatrix): Binary deserialize . serialize" $
   \(Views {vwProxy = p1}) (Views {vwProxy = p2}) -> test p1 p2
   where
     test :: forall f g . (View f, View g) => Proxy f -> Proxy g -> Gen Property
     test _ _ = do
       m0 <- arbitrary :: Gen (M f g DMatrix)
-      let m1 = encode m0
+      let m1 = B.encode m0
       return $
-        case decodeOrFail m1 of
+        case B.decodeOrFail m1 of
          Left (_,_,msg) -> counterexample ("deserialization failure " ++ show msg) False
          Right (_,_,m2) -> beEqual m0 m2
+
+prop_serializeDeserializeCereal :: Test
+prop_serializeDeserializeCereal =
+  testProperty "(M f g DMatrix): Cereal deserialize . serialize" $
+  \(Views {vwProxy = p1}) (Views {vwProxy = p2}) -> test p1 p2
+  where
+    test :: forall f g . (View f, View g) => Proxy f -> Proxy g -> Gen Property
+    test _ _ = do
+      m0 <- arbitrary :: Gen (M f g DMatrix)
+      let m1 = S.encode m0
+      return $
+        case S.decode m1 of
+         Left msg -> counterexample ("deserialization failure " ++ show msg) False
+         Right m2 -> beEqual m0 m2
 
 prop_vsplitTup :: Test
 prop_vsplitTup =
@@ -452,7 +467,8 @@ viewTests =
   , prop_fromToHMat
   , prop_covFromToMat
   , prop_covToFromMat
-  , prop_serializeDeserialize
+  , prop_serializeDeserializeBinary
+  , prop_serializeDeserializeCereal
   , prop_vsplitTup
   , prop_hsplitTup
   , prop_vsplitTrip

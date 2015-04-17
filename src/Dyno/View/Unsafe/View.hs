@@ -21,7 +21,8 @@ import qualified Data.Foldable as F
 import qualified Data.Sequence as Seq
 import Data.Proxy ( Proxy(..) )
 import qualified Data.Vector as V
-import Data.Binary ( Binary(..) )
+import qualified Data.Binary as B
+import qualified Data.Serialize as S
 
 import qualified Casadi.CMatrix as CM
 
@@ -29,9 +30,12 @@ import Dyno.View.Viewable ( Viewable(..) )
 
 newtype J (f :: * -> *) (a :: *) = UnsafeJ { unsafeUnJ :: a } deriving (Eq, Generic)
 
-instance (View f, Binary a, Viewable a) => Binary (J f a) where
-  put = put . unJ
-  get = fmap mkJ get
+instance (View f, B.Binary a, Viewable a) => B.Binary (J f a) where
+  put = B.put . unJ
+  get = fmap mkJ B.get
+instance (View f, S.Serialize a, Viewable a) => S.Serialize (J f a) where
+  put = S.put . unJ
+  get = fmap mkJ S.get
 
 instance Show a => Show (J f a) where
   showsPrec p (UnsafeJ x) = showsPrec p x

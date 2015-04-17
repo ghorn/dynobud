@@ -21,9 +21,11 @@ import Data.Vector ( Vector )
 import qualified System.ZMQ4 as ZMQ
 import Linear -- ( V2(..) )
 import qualified Data.List.NonEmpty as NE
-import qualified Data.ByteString.Lazy as BSL
+--import qualified Data.ByteString.Lazy as BSL
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BS8
-import qualified Data.Binary as B
+--import qualified Data.Binary as B
+import qualified Data.Serialize as Ser
 import Text.Printf ( printf )
 
 import Accessors ( Lookup )
@@ -87,10 +89,10 @@ instance Lookup (SbP ())
 instance Lookup (SbO ())
 
 ------------------------------ zmq helpers -------------------------------------
-newtype Packed = Packed { unPacked :: BSL.ByteString }
+newtype Packed = Packed { unPacked :: BS.ByteString }
 
-encodeSerial :: B.Binary a => a -> Packed
-encodeSerial = Packed . B.encode
+encodeSerial :: Ser.Serialize a => a -> Packed
+encodeSerial = Packed . Ser.encode
 
 --------------------------------------------------------------------------
 norm2sqr :: Num a => V2 a -> a
@@ -248,7 +250,8 @@ withPublisher context url f =
     let send :: String -> Packed -> IO ()
         send channel msg =
           ZMQ.sendMulti publisher (NE.fromList [ BS8.pack channel
-                                               , BSL.toStrict (unPacked msg)
+                                               , unPacked msg
+--                                               , BSL.toStrict (unPacked msg)
                                                ])
     f send
 
