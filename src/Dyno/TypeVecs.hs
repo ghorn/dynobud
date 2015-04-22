@@ -60,6 +60,8 @@ import Data.Proxy
 import Data.Reflection as R
 import Data.Distributive ( Distributive(..) )
 
+import Accessors ( Lookup(..) )
+
 import Dyno.Vectorize
 
 -- length-indexed vectors using phantom types
@@ -71,6 +73,15 @@ instance (Dim n, B.Binary a) => B.Binary (Vec n a) where
 instance (Dim n, S.Serialize a) => S.Serialize (Vec n a) where
   put = S.put . unVec
   get = fmap mkVec S.get
+
+instance (Lookup a, Dim n) => Lookup (Vec n a) where
+  toAccessorTree vec f = Data ("Vec " ++ show n, "Vec " ++ show n) $ map child (take n [0..])
+    where
+      n = reflectDim (Proxy :: Proxy n)
+      child k = ("v" ++ show k, toAccessorTree (getK vec) (getK . f))
+        where
+          getK :: Vec n a -> a
+          getK (MkVec v) = v V.! k
 
 instance Dim n => Distributive (Vec n) where
   distribute f = mkVec $ V.generate (reflectDim (Proxy :: Proxy n))
@@ -119,6 +130,7 @@ unVec (MkVec x)
     n = reflectDim (Proxy :: Proxy n)
     n' = V.length x
 
+-- todo: put these in unsafe module
 mkVec :: forall n a . Dim n => V.Vector a -> Vec n a
 mkVec x
   | n == n' = MkVec x
