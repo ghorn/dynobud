@@ -60,7 +60,7 @@ import Data.Proxy
 import Data.Reflection as R
 import Data.Distributive ( Distributive(..) )
 
-import Accessors ( Lookup(..) )
+import Accessors ( Lookup(..), AccessorTree(..) )
 
 import Dyno.Vectorize
 
