@@ -16,8 +16,9 @@ import Accessors ( Lookup, flatten, accessors )
 
 import Dyno.View.Unsafe.View ( unJ )
 
+import Dyno.Nlp ( NlpOut(..) )
 import Dyno.TypeVecs ( Vec )
-import Dyno.Vectorize ( Vectorize, fill )
+import Dyno.Vectorize ( Vectorize, Id(..), fill )
 import Dyno.View.View ( View(..) )
 import Dyno.View.JV ( JV, splitJV )
 import Dyno.View.JVec ( JVec(..) )
@@ -26,7 +27,7 @@ import Dyno.DirectCollocation.Types ( CollTraj(..), CollStage(..), CollPoint(..)
 import Dyno.DirectCollocation.Quadratures ( timesFromTaus )
 
 toMatlab ::
-  forall x z u p r o c h q n deg
+  forall x z u p r o c h q n deg lol
   . ( Lookup (x Double), Vectorize x
     , Lookup (z Double), Vectorize z
     , Lookup (u Double), Vectorize u
@@ -35,9 +36,12 @@ toMatlab ::
     , Dim n, Dim deg
     )
   => CollProblem x z u p r o c h q n deg
-  -> CollTraj x z u p n deg (Vector Double)
+  -> NlpOut (CollTraj x z u p n deg) lol (Vector Double)
   -> IO String
-toMatlab cp ct@(CollTraj tf' p' stages' xf) = do
+toMatlab cp nlpOut = do
+  let ct@(CollTraj tf' p' stages' xf) = split (xOpt nlpOut)
+      CollTraj lagTf' lagP' _ _ = split (lambdaXOpt nlpOut)
+
   outs <- cpOutputs cp (cat ct)
 
   let taus :: Vec deg Double
@@ -86,13 +90,11 @@ toMatlab cp ct@(CollTraj tf' p' stages' xf) = do
       at :: (Vectorize xzu, Lookup (xzu Double)) => [(String, xzu Double -> Double)]
       at = flatten $ accessors (fill 0)
 
-      p = splitJV p'
-
       woo :: String -> [xzu Double] -> String -> (xzu Double -> Double) -> String
       woo topName xzus name get = topName ++ "." ++ name ++ " = " ++ show (map get xzus) ++ ";"
 
-      wooP :: String -> (p Double -> Double) -> String
-      wooP name get = "params." ++ name ++ " = " ++ show (get p) ++ ";"
+      wooP :: String -> p Double -> String -> (p Double -> Double) -> String
+      wooP topName p name get = topName ++ "." ++ name ++ " = " ++ show (get p) ++ ";"
 
       ret :: String
       ret = init $ unlines $
@@ -101,8 +103,10 @@ toMatlab cp ct@(CollTraj tf' p' stages' xf) = do
             map (uncurry (woo "ret.algVars" zs)) at ++
             map (uncurry (woo "ret.controls" us)) at ++
             map (uncurry (woo "ret.outputs" os)) at ++
-            map (uncurry wooP) at ++
-            [ ""
+            map (uncurry (wooP "ret.params" (splitJV p'))) at ++
+            map (uncurry (wooP "ret.lag.params" (splitJV lagP'))) at ++
+            [ "ret.lag.T = " ++ show (unId (splitJV lagTf'))
+            , ""
             , "ret.tx = " ++ show xTimes
             , "ret.tzuo = " ++ show zuoTimes
             , "ret.N = " ++ show n
