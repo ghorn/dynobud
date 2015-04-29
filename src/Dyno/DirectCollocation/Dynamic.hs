@@ -100,9 +100,17 @@ dynPlotPoints ::
   -> CollTraj x z u p n deg (Vector a)
   -> Vec n (Vec deg (J (JV o) (Vector a), J (JV x) (Vector a)), J (JV x) (Vector a))
   -> DynPlotPoints a
-dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs =
-  DynPlotPoints xss' zss uss oss xdss
+dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
+  -- if degree is one, each arc will be 1 point and won't get drawn
+  -- see https://github.com/ghorn/dynobud/issues/72
+  --     https://github.com/ghorn/Plot-ho-matic/issues/10
+  --     https://github.com/timbod7/haskell-chart/issues/81
+  | reflectDim (Proxy :: Proxy deg) == 1 =
+                DynPlotPoints xss' (singleArc zss) (singleArc uss) (singleArc oss) (singleArc xdss)
+  | otherwise = DynPlotPoints xss' zss uss oss xdss
   where
+    singleArc :: Vector (Vector b) -> Vector (Vector b)
+    singleArc = V.singleton . V.concat . V.toList
     nStages = size (Proxy :: Proxy (JVec n (JV Id)))
     tf,h :: a
     Id tf = splitJV tf'
