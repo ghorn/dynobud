@@ -107,8 +107,8 @@ toMatlab cp nlpOut = do
             map (uncurry (woo "ret.outputs" os)) at ++
             map (uncurry (woo "ret.pathConstraints" hs)) at ++
             map (uncurry (wooP "ret.params" (splitJV p'))) at ++
-            map (uncurry (wooP "ret.lag.params" (splitJV lagP'))) at ++
-            [ "ret.lag.T = " ++ show (unId (splitJV lagTf'))
+            map (uncurry (wooP "ret.lagrangeMultipliers.params" (splitJV lagP'))) at ++
+            [ "ret.lagrangeMultipliers.T = " ++ show (unId (splitJV lagTf'))
             , ""
             , "ret.tx = " ++ show xTimes
             , "ret.tzuo = " ++ show zuoTimes
