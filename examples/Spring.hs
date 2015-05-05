@@ -91,6 +91,7 @@ instance Lookup a => Lookup (SpringX a)
 instance Lookup a => Lookup (SpringU a)
 instance Lookup a => Lookup (SpringO a)
 instance Lookup a => Lookup (SpringBc a)
+instance Lookup a => Lookup (SpringPathC a)
 
 dae :: Floating a
        => SpringX a -> SpringX a -> None a -> SpringU a -> None a -> a

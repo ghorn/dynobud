@@ -98,6 +98,7 @@ instance Lookup a => Lookup (RocketX a)
 instance Lookup a => Lookup (RocketU a)
 instance Lookup a => Lookup (RocketO a)
 instance Lookup a => Lookup (RocketBc a)
+instance Lookup a => Lookup (RocketPathC a)
 
 
 dae :: Floating a

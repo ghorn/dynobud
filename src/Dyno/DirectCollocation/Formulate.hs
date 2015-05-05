@@ -65,16 +65,25 @@ data CollProblem x z u p r o c h q n deg =
                     -> IO (DynPlotPoints Double)
   , cpHellaOutputs :: J (CollTraj x z u p n deg) (Vector Double)
                       -> IO ( DynPlotPoints Double
-                            , Vec n ( Vec deg (J (JV o) (Vector Double), J (JV x) (Vector Double))
+                            , Vec n ( Vec deg ( J (JV o) (Vector Double)
+                                              , J (JV x) (Vector Double)
+                                              , J (JV h) (Vector Double)
+                                              )
                                     , J (JV x) (Vector Double)
                                     )
                             )
   , cpOutputs :: J (CollTraj x z u p n deg) (Vector Double)
-                 -> IO (Vec n (Vec deg (o Double, x Double), x Double))
+                 -> IO (Vec n ( Vec deg ( o Double
+                                        , x Double
+                                        , h Double
+                                        )
+                              , x Double
+                              )
+                       )
   , cpTaus :: Vec deg Double
   , cpRoots :: QuadratureRoots
   , cpEvalQuadratures :: Vec n (Vec deg Double) -> Double -> IO Double
-  , cpMetaProxy :: MetaProxy x z u p o q
+  , cpMetaProxy :: MetaProxy x z u p o q h
   }
 
 makeCollProblem ::
@@ -162,24 +171,46 @@ makeCollProblem roots ocp guess = do
   outputFun <- toMXFun "stageOutputs" $ outputFunction callInterpolate cijs taus dynFun
 
   -- prepare callbacks
-  let f :: J (JV o) DMatrix ->  J (JV x) DMatrix
-           -> (J (JV o) (Vector Double), J (JV x) (Vector Double))
-      f o' x' = (d2v o', d2v x')
+  let f :: J (JV o) DMatrix ->  J (JV x) DMatrix -> J (JV h) DMatrix
+           -> (J (JV o) (Vector Double), J (JV x) (Vector Double), J (JV h) (Vector Double))
+      f o' x' h' = (d2v o', d2v x', d2v h')
 
       callOutputFun :: J (JV p) (Vector Double)
                        -> J (JV Id) (Vector Double)
                        -> J (CollStage (JV x) (JV z) (JV u) deg) (Vector Double)
                        -> J (JV Id) (Vector Double)
-                       -> IO (Vec deg (J (JV o) (Vector Double), J (JV x) (Vector Double)), J (JV x) (Vector Double))
+                       -> IO ( Vec deg ( J (JV o) (Vector Double)
+                                       , J (JV x) (Vector Double)
+                                       , J (JV h) (Vector Double)
+                                       )
+                             , J (JV x) (Vector Double)
+                             )
       callOutputFun p h stage k = do
+        let p' = v2d p
         (_ :*: xdot :*: out :*: xnext) <-
-          eval outputFun $ (v2d stage) :*: (v2d p) :*: (v2d h) :*: (v2d k)
+          eval outputFun $ (v2d stage) :*: p' :*: (v2d h) :*: (v2d k)
+
+        let stageTimes :: Vec deg (J (JV Id) DMatrix)
+            stageTimes = fmap (\tau -> t0 + realToFrac tau * h') taus
+              where
+                t0 = h' * v2d k
+                h' = v2d h
+            CollStage _  collPoints = split stage
+        hs <- eval pathStageConFun $ p' :*: (cat (JVec stageTimes)) :*: out :*: (v2d collPoints)
+
         let outs0 = unJVec (split out) :: Vec deg (J (JV o) DMatrix)
             xdots0 = unJVec (split xdot) :: Vec deg (J (JV x) DMatrix)
-        return (TV.tvzipWith f outs0 xdots0, d2v xnext)
+            hs0 = unJVec (split hs) :: Vec deg (J (JV h) DMatrix)
+        return (TV.tvzipWith3 f outs0 xdots0 hs0, d2v xnext)
 
       mapOutputFun :: J (CollTraj x z u p n deg) (Vector Double)
-                      -> IO (Vec n (Vec deg (J (JV o) (Vector Double), J (JV x) (Vector Double)), J (JV x) (Vector Double)))
+                      -> IO (Vec n ( Vec deg ( J (JV o) (Vector Double)
+                                             , J (JV x) (Vector Double)
+                                             , J (JV h) (Vector Double)
+                                             )
+                                   , J (JV x) (Vector Double)
+                                   )
+                            )
       mapOutputFun ct = do
         let CollTraj tf p stages _ = split ct
             h = catJV $ Id (tf' / fromIntegral n)
@@ -196,7 +227,10 @@ makeCollProblem roots ocp guess = do
       getHellaOutputs ::
         J (CollTraj x z u p n deg) (Vector Double)
         -> IO ( DynPlotPoints Double
-              , Vec n ( Vec deg (J (JV o) (Vector Double), J (JV x) (Vector Double))
+              , Vec n ( Vec deg ( J (JV o) (Vector Double)
+                                , J (JV x) (Vector Double)
+                                , J (JV h) (Vector Double)
+                                )
                       , J (JV x) (Vector Double)
                       )
               )
@@ -209,12 +243,12 @@ makeCollProblem roots ocp guess = do
       getPlotPoints traj = fmap fst $ getHellaOutputs traj
 
       getOutputs :: J (CollTraj x z u p n deg) (Vector Double)
-                    -> IO (Vec n (Vec deg (o Double, x Double), x Double))
+                    -> IO (Vec n (Vec deg (o Double, x Double, h Double), x Double))
       getOutputs traj = do
         outputs <- mapOutputFun traj
-        let devec :: Vec deg (J (JV o) (Vector Double), J (JV x) (Vector Double))
-                  -> Vec deg (o Double, x Double)
-            devec = fmap (\(x,y) -> (splitJV x, splitJV y))
+        let devec :: Vec deg (J (JV o) (Vector Double), J (JV x) (Vector Double), J (JV h) (Vector Double))
+                  -> Vec deg (o Double, x Double, h Double)
+            devec = fmap (\(x,y,z) -> (splitJV x, splitJV y, splitJV z))
         return $ fmap (\(x,y) -> (devec x, splitJV y)) outputs
 
   let nlp :: Nlp (CollTraj x z u p n deg) JNone (CollOcpConstraints x r c h n deg) MX
@@ -290,7 +324,7 @@ data CollCovProblem ocp n deg sx sw sh shr sc =
   , ccpPlotPoints :: J (CollTrajCov sx ocp n deg) (Vector Double) -> IO (DynPlotPoints Double)
   , ccpOutputs ::
        J (CollTrajCov sx ocp n deg) (Vector Double)
-       -> IO ( Vec n (Vec deg (O ocp Double, X ocp Double), X ocp Double)
+       -> IO ( Vec n (Vec deg (O ocp Double, X ocp Double, H ocp Double), X ocp Double)
              , Vec n (J (Cov (JV sx)) (Vector Double))
              , J (Cov (JV sx)) (Vector Double)
              )
@@ -377,7 +411,7 @@ makeCollCovProblem roots ocp ocpCov guess = do
         cpPlotPoints cp0 collTraj
 
       getOutputs :: J (CollTrajCov sx ocp n deg) (Vector Double)
-                    -> IO ( Vec n (Vec deg (o Double, x Double), x Double)
+                    -> IO ( Vec n (Vec deg (o Double, x Double, h Double), x Double)
                           , Vec n (J (Cov (JV sx)) (Vector Double))
                           , J (Cov (JV sx)) (Vector Double)
                           )
@@ -872,7 +906,7 @@ outputFunction callInterpolate cijs taus dynFun (collStage :*: p :*: h :*: k) =
 
 
 
--- return dynamics constraints, outputs, and interpolated state
+-- return path constraints at each collocation point
 pathStageConstraints ::
   forall x z u p o h deg . (Dim deg, View x, View z, View u, View p, View o, View h)
   => SXFun (J (JV Id) :*: J p :*: J o :*: J (CollPoint x z u))
@@ -886,7 +920,7 @@ pathStageConstraints pathCFun
     stageTimes = unJVec $ split stageTimes'
     cps = fmap split (unJVec (split collPoints)) :: Vec deg (CollPoint x z u MX)
 
-    -- dae constraints (dynamics)
+    -- path constraints
     hs :: Vec deg (J h MX)
     hs = TV.tvzipWith3 applyH cps stageTimes (unJVec (split outputs))
 

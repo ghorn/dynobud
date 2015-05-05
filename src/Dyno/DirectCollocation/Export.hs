@@ -33,6 +33,7 @@ toMatlab ::
     , Lookup (u Double), Vectorize u
     , Lookup (o Double), Vectorize o
     , Lookup (p Double), Vectorize p
+    , Lookup (h Double), Vectorize h
     , Dim n, Dim deg
     )
   => CollProblem x z u p r o c h q n deg
@@ -72,7 +73,8 @@ toMatlab cp nlpOut = do
 
       os :: [o Double]
       xdots :: [x Double]
-      (os, xdots) = unzip $ F.concatMap (F.toList . fst) outs -- drop the interpolated value
+      hs :: [h Double]
+      (os, xdots, hs) = unzip3 $ F.concatMap (F.toList . fst) outs -- drop the interpolated value
 
       getXs (CollStage x0 xzus) = splitJV x0 : map (getX . split) (F.toList (unJVec (split xzus)))
       getZs (CollStage  _ xzus) =              map (getZ . split) (F.toList (unJVec (split xzus)))
@@ -103,6 +105,7 @@ toMatlab cp nlpOut = do
             map (uncurry (woo "ret.algVars" zs)) at ++
             map (uncurry (woo "ret.controls" us)) at ++
             map (uncurry (woo "ret.outputs" os)) at ++
+            map (uncurry (woo "ret.pathConstraints" hs)) at ++
             map (uncurry (wooP "ret.params" (splitJV p'))) at ++
             map (uncurry (wooP "ret.lag.params" (splitJV lagP'))) at ++
             [ "ret.lag.T = " ++ show (unId (splitJV lagTf'))
