@@ -8,6 +8,11 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveTraversable #-}
+-- these last nasty ones are for instance Vectorize f => Applicative/Additive/Metric/etc f
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE OverlappingInstances #-}
 
 module Dyno.Vectorize
        ( Vectorize(..)
@@ -25,10 +30,12 @@ module Dyno.Vectorize
 
 import GHC.Generics
 
-import Control.Applicative ( Applicative(..) )
+import Control.Applicative ( Applicative(..), (<$>) )
 import qualified Data.Vector as V
 import Data.Foldable ( Foldable )
+import qualified Data.Foldable as F
 import Data.Traversable ( Traversable )
+import qualified Data.Traversable as T
 import Data.Proxy ( Proxy(..) )
 import qualified Linear
 
@@ -117,6 +124,26 @@ class Functor f => Vectorize (f :: * -> *) where
 
 --vlength :: Vectorize f => Proxy f -> Int
 --vlength = const (gvlength (Proxy :: Proxy (Rep1 f)))
+
+
+-- undecidable, overlapping, orphan instances to get rid of boilerplate
+instance Vectorize f => Applicative f where
+  pure = fill
+  x0 <*> x1 = devectorize (V.zipWith id (vectorize x0) (vectorize x1))
+instance Vectorize f => Linear.Additive f where
+  zero = fill 0
+instance Vectorize f => Linear.Metric f where
+  dot x0 x1 = V.sum $ V.zipWith (*) (vectorize x0) (vectorize x1)
+instance (Vectorize f, Eq a) => Eq (f a) where
+  x == y = (vectorize x) == (vectorize y)
+  x /= y = (vectorize x) /= (vectorize y)
+instance (Vectorize f, Ord a) => Ord (f a) where
+  compare x y = compare (vectorize x) (vectorize y)
+instance Vectorize f => Foldable f where
+  foldMap f x = F.foldMap f (vectorize x)
+  foldr f acc0 x = F.foldr f acc0 (vectorize x)
+instance Vectorize f => Traversable f where
+  traverse f x = devectorize <$> T.traverse f (vectorize x)
 
 vlength :: Vectorize f => Proxy f -> Int
 vlength = V.length . vectorize . (empty `asFunctorOf`)
