@@ -99,7 +99,7 @@ toMatlab cp nlpOut = do
       wooP topName p name get = topName ++ "." ++ name ++ " = " ++ show (get p) ++ ";"
 
       ret :: String
-      ret = init $ unlines $
+      ret = unlines $
             map (uncurry (woo "ret.diffStates" xs)) at ++
             map (uncurry (woo "ret.diffStateDerivs" xdots)) at ++
             map (uncurry (woo "ret.algVars" zs)) at ++
@@ -108,12 +108,12 @@ toMatlab cp nlpOut = do
             map (uncurry (woo "ret.pathConstraints" hs)) at ++
             map (uncurry (wooP "ret.params" (splitJV p'))) at ++
             map (uncurry (wooP "ret.lagrangeMultipliers.params" (splitJV lagP'))) at ++
-            [ "ret.lagrangeMultipliers.T = " ++ show (unId (splitJV lagTf'))
+            [ "ret.lagrangeMultipliers.T = " ++ show (unId (splitJV lagTf')) ++ ";"
             , ""
-            , "ret.tx = " ++ show xTimes
-            , "ret.tzuo = " ++ show zuoTimes
-            , "ret.N = " ++ show n
-            , "ret.deg = " ++ show (reflectDim (Proxy :: Proxy deg))
-            , "ret.collocationRoots = '" ++ show (cpRoots cp) ++ "'"
+            , "ret.tx = " ++ show xTimes ++ ";"
+            , "ret.tzuo = " ++ show zuoTimes ++ ";"
+            , "ret.N = " ++ show n ++ ";"
+            , "ret.deg = " ++ show (reflectDim (Proxy :: Proxy deg)) ++ ";"
+            , "ret.collocationRoots = '" ++ show (cpRoots cp) ++ "';"
             ]
   return ret
