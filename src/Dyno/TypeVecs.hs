@@ -46,8 +46,6 @@ module Dyno.TypeVecs
 import GHC.Generics ( Generic, Generic1 )
 
 import Control.Applicative
-import Data.Foldable ( Foldable )
-import Data.Traversable ( Traversable )
 import qualified Data.Traversable as T
 import qualified Data.Vector as V
 import Data.Vector.Binary () -- instances
@@ -66,7 +64,7 @@ import Dyno.Vectorize
 
 -- length-indexed vectors using phantom types
 newtype Vec (n :: k) a = MkVec (V.Vector a)
-                deriving (Eq, Ord, Functor, Traversable, Foldable, Generic, Generic1)
+                deriving (Functor, Generic, Generic1)
 instance (Dim n, B.Binary a) => B.Binary (Vec n a) where
   put = B.put . unVec
   get = fmap mkVec B.get

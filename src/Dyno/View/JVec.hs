@@ -24,7 +24,7 @@ import Dyno.View.Viewable ( Viewable(..) )
 import Dyno.View.View ( View(..), J )
 
 -- | vectors in View
-newtype JVec (n :: k) f a = JVec { unJVec :: Vec n (J f a) } deriving ( Show, Eq )
+newtype JVec (n :: k) f a = JVec { unJVec :: Vec n (J f a) } deriving ( Show )
 instance (Dim n, View f) => View (JVec n f) where
   cat = mkJ . vveccat . fmap unJ . unVec . unJVec
   split = JVec . fmap mkJ . mkVec . flip vvertsplit ks . unJ

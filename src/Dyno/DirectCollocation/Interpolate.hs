@@ -67,7 +67,7 @@ interp tz0 t = (tz, ret)
 
 
 type Point x z u = CollPoint (JV x) (JV z) (JV u)
-newtype Times deg a = Times (a, Vec deg a) deriving (Functor, F.Foldable, T.Traversable)
+newtype Times deg a = Times (a, Vec deg a) deriving Functor
 
 -- | re-discretize a collocation trajectory using the lagrange interpolation polynomials
 -- from the quadrature scheme
