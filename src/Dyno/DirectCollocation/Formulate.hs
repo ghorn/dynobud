@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language ScopedTypeVariables #-}
 {-# Language TypeOperators #-}
+{-# Language DeriveGeneric #-}
 {-# Language FlexibleContexts #-}
 {-# Language PolyKinds #-}
 
@@ -12,6 +13,8 @@ module Dyno.DirectCollocation.Formulate
        , makeGuess
        , makeGuessSim
        ) where
+
+import GHC.Generics ( Generic, Generic1 )
 
 import Data.Maybe ( fromMaybe )
 import Data.Proxy ( Proxy(..) )
@@ -26,6 +29,7 @@ import Linear.V
 
 import Casadi.DMatrix ( DMatrix )
 import Casadi.MX ( MX )
+import Casadi.SX ( SX )
 
 import Dyno.SXElement ( sxCatJV, sxSplitJV )
 import Dyno.View.View ( View(..), J, jfill, JTuple(..), JNone(..), v2d, d2v )
@@ -34,6 +38,7 @@ import Dyno.View.JV ( JV, splitJV, catJV )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.Fun
 import Dyno.View.JVec( JVec(..), jreplicate )
+import Dyno.View.Scheme ( Scheme )
 import Dyno.View.Viewable ( Viewable )
 import Dyno.Vectorize ( Vectorize(..), Id(..), fill, vlength, vzipWith )
 import Dyno.TypeVecs ( Vec )
@@ -79,6 +84,19 @@ data CollProblem x z u p r o c h q n deg =
   }
 
 
+data DaeIn x z u p a =
+  -- t p x' (CollPoint x z u)
+  DaeIn (J (JV Id) a) (J p a) (J x a) (J (CollPoint x z u) a)
+  deriving (Generic, Generic1)
+
+data DaeOut r o a =
+  -- r o
+  DaeOut (J r a) (J o a)
+  deriving (Generic, Generic1)
+
+instance (View x, View z, View u, View p) => Scheme (DaeIn x z u p)
+instance (View r, View o) => Scheme (DaeOut r o)
+
 makeCollProblem ::
   forall x z u p r o c h q deg n .
   ( Dim deg, Dim n
@@ -114,7 +132,8 @@ makeCollProblem roots ocp guess = do
         Legendre -> interpolate taus x0 (unJVec (split xs))
         Radau -> TV.tvlast $ unJVec $ split xs
 
-      dynamicsFunction (t :*: parm :*: x' :*: collPoint) = (sxCatJV r) :*: (sxCatJV o)
+      dynamicsFunction :: DaeIn (JV x) (JV z) (JV u) (JV p) SX -> DaeOut (JV r) (JV o) SX
+      dynamicsFunction (DaeIn t parm x' collPoint) = DaeOut (sxCatJV r) (sxCatJV o)
         where
           CollPoint x z u = split collPoint
           (r,o) = ocpDae ocp
@@ -682,8 +701,7 @@ dynStageConstraints ::
   forall x z u p r o deg . (Dim deg, View x, View z, View u, View p, View r, View o)
   => (J x MX -> Vec deg (J x MX) -> J x MX)
   -> Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
-  -> SXFun (J (JV Id) :*: J p :*: J x :*: J (CollPoint x z u))
-           (J r :*: J o)
+  -> SXFun (DaeIn x z u p) (DaeOut r o)
   -> (J x :*: J (JVec deg (JTuple x z)) :*: J (JVec deg u) :*: J (JV Id) :*: J p :*: J (JVec deg (JV Id))) MX
   -> (J (JVec deg r) :*: J x :*: J (JVec deg o)) MX
 dynStageConstraints interpolate' cijs dynFun (x0 :*: xzs' :*: us' :*: h :*: p :*: stageTimes') =
@@ -706,7 +724,7 @@ dynStageConstraints interpolate' cijs dynFun (x0 :*: xzs' :*: us' :*: h :*: p :*
     applyDae :: J x MX -> JTuple x z MX -> J u MX -> J (JV Id) MX -> (J r MX, J o MX)
     applyDae x' (JTuple x z) u t = (r, o)
       where
-        r :*: o = call dynFun (t :*: p :*: x' :*: collPoint)
+        DaeOut r o = call dynFun (DaeIn t p x' collPoint)
         collPoint = cat (CollPoint x z u)
 
     -- state derivatives, maybe these could be useful as outputs
@@ -722,8 +740,7 @@ outputFunction ::
   forall x z u p r o deg . (Dim deg, View x, View z, View u, View p, View r, View o)
   => (J x MX -> Vec deg (J x MX) -> J x MX)
   -> Vec (TV.Succ deg) (Vec (TV.Succ deg) Double) -> Vec deg Double
-  -> SXFun (J (JV Id) :*: J p :*: J x :*: J (CollPoint x z u))
-           (J r :*: J o)
+  -> SXFun (DaeIn x z u p) (DaeOut r o)
   -> (J (CollStage x z u deg) :*: J p :*: J (JV Id) :*: J (JV Id)) MX
   -> (J (JVec deg r) :*: J (JVec deg x) :*: J (JVec deg o) :*: J x) MX
 outputFunction callInterpolate cijs taus dynFun (collStage :*: p :*: h :*: k) =
@@ -746,7 +763,7 @@ outputFunction callInterpolate cijs taus dynFun (collStage :*: p :*: h :*: k) =
     applyDae :: J x MX -> J (CollPoint x z u) MX -> J (JV Id) MX -> (J r MX, J o MX)
     applyDae x' xzu t = (r, o)
       where
-        r :*: o = call dynFun (t :*: p :*: x' :*: xzu)
+        DaeOut r o = call dynFun (DaeIn t p x' xzu)
 
     -- state derivatives, maybe these could be useful as outputs
     xdots :: Vec deg (J x MX)
