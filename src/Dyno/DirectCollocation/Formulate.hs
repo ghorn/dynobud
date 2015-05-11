@@ -1,7 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language ScopedTypeVariables #-}
 {-# Language TypeOperators #-}
-{-# Language DeriveGeneric #-}
 {-# Language FlexibleContexts #-}
 {-# Language PolyKinds #-}
 
@@ -13,8 +12,6 @@ module Dyno.DirectCollocation.Formulate
        , makeGuess
        , makeGuessSim
        ) where
-
-import GHC.Generics ( Generic )
 
 import Data.Maybe ( fromMaybe )
 import Data.Proxy ( Proxy(..) )
@@ -38,7 +35,6 @@ import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.Fun
 import Dyno.View.JVec( JVec(..), jreplicate )
 import Dyno.View.Viewable ( Viewable )
-import Dyno.View.Scheme ( Scheme )
 import Dyno.Vectorize ( Vectorize(..), Id(..), fill, vlength, vzipWith )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
@@ -81,6 +77,7 @@ data CollProblem x z u p r o c h q n deg =
   , cpEvalQuadratures :: Vec n (Vec deg Double) -> Double -> IO Double
   , cpMetaProxy :: MetaProxy x z u p o q h
   }
+
 
 makeCollProblem ::
   forall x z u p r o c h q deg n .
@@ -718,22 +715,6 @@ dynStageConstraints interpolate' cijs dynFun (x0 :*: xzs' :*: us' :*: h :*: p :*
 
     xs :: Vec deg (J x MX)
     xs = fmap (\(JTuple x _) -> x) xzs
-
-
-data ErrorIn0 x z u p deg a =
-  ErrorIn0 (J x a) (J (JVec deg (CollPoint x z u)) a) (J (JV Id) a) (J p a) (J (JVec deg (JV Id)) a)
-  deriving Generic
-data ErrorInD sx sw sz deg a =
-  ErrorInD (J sx a) (J sw a) (J (JVec deg (JTuple sx sz)) a)
-  deriving Generic
-data ErrorOut sr sx deg a =
-  ErrorOut (J (JVec deg sr) a) (J sx a)
-  deriving Generic
-
-instance (View x, View z, View u, View p, Dim deg) => Scheme (ErrorIn0 x z u p deg)
-instance (View sx, View sw, View sz, Dim deg) => View (ErrorInD sx sw sz deg)
-instance (View sr, View sx, Dim deg) => View (ErrorOut sr sx deg)
-
 
 
 -- outputs
