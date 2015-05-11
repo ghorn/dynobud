@@ -150,8 +150,6 @@ makeCollProblem roots ocp guess = do
   quadFun <- toMXFun "quadratures" $ evaluateQuadraturesFunction quadratureDotFun callInterpolateQ cijs n
   callQuadFun <- fmap call (expandMXFun quadFun) -- necessary to discard unused outputs
 
-  genericQuadraturesFun <- toMXFun "generic quadratures" $ genericQuadraturesFunction callInterpolateScalar cijs n
-
   dynFun <- toSXFun "dynamics" dynamicsFunction
 
   pathConFun <- toSXFun "pathConstraints" $ pathConFunction $
@@ -163,8 +161,6 @@ makeCollProblem roots ocp guess = do
   stageFun <- toMXFun "stageFunction" $ stageFunction pathStageConFun (call dynStageConFun)
 --  let callStageFun = call stageFun
   callStageFun <- fmap call (expandMXFun stageFun)
-
-  outputFun <- toMXFun "stageOutputs" $ outputFunction callInterpolate cijs taus dynFun
 
   let nlp :: Nlp (CollTraj x z u p n deg) JNone (CollOcpConstraints x r c h n deg) MX
       nlp = Nlp {
@@ -241,6 +237,14 @@ makeCollProblem roots ocp guess = do
                       (fromMaybe (fill 1) (ocpBcScale ocp))
                       (fromMaybe (fill 1) (ocpPathCScale ocp))
         }
+
+  -- callbacks and quadrature outputs
+  outputFun <- toMXFun "stageOutputs" $ outputFunction callInterpolate cijs taus dynFun
+  genericQuadraturesFun <- toMXFun "generic quadratures" $
+                           genericQuadraturesFunction callInterpolateScalar cijs n
+
+  let (getHellaOutputs, getPlotPoints, getOutputs) = toCallbacks n roots taus outputFun pathStageConFun
+
       evalQuadratures :: Vec n (Vec deg Double) -> Double -> IO Double
       evalQuadratures qs' tf' = do
         let d2d :: Double -> J (JV Id) DMatrix
@@ -254,8 +258,6 @@ makeCollProblem roots ocp guess = do
         stageIntegrals' <- T.mapM evalq qs :: IO (Vec n (J (JV Id) DMatrix))
         let stageIntegrals = fmap (unId . splitJV . d2v) stageIntegrals' :: Vec n Double
         return (F.sum stageIntegrals)
-
-  let (getHellaOutputs, getPlotPoints, getOutputs) = toCallbacks n roots taus outputFun pathStageConFun
 
   return $ CollProblem { cpNlp = nlp
                        , cpOcp = ocp
