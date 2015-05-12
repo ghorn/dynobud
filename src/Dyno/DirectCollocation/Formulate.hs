@@ -16,7 +16,7 @@ module Dyno.DirectCollocation.Formulate
 
 import GHC.Generics ( Generic, Generic1 )
 
-import Control.Monad.State ( StateT(..), runStateT, evalStateT )
+import Control.Monad.State ( StateT(..), runStateT )
 import Data.Maybe ( fromMaybe )
 import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
@@ -60,6 +60,7 @@ data CollProblem x z u p r o c h q n deg =
   , cpHellaOutputs :: J (CollTraj x z u p n deg) (Vector Double)
                       -> IO ( DynPlotPoints Double
                             , Vec n (StageOutputs x o h q deg Double)
+                            , Quadratures q Double
                             )
   , cpOutputs :: J (CollTraj x z u p n deg) (Vector Double)
                  -> IO (Vec n (StageOutputs x o h q deg Double))
@@ -350,6 +351,7 @@ toCallbacks ::
   -> ( J (CollTraj x z u p n deg) (Vector Double)
           -> IO ( DynPlotPoints Double
                 , Vec n (StageOutputs x o h q deg Double)
+                , Quadratures q Double
                 )
      , J (CollTraj x z u p n deg) (Vector Double) -> IO (DynPlotPoints Double)
      , J (CollTraj x z u p n deg) (Vector Double) -> IO (Vec n (StageOutputs x o h q deg Double))
@@ -359,8 +361,11 @@ toCallbacks n roots taus outputFun pathStageConFun lagQuadFun quadFun =
   where
   -- prepare callbacks
     f :: J (JV o) DMatrix ->  J (JV x) DMatrix -> J (JV h) DMatrix
-         -> (J (JV o) (Vector Double), J (JV x) (Vector Double), J (JV h) (Vector Double))
-    f o' x' h' = (d2v o', d2v x', d2v h')
+         -> Quadratures q Double -> Quadratures q Double
+         -> ( J (JV o) (Vector Double), J (JV x) (Vector Double), J (JV h) (Vector Double)
+            , Quadratures q Double, Quadratures q Double
+            )
+    f o' x' h' q q' = (d2v o', d2v x', d2v h', q, q')
 
     callOutputFun :: J (JV p) (Vector Double)
                      -> J (JV Id) (Vector Double)
@@ -392,15 +397,22 @@ toCallbacks n roots taus outputFun pathStageConFun lagQuadFun quadFun =
       let outs0 = unJVec (split out) :: Vec deg (J (JV o) DMatrix)
           xdots0 = unJVec (split xdot) :: Vec deg (J (JV x) DMatrix)
           hs0 = unJVec (split hs) :: Vec deg (J (JV h) DMatrix)
+          lagrQs0 = fmap (unId . splitJV . d2v) $ unJVec (split lagrQs) :: Vec deg Double
+          userQs0 = fmap        (splitJV . d2v) $ unJVec (split userQs) :: Vec deg (q Double)
+          lagrQdots0 = fmap (unId . splitJV . d2v) $ unJVec (split lagrQdots) :: Vec deg Double
+          userQdots0 = fmap (splitJV . d2v) $ unJVec (split userQdots) :: Vec deg (q Double)
+          qdots = TV.tvzipWith Quadratures lagrQdots0 userQdots0
+          qs    = fmap (previousQuadratures ^+^) $ TV.tvzipWith Quadratures lagrQs0 userQs0
 
           nextQuadratures =
             Quadratures
             { qLagrange = unId (splitJV (d2v lagrQNext))
             , qUser = splitJV (d2v userQNext)
             } ^+^ previousQuadratures
+
           stageOutputs =
             StageOutputs
-            { soVec = TV.tvzipWith3 f outs0 xdots0 hs0
+            { soVec = TV.tvzipWith5 f outs0 xdots0 hs0 qs qdots
             , soXNext = d2v xnext
             , soQNext = nextQuadratures
             }
@@ -424,27 +436,29 @@ toCallbacks n roots taus outputFun pathStageConFun lagQuadFun quadFun =
 
           quadratures0 :: Quadratures q Double
           quadratures0 = fill 0
-      mapAccumM' (callOutputFun p h) quadratures0 (TV.tvzip vstages ks)
+      mapAccumM (callOutputFun p h) quadratures0 (TV.tvzip vstages ks)
 
     getHellaOutputs ::
       J (CollTraj x z u p n deg) (Vector Double)
       -> IO ( DynPlotPoints Double
             , Vec n (StageOutputs x o h q deg Double)
+            , Quadratures q Double
             )
     getHellaOutputs traj = do
       (outputs, quadratures) <- mapOutputFun traj
-      return (dynPlotPoints roots (split traj) outputs, outputs)
+      return (dynPlotPoints roots (split traj) outputs, outputs, quadratures)
 
     getPlotPoints :: J (CollTraj x z u p n deg) (Vector Double)
                      -> IO (DynPlotPoints Double)
-    getPlotPoints traj = fmap fst $ getHellaOutputs traj
+    getPlotPoints traj = do
+      (dpp, _, _) <- getHellaOutputs traj
+      return dpp
 
     getOutputs :: J (CollTraj x z u p n deg) (Vector Double)
                   -> IO (Vec n (StageOutputs x o h q deg Double))
     getOutputs traj = do
       (outputs, _) <- mapOutputFun traj
       return outputs
-
 
 
 getFg ::
@@ -913,8 +927,5 @@ makeGuessSim quadratureRoots tf x00 ode guessU p =
 
 -- http://stackoverflow.com/questions/11652809/how-to-implement-mapaccumm
 -- thanks rconner
-mapAccumM' :: (Monad m, Functor m, T.Traversable t) => (a -> b -> m (c, a)) -> a -> t b -> m (t c, a)
-mapAccumM' f = flip (runStateT . (T.traverse (StateT . (flip f))))
-
-mapAccumM :: (Monad m, Functor m, T.Traversable t) => (a -> b -> m (c, a)) -> a -> t b -> m (t c)
-mapAccumM f = flip (evalStateT . (T.traverse (StateT . (flip f))))
+mapAccumM :: (Monad m, Functor m, T.Traversable t) => (a -> b -> m (c, a)) -> a -> t b -> m (t c, a)
+mapAccumM f = flip (runStateT . (T.traverse (StateT . (flip f))))

@@ -298,6 +298,8 @@ data StageOutputs x o h q deg a =
   { soVec :: Vec deg ( J (JV o) (Vector a)
                      , J (JV x) (Vector a)
                      , J (JV h) (Vector a)
+                     , Quadratures q a -- qs
+                     , Quadratures q a -- qdots
                      )
   , soXNext :: J (JV x) (Vector a)
   , soQNext :: Quadratures q a

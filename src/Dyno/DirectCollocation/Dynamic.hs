@@ -95,7 +95,7 @@ catDynPlotPoints pps =
 dynPlotPoints ::
   forall x z u p h o q n deg a .
   ( Dim n, Dim deg, Real a, Fractional a, Show a
-  , Vectorize x, Vectorize z, Vectorize u, Vectorize o, Vectorize p, Vectorize h
+  , Vectorize x, Vectorize z, Vectorize u, Vectorize o, Vectorize p, Vectorize h, Vectorize q
   )
   => QuadratureRoots
   -> CollTraj x z u p n deg (Vector a)
@@ -156,9 +156,10 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
         xs',zs,us,os,xds,hs :: Vector (a, Vector a)
         (xs',zs,us,os,xds,hs) = V.unzip6 $ TV.unVec $ TV.tvzipWith3 g xzus0 (soVec stageOutputs) taus
 
-        g :: CollPoint
-             (JV x) (JV z) (JV u) (Vector a)
-             -> (J (JV o) (Vector a), J (JV x) (Vector a), J (JV h) (Vector a))
+        g :: CollPoint (JV x) (JV z) (JV u) (Vector a)
+             -> ( J (JV o) (Vector a), J (JV x) (Vector a), J (JV h) (Vector a)
+                , Quadratures q a, Quadratures q a
+                )
              -> a
              -> ( (a, V.Vector a)
                 , (a, V.Vector a)
@@ -167,7 +168,7 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
                 , (a, V.Vector a)
                 , (a, V.Vector a)
                 )
-        g (CollPoint x z u) (o,x',pathc) tau =
+        g (CollPoint x z u) (o,x',pathc,q,q') tau =
           ( (t,unJ' "x" x)
           , (t,unJ' "z" z)
           , (t,unJ' "u" u)
