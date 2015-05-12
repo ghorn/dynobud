@@ -6,8 +6,7 @@
 {-# Language PolyKinds #-}
 
 module Dyno.DirectCollocation.Formulate
-       ( CovTraj(..)
-       , CollProblem(..)
+       ( CollProblem(..)
        , StageOutputs(..)
        , makeCollProblem
        , mkTaus
@@ -49,7 +48,6 @@ import Dyno.Ocp
 import Dyno.DirectCollocation.Types
 import Dyno.DirectCollocation.Dynamic ( MetaProxy(..), DynPlotPoints, dynPlotPoints )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..), mkTaus, interpolate, timesFromTaus )
-import Dyno.DirectCollocation.Robust
 
 data CollProblem x z u p r o c h q n deg =
   CollProblem

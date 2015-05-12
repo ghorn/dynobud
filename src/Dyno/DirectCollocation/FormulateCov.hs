@@ -6,6 +6,7 @@
 
 module Dyno.DirectCollocation.FormulateCov
        ( CollCovProblem(..)
+       , CovTraj(..)
        , makeCollCovProblem
        ) where
 
