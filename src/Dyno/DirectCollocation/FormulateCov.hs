@@ -47,7 +47,7 @@ data CollCovProblem ocp n deg sx sw sh shr sc =
   , ccpPlotPoints :: J (CollTrajCov sx ocp n deg) (Vector Double) -> IO (DynPlotPoints Double)
   , ccpOutputs ::
        J (CollTrajCov sx ocp n deg) (Vector Double)
-       -> IO ( Vec n (Vec deg (O ocp Double, X ocp Double, H ocp Double), X ocp Double)
+       -> IO ( Vec n (StageOutputs (X ocp) (O ocp) (H ocp) (Q ocp) deg Double)
              , Vec n (J (Cov (JV sx)) (Vector Double))
              , J (Cov (JV sx)) (Vector Double)
              )
@@ -137,7 +137,7 @@ makeCollCovProblem roots ocp ocpCov guess = do
         cpPlotPoints cp0 collTraj
 
       getOutputs :: J (CollTrajCov sx ocp n deg) (Vector Double)
-                    -> IO ( Vec n (Vec deg (o Double, x Double, h Double), x Double)
+                    -> IO ( Vec n (StageOutputs x o h q deg Double)
                           , Vec n (J (Cov (JV sx)) (Vector Double))
                           , J (Cov (JV sx)) (Vector Double)
                           )
