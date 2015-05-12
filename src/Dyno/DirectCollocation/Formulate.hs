@@ -90,7 +90,7 @@ data QuadratureIn x z u p a =
   deriving (Generic, Generic1)
 
 data QuadratureStageIn x z u p deg a =
-  -- xzus p ts T
+  -- xzus p ts h
   QuadratureStageIn (J (CollStage x z u deg) a) (J p a) (J (JVec deg (JV Id)) a) (J (JV Id) a)
   deriving (Generic, Generic1)
 
@@ -100,7 +100,7 @@ data PathCIn x z u p a =
   deriving (Generic, Generic1)
 
 data PathCStageIn x z u p deg a =
-  -- xzus p ts T
+  -- xzus p ts h
   PathCStageIn (J (CollStage x z u deg) a) (J p a) (J (JVec deg (JV Id)) a) (J (JV Id) a)
   deriving (Generic, Generic1)
 
@@ -223,7 +223,7 @@ makeCollProblem roots ocp guess = do
           (_,_,qNext) = toQuadratureFun n cijs callInterpolateQ (call quadFunSX) qIn
       pathCStageFun pcIn = cat (JVec hs)
         where
-          hs = toPathCFun n cijs (call pathCFunSX) pcIn
+          hs = toPathCFun cijs (call pathCFunSX) pcIn
   lagrangeStageFunMX   <- toMXFun "lagrangeStageFun"   lagrangeStageFun
   quadratureStageFunMX <- toMXFun "quadratureStageFun" quadratureStageFun
   pathCStageFunMX <- toMXFun "pathCStageFun" pathCStageFun
@@ -369,7 +369,6 @@ toCallbacks n roots taus outputFun pathStageConFun = (getHellaOutputs, getPlotPo
 
     callOutputFun :: J (JV p) (Vector Double)
                      -> J (JV Id) (Vector Double)
-                     -> J (JV Id) (Vector Double)
                      -> J (CollStage (JV x) (JV z) (JV u) deg) (Vector Double)
                      -> J (JV Id) (Vector Double)
                      -> IO ( Vec deg ( J (JV o) (Vector Double)
@@ -378,7 +377,7 @@ toCallbacks n roots taus outputFun pathStageConFun = (getHellaOutputs, getPlotPo
                                      )
                            , J (JV x) (Vector Double)
                            )
-    callOutputFun p h tf stage k = do
+    callOutputFun p h stage k = do
       let p' = v2d p
       (_ :*: xdot :*: out :*: xnext) <-
         eval outputFun $ (v2d stage) :*: p' :*: (v2d h) :*: (v2d k)
@@ -388,7 +387,7 @@ toCallbacks n roots taus outputFun pathStageConFun = (getHellaOutputs, getPlotPo
             where
               t0 = h' * v2d k
               h' = v2d h
-          pathCStageIn = PathCStageIn (v2d stage) p' (cat (JVec stageTimes)) (v2d tf)
+          pathCStageIn = PathCStageIn (v2d stage) p' (cat (JVec stageTimes)) (v2d h)
       hs <- eval pathStageConFun pathCStageIn
 
       let outs0 = unJVec (split out) :: Vec deg (J (JV o) DMatrix)
@@ -415,7 +414,7 @@ toCallbacks n roots taus outputFun pathStageConFun = (getHellaOutputs, getPlotPo
           ks :: Vec n (J (JV Id) (Vector Double))
           ks = TV.mkVec' $ map (catJV . Id . realToFrac) (take n [(0::Int)..])
 
-      T.sequence $ TV.tvzipWith (callOutputFun p h tf) vstages ks
+      T.sequence $ TV.tvzipWith (callOutputFun p h) vstages ks
 
     getHellaOutputs ::
       J (CollTraj x z u p n deg) (Vector Double)
@@ -520,7 +519,7 @@ getFg taus bcFun mayerFun lagQuadFun quadFun pathCStageFun dynamicsStageFun coll
     oneQuadStage qfun collStage stageTimes = qfun qInputs
       where
         qInputs :: QuadratureStageIn (JV x) (JV z) (JV u) (JV p) deg MX
-        qInputs = QuadratureStageIn collStage parm stageTimes tf
+        qInputs = QuadratureStageIn collStage parm stageTimes dt
 
     -- timestep
     dt = tf / fromIntegral n
@@ -565,7 +564,7 @@ getFg taus bcFun mayerFun lagQuadFun quadFun pathCStageFun dynamicsStageFun coll
           dynamicsStageFun (x0' :*: xzs :*: us :*: dt :*: parm :*: stageTimes)
 
         -- todo: don't split/cat this
-        pathCStageIn = PathCStageIn (cat (CollStage x0 xzus)) parm stageTimes tf
+        pathCStageIn = PathCStageIn (cat (CollStage x0 xzus)) parm stageTimes dt
         stageHs = pathCStageFun pathCStageIn
 
         xzs = cat (JVec xzs') :: J (JVec deg (JTuple (JV x) (JV z))) MX
@@ -604,12 +603,12 @@ toQuadratureFun ::
   -> (QuadratureIn x z u p MX -> J q MX)
   -> QuadratureStageIn x z u p deg MX
   -> (Vec deg (J q MX), Vec deg (J q MX), J q MX)
-toQuadratureFun n cijs interpolate' evalQuadDeriv (QuadratureStageIn collStage p stageTimes' tf) =
+toQuadratureFun n cijs interpolate' evalQuadDeriv (QuadratureStageIn collStage p stageTimes' h) =
   (qdots, qs, qnext)
   where
     CollStage x0 xzus' = split collStage
     xzus = fmap split (unJVec (split xzus')) :: Vec deg (CollPoint x z u MX)
-    h = tf / fromIntegral n
+    tf = h * fromIntegral n
 
     xs :: Vec deg (J x MX)
     xs = fmap (\(CollPoint x _ _) -> x) xzus
@@ -654,16 +653,14 @@ toPathCFun ::
   forall x z u p h deg
   . ( View x, View z, View u, View h, Dim deg
     )
-  => Int
-  -> Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
+  => Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
   -> (PathCIn x z u p MX -> J h MX)
   -> PathCStageIn x z u p deg MX
   -> Vec deg (J h MX)
-toPathCFun n cijs evalPathC (PathCStageIn collStage p stageTimes' tf) = hs
+toPathCFun cijs evalPathC (PathCStageIn collStage p stageTimes' h) = hs
   where
     CollStage x0 xzus' = split collStage
     xzus = fmap split (unJVec (split xzus')) :: Vec deg (CollPoint x z u MX)
-    h = tf / fromIntegral n
 
     xs :: Vec deg (J x MX)
     xs = fmap (\(CollPoint x _ _) -> x) xzus
