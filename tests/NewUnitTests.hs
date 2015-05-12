@@ -6,6 +6,7 @@ import Data.Monoid ( mempty )
 import Test.Framework ( Test, ColorMode(..), RunnerOptions'(..), TestOptions'(..)
                       , defaultMainWithOpts )
 
+import QuadratureTests ( quadratureTests )
 import VectorizeTests ( vectorizeTests )
 import ViewTests ( viewTests )
 import IntegrationTests ( integrationTests )
@@ -15,7 +16,8 @@ main = defaultMainWithOpts tests opts
 
 tests :: [Test]
 tests =
-  [ integrationTests
+  [ quadratureTests
+  , integrationTests
   , vectorizeTests
   , viewTests
   ]

@@ -415,7 +415,8 @@ test-suite unit-tests
   type:                exitcode-stdio-1.0
   hs-source-dirs:      tests
   main-is:             NewUnitTests.hs
-  other-modules:       IntegrationTests
+  other-modules:       QuadratureTests
+                       IntegrationTests
                        VectorizeTests
                        ViewTests
                        Utils
