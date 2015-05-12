@@ -47,7 +47,9 @@ toMatlab cp nlpOut = do
   let ct@(CollTraj tf' p' stages' xf) = split (xOpt nlpOut)
       CollTraj lagTf' lagP' _ _ = split (lambdaXOpt nlpOut)
 
-  outs <- cpOutputs cp (cat ct) :: IO (Vec n (StageOutputs x o h q deg Double))
+  (_, outs, finalQuads) <- cpHellaOutputs cp (cat ct)
+  let _ = outs :: Vec n (StageOutputs x o h q deg Double)
+      _ = finalQuads :: Quadratures q Double
 
   let taus :: Vec deg Double
       taus = cpTaus cp
@@ -112,7 +114,7 @@ toMatlab cp nlpOut = do
       woo :: String -> [xzu Double] -> String -> (xzu Double -> Double) -> String
       woo topName xzus name get = topName ++ "." ++ name ++ " = " ++ show (map get xzus) ++ ";"
 
-      wooP :: String -> p Double -> String -> (p Double -> Double) -> String
+      wooP :: String -> pq Double -> String -> (pq Double -> Double) -> String
       wooP topName p name get = topName ++ "." ++ name ++ " = " ++ show (get p) ++ ";"
 
       ret :: String
@@ -127,6 +129,7 @@ toMatlab cp nlpOut = do
             map (uncurry (woo "ret.quadratureStateDerivs" qds)) at ++
             map (uncurry (wooP "ret.params" (splitJV p'))) at ++
             map (uncurry (wooP "ret.lagrangeMultipliers.params" (splitJV lagP'))) at ++
+            map (uncurry (wooP "ret.finalQuadratureStates" finalQuads)) at ++
             [ "ret.lagrangeMultipliers.T = " ++ show (unId (splitJV lagTf')) ++ ";"
             , ""
             , "ret.tx = " ++ show xTimes ++ ";"
