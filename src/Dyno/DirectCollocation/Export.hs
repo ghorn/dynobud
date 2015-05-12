@@ -10,12 +10,9 @@ import Data.List ( unzip5 )
 import Data.Proxy ( Proxy(..) )
 import Linear.V ( Dim(..) )
 import Data.Vector ( Vector )
-import qualified Data.Vector as V
 import qualified Data.Foldable as F
 
 import Accessors ( Lookup, flatten, accessors )
-
-import Dyno.View.Unsafe.View ( unJ )
 
 import Dyno.Nlp ( NlpOut(..) )
 import Dyno.TypeVecs ( Vec )
@@ -53,7 +50,7 @@ toMatlab cp nlpOut = do
 
   let taus :: Vec deg Double
       taus = cpTaus cp
-      tf = V.head (unJ tf')
+      Id tf = splitJV tf'
 
       n = reflectDim (Proxy :: Proxy n)
 
@@ -134,6 +131,7 @@ toMatlab cp nlpOut = do
             , ""
             , "ret.tx = " ++ show xTimes ++ ";"
             , "ret.tzuo = " ++ show zuoTimes ++ ";"
+            , "ret.T = " ++ show tf ++ ";"
             , "ret.N = " ++ show n ++ ";"
             , "ret.deg = " ++ show (reflectDim (Proxy :: Proxy deg)) ++ ";"
             , "ret.collocationRoots = '" ++ show (cpRoots cp) ++ "';"
