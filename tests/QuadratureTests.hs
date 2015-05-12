@@ -172,10 +172,12 @@ goodSolution :: NlpOut
                 (CollOcpConstraints QuadX QuadR QuadBc None NCollStages CollDeg)
                 (Vector Double)
                 -> HUnit.Assertion
-goodSolution out = HUnit.assertBool msg (abs (f - fExpected) < 1e-8)
+goodSolution out = HUnit.assertBool msg (abs (f - fExpected) < 1e-8 && abs (pF - fExpected) < 1e-8)
   where
-    msg = printf "    objective: %.4f, expected: %.4f" f fExpected
+    msg = printf "    objective: %.4f, final pos: %.4f, expected: %.4f" f pF fExpected
     fExpected = 0.5 * alpha * tf**2 :: Double
+    QuadX pF _ = splitJV xf'
+    CollTraj _ _ _ xf' = split (xOpt out)
     Id f = splitJV (fOpt out)
 
 compareIntegration :: (QuadratureRoots, StateOrOutput, QuadOrLagrange) -> HUnit.Assertion
