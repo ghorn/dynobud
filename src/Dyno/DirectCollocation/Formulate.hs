@@ -646,8 +646,12 @@ toQuadratureFun n cijs interpolate' evalQuadDeriv (QuadratureStageIn collStage p
     qnext :: J q MX
     qnext = interpolate' (0 :: J q MX) qs
 
-    qs :: Vec deg (J q MX)
-    qs = cijInvFr !* qdots
+    qs = fmap timesH qsOverH
+      where
+        timesH q = M.uncol $ M.ms (M.col q) h
+
+    qsOverH :: Vec deg (J q MX)
+    qsOverH = cijInvFr !* qdots
 
     cijs' :: Vec deg (Vec deg Double)
     cijs' = TV.tvtail $ fmap TV.tvtail cijs
