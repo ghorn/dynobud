@@ -6,6 +6,7 @@ module Dyno.DirectCollocation.Export
        ( toMatlab
        ) where
 
+import Data.List ( unzip5 )
 import Data.Proxy ( Proxy(..) )
 import Linear.V ( Dim(..) )
 import Data.Vector ( Vector )
@@ -23,7 +24,9 @@ import Dyno.View.View ( View(..) )
 import Dyno.View.JV ( JV, splitJV )
 import Dyno.View.JVec ( JVec(..) )
 import Dyno.DirectCollocation.Formulate ( CollProblem(..) )
-import Dyno.DirectCollocation.Types ( CollTraj(..), CollStage(..), CollPoint(..) )
+import Dyno.DirectCollocation.Types ( CollTraj(..), CollStage(..), CollPoint(..)
+                                    , StageOutputs(..), Quadratures(..)
+                                    )
 import Dyno.DirectCollocation.Quadratures ( timesFromTaus )
 
 toMatlab ::
@@ -34,6 +37,7 @@ toMatlab ::
     , Lookup (o Double), Vectorize o
     , Lookup (p Double), Vectorize p
     , Lookup (h Double), Vectorize h
+    , Lookup (q Double), Vectorize q
     , Dim n, Dim deg
     )
   => CollProblem x z u p r o c h q n deg
@@ -43,7 +47,7 @@ toMatlab cp nlpOut = do
   let ct@(CollTraj tf' p' stages' xf) = split (xOpt nlpOut)
       CollTraj lagTf' lagP' _ _ = split (lambdaXOpt nlpOut)
 
-  outs <- cpOutputs cp (cat ct)
+  outs <- cpOutputs cp (cat ct) :: IO (Vec n (StageOutputs x o h q deg Double))
 
   let taus :: Vec deg Double
       taus = cpTaus cp
@@ -74,7 +78,20 @@ toMatlab cp nlpOut = do
       os :: [o Double]
       xdots :: [x Double]
       hs :: [h Double]
-      (os, xdots, hs) = unzip3 $ F.concatMap (F.toList . fst) outs -- drop the interpolated value
+      -- drop the interpolated value
+      os = map splitJV os'
+      xdots = map splitJV xdots'
+      hs = map splitJV hs'
+      (os', xdots', hs', _, _) = unzip5 $ F.concatMap (F.toList . soVec) outs
+      toQ :: StageOutputs x o h q deg Double -> [Quadratures q Double]
+      toQ stageOutputs = (map (\(_,_,_,qs',_) -> qs') (F.toList (soVec stageOutputs))) ++ [soQNext stageOutputs]
+      qs :: [Quadratures q Double]
+      qs = fill 0 : F.concatMap toQ outs
+
+      toQd :: StageOutputs x o h q deg Double -> [Quadratures q Double]
+      toQd stageOutputs = (map (\(_,_,_,_,qd) -> qd) (F.toList (soVec stageOutputs)))
+      qds :: [Quadratures q Double]
+      qds = F.concatMap toQd outs
 
       getXs (CollStage x0 xzus) = splitJV x0 : map (getX . split) (F.toList (unJVec (split xzus)))
       getZs (CollStage  _ xzus) =              map (getZ . split) (F.toList (unJVec (split xzus)))
@@ -106,6 +123,8 @@ toMatlab cp nlpOut = do
             map (uncurry (woo "ret.controls" us)) at ++
             map (uncurry (woo "ret.outputs" os)) at ++
             map (uncurry (woo "ret.pathConstraints" hs)) at ++
+            map (uncurry (woo "ret.quadratureStates" qs)) at ++
+            map (uncurry (woo "ret.quadratureStateDerivs" qds)) at ++
             map (uncurry (wooP "ret.params" (splitJV p'))) at ++
             map (uncurry (wooP "ret.lagrangeMultipliers.params" (splitJV lagP'))) at ++
             [ "ret.lagrangeMultipliers.T = " ++ show (unId (splitJV lagTf')) ++ ";"

@@ -3,6 +3,7 @@
 {-# Language DeriveGeneric #-}
 {-# Language PolyKinds #-}
 
+-- todo(greg): rename to PlotPoints or something
 module Dyno.DirectCollocation.Dynamic
        ( DynPlotPoints
        , CollTrajMeta(..)
@@ -35,7 +36,7 @@ import PlotHo ( Plotter, addChannel )
 
 import Dyno.View.Unsafe.View ( unJ, unJ' )
 
-import Dyno.Vectorize ( Vectorize, Id(..), fill )
+import Dyno.Vectorize ( Vectorize(..), Id(..), fill )
 import Dyno.View.JV ( JV, splitJV )
 import Dyno.View.View ( View(..), J )
 import Dyno.View.JVec ( JVec(..) )
@@ -75,6 +76,8 @@ data DynPlotPoints a = DynPlotPoints
                        (Vector (Vector (a, Vector a)))
                        (Vector (Vector (a, Vector a)))
                        (Vector (Vector (a, Vector a)))
+                       (Vector (Vector (a, Vector a)))
+                       (Vector (Vector (a, Vector a)))
                      deriving Generic
 
 
@@ -84,12 +87,14 @@ instance Serialize a => Serialize (DynPlotPoints a)
 catDynPlotPoints :: V.Vector (DynPlotPoints a) -> DynPlotPoints a
 catDynPlotPoints pps =
   DynPlotPoints
-  (V.concatMap (\(DynPlotPoints x _ _ _ _ _) -> x) pps)
-  (V.concatMap (\(DynPlotPoints _ x _ _ _ _) -> x) pps)
-  (V.concatMap (\(DynPlotPoints _ _ x _ _ _) -> x) pps)
-  (V.concatMap (\(DynPlotPoints _ _ _ x _ _) -> x) pps)
-  (V.concatMap (\(DynPlotPoints _ _ _ _ x _) -> x) pps)
-  (V.concatMap (\(DynPlotPoints _ _ _ _ _ x) -> x) pps)
+  (V.concatMap (\(DynPlotPoints x _ _ _ _ _ _ _) -> x) pps)
+  (V.concatMap (\(DynPlotPoints _ x _ _ _ _ _ _) -> x) pps)
+  (V.concatMap (\(DynPlotPoints _ _ x _ _ _ _ _) -> x) pps)
+  (V.concatMap (\(DynPlotPoints _ _ _ x _ _ _ _) -> x) pps)
+  (V.concatMap (\(DynPlotPoints _ _ _ _ x _ _ _) -> x) pps)
+  (V.concatMap (\(DynPlotPoints _ _ _ _ _ x _ _) -> x) pps)
+  (V.concatMap (\(DynPlotPoints _ _ _ _ _ _ x _) -> x) pps)
+  (V.concatMap (\(DynPlotPoints _ _ _ _ _ _ _ x) -> x) pps)
 
 
 dynPlotPoints ::
@@ -107,8 +112,11 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
   --     https://github.com/ghorn/Plot-ho-matic/issues/10
   --     https://github.com/timbod7/haskell-chart/issues/81
   | reflectDim (Proxy :: Proxy deg) == 1 =
-                DynPlotPoints xss' (singleArc zss) (singleArc uss) (singleArc oss) (singleArc xdss) (singleArc hss)
-  | otherwise = DynPlotPoints xss' zss uss oss xdss hss
+                DynPlotPoints xss (singleArc zss) (singleArc uss) (singleArc oss) (singleArc xdss)
+                              (singleArc hss) (singleArc qss) (singleArc qdss)
+  | otherwise = DynPlotPoints xss zss uss oss xdss hss (singleArc qss) qdss
+    -- draw quadrature states as a single line since they are differentiable
+    -- and gaps are closed by construction
   where
     singleArc :: Vector (Vector b) -> Vector (Vector b)
     singleArc = V.singleton . V.concat . V.toList
@@ -123,15 +131,18 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
     stages :: Vec n (CollStage (JV x) (JV z) (JV u) deg (Vector a))
     stages = fmap split (unJVec (split stages'))
 
-    xss' = xss `V.snoc` (V.singleton (tf, unJ xf))
+    xss = xss' `V.snoc` (V.singleton (tf, unJ xf))
+    -- assumes initial time is 0
+    qss = V.singleton (0, vectorize (fill 0 :: Quadratures q a)) `V.cons` qss'
 
-    xss,zss,uss,oss,xdss,hss :: Vector (Vector (a, Vector a))
-    (xss,zss,uss,oss,xdss,hss) = V.unzip6 xzuoxdhs
+    xss',zss,uss,oss,xdss,hss :: Vector (Vector (a, Vector a))
+    (xss',zss,uss,oss,xdss,hss,qss',qdss) = unzip8 xzuoxdhs
 
     -- todo: check this final time tf'' against expected tf
     (_tf'', xzuoxdhs) = T.mapAccumL f 0 $ V.zip (TV.unVec stages) (TV.unVec outputs)
 
 
+    -- todo(greg): should take the times from toCallbacks, not recalculate
     f :: a
          -> ( CollStage (JV x) (JV z) (JV u) deg (Vector a)
             , StageOutputs x o h q deg a
@@ -143,9 +154,11 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
               , V.Vector (a, V.Vector a)
               , V.Vector (a, V.Vector a)
               , V.Vector (a, V.Vector a)
+              , V.Vector (a, V.Vector a)
+              , V.Vector (a, V.Vector a)
               )
             )
-    f t0 (CollStage x0 xzus', stageOutputs) = (tnext, (xs,zs,us,os,xds,hs))
+    f t0 (CollStage x0 xzus', stageOutputs) = (tnext, (xs,zs,us,os,xds,hs,qs,qds))
       where
         tnext = t0 + h
         xzus0 = fmap split (unJVec (split xzus')) :: Vec deg (CollPoint (JV x) (JV z) (JV u) (Vector a))
@@ -153,8 +166,12 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
         xs :: V.Vector (a, V.Vector a)
         xs = (t0, unJ x0) `V.cons` xs' `V.snoc` (tnext, unJ (soXNext stageOutputs))
 
-        xs',zs,us,os,xds,hs :: Vector (a, Vector a)
-        (xs',zs,us,os,xds,hs) = V.unzip6 $ TV.unVec $ TV.tvzipWith3 g xzus0 (soVec stageOutputs) taus
+        qs :: V.Vector (a, V.Vector a)
+        qs = qs' `V.snoc` (tnext, vectorize (soQNext stageOutputs))
+
+        xs',zs,us,os,xds,hs,qs',qds :: Vector (a, Vector a)
+        (xs',zs,us,os,xds,hs,qs',qds) =
+          unzip8 $ TV.unVec $ TV.tvzipWith3 g xzus0 (soVec stageOutputs) taus
 
         g :: CollPoint (JV x) (JV z) (JV u) (Vector a)
              -> ( J (JV o) (Vector a), J (JV x) (Vector a), J (JV h) (Vector a)
@@ -162,6 +179,8 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
                 )
              -> a
              -> ( (a, V.Vector a)
+                , (a, V.Vector a)
+                , (a, V.Vector a)
                 , (a, V.Vector a)
                 , (a, V.Vector a)
                 , (a, V.Vector a)
@@ -175,10 +194,11 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
           , (t,unJ' "o" o)
           , (t,unJ' "x'" x')
           , (t,unJ' "h" pathc)
+          , (t,vectorize q)
+          , (t,vectorize q')
           )
           where
             t = t0 + h*tau
-
 
 
 data NameTree = NameTreeNode (String,String) [(String,NameTree)]
@@ -211,14 +231,16 @@ namesFromAccTree' k0 (nm, Data names ats) = (k, (nm, NameTreeNode names children
 type MetaTree a = Tree.Forest (String, String, Maybe ((DynPlotPoints a, CollTrajMeta) -> [[(a,a)]]))
 
 forestFromMeta :: CollTrajMeta -> MetaTree Double
-forestFromMeta meta = [xTree,zTree,uTree,oTree,xdTree,hTree]
+forestFromMeta meta = [xTree,zTree,uTree,oTree,xdTree,hTree,qTree,qdTree]
   where
-    xTree  = blah (\(DynPlotPoints x _ _ _ _  _) ->  x) "differential states" (ctmX meta)
-    zTree  = blah (\(DynPlotPoints _ z _ _ _  _) ->  z) "algebraic variables" (ctmZ meta)
-    uTree  = blah (\(DynPlotPoints _ _ u _ _  _) ->  u) "controls" (ctmU meta)
-    oTree  = blah (\(DynPlotPoints _ _ _ o _  _) ->  o) "outputs" (ctmO meta)
-    xdTree = blah (\(DynPlotPoints _ _ _ _ xd _) -> xd) "diff state derivatives" (ctmX meta)
-    hTree  = blah (\(DynPlotPoints _ _ _ _ _  h) ->  h) "path constraints" (ctmH meta)
+    xTree  = blah (\(DynPlotPoints x _ _ _ _  _ _ _ ) ->  x) "differential states" (ctmX meta)
+    zTree  = blah (\(DynPlotPoints _ z _ _ _  _ _ _ ) ->  z) "algebraic variables" (ctmZ meta)
+    uTree  = blah (\(DynPlotPoints _ _ u _ _  _ _ _ ) ->  u) "controls" (ctmU meta)
+    oTree  = blah (\(DynPlotPoints _ _ _ o _  _ _ _ ) ->  o) "outputs" (ctmO meta)
+    xdTree = blah (\(DynPlotPoints _ _ _ _ xd _ _ _ ) -> xd) "diff state derivatives" (ctmX meta)
+    hTree  = blah (\(DynPlotPoints _ _ _ _ _  h _ _ ) ->  h) "path constraints" (ctmH meta)
+    qTree  = blah (\(DynPlotPoints _ _ _ _ _  _ q _ ) ->  q) "quadrature states" (ctmQ meta)
+    qdTree = blah (\(DynPlotPoints _ _ _ _ _  _ _ qd) -> qd) "ddt(quadrature states)" (ctmQ meta)
 
     blah :: forall f c t
             . (Functor f, F.Foldable f)
@@ -248,6 +270,18 @@ toMeta _ =
   , ctmU = namesFromAccTree $ accessors (fill () :: u ())
   , ctmP = namesFromAccTree $ accessors (fill () :: p ())
   , ctmO = namesFromAccTree $ accessors (fill () :: o ())
-  , ctmQ = namesFromAccTree $ accessors (fill () :: q ())
+  , ctmQ = namesFromAccTree $ accessors (fill () :: Quadratures q ())
   , ctmH = namesFromAccTree $ accessors (fill () :: h ())
   }
+
+unzip8 :: Vector (a, b, c, d, e, f, g, h)
+          -> (Vector a, Vector b, Vector c, Vector d, Vector e, Vector f, Vector g, Vector h)
+{-# INLINE unzip8 #-}
+unzip8 xs = (V.map (\(a, _, _, _, _, _, _, _) -> a) xs,
+             V.map (\(_, b, _, _, _, _, _, _) -> b) xs,
+             V.map (\(_, _, c, _, _, _, _, _) -> c) xs,
+             V.map (\(_, _, _, d, _, _, _, _) -> d) xs,
+             V.map (\(_, _, _, _, e, _, _, _) -> e) xs,
+             V.map (\(_, _, _, _, _, f, _, _) -> f) xs,
+             V.map (\(_, _, _, _, _, _, g, _) -> g) xs,
+             V.map (\(_, _, _, _, _, _, _, h) -> h) xs)
