@@ -8,6 +8,7 @@
 module Dyno.DirectCollocation.Formulate
        ( CovTraj(..)
        , CollProblem(..)
+       , StageOutputs(..)
        , makeCollProblem
        , mkTaus
        , makeGuess
@@ -16,16 +17,15 @@ module Dyno.DirectCollocation.Formulate
 
 import GHC.Generics ( Generic, Generic1 )
 
+import Control.Monad.State ( StateT(..), runStateT, evalStateT )
 import Data.Maybe ( fromMaybe )
 import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
-import qualified Data.Vector as V
 import qualified Data.Foldable as F
 import qualified Data.Traversable as T
 import qualified Data.Packed.Matrix as Mat
 import qualified Numeric.LinearAlgebra.Algorithms as LA
-import Linear.Matrix hiding ( trace )
-import Linear.V
+import Linear hiding ( dot )
 
 import Casadi.DMatrix ( DMatrix )
 import Casadi.MX ( MX )
@@ -40,7 +40,7 @@ import Dyno.View.Fun
 import Dyno.View.JVec( JVec(..), jreplicate )
 import Dyno.View.Scheme ( Scheme )
 import Dyno.Vectorize ( Vectorize(..), Id(..), fill, vlength, vzipWith )
-import Dyno.TypeVecs ( Vec )
+import Dyno.TypeVecs ( Vec, Dim, reflectDim )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs )
 import Dyno.Nlp ( Nlp(..), Bounds )
@@ -61,21 +61,10 @@ data CollProblem x z u p r o c h q n deg =
                     -> IO (DynPlotPoints Double)
   , cpHellaOutputs :: J (CollTraj x z u p n deg) (Vector Double)
                       -> IO ( DynPlotPoints Double
-                            , Vec n ( Vec deg ( J (JV o) (Vector Double)
-                                              , J (JV x) (Vector Double)
-                                              , J (JV h) (Vector Double)
-                                              )
-                                    , J (JV x) (Vector Double)
-                                    )
+                            , Vec n (StageOutputs x o h q deg Double)
                             )
   , cpOutputs :: J (CollTraj x z u p n deg) (Vector Double)
-                 -> IO (Vec n ( Vec deg ( o Double
-                                        , x Double
-                                        , h Double
-                                        )
-                              , x Double
-                              )
-                       )
+                 -> IO (Vec n (StageOutputs x o h q deg Double))
   , cpTaus :: Vec deg Double
   , cpRoots :: QuadratureRoots
   , cpEvalQuadratures :: Vec n (Vec deg Double) -> Double -> IO Double
@@ -92,6 +81,11 @@ data QuadratureIn x z u p a =
 data QuadratureStageIn x z u p deg a =
   -- xzus p ts h
   QuadratureStageIn (J (CollStage x z u deg) a) (J p a) (J (JVec deg (JV Id)) a) (J (JV Id) a)
+  deriving (Generic, Generic1)
+
+data QuadratureStageOut q deg a =
+  -- qdots qs qNext
+  QuadratureStageOut (J (JVec deg q) a) (J (JVec deg q) a) (J q a)
   deriving (Generic, Generic1)
 
 data PathCIn x z u p a =
@@ -116,10 +110,12 @@ data DaeOut r o a =
 
 instance (View x, View z, View u, View p) => Scheme (QuadratureIn x z u p)
 instance (View x, View z, View u, View p, Dim deg) => Scheme (QuadratureStageIn x z u p deg)
+instance (View q, Dim deg) => Scheme (QuadratureStageOut q deg)
 instance (View x, View z, View u, View p) => Scheme (PathCIn x z u p)
 instance (View x, View z, View u, View p, Dim deg) => Scheme (PathCStageIn x z u p deg)
 instance (View x, View z, View u, View p) => Scheme (DaeIn x z u p)
 instance (View r, View o) => Scheme (DaeOut r o)
+
 
 makeCollProblem ::
   forall x z u p r o c h q deg n .
@@ -215,17 +211,23 @@ makeCollProblem roots ocp guess = do
   pathCFunSX <- toSXFun "pathCFun" pathCFun
 
   let -- later we could use the intermediate points as outputs, or in path cosntraints
-      lagrangeStageFun qIn = qNext
+      lagrangeStageFun :: QuadratureStageIn (JV x) (JV z) (JV u) (JV p) deg MX
+                          -> QuadratureStageOut (JV Id) deg MX
+      lagrangeStageFun qIn = QuadratureStageOut (cat (JVec qdots)) (cat (JVec qs)) qNext
         where
-          (_,_,qNext) = toQuadratureFun n cijs callInterpolateScalar (call lagFunSX) qIn
-      quadratureStageFun qIn = qNext
+          (qdots,qs,qNext) = toQuadratureFun n cijs callInterpolateScalar (call lagFunSX) qIn
+      quadratureStageFun :: QuadratureStageIn (JV x) (JV z) (JV u) (JV p) deg MX
+                            -> QuadratureStageOut (JV q) deg MX
+      quadratureStageFun qIn = QuadratureStageOut (cat (JVec qdots)) (cat (JVec qs)) qNext
         where
-          (_,_,qNext) = toQuadratureFun n cijs callInterpolateQ (call quadFunSX) qIn
+          (qdots,qs,qNext) = toQuadratureFun n cijs callInterpolateQ (call quadFunSX) qIn
       pathCStageFun pcIn = cat (JVec hs)
         where
           hs = toPathCFun cijs (call pathCFunSX) pcIn
-  lagrangeStageFunMX   <- toMXFun "lagrangeStageFun"   lagrangeStageFun
-  quadratureStageFunMX <- toMXFun "quadratureStageFun" quadratureStageFun
+  lagrangeStageFunMX   <- toMXFun "lagrangeStageFun" $
+    (\(QuadratureStageOut _ _ q) -> q) . lagrangeStageFun
+  quadratureStageFunMX <- toMXFun "quadratureStageFun" $
+    (\(QuadratureStageOut _ _ q) -> q) . quadratureStageFun
   pathCStageFunMX <- toMXFun "pathCStageFun" pathCStageFun
 
 
@@ -290,11 +292,14 @@ makeCollProblem roots ocp guess = do
         }
 
   -- callbacks and quadrature outputs
+  lagrangeStageFunFullMX   <- toMXFun "lagrangeStageFunFull"   lagrangeStageFun
+  quadratureStageFunFullMX <- toMXFun "quadratureStageFunFull" quadratureStageFun
+
   outputFun <- toMXFun "stageOutputs" $ outputFunction callInterpolate cijs taus dynFun
   genericQuadraturesFun <- toMXFun "generic quadratures" $
                            genericQuadraturesFunction callInterpolateScalar cijs n
 
-  let (getHellaOutputs, getPlotPoints, getOutputs) = toCallbacks n roots taus outputFun pathCStageFunMX
+  let (getHellaOutputs, getPlotPoints, getOutputs) = toCallbacks n roots taus outputFun pathCStageFunMX lagrangeStageFunFullMX quadratureStageFunFullMX
 
       evalQuadratures :: Vec n (Vec deg Double) -> Double -> IO Double
       evalQuadratures qs' tf' = do
@@ -321,10 +326,11 @@ makeCollProblem roots ocp guess = do
                        , cpMetaProxy = MetaProxy
                        }
 
+
 toCallbacks ::
-  forall x z u p r o h n deg
+  forall x z u p r o h q n deg
   . ( Vectorize x, Vectorize z, Vectorize u, Vectorize p
-    , Vectorize o, Vectorize h, Vectorize r
+    , Vectorize o, Vectorize h, Vectorize r, Vectorize q
     , Dim n, Dim deg
     )
   => Int
@@ -341,26 +347,17 @@ toCallbacks ::
            :*: J (JV x)
            )
   -> MXFun (PathCStageIn (JV x) (JV z) (JV u) (JV p) deg) (J (JVec deg (JV h)))
+  -> MXFun (QuadratureStageIn (JV x) (JV z) (JV u) (JV p) deg) (QuadratureStageOut (JV Id) deg)
+  -> MXFun (QuadratureStageIn (JV x) (JV z) (JV u) (JV p) deg) (QuadratureStageOut (JV q) deg)
   -> ( J (CollTraj x z u p n deg) (Vector Double)
           -> IO ( DynPlotPoints Double
-                , Vec n
-                      ( Vec deg
-                            ( J (JV o) (Vector Double)
-                            , J (JV x) (Vector Double)
-                            , J (JV h) (Vector Double)
-                            )
-                      , J (JV x) (Vector Double)
-                      )
+                , Vec n (StageOutputs x o h q deg Double)
                 )
      , J (CollTraj x z u p n deg) (Vector Double) -> IO (DynPlotPoints Double)
-     , J (CollTraj x z u p n deg) (Vector Double)
-       -> IO ( Vec n
-                   ( Vec deg (o Double, x Double, h Double)
-                   , x Double
-                   )
-             )
+     , J (CollTraj x z u p n deg) (Vector Double) -> IO (Vec n (StageOutputs x o h q deg Double))
      )
-toCallbacks n roots taus outputFun pathStageConFun = (getHellaOutputs, getPlotPoints, getOutputs)
+toCallbacks n roots taus outputFun pathStageConFun lagQuadFun quadFun =
+  (getHellaOutputs, getPlotPoints, getOutputs)
   where
   -- prepare callbacks
     f :: J (JV o) DMatrix ->  J (JV x) DMatrix -> J (JV h) DMatrix
@@ -369,15 +366,14 @@ toCallbacks n roots taus outputFun pathStageConFun = (getHellaOutputs, getPlotPo
 
     callOutputFun :: J (JV p) (Vector Double)
                      -> J (JV Id) (Vector Double)
-                     -> J (CollStage (JV x) (JV z) (JV u) deg) (Vector Double)
-                     -> J (JV Id) (Vector Double)
-                     -> IO ( Vec deg ( J (JV o) (Vector Double)
-                                     , J (JV x) (Vector Double)
-                                     , J (JV h) (Vector Double)
-                                     )
-                           , J (JV x) (Vector Double)
+                     -> Quadratures q Double
+                     -> ( J (CollStage (JV x) (JV z) (JV u) deg) (Vector Double)
+                        , J (JV Id) (Vector Double)
+                        )
+                     -> IO ( StageOutputs x o h q deg Double
+                           , Quadratures q Double
                            )
-    callOutputFun p h stage k = do
+    callOutputFun p h previousQuadratures (stage, k) = do
       let p' = v2d p
       (_ :*: xdot :*: out :*: xnext) <-
         eval outputFun $ (v2d stage) :*: p' :*: (v2d h) :*: (v2d k)
@@ -386,22 +382,36 @@ toCallbacks n roots taus outputFun pathStageConFun = (getHellaOutputs, getPlotPo
           stageTimes = fmap (\tau -> t0 + realToFrac tau * h') taus
             where
               t0 = h' * v2d k
-              h' = v2d h
-          pathCStageIn = PathCStageIn (v2d stage) p' (cat (JVec stageTimes)) (v2d h)
+          stage' = v2d stage
+          stageTimes' = cat (JVec stageTimes)
+          h' = v2d h
+          pathCStageIn = PathCStageIn stage' p' stageTimes' h'
+          quadratureStageIn = QuadratureStageIn stage' p' stageTimes' h'
       hs <- eval pathStageConFun pathCStageIn
+      QuadratureStageOut lagrQdots lagrQs lagrQNext <- eval lagQuadFun quadratureStageIn
+      QuadratureStageOut userQdots userQs userQNext <- eval quadFun quadratureStageIn
 
       let outs0 = unJVec (split out) :: Vec deg (J (JV o) DMatrix)
           xdots0 = unJVec (split xdot) :: Vec deg (J (JV x) DMatrix)
           hs0 = unJVec (split hs) :: Vec deg (J (JV h) DMatrix)
-      return (TV.tvzipWith3 f outs0 xdots0 hs0, d2v xnext)
+
+          nextQuadratures =
+            Quadratures
+            { qLagrange = unId (splitJV (d2v lagrQNext))
+            , qUser = splitJV (d2v userQNext)
+            } ^+^ previousQuadratures
+          stageOutputs =
+            StageOutputs
+            { soVec = TV.tvzipWith3 f outs0 xdots0 hs0
+            , soXNext = d2v xnext
+            , soQNext = nextQuadratures
+            }
+
+      return (stageOutputs, nextQuadratures)
 
     mapOutputFun :: J (CollTraj x z u p n deg) (Vector Double)
-                    -> IO (Vec n ( Vec deg ( J (JV o) (Vector Double)
-                                           , J (JV x) (Vector Double)
-                                           , J (JV h) (Vector Double)
-                                           )
-                                 , J (JV x) (Vector Double)
-                                 )
+                    -> IO ( Vec n (StageOutputs x o h q deg Double)
+                          , Quadratures q Double
                           )
     mapOutputFun ct = do
       let CollTraj tf p stages _ = split ct
@@ -414,20 +424,17 @@ toCallbacks n roots taus outputFun pathStageConFun = (getHellaOutputs, getPlotPo
           ks :: Vec n (J (JV Id) (Vector Double))
           ks = TV.mkVec' $ map (catJV . Id . realToFrac) (take n [(0::Int)..])
 
-      T.sequence $ TV.tvzipWith (callOutputFun p h) vstages ks
+          quadratures0 :: Quadratures q Double
+          quadratures0 = fill 0
+      mapAccumM' (callOutputFun p h) quadratures0 (TV.tvzip vstages ks)
 
     getHellaOutputs ::
       J (CollTraj x z u p n deg) (Vector Double)
       -> IO ( DynPlotPoints Double
-            , Vec n ( Vec deg ( J (JV o) (Vector Double)
-                              , J (JV x) (Vector Double)
-                              , J (JV h) (Vector Double)
-                              )
-                    , J (JV x) (Vector Double)
-                    )
+            , Vec n (StageOutputs x o h q deg Double)
             )
     getHellaOutputs traj = do
-      outputs <- mapOutputFun traj
+      (outputs, quadratures) <- mapOutputFun traj
       return (dynPlotPoints roots (split traj) outputs, outputs)
 
     getPlotPoints :: J (CollTraj x z u p n deg) (Vector Double)
@@ -435,13 +442,10 @@ toCallbacks n roots taus outputFun pathStageConFun = (getHellaOutputs, getPlotPo
     getPlotPoints traj = fmap fst $ getHellaOutputs traj
 
     getOutputs :: J (CollTraj x z u p n deg) (Vector Double)
-                  -> IO (Vec n (Vec deg (o Double, x Double, h Double), x Double))
+                  -> IO (Vec n (StageOutputs x o h q deg Double))
     getOutputs traj = do
-      outputs <- mapOutputFun traj
-      let devec :: Vec deg (J (JV o) (Vector Double), J (JV x) (Vector Double), J (JV h) (Vector Double))
-                -> Vec deg (o Double, x Double, h Double)
-          devec = fmap (\(x,y,z) -> (splitJV x, splitJV y, splitJV z))
-      return $ fmap (\(x,y) -> (devec x, splitJV y)) outputs
+      (outputs, _) <- mapOutputFun traj
+      return outputs
 
 
 
@@ -862,6 +866,7 @@ makeGuessSim ::
   forall x z u p deg n .
   ( Dim n, Dim deg
   , Vectorize x, Vectorize z, Vectorize u, Vectorize p
+  , Additive x
   )
   => QuadratureRoots
   -> Double
@@ -907,14 +912,11 @@ makeGuessSim quadratureRoots tf x00 ode guessU p =
         k3 = (f (x0 ^+^ (k2^/2))) ^* h
         k4 = (f (x0 ^+^ k3))    ^* h
 
-        (^+^) :: x Double -> x Double -> x Double
-        y0 ^+^ y1 = devectorize $ V.zipWith (+) (vectorize y0) (vectorize y1)
 
-        (*^) :: Double -> x Double -> x Double
-        y0 *^ y1 = devectorize $ V.map (y0 *) (vectorize y1)
+-- http://stackoverflow.com/questions/11652809/how-to-implement-mapaccumm
+-- thanks rconner
+mapAccumM' :: (Monad m, Functor m, T.Traversable t) => (a -> b -> m (c, a)) -> a -> t b -> m (t c, a)
+mapAccumM' f = flip (runStateT . (T.traverse (StateT . (flip f))))
 
-        (^*) :: x Double -> Double -> x Double
-        y0 ^* y1 = devectorize $ V.map (* y1) (vectorize y0)
-
-        (^/) :: x Double -> Double -> x Double
-        y0 ^/ y1 = devectorize $ V.map (/ y1) (vectorize y0)
+mapAccumM :: (Monad m, Functor m, T.Traversable t) => (a -> b -> m (c, a)) -> a -> t b -> m (t c)
+mapAccumM f = flip (evalStateT . (T.traverse (StateT . (flip f))))

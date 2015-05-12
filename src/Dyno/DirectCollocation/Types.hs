@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language ScopedTypeVariables #-}
+{-# Language DeriveFunctor #-}
 {-# Language DeriveGeneric #-}
 {-# Language FlexibleContexts #-}
 {-# Language PolyKinds #-}
@@ -12,8 +13,6 @@ module Dyno.DirectCollocation.Types
        , CollStageConstraints(..)
        , CollOcpConstraints'
        , CollOcpConstraints(..)
-       , CollTrajCov(..)
-       , CollOcpCovConstraints(..)
        , fillCollTraj
        , fillCollTraj'
        , fmapCollTraj
@@ -24,13 +23,21 @@ module Dyno.DirectCollocation.Types
        , fmapCollPointJ
        , fillCollConstraints
        , getXzus
+         -- * for callbacks
+       , Quadratures(..)
+       , StageOutputs(..)
+         -- * robust
+       , CollTrajCov(..)
+       , CollOcpCovConstraints(..)
        ) where
 
-import GHC.Generics ( Generic )
+import GHC.Generics ( Generic, Generic1 )
 
 import qualified Data.Foldable as F
 import Linear.V ( Dim(..) )
 import Data.Vector ( Vector )
+
+import Accessors ( Lookup )
 
 import Dyno.Ocp
 import Dyno.View.Viewable ( Viewable )
@@ -39,6 +46,7 @@ import Dyno.View.JVec ( JVec(..), jreplicate )
 import Dyno.View.Cov ( Cov )
 import Dyno.View.JV ( JV, splitJV, catJV )
 import Dyno.Vectorize ( Vectorize(..), Id )
+import Dyno.TypeVecs ( Vec )
 
 
 -- | CollTraj using type families to compress type parameters
@@ -274,3 +282,23 @@ fmapCollPointJ :: forall x1 x2 z1 z2 u1 u2 a b .
                   -> CollPoint x1 z1 u1 a
                   -> CollPoint x2 z2 u2 b
 fmapCollPointJ fx fz fu (CollPoint x z u) = CollPoint (fx x) (fz z) (fu u)
+
+-- | for callbacks
+data Quadratures q a =
+  Quadratures
+  { qLagrange :: a
+  , qUser :: q a
+  } deriving (Functor, Generic, Generic1)
+instance Vectorize q => Vectorize (Quadratures q)
+instance (Lookup a, Lookup (q a)) => Lookup (Quadratures q a)
+
+-- | for callbacks
+data StageOutputs x o h q deg a =
+  StageOutputs
+  { soVec :: Vec deg ( J (JV o) (Vector a)
+                     , J (JV x) (Vector a)
+                     , J (JV h) (Vector a)
+                     )
+  , soXNext :: J (JV x) (Vector a)
+  , soQNext :: Quadratures q a
+  }

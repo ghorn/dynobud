@@ -44,7 +44,6 @@ import Dyno.TypeVecs ( Vec )
 import Dyno.DirectCollocation.Types
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots, mkTaus )
 
-
 addCollocationChannel ::
   String -> (((DynPlotPoints Double, CollTrajMeta) -> IO ()) -> IO ()) -> Plotter ()
 addCollocationChannel name action = addChannel name sameMeta toSignalTree action
@@ -94,18 +93,13 @@ catDynPlotPoints pps =
 
 
 dynPlotPoints ::
-  forall x z u p h o n deg a .
+  forall x z u p h o q n deg a .
   ( Dim n, Dim deg, Real a, Fractional a, Show a
   , Vectorize x, Vectorize z, Vectorize u, Vectorize o, Vectorize p, Vectorize h
   )
   => QuadratureRoots
   -> CollTraj x z u p n deg (Vector a)
-  -> Vec n ( Vec deg ( J (JV o) (Vector a)
-                     , J (JV x) (Vector a)
-                     , J (JV h) (Vector a)
-                     )
-           , J (JV x) (Vector a)
-           )
+  -> Vec n (StageOutputs x o h q deg a)
   -> DynPlotPoints a
 dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
   -- if degree is one, each arc will be 1 point and won't get drawn
@@ -140,7 +134,7 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
 
     f :: a
          -> ( CollStage (JV x) (JV z) (JV u) deg (Vector a)
-            , (Vec deg (J (JV o) (Vector a), J (JV x) (Vector a), J (JV h) (Vector a)), J (JV x) (Vector a))
+            , StageOutputs x o h q deg a
             )
          -> ( a
             , ( V.Vector (a, V.Vector a)
@@ -151,17 +145,28 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
               , V.Vector (a, V.Vector a)
               )
             )
-    f t0 (CollStage x0 xzus', (xdohs, xnext)) = (tnext, (xs,zs,us,os,xds,hs))
+    f t0 (CollStage x0 xzus', stageOutputs) = (tnext, (xs,zs,us,os,xds,hs))
       where
         tnext = t0 + h
         xzus0 = fmap split (unJVec (split xzus')) :: Vec deg (CollPoint (JV x) (JV z) (JV u) (Vector a))
 
         xs :: V.Vector (a, V.Vector a)
-        xs = (t0, unJ x0) `V.cons` xs' `V.snoc` (tnext,unJ xnext)
+        xs = (t0, unJ x0) `V.cons` xs' `V.snoc` (tnext, unJ (soXNext stageOutputs))
 
         xs',zs,us,os,xds,hs :: Vector (a, Vector a)
-        (xs',zs,us,os,xds,hs) = V.unzip6 $ TV.unVec $ TV.tvzipWith3 g xzus0 xdohs taus
+        (xs',zs,us,os,xds,hs) = V.unzip6 $ TV.unVec $ TV.tvzipWith3 g xzus0 (soVec stageOutputs) taus
 
+        g :: CollPoint
+             (JV x) (JV z) (JV u) (Vector a)
+             -> (J (JV o) (Vector a), J (JV x) (Vector a), J (JV h) (Vector a))
+             -> a
+             -> ( (a, V.Vector a)
+                , (a, V.Vector a)
+                , (a, V.Vector a)
+                , (a, V.Vector a)
+                , (a, V.Vector a)
+                , (a, V.Vector a)
+                )
         g (CollPoint x z u) (o,x',pathc) tau =
           ( (t,unJ' "x" x)
           , (t,unJ' "z" z)
