@@ -23,6 +23,7 @@ import qualified Numeric.LinearAlgebra.Data as D
 import qualified Test.HUnit.Base as HUnit
 import Test.Framework ( Test, testGroup )
 import Test.Framework.Providers.HUnit ( testCase )
+import Linear ( Additive )
 
 import Dyno.Vectorize ( Vectorize(..), None(..), fill )
 import Dyno.View.View ( View(..), J )
@@ -67,7 +68,7 @@ type instance Q (IntegrationOcp x p) = None
 
 runIntegration ::
   forall x p deg n
-  . ( Vectorize x, Vectorize p, Dim deg, Dim n )
+  . ( Vectorize x, Vectorize p, Additive x, Dim deg, Dim n )
   => Proxy n -> Proxy deg
   -> QuadratureRoots
   -> (forall a . Floating a => x a -> p a -> a -> x a)
@@ -167,7 +168,7 @@ integrationTests =
 
 compareIntegration ::
   forall x p n deg
-  . (Vectorize x, Vectorize p, Dim n, Dim deg)
+  . (Vectorize x, Vectorize p, Additive x, Dim n, Dim deg)
   => Proxy n -> Proxy deg
   -> (forall a . Floating a => x a -> p a -> a -> x a)
   -> x Double -> p Double -> Double -> HUnit.Assertion
