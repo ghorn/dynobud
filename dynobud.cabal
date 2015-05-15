@@ -30,7 +30,6 @@ library
                        Dyno.DirectCollocation.FormulateCov
                        Dyno.DirectCollocation.Integrate
                        Dyno.DirectCollocation.Interpolate
-                       Dyno.DirectCollocation.Profile
                        Dyno.DirectCollocation.Quadratures
                        Dyno.DirectCollocation.Robust
                        Dyno.DirectCollocation.Types
