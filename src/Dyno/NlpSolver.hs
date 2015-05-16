@@ -111,7 +111,7 @@ getStat name = do
 setInput ::
   View xg
   => (ScaleFuns x g DMatrix -> (J xg DMatrix -> J xg DMatrix))
-  -> (NlpState x g -> Int)
+  -> (NlpState x p g -> Int)
   -> String
   -> J xg (V.Vector Double)
   -> NlpSolver x p g ()
@@ -151,7 +151,10 @@ setUbg :: View g => VMD g -> NlpSolver x p g ()
 setUbg = setInput gToGBar isNg "ubg" . toUb
 
 setP :: View p => VD p -> NlpSolver x p g ()
-setP = setInput (const id) isNp "p"
+setP p = do
+  nlpState <- ask
+  isSetParam nlpState p
+  setInput (const id) isNp "p" p
 
 setLamX0 :: View x => VD x -> NlpSolver x p g ()
 setLamX0 = setInput lamXToLamXBar isNx "lam_x0"
@@ -465,7 +468,7 @@ getNlpOut = do
   return nlpOut
 
 
-data NlpState (x :: * -> *) (g :: * -> *) =
+data NlpState (x :: * -> *) (p :: * -> *) (g :: * -> *) =
   NlpState
   { isNx :: Int
   , isNg :: Int
@@ -474,13 +477,14 @@ data NlpState (x :: * -> *) (g :: * -> *) =
   , isInterrupt :: IO ()
   , isSuccessCodes :: [String]
   , isScale :: ScaleFuns x g DMatrix
+  , isSetParam :: J p (Vector Double) -> NlpSolver x p g ()
   }
 newtype NlpSolver (x :: * -> *) (p :: * -> *) (g :: * -> *) a =
-  NlpSolver (ReaderT (NlpState x g) IO a)
+  NlpSolver (ReaderT (NlpState x p g) IO a)
   deriving ( Functor
            , Applicative
            , Monad
-           , MonadReader (NlpState x g)
+           , MonadReader (NlpState x p g)
            , MonadIO
            )
 
@@ -503,7 +507,7 @@ runNlpSolver ::
   -> Maybe (J x (Vector Double))
   -> Maybe (J g (Vector Double))
   -> Maybe Double
-  -> Maybe (J x (Vector Double) -> IO Bool)
+  -> Maybe (J x (Vector Double) -> J p (Vector Double) -> IO Bool)
   -> NlpSolver x p g a
   -> IO a
 runNlpSolver solverStuff nlpFun scaleX scaleG scaleF callback' (NlpSolver nlpMonad) = do
@@ -549,13 +553,15 @@ runNlpSolver solverStuff nlpFun scaleX scaleG scaleF callback' (NlpSolver nlpMon
 
   -- add callback if user provides it
   intref <- newIORef False
+  paramRef <- newIORef (jfill 0)
   let cb function' = do
         callbackRet <- case callback' of
           Nothing -> return True
           Just callback -> do
             xval <- fmap (d2v . xbarToX scale . mkJ . CM.densify) $
                     C.ioInterfaceFunction_output__2 function' 0
-            callback xval
+            pval <- readIORef paramRef
+            callback xval pval
         interrupt <- readIORef intref
         return $ if callbackRet && not interrupt then 0 else fromIntegral (solverInterruptCode solverStuff)
   casadiCallback <- makeCallback cb >>= C.genericType__0
@@ -595,5 +601,6 @@ runNlpSolver solverStuff nlpFun scaleX scaleG scaleF callback' (NlpSolver nlpMon
                           , isInterrupt = writeIORef intref True
                           , isSuccessCodes = successCodes solverStuff
                           , isScale = scale
+                          , isSetParam = liftIO . writeIORef paramRef
                           }
   liftIO $ runReaderT nlpMonad nlpState

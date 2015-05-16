@@ -13,6 +13,7 @@ import Data.Vector ( Vector )
 import Accessors ( Lookup )
 
 import Dyno.View.View ( J, jfill )
+import Dyno.View.JV ( catJV )
 import Dyno.Nlp ( Bounds )
 import Dyno.Ocp
 import Dyno.Vectorize ( Vectorize, None(..), fill )
@@ -29,7 +30,7 @@ rocketOcp =
   OcpPhase
   { ocpMayer = mayer
   , ocpLagrange = lagrange
-  , ocpQuadratures = \_ _ _ _ _ _ _ -> None
+  , ocpQuadratures = \_ _ _ _ _ _ _ _ -> None
   , ocpDae = dae
   , ocpBc = bc
   , ocpPathC = pathC
@@ -55,6 +56,7 @@ rocketOcp =
   , ocpResidualScale = Nothing
   , ocpBcScale       = Nothing
   , ocpPathCScale    = Nothing
+  , ocpFixedP = None
   }
 
 data RocketOcp
@@ -67,6 +69,7 @@ type instance H RocketOcp = RocketPathC
 type instance P RocketOcp = None
 type instance Z RocketOcp = None
 type instance Q RocketOcp = None
+type instance FP RocketOcp = None
 
 data RocketX a =
   RocketX
@@ -102,9 +105,9 @@ instance Lookup a => Lookup (RocketPathC a)
 
 
 dae :: Floating a
-       => RocketX a -> RocketX a -> None a -> RocketU a -> None a -> a
+       => RocketX a -> RocketX a -> None a -> RocketU a -> None a -> None a -> a
        -> (RocketX a, RocketO a)
-dae (RocketX p' v' m' thrust') (RocketX _ v m thrust) _ (RocketU uThrust') _ _ =
+dae (RocketX p' v' m' thrust') (RocketX _ v m thrust) _ (RocketU uThrust') _ _ _ =
   (residual, outputs)
   where
     residual = RocketX
@@ -119,8 +122,8 @@ dae (RocketX p' v' m' thrust') (RocketX _ v m thrust) _ (RocketU uThrust') _ _ =
     force = thrust - m*g
 
 
-bc :: RocketX a -> RocketX a -> None a -> None a -> a -> RocketBc a
-bc x0 xf _ _ _ = RocketBc x0 xf
+bc :: RocketX a -> RocketX a -> None a -> None a -> None a -> a -> RocketBc a
+bc x0 xf _ _ _ _ = RocketBc x0 xf
 
 bcBnds :: RocketBc Bounds
 bcBnds =
@@ -129,18 +132,18 @@ bcBnds =
   , bcXF = RocketX (Just 0, Just 0) (Just 0, Just 0) (Nothing, Nothing) (Nothing, Nothing)
   }
 
-mayer :: Floating a => a -> RocketX a -> RocketX a -> None a -> None a -> a
-mayer _endTime _ (RocketX _ _ mf _) _ _ = -mf -- endTime
+mayer :: Floating a => a -> RocketX a -> RocketX a -> None a -> None a -> None a -> a
+mayer _endTime _ (RocketX _ _ mf _) _ _ _ = -mf -- endTime
 
 
-pathC :: Floating a => RocketX a -> None a -> RocketU a -> None a -> RocketO a -> a -> RocketPathC a
-pathC _ _ _ _ _ = RocketPathC
+pathC :: Floating a => RocketX a -> None a -> RocketU a -> None a -> None a -> RocketO a -> a -> RocketPathC a
+pathC _ _ _ _ _ _ = RocketPathC
 
 pathCBnds :: RocketPathC Bounds
 pathCBnds = RocketPathC (Nothing, Just 4)
 
-lagrange :: Fractional a => RocketX a -> None a -> RocketU a -> None a -> RocketO a -> a -> a -> a
-lagrange _ _ (RocketU u') _ _ _ _ = 1e-4*u'*u'
+lagrange :: Fractional a => RocketX a -> None a -> RocketU a -> None a -> None a -> RocketO a -> a -> a -> a
+lagrange _ _ (RocketU u') _ _ _ _ _ = 1e-4*u'*u'
 -- (1e-8*u*u + 1e-9*p*p + 1e-9*v*v + 1e-9*m*m)
 -- (1e-6*u*u + 1e-6*p*p + 1e-6*v*v + 1e-6*m*m)
 
@@ -161,8 +164,8 @@ main =
     let nlp = cpNlp cp
         meta = toMeta (cpMetaProxy cp)
 
-        cb' traj = do
-          plotPoints <- cpPlotPoints cp traj
+        cb' traj _ = do
+          plotPoints <- cpPlotPoints cp traj (catJV None)
           send (plotPoints, meta)
 
     _ <- solveNlp solver nlp (Just cb')

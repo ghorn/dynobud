@@ -192,9 +192,9 @@ reifyNlp ::
   forall r .
   NlpMonad () -> Maybe (Vector Double -> IO Bool) -> M.Map String Double
   -> (forall x g . (View x, View g)
-      => Nlp x JNone g MX -> Maybe (J x (Vector Double) -> IO Bool) -> NlpMonadState -> IO r)
+      => Nlp x JNone g MX -> Maybe (J x (Vector Double) -> J JNone (Vector Double) -> IO Bool) -> NlpMonadState -> IO r)
   -> IO r
-reifyNlp nlpmonad cb x0map f = do
+reifyNlp nlpmonad cb0 x0map f = do
   (ret,logs,state) <- build nlpmonad
   case ret of
     Right _ -> return ()
@@ -211,7 +211,11 @@ reifyNlp nlpmonad cb x0map f = do
     TV.reifyDim ng $ \(Proxy :: Proxy ng) -> do
       nlp0 <- buildNlp state :: IO (Nlp (JVec nx (JV Id)) JNone (JVec ng (JV Id)) MX)
       let nlp = nlp0 { nlpX0 = mkJ x0 }
-      f nlp (fmap (. unJ) cb) state
+          cb = case cb0 of
+            Nothing -> Nothing
+            Just cb' -> Just $ \x _ -> cb' (unJ x)
+
+      f nlp cb state
 
 
 solveStaticNlp ::
@@ -226,8 +230,8 @@ solveStaticNlp solverStuff nlp x0' callback = reifyNlp nlp callback x0 foo
               show (xx,yy)
 
     foo ::
-      (View x, View p, View g) =>
-      Nlp x p g MX -> Maybe (J x (Vector Double) -> IO Bool) -> NlpMonadState ->
+      (View x, View g) =>
+      Nlp x JNone g MX -> Maybe (J x (Vector Double) -> J JNone (Vector Double) -> IO Bool) -> NlpMonadState ->
       IO (Either String String, Double, [(String,Double)])
     foo nlp' cb' state = do
       (ret,nlpOut) <- solveNlp solverStuff nlp' cb'

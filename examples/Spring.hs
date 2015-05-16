@@ -13,6 +13,7 @@ import Data.Vector ( Vector )
 import Accessors ( Lookup )
 
 import Dyno.View.View ( J, jfill )
+import Dyno.View.JV ( catJV )
 import Dyno.Nlp ( Bounds )
 import Dyno.Ocp
 import Dyno.Vectorize ( Vectorize, None(..), fill )
@@ -29,7 +30,7 @@ springOcp =
   OcpPhase
   { ocpMayer = mayer
   , ocpLagrange = lagrange
-  , ocpQuadratures = \_ _ _ _ _ _ _ -> None
+  , ocpQuadratures = \_ _ _ _ _ _ _ _ -> None
   , ocpDae = dae
   , ocpBc = bc
   , ocpPathC = pathC
@@ -49,6 +50,7 @@ springOcp =
   , ocpResidualScale = Nothing
   , ocpBcScale       = Nothing
   , ocpPathCScale    = Nothing
+  , ocpFixedP = None
   }
 
 data SpringOcp
@@ -61,6 +63,7 @@ type instance H SpringOcp = SpringPathC
 type instance P SpringOcp = None
 type instance Z SpringOcp = None
 type instance Q SpringOcp = None
+type instance FP SpringOcp = None
 
 data SpringX a =
   SpringX
@@ -94,9 +97,9 @@ instance Lookup a => Lookup (SpringBc a)
 instance Lookup a => Lookup (SpringPathC a)
 
 dae :: Floating a
-       => SpringX a -> SpringX a -> None a -> SpringU a -> None a -> a
+       => SpringX a -> SpringX a -> None a -> SpringU a -> None a -> None a -> a
        -> (SpringX a, SpringO a)
-dae (SpringX p' v') (SpringX p v) _ (SpringU u) _ t =
+dae (SpringX p' v') (SpringX p v) _ (SpringU u) _ _ t =
   (residual, outputs)
   where
     residual = SpringX (p' - v) (v' - force)
@@ -109,8 +112,8 @@ dae (SpringX p' v') (SpringX p v) _ (SpringU u) _ t =
     force = u - k * p - b * v + 0.1 * sin t
     obj = p**2 + v**2 + u**2
 
-bc :: SpringX a -> SpringX a -> None a -> None a -> a -> SpringBc a
-bc x0 xf _ _ _ = SpringBc x0 xf
+bc :: SpringX a -> SpringX a -> None a -> None a -> None a -> a -> SpringBc a
+bc x0 xf _ _ _ _ = SpringBc x0 xf
 
 bcBnds :: SpringBc Bounds
 bcBnds =
@@ -119,18 +122,18 @@ bcBnds =
   , bcXF = SpringX (Just 1, Just 1) (Just 0, Just 0)
   }
 
-mayer :: Floating a => a -> SpringX a -> SpringX a -> None a -> None a -> a
-mayer endTime _ (SpringX pf vf) _ _ = (pf**2 + vf**2 + endTime/1000)
+mayer :: Floating a => a -> SpringX a -> SpringX a -> None a -> None a -> None a -> a
+mayer endTime _ (SpringX pf vf) _ _ _ = (pf**2 + vf**2 + endTime/1000)
 
-pathC :: Floating a => SpringX a -> None a -> SpringU a -> None a -> SpringO a -> a -> SpringPathC a
-pathC (SpringX _ v) _ (SpringU u) _ _ time =
+pathC :: Floating a => SpringX a -> None a -> SpringU a -> None a -> None a -> SpringO a -> a -> SpringPathC a
+pathC (SpringX _ v) _ (SpringU u) _ _ _ time =
   SpringPathC (v**2 + u**2 - time/100)
 
 pathCBnds :: SpringPathC Bounds
 pathCBnds = SpringPathC (Nothing, Just 4)
 
-lagrange :: Fractional a => SpringX a -> None a -> SpringU a -> None a -> SpringO a -> a -> a -> a
-lagrange _ _ _ _ (SpringO force obj) _ _ = obj + force*force*1e-4
+lagrange :: Fractional a => SpringX a -> None a -> SpringU a -> None a -> None a -> SpringO a -> a -> a -> a
+lagrange _ _ _ _ _ (SpringO force obj) _ _ = obj + force*force*1e-4
 
 solver :: Solver
 solver = ipoptSolver { options = [("expand", Opt True)] }
@@ -149,8 +152,8 @@ main =
     let nlp = cpNlp cp
         meta = toMeta (cpMetaProxy cp)
 
-        cb' traj = do
-          plotPoints <- cpPlotPoints cp traj
+        cb' traj _ = do
+          plotPoints <- cpPlotPoints cp traj (catJV None)
           send (plotPoints, meta)
 
     _ <- solveNlp solver nlp (Just cb')

@@ -19,7 +19,7 @@ import Accessors ( Lookup )
 
 import Dyno.Vectorize ( Vectorize(..), None(..), Id(..) )
 import Dyno.View.View ( View(..), J )
-import Dyno.View.JV ( splitJV )
+import Dyno.View.JV ( splitJV, catJV )
 import Dyno.Solvers
 import Dyno.Nlp ( NlpOut(..), Bounds )
 import Dyno.NlpUtils
@@ -43,6 +43,7 @@ type instance O QuadOcp = QuadO
 type instance C QuadOcp = QuadBc
 type instance H QuadOcp = None
 type instance Q QuadOcp = QuadQ
+type instance FP QuadOcp = None
 
 data QuadX a = QuadX { xP  :: a
                      , xV  :: a
@@ -71,25 +72,25 @@ instance Lookup (QuadO ())
 instance Lookup (QuadP ())
 instance Lookup (QuadQ ())
 
-mayer :: Num a => QuadOrLagrange -> a -> QuadX a -> QuadX a -> QuadQ a -> QuadP a -> a
-mayer TestQuadratures _ _ _ (QuadQ qf) _ = qf
-mayer TestLagrangeTerm _ _ _ _ _ = 0
+mayer :: Num a => QuadOrLagrange -> a -> QuadX a -> QuadX a -> QuadQ a -> QuadP a -> None a -> a
+mayer TestQuadratures _ _ _ (QuadQ qf) _ _ = qf
+mayer TestLagrangeTerm _ _ _ _ _ _ = 0
 
 data QuadOrLagrange = TestQuadratures | TestLagrangeTerm deriving Show
 data StateOrOutput = TestState | TestOutput deriving Show
 
-lagrange :: Num a => StateOrOutput -> QuadOrLagrange -> QuadX a -> QuadZ a -> QuadU a -> QuadP a -> QuadO a -> a -> a -> a
-lagrange _ TestQuadratures _ _ _ _ _ _ _ = 0
-lagrange TestState TestLagrangeTerm (QuadX _ v) _ _ _ _ _ _ = v
-lagrange TestOutput TestLagrangeTerm _ _ _ _ (QuadO v) _ _ = v
+lagrange :: Num a => StateOrOutput -> QuadOrLagrange -> QuadX a -> QuadZ a -> QuadU a -> QuadP a -> None a -> QuadO a -> a -> a -> a
+lagrange _ TestQuadratures _ _ _ _ _ _ _ _ = 0
+lagrange TestState TestLagrangeTerm (QuadX _ v) _ _ _ _ _ _ _ = v
+lagrange TestOutput TestLagrangeTerm _ _ _ _ _ (QuadO v) _ _ = v
 
 quadratures :: Floating a =>
-               StateOrOutput -> QuadX a -> QuadZ a -> QuadU a -> QuadP a -> QuadO a -> a -> a -> QuadQ a
-quadratures TestState (QuadX _ v) _ _ _ _ _ _ = QuadQ v
-quadratures TestOutput _ _ _ _ (QuadO v) _ _ = QuadQ v
+               StateOrOutput -> QuadX a -> QuadZ a -> QuadU a -> QuadP a -> None a -> QuadO a -> a -> a -> QuadQ a
+quadratures TestState (QuadX _ v) _ _ _ _ _ _ _ = QuadQ v
+quadratures TestOutput _ _ _ _ _ (QuadO v) _ _ = QuadQ v
 
-dae :: Floating a => QuadX a -> QuadX a -> QuadZ a -> QuadU a -> QuadP a -> a -> (QuadR a, QuadO a)
-dae (QuadX p' v') (QuadX _ v) _ _ _ _ = (residual, outputs)
+dae :: Floating a => QuadX a -> QuadX a -> QuadZ a -> QuadU a -> QuadP a -> None a -> a -> (QuadR a, QuadO a)
+dae (QuadX p' v') (QuadX _ v) _ _ _ _ _ = (residual, outputs)
   where
     residual =
       QuadR
@@ -129,10 +130,11 @@ quadOcp stateOrOutput quadOrLag =
   , ocpResidualScale = Nothing
   , ocpBcScale       = Nothing
   , ocpPathCScale    = Just None
+  , ocpFixedP = None
   }
 
-pathc :: Floating a => QuadX a -> QuadZ a -> QuadU a -> QuadP a -> QuadO a -> a -> None a
-pathc _ _ _ _ _ _ = None
+pathc :: Floating a => QuadX a -> QuadZ a -> QuadU a -> QuadP a -> None a -> QuadO a -> a -> None a
+pathc _ _ _ _ _ _ _ = None
 
 xbnd :: QuadX Bounds
 xbnd = QuadX { xP =  (Nothing, Nothing)
@@ -142,8 +144,8 @@ xbnd = QuadX { xP =  (Nothing, Nothing)
 ubnd :: QuadU Bounds
 ubnd = QuadU
 
-bc :: Floating a => QuadX a -> QuadX a -> QuadQ a -> QuadP a -> a -> QuadBc a
-bc x0 _ _ _ _ = QuadBc x0
+bc :: Floating a => QuadX a -> QuadX a -> QuadQ a -> QuadP a -> None a -> a -> QuadBc a
+bc x0 _ _ _ _ _ = QuadBc x0
 
 bcBnds :: QuadBc Bounds
 bcBnds =
@@ -193,8 +195,8 @@ compareIntegration (roots, stateOrOutput, quadOrLag) = do
     cp  <- makeCollProblem roots (quadOcp stateOrOutput quadOrLag) (guess roots)
     let nlp = cpNlp cp
         meta = toMeta (cpMetaProxy cp)
-        cb traj = do
-          plotPoints <- cpPlotPoints cp traj
+        cb traj _ = do
+          plotPoints <- cpPlotPoints cp traj (catJV None)
           send (plotPoints, meta)
     (ret, out) <- solveNlp solver nlp (Just cb)
     case ret of

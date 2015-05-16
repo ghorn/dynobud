@@ -18,7 +18,7 @@ import Dyno.Nlp ( NlpOut(..) )
 import Dyno.TypeVecs ( Vec )
 import Dyno.Vectorize ( Vectorize, Id(..), fill )
 import Dyno.View.View ( View(..) )
-import Dyno.View.JV ( JV, splitJV )
+import Dyno.View.JV ( JV, splitJV, catJV )
 import Dyno.View.JVec ( JVec(..) )
 import Dyno.DirectCollocation.Formulate ( CollProblem(..) )
 import Dyno.DirectCollocation.Types ( CollTraj(..), CollStage(..), CollPoint(..)
@@ -27,24 +27,26 @@ import Dyno.DirectCollocation.Types ( CollTraj(..), CollStage(..), CollPoint(..)
 import Dyno.DirectCollocation.Quadratures ( timesFromTaus )
 
 toMatlab ::
-  forall x z u p r o c h q n deg lol
+  forall x z u p fp r o c h q n deg lol
   . ( Lookup (x Double), Vectorize x
     , Lookup (z Double), Vectorize z
     , Lookup (u Double), Vectorize u
     , Lookup (o Double), Vectorize o
     , Lookup (p Double), Vectorize p
+    , Lookup (fp Double), Vectorize fp
     , Lookup (h Double), Vectorize h
     , Lookup (q Double), Vectorize q
     , Dim n, Dim deg
     )
-  => CollProblem x z u p r o c h q n deg
-  -> NlpOut (CollTraj x z u p n deg) lol (Vector Double)
+  => CollProblem x z u p r o c h q fp n deg
+  -> fp Double
+  -> NlpOut (CollTraj x z u p n deg) lol (Vector Double) -- todo(JV fp)
   -> IO String
-toMatlab cp nlpOut = do
+toMatlab cp fp nlpOut = do
   let ct@(CollTraj tf' p' stages' xf) = split (xOpt nlpOut)
       CollTraj lagTf' lagP' _ _ = split (lambdaXOpt nlpOut)
 
-  (_, outs, finalQuads) <- cpHellaOutputs cp (cat ct)
+  (_, outs, finalQuads) <- cpHellaOutputs cp (cat ct) (catJV fp)
   let _ = outs :: Vec n (StageOutputs x o h q deg Double)
       _ = finalQuads :: Quadratures q Double
 

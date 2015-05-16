@@ -1,6 +1,6 @@
 -- This example is based on Fabian Wierer's final project for
 -- Optimal Control and Estimation, 2014, taught by Prof. Moritz Diehl
--- \Used with permission.
+-- Used with permission.
 
 {-# OPTIONS_GHC -Wall #-}
 {-# Language TypeFamilies #-}
@@ -32,7 +32,7 @@ import Accessors ( Lookup )
 
 import Dyno.Vectorize
 import Dyno.View.View ( View(..), J )
-import Dyno.View.JV ( splitJV )
+import Dyno.View.JV ( catJV, splitJV )
 import Dyno.Solvers
 import Dyno.NlpUtils
 import Dyno.Nlp ( NlpOut(..) )
@@ -52,6 +52,7 @@ type instance O SailboatOcp = SbO
 type instance C SailboatOcp = SbBc
 type instance H SailboatOcp = None
 type instance Q SailboatOcp = None
+type instance FP SailboatOcp = None
 
 data SbX a = SbX { xGamma :: a
                  , xP :: V2 a
@@ -101,12 +102,13 @@ norm2sqr (V2 x y) = x*x + y*y
 clift :: Floating a => a -> a
 clift alpha = 2*pi*alpha*10/12 - exp (alpha/pi*180 - 12) + exp (-alpha/pi*180 - 12)
 
-sbDae :: forall a . Floating a => SbX a -> SbX a -> SbZ a -> SbU a -> SbP a -> a -> (SbR a, SbO a)
+sbDae :: forall a . Floating a => SbX a -> SbX a -> SbZ a -> SbU a -> SbP a -> None a -> a -> (SbR a, SbO a)
 sbDae
   (SbX gamma' p' v')
   (SbX gamma  _ v@(V2 vx vz))
   _
   (SbU omega alpha)
+  _
   _
   _
   = (residual, outputs)
@@ -170,10 +172,11 @@ data SbBc a  = SbBc { bcPeriodicGamma :: a
                     , bcP0 :: V2 a
                     }
                     deriving (Functor, Generic, Generic1, Show)
-bc :: Num a => SbX a -> SbX a -> None a -> SbP a -> a -> SbBc a
+bc :: Num a => SbX a -> SbX a -> None a -> SbP a -> None a -> a -> SbBc a
 bc
   (SbX gamma0 p0@(V2 _ pz0) (V2 vx0 vz0))
   (SbX gammaF    (V2 _ pzF) (V2 vxF vzF))
+  _
   _
   _
   _
@@ -185,11 +188,11 @@ bc
     , bcP0 = p0
     }
 
-mayer :: Floating a => a -> SbX a -> SbX a -> None a -> SbP a -> a
-mayer tf _ (SbX _ (V2 pxF _) _) _ _ = - pxF / tf
+mayer :: Floating a => a -> SbX a -> SbX a -> None a -> SbP a -> None a -> a
+mayer tf _ (SbX _ (V2 pxF _) _) _ _ _ = - pxF / tf
 
-lagrange :: Floating a => SbX a -> SbZ a -> SbU a -> SbP a -> SbO a -> a -> a -> a
-lagrange _ _ (SbU omega alpha) _ _ _ _ = 1e-3*omega*omega + 1e-3*alpha*alpha
+lagrange :: Floating a => SbX a -> SbZ a -> SbU a -> SbP a -> None a -> SbO a -> a -> a -> a
+lagrange _ _ (SbU omega alpha) _ _ _ _ _ = 1e-3*omega*omega + 1e-3*alpha*alpha
 
 ubnd :: SbU (Maybe Double, Maybe Double)
 ubnd = SbU
@@ -206,13 +209,13 @@ xbnd = SbX
        (Just (-100), Just 100)
        (Just (-100), Just 100))
 
-pathc :: t -> t1 -> t2 -> t3 -> t4 -> t5 -> None a
-pathc _ _ _ _ _ _ = None
+pathc :: t -> t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> None a
+pathc _ _ _ _ _ _ _ = None
 
 ocp :: OcpPhase' SailboatOcp
 ocp = OcpPhase { ocpMayer = mayer
                , ocpLagrange = lagrange
-               , ocpQuadratures = \_ _ _ _ _ _ _ -> None
+               , ocpQuadratures = \_ _ _ _ _ _ _ _ -> None
                , ocpDae = sbDae
                , ocpBc = bc
                , ocpPathC = pathc
@@ -232,6 +235,7 @@ ocp = OcpPhase { ocpMayer = mayer
                , ocpResidualScale = Nothing
                , ocpBcScale       = Nothing
                , ocpPathCScale    = Nothing
+               , ocpFixedP = None
                }
 
 
@@ -284,9 +288,9 @@ main = do
 --    withPublisher context urlOptTelem $ \sendOptTelemMsg -> do
       let meta = toMeta (cpMetaProxy cp)
 
-          callback :: J (CollTraj' SailboatOcp NCollStages CollDeg) (Vector Double) -> IO Bool
-          callback traj = do
-            plotPoints <- cpPlotPoints cp traj
+          callback :: J (CollTraj' SailboatOcp NCollStages CollDeg) (Vector Double) -> b -> IO Bool
+          callback traj _ = do
+            plotPoints <- cpPlotPoints cp traj (catJV None)
             -- dynoplot
             let dynoPlotMsg = encodeSerial (plotPoints, meta)
             sendDynoPlotMsg "glider" dynoPlotMsg

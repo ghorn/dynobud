@@ -14,6 +14,7 @@ module Dyno.Ocp
        , C
        , H
        , Q
+       , FP
        ) where
 
 import Data.Vector ( Vector )
@@ -49,14 +50,16 @@ type family C a :: * -> *
 type family H a :: * -> *
 -- | quadrature state
 type family Q a :: * -> *
+-- | fixed (hardcoded) parameters
+type family FP a :: * -> *
 
 -- | OcpPhase using type families to compress type parameters
-type OcpPhase' ocp = OcpPhase (X ocp) (Z ocp) (U ocp) (P ocp) (R ocp) (O ocp) (C ocp) (H ocp) (Q ocp)
+type OcpPhase' ocp = OcpPhase (X ocp) (Z ocp) (U ocp) (P ocp) (R ocp) (O ocp) (C ocp) (H ocp) (Q ocp) (FP ocp)
 
 
 -- | One stage of an optimal control problem, solvable as a stand-alone optimal control problem.
 --
--- >        minimize           Jm(x(T),T) + integrate( Jl(x(t),z(t),u(t),p,t), {t,0,T} )
+-- >        minimize           Jm(x(T),T) + integrate( Jl(x(t),z(t),u(t),p,p',t), {t,0,T} )
 -- > x(.), z(.), u(.), p, T
 -- >
 -- > subject to:
@@ -70,35 +73,35 @@ type OcpPhase' ocp = OcpPhase (X ocp) (Z ocp) (U ocp) (P ocp) (R ocp) (O ocp) (C
 --
 -- nonlinear path constraints
 --
--- > hlb <= h(x(t), z(t), u(t), p, t) <= hub
+-- > hlb <= h(x(t), z(t), u(t), p, p', t) <= hub
 --
 -- dynamics constraints:
 --
--- > f(x'(t), x(t), z(t), u(t), p, t) == 0
+-- > f(x'(t), x(t), z(t), u(t), p, p', t) == 0
 --
 -- boundary conditions:
 --
--- > c(x(0), x(T), q(T), p) == 0
+-- > c(x(0), x(T), q(T), p, p') == 0
 --
 -- perhaps this should be:
 --
 -- > c(x(0), 0, x(T), T) == 0
-data OcpPhase x z u p r o c h q =
+data OcpPhase x z u p r o c h q (fp :: * -> *) =
   OcpPhase
-  { -- | the Mayer term @Jm(T, x(0), x(T), q(T), p)@
-    ocpMayer :: Sxe -> x Sxe -> x Sxe -> q Sxe -> p Sxe -> Sxe
-    -- | the Lagrange term @Jl(x(t),z(t),u(t),p,o,t,T)@
-  , ocpLagrange :: x Sxe -> z Sxe -> u Sxe -> p Sxe -> o Sxe -> Sxe -> Sxe -> Sxe
-    -- | derivative of quadrature state @q(x(t),z(t),u(t),p,o,t,T)@
-  , ocpQuadratures :: x Sxe -> z Sxe -> u Sxe -> p Sxe -> o Sxe -> Sxe -> Sxe -> q Sxe
+  { -- | the Mayer term @Jm(T, x(0), x(T), q(T), p, p')@
+    ocpMayer :: Sxe -> x Sxe -> x Sxe -> q Sxe -> p Sxe -> fp Sxe -> Sxe
+    -- | the Lagrange term @Jl(x(t),z(t),u(t),p,p',o,t,T)@
+  , ocpLagrange :: x Sxe -> z Sxe -> u Sxe -> p Sxe -> fp Sxe -> o Sxe -> Sxe -> Sxe -> Sxe
+    -- | derivative of quadrature state @q(x(t),z(t),u(t),p,o,p',t,T)@
+  , ocpQuadratures :: x Sxe -> z Sxe -> u Sxe -> p Sxe -> fp Sxe -> o Sxe -> Sxe -> Sxe -> q Sxe
     -- | fully implicit differential-algebraic equation of the form:
     --
-    -- > f(x'(t), x(t), z(t), u(t), p, t) == 0
-  , ocpDae :: x Sxe -> x Sxe -> z Sxe -> u Sxe -> p Sxe -> Sxe -> (r Sxe, o Sxe)
-    -- | the boundary conditions @clb <= c(x(0), x(T), q(T), T) <= cub@
-  , ocpBc :: x Sxe -> x Sxe -> q Sxe -> p Sxe -> Sxe -> c Sxe
-    -- | the path constraints @h(x(t), z(t), u(t), p, t)@
-  , ocpPathC :: x Sxe -> z Sxe -> u Sxe -> p Sxe -> o Sxe -> Sxe -> h Sxe
+    -- > f(x'(t), x(t), z(t), u(t), p, p', t) == 0
+  , ocpDae :: x Sxe -> x Sxe -> z Sxe -> u Sxe -> p Sxe -> fp Sxe -> Sxe -> (r Sxe, o Sxe)
+    -- | the boundary conditions @clb <= c(x(0), x(T), q(T), p, p', T) <= cub@
+  , ocpBc :: x Sxe -> x Sxe -> q Sxe -> p Sxe -> fp Sxe -> Sxe -> c Sxe
+    -- | the path constraints @h(x(t), z(t), u(t), p, p', o, t)@
+  , ocpPathC :: x Sxe -> z Sxe -> u Sxe -> p Sxe -> fp Sxe -> o Sxe -> Sxe -> h Sxe
     -- | the boundary condition bounds @clb <= c(x(0), x(T)) <= cub@
   , ocpBcBnds :: c Bounds
     -- | the path constraint bounds @(hlb, hub)@
@@ -113,6 +116,7 @@ data OcpPhase x z u p r o c h q =
   , ocpPbnd :: p Bounds
     -- | time bounds @(Tlb, Tub)@
   , ocpTbnd :: Bounds
+  , ocpFixedP :: fp Double
     -- | scaling
   , ocpObjScale      :: Maybe Double
   , ocpTScale        :: Maybe Double

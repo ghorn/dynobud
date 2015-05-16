@@ -16,6 +16,7 @@ import Accessors
 
 import Dyno.Vectorize
 import Dyno.View.View ( View(..), J )
+import Dyno.View.JV ( catJV )
 import Dyno.Solvers
 import Dyno.Nlp
 import Dyno.NlpUtils
@@ -37,6 +38,7 @@ type instance O PendOcp = PendO
 type instance C PendOcp = PendBc
 type instance H PendOcp = None
 type instance Q PendOcp = None
+type instance FP PendOcp = None
 
 data PendX a = PendX { pX  :: a
                      , pY  :: a
@@ -65,20 +67,20 @@ instance Lookup (PendU ())
 instance Lookup (PendO ())
 instance Lookup (PendP ())
 
-mayer :: a -> PendX a -> PendX a -> None a -> PendP a -> a
-mayer tf _ _ _ _ = tf
+mayer :: a -> PendX a -> PendX a -> None a -> PendP a -> None a -> a
+mayer tf _ _ _ _ _ = tf
 
-lagrange :: Floating a => PendX a -> PendZ a -> PendU a -> PendP a -> PendO a -> a -> a -> a
-lagrange _ _ u _ _ _ tf = 1e-3*torque'**2 / tf
+lagrange :: Floating a => PendX a -> PendZ a -> PendU a -> PendP a -> None a -> PendO a -> a -> a -> a
+lagrange _ _ u _ _ _ _ tf = 1e-3*torque'**2 / tf
   where
     PendU torque' = u
 
 r :: Floating a => a
 r = 0.3
 
-pendDae :: Floating a => PendX a -> PendX a -> PendZ a -> PendU a -> PendP a -> a -> (PendR a, PendO a)
+pendDae :: Floating a => PendX a -> PendX a -> PendZ a -> PendU a -> PendP a -> None a -> a -> (PendR a, PendO a)
 pendDae (PendX x' y' vx' vy' torque') (PendX x y vx vy torque)
-  (PendZ tau) (PendU uTorque') (PendP m) _ = (residual, outputs)
+  (PendZ tau) (PendU uTorque') (PendP m) _ _ = (residual, outputs)
   where
     residual =
       PendR (x' - vx) (y' - vy)
@@ -94,7 +96,7 @@ pendDae (PendX x' y' vx' vy' torque') (PendX x y vx vy torque)
 pendOcp :: OcpPhase' PendOcp
 pendOcp = OcpPhase { ocpMayer = mayer
                    , ocpLagrange = lagrange
-                   , ocpQuadratures = \_ _ _ _ _ _ _ -> None
+                   , ocpQuadratures = \_ _ _ _ _ _ _ _ -> None
                    , ocpDae = pendDae
                    , ocpBc = bc
                    , ocpPathC = pathc
@@ -114,12 +116,13 @@ pendOcp = OcpPhase { ocpMayer = mayer
                    , ocpResidualScale = Nothing
                    , ocpBcScale       = Just $ PendBc pendXScale pendXScale
                    , ocpPathCScale    = Just None
+                   , ocpFixedP = None
                    }
 pendXScale :: PendX Double
 pendXScale = PendX 0.3 0.3 1 1 10
 
-pathc :: Floating a => PendX a -> PendZ a -> PendU a -> PendP a -> PendO a -> a -> None a
-pathc _ _ _ _ _ _ = None
+pathc :: Floating a => PendX a -> PendZ a -> PendU a -> PendP a -> None a -> PendO a -> a -> None a
+pathc _ _ _ _ _ _ _ = None
 
 xbnd :: PendX Bounds
 xbnd = PendX { pX =  (Nothing, Nothing)
@@ -132,8 +135,8 @@ xbnd = PendX { pX =  (Nothing, Nothing)
 ubnd :: PendU Bounds
 ubnd = PendU (Just (-100), Just 100)
 
-bc :: Floating a => PendX a -> PendX a -> None a -> PendP a -> a -> PendBc a
-bc x0 xf _ _ _ = PendBc x0 xf
+bc :: Floating a => PendX a -> PendX a -> None a -> PendP a -> None a -> a -> PendBc a
+bc x0 xf _ _ _ _ = PendBc x0 xf
 
 bcBnds :: PendBc Bounds
 bcBnds =
@@ -189,8 +192,8 @@ main = do
   withCallback $ \send -> do
     let nlp = cpNlp cp
         meta = toMeta (cpMetaProxy cp)
-        cb' traj = do
-          plotPoints <- cpPlotPoints cp traj
+        cb' traj _ = do
+          plotPoints <- cpPlotPoints cp traj (catJV None)
           send (plotPoints, meta)
     _ <- solveNlp solver nlp (Just cb')
 --  _ <- solveNlp solver2 nlp Nothing

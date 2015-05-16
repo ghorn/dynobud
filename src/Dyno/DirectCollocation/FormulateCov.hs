@@ -20,13 +20,13 @@ import Casadi.DMatrix ( DMatrix )
 import Casadi.MX ( MX )
 
 import Dyno.SXElement ( sxCatJV, sxSplitJV )
-import Dyno.View.View ( View(..), J, jfill, JNone(..), v2d, d2v )
+import Dyno.View.View ( View(..), J, jfill, v2d, d2v )
 import Dyno.View.Cov ( Cov )
 import Dyno.View.JV ( JV, catJV, catJV' )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.Fun
 import Dyno.View.JVec( JVec(..), jreplicate )
-import Dyno.Vectorize ( Vectorize(..), Id(..), fill )
+import Dyno.Vectorize ( Vectorize(..), Id(..), None(..), fill )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.Nlp ( Nlp(..), Bounds )
@@ -42,7 +42,7 @@ data CollCovProblem ocp n deg sx sw sh shr sc =
   CollCovProblem
   { ccpNlp :: Nlp
               (CollTrajCov sx ocp n deg)
-              JNone
+              (JV None)
               (CollOcpCovConstraints ocp n deg sh shr sc) MX
   , ccpPlotPoints :: J (CollTrajCov sx ocp n deg) (Vector Double) -> IO (DynPlotPoints Double)
   , ccpOutputs ::
@@ -63,7 +63,7 @@ data CollCovProblem ocp n deg sx sw sh shr sc =
 
 
 makeCollCovProblem ::
-  forall ocp x z u p r o c h q sx sz sw sr sh shr sc deg n .
+  forall ocp x z u p fp r o c h q sx sz sw sr sh shr sc deg n .
   ( Dim deg, Dim n, Vectorize x, Vectorize p, Vectorize u, Vectorize z
   , Vectorize sr, Vectorize sw, Vectorize sz, Vectorize sx
   , Vectorize r, Vectorize o, Vectorize h, Vectorize c, Vectorize q
@@ -77,6 +77,8 @@ makeCollCovProblem ::
   , p ~ P ocp
   , u ~ U ocp
   , z ~ Z ocp
+  , fp ~ None
+  , None ~ FP ocp
   )
   => QuadratureRoots
   -> OcpPhase' ocp
@@ -117,7 +119,7 @@ makeCollCovProblem roots ocp ocpCov guess = do
 
       -- the NLP
       fg :: J (CollTrajCov sx ocp n deg) MX
-            -> J JNone MX
+            -> J (JV fp) MX
             -> (J (JV Id) MX, J (CollOcpCovConstraints ocp n deg sh shr sc) MX)
       fg = getFgCov taus
         computeCovariances
@@ -134,7 +136,7 @@ makeCollCovProblem roots ocp ocpCov guess = do
   let getPlotPoints :: J (CollTrajCov sx ocp n deg) (Vector Double) -> IO (DynPlotPoints Double)
       getPlotPoints collTrajCov = do
         let CollTrajCov _ collTraj = split collTrajCov
-        cpPlotPoints cp0 collTraj
+        cpPlotPoints cp0 collTraj (catJV None)
 
       getOutputs :: J (CollTrajCov sx ocp n deg) (Vector Double)
                     -> IO ( Vec n (StageOutputs x o h q deg Double)
@@ -143,7 +145,7 @@ makeCollCovProblem roots ocp ocpCov guess = do
                           )
       getOutputs collTrajCov = do
         let CollTrajCov _ collTraj = split collTrajCov
-        outputs <- (cpOutputs cp0) collTraj
+        outputs <- (cpOutputs cp0) collTraj (catJV None)
         covTraj <- fmap split $ eval computeCovariancesFun' (v2d collTrajCov)
         let covs' = ctAllButLast covTraj
             pF = ctLast covTraj
@@ -161,7 +163,7 @@ makeCollCovProblem roots ocp ocpCov guess = do
                   , cocSbc = ocpCovSbcBnds ocpCov
                   }
         , nlpX0 = cat $ CollTrajCov (jfill 0) (nlpX0 nlp0)
-        , nlpP = cat JNone
+        , nlpP = catJV None
         , nlpLamX0 = Nothing
         , nlpLamG0 = Nothing
         , nlpScaleF = ocpObjScale ocp
@@ -198,9 +200,9 @@ makeCollCovProblem roots ocp ocpCov guess = do
 
 
 getFgCov ::
-  forall ocp x z u p r c h sx sh shr sc n deg .
+  forall ocp x z u p r c h fp sx sh shr sc n deg .
   ( Dim deg, Dim n, Vectorize x, Vectorize z, Vectorize u, Vectorize p
-  , Vectorize h, Vectorize c, Vectorize r
+  , Vectorize h, Vectorize c, Vectorize r, Vectorize fp
   , Vectorize sx, View sc, View sh, Vectorize shr
   , X ocp ~ x
   , Z ocp ~ z
@@ -209,6 +211,7 @@ getFgCov ::
   , R ocp ~ r
   , C ocp ~ c
   , H ocp ~ h
+  , FP ocp ~ fp
   )
   -- taus
   => Vec deg Double
@@ -227,10 +230,10 @@ getFgCov ::
    -- mayerFun
   -> SXFun
       (J (JV Id) :*: J (JV x) :*: J (JV x) :*: J (Cov (JV sx)) :*: J (Cov (JV sx))) (J (JV Id))
-  -> (J (CollTraj' ocp n deg) MX -> J JNone MX -> (J (JV Id) MX, J (CollOcpConstraints' ocp n deg) MX)
+  -> (J (CollTraj' ocp n deg) MX -> J (JV fp) MX -> (J (JV Id) MX, J (CollOcpConstraints' ocp n deg) MX)
      )
   -> J (CollTrajCov sx ocp n deg) MX
-  -> J JNone MX
+  -> J (JV fp) MX
   -> (J (JV Id) MX, J (CollOcpCovConstraints ocp n deg sh shr sc) MX)
 getFgCov
   taus computeCovariances

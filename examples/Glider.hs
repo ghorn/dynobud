@@ -9,6 +9,7 @@ import Data.Vector ( Vector )
 
 import Dyno.Vectorize
 import Dyno.View.View
+import Dyno.View.JV ( catJV )
 import Dyno.Solvers
 --import Dyno.Sqp.Sqp
 --import Dyno.Sqp.LineSearch
@@ -39,12 +40,13 @@ type instance O GliderOcp = None
 type instance C GliderOcp = AcX
 type instance H GliderOcp = None
 type instance Q GliderOcp = None
+type instance FP GliderOcp = None
 
-mayer :: Floating a => a -> AcX a -> AcX a -> None a -> None a -> a
-mayer _ _ _ _ _ = 0
+mayer :: Floating a => a -> AcX a -> AcX a -> None a -> None a -> None a -> a
+mayer _ _ _ _ _ _ = 0
 
-lagrange :: Floating a => AcX a -> None a -> AcU a -> None a -> None a -> a -> a -> a
-lagrange (AcX _ _ _ _ (AcU surfs)) _ (AcU surfs') _ _ _ _ =
+lagrange :: Floating a => AcX a -> None a -> AcU a -> None a -> None a -> None a -> a -> a -> a
+lagrange (AcX _ _ _ _ (AcU surfs)) _ (AcU surfs') _ _ _ _ _ =
   elev**2 + rudd**2 + ail**2 + flaps**2 +
   100*(elev'**2 + rudd'**2 + ail'**2 + flaps'**2)
   where
@@ -58,8 +60,8 @@ lagrange (AcX _ _ _ _ (AcU surfs)) _ (AcU surfs') _ _ _ _ =
     ail' = csElev surfs'
     flaps' = csFlaps surfs'
 
-dae :: Floating a => AcX a -> AcX a -> None a -> AcU a -> None a -> a -> (AcX a, None a)
-dae x' x _ u _ _ = (aircraftDae (mass, inertia) fcs mcs refs x' x u, None)
+dae :: Floating a => AcX a -> AcX a -> None a -> AcU a -> None a -> None a -> a -> (AcX a, None a)
+dae x' x _ u _ _ _ = (aircraftDae (mass, inertia) fcs mcs refs x' x u, None)
   where
     mass = bettyMass
     inertia = bettyInertia
@@ -70,7 +72,7 @@ dae x' x _ u _ _ = (aircraftDae (mass, inertia) fcs mcs refs x' x u, None)
 ocp :: OcpPhase' GliderOcp
 ocp = OcpPhase { ocpMayer = mayer
                , ocpLagrange = lagrange
-               , ocpQuadratures = \_ _ _ _ _ _ _ -> None
+               , ocpQuadratures = \_ _ _ _ _ _ _ _ -> None
                , ocpDae = dae
                , ocpBc = bc
                , ocpPathC = pathc
@@ -91,10 +93,11 @@ ocp = OcpPhase { ocpMayer = mayer
                , ocpResidualScale = Nothing
                , ocpBcScale       = Nothing
                , ocpPathCScale    = Nothing
+               , ocpFixedP = None
                }
 
-pathc :: x a -> z a -> u a -> p a -> None a -> a -> None a
-pathc _ _ _ _ _ _ = None
+pathc :: x a -> z a -> u a -> p a -> None a -> None a -> a -> None a
+pathc _ _ _ _ _ _ _ = None
 
 xbnd :: AcX (Maybe Double, Maybe Double)
 xbnd = AcX { ac_r_n2b_n = fill (Nothing, Nothing)
@@ -116,8 +119,8 @@ ubnd =
                   , csFlaps = (Just (d2r (-0.01)), Just (d2r 0.01))
                   }
 
-bc :: Floating a => AcX a -> AcX a -> None a -> None a -> a -> AcX a
-bc (AcX x0 v0 dcm0 w0 cs) _ _ _ _ = AcX x0 (v0 - V3 30 0 0) (dcm0 - eye3') w0 cs
+bc :: Floating a => AcX a -> AcX a -> None a -> None a -> None a -> a -> AcX a
+bc (AcX x0 v0 dcm0 w0 cs) _ _ _ _ _ = AcX x0 (v0 - V3 30 0 0) (dcm0 - eye3') w0 cs
 
 eye3' :: Num a => M33 a
 eye3' =
@@ -135,8 +138,8 @@ main = do
   withCallback $ \send -> do
     let meta = toMeta (cpMetaProxy cp)
 
-        cb' traj = do
-          plotPoints <- cpPlotPoints cp traj
+        cb' traj _ = do
+          plotPoints <- cpPlotPoints cp traj (catJV None)
           send (plotPoints, meta)
 
     (msg,_) <- solveNlp ipoptSolver nlp (Just cb')

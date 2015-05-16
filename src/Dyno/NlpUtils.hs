@@ -12,7 +12,6 @@ module Dyno.NlpUtils
        ) where
 
 import Control.Applicative ( Applicative(..) )
-import Data.Maybe ( fromMaybe )
 import qualified Data.Traversable as T
 import Control.Monad ( when, void )
 import Data.Vector ( Vector )
@@ -27,7 +26,7 @@ import Dyno.View.Unsafe.View ( unJ, mkJ )
 
 import Dyno.Vectorize ( Vectorize(..), Id(..) )
 import Dyno.View.JV ( JV, catJV, catJV', splitJV, splitJV' )
-import Dyno.View.View ( View(..), J, JNone(..), JTuple(..), jfill, unzipJ, fmapJ )
+import Dyno.View.View ( View(..), J, JNone(..), unzipJ )
 import Dyno.View.Symbolic ( Symbolic )
 import Dyno.Nlp ( Nlp(..), NlpOut(..), Bounds )
 import Dyno.Solvers ( Solver )
@@ -65,40 +64,32 @@ solveNlpHomotopy ::
   (View x, View p, View g, T.Traversable t, Symbolic a)
   => Double -> HomotopyParams
   -> Solver
-  -> Maybe (J p (Vector Double))
-  -> Nlp x p g a -> t (J p (Vector Double)) -> Maybe (J (JTuple x p) (Vector Double) -> IO Bool)
+  -> Nlp x p g a -> t (J p (Vector Double))
+  -> Maybe (J x (Vector Double) -> J p (Vector Double) -> IO Bool)
   -> Maybe (J x (Vector Double) -> J p (Vector Double) -> Double -> IO ())
-  -> IO (t (NlpOut (JTuple x p) g (Vector Double)))
+  -> IO (t (NlpOut x g (Vector Double)))
 solveNlpHomotopy userStep hp
-  solverStuff pscale nlp pFs callback callbackP = do
+  solverStuff nlp pFs callback callbackP = do
   when ((reduction hp) >= 1) $ error $ "homotopy reduction factor " ++ show (reduction hp) ++ " >= 1"
   when ((increase hp)  <= 1) $ error $ "homotopy increase factor "  ++ show (increase hp)  ++ " <= 1"
-  let fg :: J (JTuple x p) a -> J JNone a -> (J (JV Id) a, J g a)
-      fg xp _ = nlpFG nlp x p
-        where
-          JTuple x p = split xp
+  let fg :: J x a -> J p a -> (J (JV Id) a, J g a)
+      fg x p = nlpFG nlp x p
 
-      xpscale :: Maybe (J (JTuple x p) (Vector Double))
-      xpscale = case (nlpScaleX nlp, pscale) of
-        (Nothing, Nothing) -> Nothing
-        (xs, ps) -> Just $ cat $ JTuple (fromMaybe (jfill 1) xs) (fromMaybe (jfill 1) ps)
-  runNlpSolver solverStuff fg xpscale (nlpScaleG nlp) (nlpScaleF nlp) callback $ do
+  runNlpSolver solverStuff fg (nlpScaleX nlp) (nlpScaleG nlp) (nlpScaleF nlp) callback $ do
     let (lbx,ubx) = unzipJ (nlpBX nlp)
         (lbg,ubg) = unzipJ (nlpBG nlp)
         p0 = nlpP nlp
 
-        setBnds p' = do
-          setLbx $ cat (JTuple lbx (fmapJ Just p'))
-          setUbx $ cat (JTuple ubx (fmapJ Just p'))
-
     -- initial solve
-    setX0 $ cat $ JTuple (nlpX0 nlp) (nlpP nlp)
-    setP $ cat JNone
-    setBnds p0
+    setX0 $ nlpX0 nlp
+    setP $ nlpP nlp
+    setLbx lbx
+    setUbx ubx
     setLbg lbg
     setUbg ubg
+    -- todo(greg): clean up redundancy?
     case nlpLamX0 nlp of
-      Just lam -> setLamX0 $ cat (JTuple lam (jfill 0))
+      Just lam -> setLamX0 lam
       Nothing -> return ()
     case nlpLamG0 nlp of
       Just lam -> setLamG0 lam
@@ -115,15 +106,15 @@ solveNlpHomotopy userStep hp
     let runCallback alphaTrial = case callbackP of
           Nothing -> return ()
           Just cbp -> do
-            xp <- getX
-            let JTuple x p = split xp
+            x <- getX
+            p <- getP
             liftIO $ void (cbp x p alphaTrial)
 
     let solveOneStage ::
           (Int, Double, J p (Vector Double))
           -> J p (Vector Double)
-          -> NlpSolver (JTuple x p) JNone g
-               ((Int, Double, J p (Vector Double)), NlpOut (JTuple x p) g (Vector Double))
+          -> NlpSolver x p g
+               ((Int, Double, J p (Vector Double)), NlpOut x g (Vector Double))
         solveOneStage (stage, step0, p0') pF' = do
           ((msg, ret'), stepF) <- tryStep 0 0 step0
           ret <- case msg of
@@ -131,15 +122,15 @@ solveNlpHomotopy userStep hp
             Right _ -> return ret'
           return ((stage + 1, stepF, pF'), ret)
           where
-            setAlpha :: Double -> NlpSolver (JTuple x p) JNone g ()
+            setAlpha :: Double -> NlpSolver x p g ()
             setAlpha alpha = do
               let p0'' = unJ p0'
               let p = mkJ $ V.zipWith (+) p0'' (V.map (alpha*) (V.zipWith (-) (unJ pF') p0''))
-              setBnds p
+              setP p
 
             tryStep :: Int -> Double -> Double
-                    -> NlpSolver (JTuple x p) JNone g
-                    ((Either String String, NlpOut (JTuple x p) g (Vector Double)), Double)
+                    -> NlpSolver x p g
+                    ((Either String String, NlpOut x g (Vector Double)), Double)
             tryStep majorIter alpha0 step
               | step < 1e-12 = do _no <- getNlpOut
                                   error "step size too small"
@@ -218,8 +209,10 @@ solveNlpV solverStuff fg bx bg x0 cb = do
                                -- :: Maybe (J (JV g) (V.Vector Double))
                 }
 
-      callback :: Maybe (J (JV x) (Vector Double) -> IO Bool)
-      callback = fmap (. splitJV) cb
+      callback :: Maybe (J (JV x) (Vector Double) -> J JNone (Vector Double) -> IO Bool)
+      callback = case cb of
+        Nothing -> Nothing
+        Just cb' -> Just $ \x _ -> cb' (splitJV x)
 
   (r0, r1) <- solveNlp solverStuff nlp callback
   return $ case r0 of
@@ -241,7 +234,7 @@ solveNlpV solverStuff fg bx bg x0 cb = do
 solveNlp ::
   (View x, View p, View g, Symbolic a)
   => Solver
-  -> Nlp x p g a -> Maybe (J x (Vector Double) -> IO Bool)
+  -> Nlp x p g a -> Maybe (J x (Vector Double) -> J p (Vector Double) -> IO Bool)
   -> IO (Either String String, NlpOut x g (Vector Double))
 solveNlp solverStuff nlp callback =
   runNlp solverStuff nlp callback solve'
@@ -271,7 +264,7 @@ setNlpInputs nlp = do
 runNlp ::
   (View x, View p, View g, Symbolic a)
   => Solver
-  -> Nlp x p g a -> Maybe (J x (Vector Double) -> IO Bool)
+  -> Nlp x p g a -> Maybe (J x (Vector Double) -> J p (Vector Double) -> IO Bool)
   -> NlpSolver x p g b
   -> IO b
 runNlp solverStuff nlp callback runMe =
