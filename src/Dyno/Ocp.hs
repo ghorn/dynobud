@@ -1,5 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
+{-# Language DeriveGeneric #-}
 {-# Language TypeFamilies #-}
+{-# Language FlexibleContexts #-}
 
 module Dyno.Ocp
        ( OcpPhase(..)
@@ -19,6 +21,9 @@ module Dyno.Ocp
        , FP
        ) where
 
+import GHC.Generics ( Generic )
+
+import Data.Serialize ( Serialize )
 import Data.Vector ( Vector )
 
 import Dyno.View.JV ( JV )
@@ -143,7 +148,16 @@ data OcpPhaseInputs x z u p c h fp =
   , ocpTbnd :: Bounds
     -- | fixed parameters (not optimization variables)
   , ocpFixedP :: fp Double
-  }
+  } deriving ( Generic )
+
+instance ( Serialize (x Bounds)
+         , Serialize (z Bounds)
+         , Serialize (u Bounds)
+         , Serialize (p Bounds)
+         , Serialize (c Bounds)
+         , Serialize (h Bounds)
+         , Serialize (fp Double)
+         ) => Serialize (OcpPhaseInputs x z u p c h fp)
 
 data OcpPhaseWithCov ocp sx sz sw sr sh shr sc =
   OcpPhaseWithCov
