@@ -31,6 +31,7 @@ module Dyno.Vectorize
 import GHC.Generics
 
 import Control.Applicative ( Applicative(..), (<$>) )
+import Data.Serialize ( Serialize )
 import qualified Data.Vector as V
 import Data.Foldable ( Foldable )
 import qualified Data.Foldable as F
@@ -52,6 +53,7 @@ instance Applicative None where
   pure = const None
   (<*>) = const (const None)
 instance Linear.Additive None where
+instance Serialize (None a)
 
 -- | a length-1 vectorizable type
 newtype Id a = Id { unId :: a }
@@ -61,6 +63,7 @@ instance Applicative Id where
   pure = Id
   Id fx <*> Id x = Id (fx x)
 instance Linear.Additive Id where
+instance Serialize a => Serialize (Id a)
 
 
 -- | a length-2 vectorizable type
