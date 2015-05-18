@@ -14,6 +14,7 @@ module Dyno.DirectCollocation.Quadratures
 
 import GHC.Generics ( Generic )
 
+import Data.Aeson ( FromJSON, ToJSON )
 import Data.Proxy ( Proxy(..) )
 import qualified Data.Vector as V
 import qualified Data.Foldable as F
@@ -31,6 +32,8 @@ import Dyno.LagrangePolynomials ( lagrangeXis )
 data QuadratureRoots = Legendre | Radau deriving (Show, Eq, Ord, Enum, Generic)
 instance Binary QuadratureRoots
 instance Serialize QuadratureRoots
+instance ToJSON QuadratureRoots
+instance FromJSON QuadratureRoots
 
 mkTaus ::
   forall deg a
