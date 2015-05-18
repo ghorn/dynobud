@@ -114,13 +114,6 @@ quadOcp stateOrOutput quadOrLag =
   , ocpDae = dae
   , ocpBc = bc
   , ocpPathC = pathc
-  , ocpPathCBnds = None
-  , ocpBcBnds = bcBnds
-  , ocpXbnd = xbnd
-  , ocpUbnd = ubnd
-  , ocpZbnd = QuadZ
-  , ocpPbnd = QuadP
-  , ocpTbnd = (Just tf, Just tf)
   , ocpObjScale      = Nothing
   , ocpTScale        = Nothing
   , ocpXScale        = Nothing
@@ -130,6 +123,18 @@ quadOcp stateOrOutput quadOrLag =
   , ocpResidualScale = Nothing
   , ocpBcScale       = Nothing
   , ocpPathCScale    = Just None
+  }
+
+quadOcpInputs :: OcpPhaseInputs' QuadOcp
+quadOcpInputs =
+  OcpPhaseInputs
+  { ocpPathCBnds = None
+  , ocpBcBnds = bcBnds
+  , ocpXbnd = xbnd
+  , ocpUbnd = ubnd
+  , ocpZbnd = QuadZ
+  , ocpPbnd = QuadP
+  , ocpTbnd = (Just tf, Just tf)
   , ocpFixedP = None
   }
 
@@ -192,7 +197,7 @@ goodSolution out = msg
 compareIntegration :: (QuadratureRoots, StateOrOutput, QuadOrLagrange) -> IO ()
 compareIntegration (roots, stateOrOutput, quadOrLag) = do
   withCallback $ \send -> do
-    cp  <- makeCollProblem roots (quadOcp stateOrOutput quadOrLag) (guess roots)
+    cp  <- makeCollProblem roots (quadOcp stateOrOutput quadOrLag) quadOcpInputs (guess roots)
     let nlp = cpNlp cp
         meta = toMeta (cpMetaProxy cp)
         cb traj _ = do

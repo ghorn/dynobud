@@ -77,20 +77,14 @@ runIntegration ::
   -> IO (Either String (x Double))
 runIntegration _ _ roots ode x0 p tf = do
   let ocp :: OcpPhase' (IntegrationOcp x p)
-      ocp = OcpPhase
+      ocp =
+        OcpPhase
         { ocpMayer = \_ _ _ _ _ _ -> 0
         , ocpLagrange = \_ _ _ _ _ _ _ _ -> 0
         , ocpDae = \x' x _ _ pp _ t -> ((ode x pp t) `minus` x', None)
         , ocpQuadratures = \_ _ _ _ _ _ _ _ -> None
         , ocpBc = \x0' _ _ _ _ _ -> x0'
         , ocpPathC = \_ _ _ _ _ _ _ -> None
-        , ocpPathCBnds = None
-        , ocpBcBnds =  fmap (\x -> (Just x, Just x)) x0
-        , ocpXbnd = fill (Nothing, Nothing)
-        , ocpUbnd = None
-        , ocpZbnd = None
-        , ocpPbnd = fmap (\x -> (Just x, Just x)) p
-        , ocpTbnd = (Just tf, Just tf)
         , ocpObjScale      = Nothing
         , ocpTScale        = Nothing
         , ocpXScale        = Nothing
@@ -100,11 +94,22 @@ runIntegration _ _ roots ode x0 p tf = do
         , ocpResidualScale = Nothing
         , ocpBcScale       = Nothing
         , ocpPathCScale    = Nothing
+        }
+      ocpInputs :: OcpPhaseInputs' (IntegrationOcp x p)
+      ocpInputs =
+        OcpPhaseInputs
+        { ocpPathCBnds = None
+        , ocpBcBnds =  fmap (\x -> (Just x, Just x)) x0
+        , ocpXbnd = fill (Nothing, Nothing)
+        , ocpUbnd = None
+        , ocpZbnd = None
+        , ocpPbnd = fmap (\x -> (Just x, Just x)) p
+        , ocpTbnd = (Just tf, Just tf)
         , ocpFixedP = None
         }
   let guess :: J (CollTraj x None None p n deg) (Vector Double)
       guess = cat $ makeGuessSim roots tf x0 (\x _ -> ode x p 0) (\_ _ -> None) p
-  cp  <- makeCollProblem roots ocp guess :: IO (CollProblem x None None p x None x None None None n deg)
+  cp  <- makeCollProblem roots ocp ocpInputs guess :: IO (CollProblem x None None p x None x None None None n deg)
   (msg, opt') <- solveNlp solver (cpNlp cp) Nothing
   return $ case msg of
     Left m -> Left m

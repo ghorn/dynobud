@@ -12,6 +12,8 @@ module Dyno.DirectCollocation.Formulate
        , mkTaus
        , makeGuess
        , makeGuessSim
+       , ocpPhaseBx
+       , ocpPhaseBg
        ) where
 
 import GHC.Generics ( Generic, Generic1 )
@@ -126,10 +128,12 @@ makeCollProblem ::
   , Vectorize r, Vectorize o, Vectorize h, Vectorize c, Vectorize q
   , Vectorize fp
   )
-  => QuadratureRoots -> OcpPhase x z u p r o c h q fp
+  => QuadratureRoots
+  -> OcpPhase x z u p r o c h q fp
+  -> OcpPhaseInputs x z u p c h fp
   -> J (CollTraj x z u p n deg) (Vector Double)
   -> IO (CollProblem x z u p r o c h q fp n deg)
-makeCollProblem roots ocp guess = do
+makeCollProblem roots ocp ocpInputs guess = do
   let -- the collocation points
       taus :: Vec deg Double
       taus = mkTaus roots
@@ -269,16 +273,10 @@ makeCollProblem roots ocp guess = do
            (call quadratureStageFunMX)
            (call pathCStageFunMX)
            (callDynamicsStageFun)
-        , nlpBX = cat $ fillCollTraj'
-                  (fill (Nothing, Nothing))
-                  (ocpXbnd ocp)
-                  (ocpZbnd ocp)
-                  (ocpUbnd ocp)
-                  (ocpPbnd ocp)
-                  (ocpTbnd ocp)
-        , nlpBG = cat (getBg ocp)
+        , nlpBX = cat (ocpPhaseBx ocpInputs)
+        , nlpBG = cat (ocpPhaseBg ocpInputs)
         , nlpX0 = guess :: J (CollTraj x z u p n deg) (Vector Double)
-        , nlpP = catJV (ocpFixedP ocp)
+        , nlpP = catJV (ocpFixedP ocpInputs)
         , nlpLamX0 = Nothing
         , nlpLamG0 = Nothing
         , nlpScaleF = ocpObjScale ocp
@@ -613,23 +611,37 @@ getFg taus bcFun mayerFun lagQuadFun quadFun pathCStageFun dynamicsStageFun coll
             CollPoint x z u = split xzu
 
 
+ocpPhaseBx :: forall x z u p c h fp n deg .
+  ( Dim n, Dim deg
+  , Vectorize x, Vectorize z, Vectorize u, Vectorize p
+  )
+  => OcpPhaseInputs x z u p c h fp
+  -> CollTraj x z u p n deg (Vector Bounds)
+ocpPhaseBx ocpInputs =
+  fillCollTraj'
+  (fill (Nothing, Nothing))
+  (ocpXbnd ocpInputs)
+  (ocpZbnd ocpInputs)
+  (ocpUbnd ocpInputs)
+  (ocpPbnd ocpInputs)
+  (ocpTbnd ocpInputs)
 
-getBg :: forall x z u p r o c h q fp n deg .
+ocpPhaseBg :: forall x z u p r c h fp n deg .
   ( Dim n, Dim deg
   , Vectorize x, Vectorize r, Vectorize c, Vectorize h
   )
-  => OcpPhase x z u p r o c h q fp
+  => OcpPhaseInputs x z u p c h fp
   -> CollOcpConstraints x r c h n deg (Vector Bounds)
-getBg ocp =
+ocpPhaseBg ocpInputs =
   CollOcpConstraints
   { coCollPoints = jreplicate (jfill (Just 0, Just 0)) -- dae residual constraint
   , coContinuity = jreplicate (jfill (Just 0, Just 0)) -- continuity constraint
   , coPathC = jreplicate (jreplicate hbnds)
-  , coBc = catJV (ocpBcBnds ocp)
+  , coBc = catJV (ocpBcBnds ocpInputs)
   }
   where
     hbnds :: J (JV h) (Vector Bounds)
-    hbnds = catJV (ocpPathCBnds ocp)
+    hbnds = catJV (ocpPathCBnds ocpInputs)
 
 toQuadratureFun ::
   forall x z u p fp q deg

@@ -34,7 +34,21 @@ rocketOcp =
   , ocpDae = dae
   , ocpBc = bc
   , ocpPathC = pathC
-  , ocpBcBnds = bcBnds
+  , ocpObjScale      = Nothing
+  , ocpTScale        = Nothing
+  , ocpXScale        = Nothing
+  , ocpZScale        = Nothing
+  , ocpUScale        = Nothing
+  , ocpPScale        = Nothing
+  , ocpResidualScale = Nothing
+  , ocpBcScale       = Nothing
+  , ocpPathCScale    = Nothing
+  }
+
+rocketOcpInputs :: OcpPhaseInputs' RocketOcp
+rocketOcpInputs =
+  OcpPhaseInputs
+  { ocpBcBnds = bcBnds
   , ocpPathCBnds = pathCBnds
   , ocpXbnd = RocketX
               { xPos = (Just 0, Nothing)
@@ -47,15 +61,6 @@ rocketOcp =
               { uThrustDot = (Just (-100), Just 100) }
   , ocpPbnd = fill (Nothing, Nothing)
   , ocpTbnd = (Just 4, Just 4)
-  , ocpObjScale      = Nothing
-  , ocpTScale        = Nothing
-  , ocpXScale        = Nothing
-  , ocpZScale        = Nothing
-  , ocpUScale        = Nothing
-  , ocpPScale        = Nothing
-  , ocpResidualScale = Nothing
-  , ocpBcScale       = Nothing
-  , ocpPathCScale    = Nothing
   , ocpFixedP = None
   }
 
@@ -160,7 +165,7 @@ main :: IO ()
 main = 
   withCallback $ \send -> do
 
-    cp  <- makeCollProblem Legendre rocketOcp guess
+    cp  <- makeCollProblem Legendre rocketOcp rocketOcpInputs guess
     let nlp = cpNlp cp
         meta = toMeta (cpMetaProxy cp)
 

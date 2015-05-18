@@ -213,30 +213,37 @@ pathc :: t -> t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> None a
 pathc _ _ _ _ _ _ _ = None
 
 ocp :: OcpPhase' SailboatOcp
-ocp = OcpPhase { ocpMayer = mayer
-               , ocpLagrange = lagrange
-               , ocpQuadratures = \_ _ _ _ _ _ _ _ -> None
-               , ocpDae = sbDae
-               , ocpBc = bc
-               , ocpPathC = pathc
-               , ocpPathCBnds = None
-               , ocpBcBnds = fill (Just 0, Just 0)
-               , ocpXbnd = xbnd
-               , ocpUbnd = ubnd
-               , ocpZbnd = SbZ
-               , ocpPbnd = SbP
-               , ocpTbnd = (Just 1, Just 50)
-               , ocpObjScale      = Nothing
-               , ocpTScale        = Nothing
-               , ocpXScale        = Nothing
-               , ocpZScale        = Nothing
-               , ocpUScale        = Nothing
-               , ocpPScale        = Nothing
-               , ocpResidualScale = Nothing
-               , ocpBcScale       = Nothing
-               , ocpPathCScale    = Nothing
-               , ocpFixedP = None
-               }
+ocp =
+  OcpPhase
+  { ocpMayer = mayer
+  , ocpLagrange = lagrange
+  , ocpQuadratures = \_ _ _ _ _ _ _ _ -> None
+  , ocpDae = sbDae
+  , ocpBc = bc
+  , ocpPathC = pathc
+  , ocpObjScale      = Nothing
+  , ocpTScale        = Nothing
+  , ocpXScale        = Nothing
+  , ocpZScale        = Nothing
+  , ocpUScale        = Nothing
+  , ocpPScale        = Nothing
+  , ocpResidualScale = Nothing
+  , ocpBcScale       = Nothing
+  , ocpPathCScale    = Nothing
+  }
+
+ocpInputs :: OcpPhaseInputs' SailboatOcp
+ocpInputs =
+  OcpPhaseInputs
+  { ocpPathCBnds = None
+  , ocpBcBnds = fill (Just 0, Just 0)
+  , ocpXbnd = xbnd
+  , ocpUbnd = ubnd
+  , ocpZbnd = SbZ
+  , ocpPbnd = SbP
+  , ocpTbnd = (Just 1, Just 50)
+  , ocpFixedP = None
+  }
 
 
 
@@ -281,7 +288,7 @@ solver = ipoptSolver
 
 main :: IO ()
 main = do
-  cp <- makeCollProblem Legendre ocp (cat initialGuess)
+  cp <- makeCollProblem Legendre ocp ocpInputs (cat initialGuess)
   let nlp = cpNlp cp
   ZMQ.withContext $ \context ->
     withPublisher context urlDynoPlot $ \sendDynoPlotMsg -> do

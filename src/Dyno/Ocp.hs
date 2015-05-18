@@ -3,8 +3,10 @@
 
 module Dyno.Ocp
        ( OcpPhase(..)
+       , OcpPhaseInputs(..)
        , OcpPhaseWithCov(..)
        , OcpPhase'
+       , OcpPhaseInputs'
        , X
        , Z
        , U
@@ -56,6 +58,7 @@ type family FP a :: * -> *
 -- | OcpPhase using type families to compress type parameters
 type OcpPhase' ocp = OcpPhase (X ocp) (Z ocp) (U ocp) (P ocp) (R ocp) (O ocp) (C ocp) (H ocp) (Q ocp) (FP ocp)
 
+type OcpPhaseInputs' ocp = OcpPhaseInputs (X ocp) (Z ocp) (U ocp) (P ocp) (C ocp) (H ocp) (FP ocp)
 
 -- | One stage of an optimal control problem, solvable as a stand-alone optimal control problem.
 --
@@ -86,7 +89,13 @@ type OcpPhase' ocp = OcpPhase (X ocp) (Z ocp) (U ocp) (P ocp) (R ocp) (O ocp) (C
 -- perhaps this should be:
 --
 -- > c(x(0), 0, x(T), T) == 0
-data OcpPhase x z u p r o c h q (fp :: * -> *) =
+--
+--
+-- The OcpPhase data type has all the symbolics necessary to set up a problem.
+-- The OcpPhaseInputs data type provides bounds on all parameters.
+-- It is split up this way because setting up a problem takes considerable overhead,
+-- so solving many problem with different OcpPhaseInputs can save time.
+data OcpPhase x z u p r o c h q fp =
   OcpPhase
   { -- | the Mayer term @Jm(T, x(0), x(T), q(T), p, p')@
     ocpMayer :: Sxe -> x Sxe -> x Sxe -> q Sxe -> p Sxe -> fp Sxe -> Sxe
@@ -100,23 +109,8 @@ data OcpPhase x z u p r o c h q (fp :: * -> *) =
   , ocpDae :: x Sxe -> x Sxe -> z Sxe -> u Sxe -> p Sxe -> fp Sxe -> Sxe -> (r Sxe, o Sxe)
     -- | the boundary conditions @clb <= c(x(0), x(T), q(T), p, p', T) <= cub@
   , ocpBc :: x Sxe -> x Sxe -> q Sxe -> p Sxe -> fp Sxe -> Sxe -> c Sxe
-    -- | the path constraints @h(x(t), z(t), u(t), p, p', o, t)@
+    -- | the path constraints @hbl <= h(x(t), z(t), u(t), p, p', o, t) <= hbu@
   , ocpPathC :: x Sxe -> z Sxe -> u Sxe -> p Sxe -> fp Sxe -> o Sxe -> Sxe -> h Sxe
-    -- | the boundary condition bounds @clb <= c(x(0), x(T)) <= cub@
-  , ocpBcBnds :: c Bounds
-    -- | the path constraint bounds @(hlb, hub)@
-  , ocpPathCBnds :: h Bounds
-    -- | differential state bounds @(xlb, xub)@
-  , ocpXbnd :: x Bounds
-    -- | algebraic variable bounds @(zlb, zub)@
-  , ocpZbnd :: z Bounds
-    -- | control bounds @(ulb, uub)@
-  , ocpUbnd :: u Bounds
-    -- | parameter bounds @(plb, pub)@
-  , ocpPbnd :: p Bounds
-    -- | time bounds @(Tlb, Tub)@
-  , ocpTbnd :: Bounds
-  , ocpFixedP :: fp Double
     -- | scaling
   , ocpObjScale      :: Maybe Double
   , ocpTScale        :: Maybe Double
@@ -127,6 +121,28 @@ data OcpPhase x z u p r o c h q (fp :: * -> *) =
   , ocpResidualScale :: Maybe (r Double)
   , ocpBcScale       :: Maybe (c Double)
   , ocpPathCScale    :: Maybe (h Double)
+  }
+
+
+-- | Inputs to an OcpPhase problem, used to solve several different problems with one OcpPhase.
+data OcpPhaseInputs x z u p c h fp =
+  OcpPhaseInputs
+  { -- | the boundary condition bounds @clb <= c(x(0), x(T), q(T), p, p', T) <= cub@
+    ocpBcBnds :: c Bounds
+    -- | the path constraint bounds @hbl <= h(x(t), z(t), u(t), p, p', o, t) <= hbu@
+  , ocpPathCBnds :: h Bounds
+    -- | differential state bounds @xlb <= x(t) <=  xub@
+  , ocpXbnd :: x Bounds
+    -- | algebraic variable bounds @zlb <= z(t) <= zub@
+  , ocpZbnd :: z Bounds
+    -- | control bounds @ulb <= u(t) <= uub@
+  , ocpUbnd :: u Bounds
+    -- | parameter bounds @plb <= p <= pub@
+  , ocpPbnd :: p Bounds
+    -- | time bounds @Tlb <= T <=  Tub@
+  , ocpTbnd :: Bounds
+    -- | fixed parameters (not optimization variables)
+  , ocpFixedP :: fp Double
   }
 
 data OcpPhaseWithCov ocp sx sz sw sr sh shr sc =

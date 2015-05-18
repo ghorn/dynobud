@@ -105,13 +105,6 @@ quadOcp stateOrOutput quadOrLag =
   , ocpDae = dae
   , ocpBc = bc
   , ocpPathC = pathc
-  , ocpPathCBnds = None
-  , ocpBcBnds = bcBnds
-  , ocpXbnd = xbnd
-  , ocpUbnd = ubnd
-  , ocpZbnd = QuadZ
-  , ocpPbnd = QuadP
-  , ocpTbnd = (Just tf, Just tf)
   , ocpObjScale      = Nothing
   , ocpTScale        = Nothing
   , ocpXScale        = Nothing
@@ -121,6 +114,18 @@ quadOcp stateOrOutput quadOrLag =
   , ocpResidualScale = Nothing
   , ocpBcScale       = Nothing
   , ocpPathCScale    = Just None
+  }
+
+quadOcpInputs :: OcpPhaseInputs' QuadOcp
+quadOcpInputs =
+  OcpPhaseInputs
+  { ocpPathCBnds = None
+  , ocpBcBnds = bcBnds
+  , ocpXbnd = xbnd
+  , ocpUbnd = ubnd
+  , ocpZbnd = QuadZ
+  , ocpPbnd = QuadP
+  , ocpTbnd = (Just tf, Just tf)
   , ocpFixedP = None
   }
 
@@ -184,7 +189,7 @@ goodSolution out = HUnit.assertBool msg (abs (f - fExpected) < 1e-8 && abs (pF -
 
 compareIntegration :: (QuadratureRoots, StateOrOutput, QuadOrLagrange) -> HUnit.Assertion
 compareIntegration (roots, stateOrOutput, quadOrLag) = HUnit.assert $ do
-  cp  <- makeCollProblem roots (quadOcp stateOrOutput quadOrLag) (guess roots)
+  cp  <- makeCollProblem roots (quadOcp stateOrOutput quadOrLag) quadOcpInputs (guess roots)
   let nlp = cpNlp cp
   (ret, out) <- solveNlp solver nlp Nothing
   case ret of

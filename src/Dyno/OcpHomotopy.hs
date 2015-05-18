@@ -33,6 +33,7 @@ runOcpHomotopy ::
     , T.Traversable t )
   => Double -> HomotopyParams
   -> OcpPhase x z u p r o c h q fp
+  -> OcpPhaseInputs x z u p c h fp
   -> J (CollTraj x z u p n deg) (Vector Double)
   -> QuadratureRoots -> Bool -> Bool -> Solver -> Solver
   -> t (fp Double)
@@ -42,10 +43,10 @@ runOcpHomotopy ::
   -> IO (t (NlpOut (CollTraj x z u p n deg)
                    (CollOcpConstraints x r c h n deg)
                    (Vector Double)))
-runOcpHomotopy step0 homotopyParams ocpHomotopy guess roots
+runOcpHomotopy step0 homotopyParams ocpHomotopy ocpHomotopyInputs guess roots
   useStartupCallback useHomotopyCallback
   startupSolver homotopySolver nominalParams makeCallback = do
-  cp0 <- makeCollProblem roots ocpHomotopy guess
+  cp0 <- makeCollProblem roots ocpHomotopy ocpHomotopyInputs guess
   callback <- makeCallback cp0
   let nlpHomotopy :: Nlp
                      (CollTraj x z u p n deg)

@@ -94,30 +94,38 @@ pendDae (PendX x' y' vx' vy' torque') (PendX x y vx vy torque)
     fy = -torque*x + m*9.8
 
 pendOcp :: OcpPhase' PendOcp
-pendOcp = OcpPhase { ocpMayer = mayer
-                   , ocpLagrange = lagrange
-                   , ocpQuadratures = \_ _ _ _ _ _ _ _ -> None
-                   , ocpDae = pendDae
-                   , ocpBc = bc
-                   , ocpPathC = pathc
-                   , ocpPathCBnds = None
-                   , ocpBcBnds = bcBnds
-                   , ocpXbnd = xbnd
-                   , ocpUbnd = ubnd
-                   , ocpZbnd = PendZ (Just (-200), Just 200)
-                   , ocpPbnd = PendP (Just 0.3, Just 0.3)
-                   , ocpTbnd = (Just 0.1, Just 5)
-                   , ocpObjScale      = Nothing
-                   , ocpTScale        = Nothing
-                   , ocpXScale        = Just pendXScale
-                   , ocpZScale        = Just (PendZ 10)
-                   , ocpUScale        = Just (PendU 50)
-                   , ocpPScale        = Just (PendP 0.3)
-                   , ocpResidualScale = Nothing
-                   , ocpBcScale       = Just $ PendBc pendXScale pendXScale
-                   , ocpPathCScale    = Just None
-                   , ocpFixedP = None
-                   }
+pendOcp =
+  OcpPhase
+  { ocpMayer = mayer
+  , ocpLagrange = lagrange
+  , ocpQuadratures = \_ _ _ _ _ _ _ _ -> None
+  , ocpDae = pendDae
+  , ocpBc = bc
+  , ocpPathC = pathc
+  , ocpObjScale      = Nothing
+  , ocpTScale        = Nothing
+  , ocpXScale        = Just pendXScale
+  , ocpZScale        = Just (PendZ 10)
+  , ocpUScale        = Just (PendU 50)
+  , ocpPScale        = Just (PendP 0.3)
+  , ocpResidualScale = Nothing
+  , ocpBcScale       = Just $ PendBc pendXScale pendXScale
+  , ocpPathCScale    = Just None
+  }
+
+pendOcpInputs :: OcpPhaseInputs' PendOcp
+pendOcpInputs =
+  OcpPhaseInputs
+  { ocpPathCBnds = None
+  , ocpBcBnds = bcBnds
+  , ocpXbnd = xbnd
+  , ocpUbnd = ubnd
+  , ocpZbnd = PendZ (Just (-200), Just 200)
+  , ocpPbnd = PendP (Just 0.3, Just 0.3)
+  , ocpTbnd = (Just 0.1, Just 5)
+  , ocpFixedP = None
+  }
+
 pendXScale :: PendX Double
 pendXScale = PendX 0.3 0.3 1 1 10
 
@@ -188,7 +196,7 @@ solver2 = ipoptSolver { options = [("expand", Opt True)] }
 
 main :: IO ()
 main = do
-  cp  <- makeCollProblem Legendre pendOcp guess
+  cp  <- makeCollProblem Legendre pendOcp pendOcpInputs guess
   withCallback $ \send -> do
     let nlp = cpNlp cp
         meta = toMeta (cpMetaProxy cp)

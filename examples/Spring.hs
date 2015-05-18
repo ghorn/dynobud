@@ -34,13 +34,6 @@ springOcp =
   , ocpDae = dae
   , ocpBc = bc
   , ocpPathC = pathC
-  , ocpBcBnds = bcBnds
-  , ocpPathCBnds = pathCBnds
-  , ocpXbnd = fill (Nothing, Nothing)
-  , ocpZbnd = fill (Nothing, Nothing)
-  , ocpUbnd = fill (Nothing, Nothing)
-  , ocpPbnd = fill (Nothing, Nothing)
-  , ocpTbnd = (Just 4, Just 4)
   , ocpObjScale      = Nothing
   , ocpTScale        = Nothing
   , ocpXScale        = Nothing
@@ -50,6 +43,18 @@ springOcp =
   , ocpResidualScale = Nothing
   , ocpBcScale       = Nothing
   , ocpPathCScale    = Nothing
+  }
+
+springOcpInputs :: OcpPhaseInputs' SpringOcp
+springOcpInputs =
+  OcpPhaseInputs
+  { ocpBcBnds = bcBnds
+  , ocpPathCBnds = pathCBnds
+  , ocpXbnd = fill (Nothing, Nothing)
+  , ocpZbnd = fill (Nothing, Nothing)
+  , ocpUbnd = fill (Nothing, Nothing)
+  , ocpPbnd = fill (Nothing, Nothing)
+  , ocpTbnd = (Just 4, Just 4)
   , ocpFixedP = None
   }
 
@@ -148,7 +153,7 @@ main :: IO ()
 main = 
   withCallback $ \send -> do
 
-    cp  <- makeCollProblem Legendre springOcp guess
+    cp  <- makeCollProblem Legendre springOcp springOcpInputs guess
     let nlp = cpNlp cp
         meta = toMeta (cpMetaProxy cp)
 

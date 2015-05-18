@@ -76,14 +76,6 @@ ocp = OcpPhase { ocpMayer = mayer
                , ocpDae = dae
                , ocpBc = bc
                , ocpPathC = pathc
-               , ocpPathCBnds = None
-               , ocpBcBnds = fill (Just 0, Just 0)
-               , ocpXbnd = xbnd
-               , ocpUbnd = ubnd
-               , ocpZbnd = None
-               , ocpPbnd = None
-               , ocpTbnd = (Just 0.5, Just 0.5)
---               , ocpTbnd = (Just 4, Just 4)
                , ocpObjScale      = Nothing
                , ocpTScale        = Nothing
                , ocpXScale        = Nothing
@@ -93,8 +85,21 @@ ocp = OcpPhase { ocpMayer = mayer
                , ocpResidualScale = Nothing
                , ocpBcScale       = Nothing
                , ocpPathCScale    = Nothing
-               , ocpFixedP = None
                }
+
+ocpInputs :: OcpPhaseInputs' GliderOcp
+ocpInputs =
+  OcpPhaseInputs
+  { ocpPathCBnds = None
+  , ocpBcBnds = fill (Just 0, Just 0)
+  , ocpXbnd = xbnd
+  , ocpUbnd = ubnd
+  , ocpZbnd = None
+  , ocpPbnd = None
+  , ocpTbnd = (Just 0.5, Just 0.5)
+--  , ocpTbnd = (Just 4, Just 4)
+  , ocpFixedP = None
+  }
 
 pathc :: x a -> z a -> u a -> p a -> None a -> None a -> a -> None a
 pathc _ _ _ _ _ _ _ = None
@@ -133,7 +138,7 @@ eye3' =
 main :: IO ()
 main = do
   let guess = jfill 1 :: J (CollTraj' GliderOcp NCollStages CollDeg) (Vector Double)
-  cp <- makeCollProblem Legendre ocp guess
+  cp <- makeCollProblem Legendre ocp ocpInputs guess
   let nlp = cpNlp cp
   withCallback $ \send -> do
     let meta = toMeta (cpMetaProxy cp)
