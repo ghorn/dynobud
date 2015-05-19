@@ -29,4 +29,4 @@ opts = mempty { ropt_color_mode = Just ColorAlways
               }
 
 my_test_opts :: TestOptions' Maybe
-my_test_opts = mempty { topt_timeout = Just (Just 5000000) }
+my_test_opts = mempty { topt_timeout = Just (Just 15000000) }
