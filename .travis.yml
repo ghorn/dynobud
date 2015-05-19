@@ -73,6 +73,7 @@ install:
 # - cabal install alex
 # - cabal install happy
  - travis_retry cabal install gtk2hs-buildtools
+ - for pkg in $(ghc-pkg list --user); do ghc-pkg unregister --force ${pkg}; done
  - travis_retry cabal install --only-dependencies -fexamples --enable-tests --enable-benchmarks
 
 # Here starts the actual work to be performed for the package under test; any command which exits with a non-zero exit code causes the build to fail.
