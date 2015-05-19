@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language ScopedTypeVariables #-}
 {-# Language GADTs #-}
+{-# Language FlexibleContexts #-}
 {-# Language DeriveFunctor #-}
 {-# Language DeriveGeneric #-}
 {-# Language DataKinds #-}
@@ -24,6 +25,7 @@ import Test.Framework ( Test, testGroup )
 import Test.Framework.Providers.QuickCheck2 ( testProperty )
 
 import Dyno.Vectorize
+import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 
 import Utils
@@ -145,8 +147,30 @@ vectorizeThenDevectorize _ = x0 == x1
 prop_vecThenDevec :: Vectorizes -> Bool
 prop_vecThenDevec (Vectorizes _ _ p) = vectorizeThenDevectorize p
 
+transposeUnTranspose ::
+  forall n m
+  . (Eq (Vec n (Vec m Int)), Show (Vec n (Vec m Int)), Dim n, Dim m)
+  => Proxy n -> Proxy m -> Bool
+transposeUnTranspose _ _ = x0 == x2
+  where
+    n = TV.reflectDim (Proxy :: Proxy n)
+    m = TV.reflectDim (Proxy :: Proxy m)
+
+    x0 :: Vec n (Vec m Int)
+    x0 = TV.mkVec' [TV.mkVec' [(j*m + k) | k <- [0..(m-1)]] | j <- [0..(n-1)]]
+
+    x1 :: Vec m (Vec n Int)
+    x1 = TV.tvtranspose x0
+
+    x2 :: Vec n (Vec m Int)
+    x2 = TV.tvtranspose x1
+
+prop_transpose :: Dims -> Dims -> Bool
+prop_transpose (Dims _ n) (Dims _ m) = transposeUnTranspose n m
+
 vectorizeTests :: Test
 vectorizeTests =
   testGroup "vectorize tests"
   [ testProperty "vec . devec" prop_vecThenDevec
+  , testProperty "transposeUnTranspose" prop_transpose
   ]

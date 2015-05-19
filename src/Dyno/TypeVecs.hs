@@ -110,7 +110,7 @@ instance Dim n => Vectorize (Vec n) where
   empty = pure ()
 
 tvtranspose :: (Dim n, Dim m) => Vec n (Vec m a) -> Vec m (Vec n a)
-tvtranspose vec = mkVec $ fmap mkVec $ T.sequence (unVec (fmap unVec vec))
+tvtranspose = T.sequenceA
 
 infixr 5 <|
 infixl 5 |>
