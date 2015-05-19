@@ -168,8 +168,8 @@ guess roots = cat $ makeGuess roots tf guessX guessZ guessU parm
 
 solver :: Solver
 solver = ipoptSolver { options = [ ("expand", Opt True)
-                                 , ("linear_solver", Opt "ma86")
-                                 , ("ma86_order", Opt "metis")
+--                                 , ("linear_solver", Opt "ma86")
+--                                 , ("ma86_order", Opt "metis")
                                  , ("print_level", Opt (0 :: Int))
                                  , ("print_time", Opt False)
                                  ]}
