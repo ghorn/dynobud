@@ -21,18 +21,21 @@ import Dyno.View.View ( View(..) )
 import Dyno.View.JV ( JV, splitJV, catJV )
 import Dyno.View.JVec ( JVec(..) )
 import Dyno.DirectCollocation.Formulate ( CollProblem(..) )
-import Dyno.DirectCollocation.Types ( CollTraj(..), CollStage(..), CollPoint(..)
+import Dyno.DirectCollocation.Types ( CollTraj(..), CollOcpConstraints(..)
+                                    , CollStage(..), CollPoint(..)
                                     , StageOutputs(..), Quadratures(..)
                                     )
 import Dyno.DirectCollocation.Quadratures ( timesFromTaus )
 
 toMatlab ::
-  forall x z u p fp r o c h q n deg lol
+  forall x z u p fp r o c h q n deg
   . ( Lookup (x Double), Vectorize x
     , Lookup (z Double), Vectorize z
     , Lookup (u Double), Vectorize u
     , Lookup (o Double), Vectorize o
     , Lookup (p Double), Vectorize p
+    , Lookup (c Double), Vectorize c
+    , Vectorize r
     , Lookup (fp Double), Vectorize fp
     , Lookup (h Double), Vectorize h
     , Lookup (q Double), Vectorize q
@@ -40,11 +43,12 @@ toMatlab ::
     )
   => CollProblem x z u p r o c h q fp n deg
   -> fp Double
-  -> NlpOut (CollTraj x z u p n deg) lol (Vector Double) -- todo(JV fp)
+  -> NlpOut (CollTraj x z u p n deg) (CollOcpConstraints x r c h n deg) (Vector Double)
   -> IO String
 toMatlab cp fp nlpOut = do
   let ct@(CollTraj tf' p' stages' xf) = split (xOpt nlpOut)
       CollTraj lagTf' lagP' _ _ = split (lambdaXOpt nlpOut)
+      lagBc' = coBc $ split (lambdaGOpt nlpOut)
 
   (_, outs, finalQuads) <- cpHellaOutputs cp (cat ct) (catJV fp)
   let _ = outs :: Vec n (StageOutputs x o h q deg Double)
@@ -128,6 +132,7 @@ toMatlab cp fp nlpOut = do
             map (uncurry (woo "ret.quadratureStateDerivs" qds)) at ++
             map (uncurry (wooP "ret.params" (splitJV p'))) at ++
             map (uncurry (wooP "ret.lagrangeMultipliers.params" (splitJV lagP'))) at ++
+            map (uncurry (wooP "ret.lagrangeMultipliers.bc" (splitJV lagBc'))) at ++
             map (uncurry (wooP "ret.finalQuadratureStates" finalQuads)) at ++
             [ "ret.lagrangeMultipliers.T = " ++ show (unId (splitJV lagTf')) ++ ";"
             , ""
