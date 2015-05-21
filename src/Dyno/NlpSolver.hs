@@ -527,7 +527,6 @@ runNlpSolver solverStuff nlpFun scaleX scaleG scaleF callback' (NlpSolver nlpMon
   inputScheme <- mkScheme SCHEME_NLPInput [("x", inputsXMat), ("p", inputsPMat)]
   outputScheme <- mkScheme SCHEME_NLPOutput [("f", objMat), ("g", gMat)]
   nlp <- mkFunction "nlp" inputScheme outputScheme
---  Op.setOption nlp "verbose" True
   mapM_ (\(l,Op.Opt o) -> Op.setOption nlp l o) (functionOptions solverStuff)
   soInit nlp
 
