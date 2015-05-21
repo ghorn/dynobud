@@ -39,7 +39,7 @@ import Dyno.View.Unsafe.M ( M(UnsafeM) )
 
 import Dyno.TypeVecs ( Vec, Dim )
 import Dyno.Vectorize ( Vectorize(..), Id, fill )
-import Dyno.View.View ( View(..), JNone, JTuple, JTriple )
+import Dyno.View.View ( View(..), JNone, JTuple, JTriple, JQuad )
 import Dyno.View.JV ( JV )
 import Dyno.View.Viewable ( Viewable )
 import Dyno.View.M
@@ -454,6 +454,38 @@ prop_hsplitTrip =
           m1 = hcatTrip mx my mz
       return (beEqual m0 m1)
 
+prop_vsplitQuad :: Test
+prop_vsplitQuad =
+  testProperty "vcatQuad . vsplitQuad" $
+  \(Views {vwProxy = p0}) (Views {vwProxy = p1}) (Views {vwProxy = p2}) (Views {vwProxy = p3}) (Views {vwProxy = p4}) (CMatrices {cmProxy = p5})
+  -> test p0 p1 p2 p3 p4 p5
+  where
+    test :: forall f0 f1 f2 f3 g a
+            . (View f0, View f1, View f2, View f3, View g, CMatrix a, MyEq a)
+            => Proxy f0 -> Proxy f1 -> Proxy f2 -> Proxy f3 -> Proxy g -> Proxy a
+            -> Gen Property
+    test _ _ _ _ _ _ = do
+      m0 <- arbitrary :: Gen (M (JQuad f0 f1 f2 f3) g a)
+      let (mf0,mf1,mf2,mf3) = vsplitQuad m0
+          m1 = vcatQuad mf0 mf1 mf2 mf3
+      return (beEqual m0 m1)
+
+prop_hsplitQuad :: Test
+prop_hsplitQuad =
+  testProperty "hcatQuad . hsplitQuad" $
+  \(Views {vwProxy = p0}) (Views {vwProxy = p1}) (Views {vwProxy = p2}) (Views {vwProxy = p3}) (Views {vwProxy = p4}) (CMatrices {cmProxy = p5})
+  -> test p0 p1 p2 p3 p4 p5
+  where
+    test :: forall f g0 g1 g2 g3 a
+            . (View f, View g0, View g1, View g2, View g3, CMatrix a, MyEq a)
+            => Proxy f -> Proxy g0 -> Proxy g1 -> Proxy g2 -> Proxy g3 -> Proxy a
+            -> Gen Property
+    test _ _ _ _ _ _ = do
+      m0 <- arbitrary :: Gen (M f (JQuad g0 g1 g2 g3) a)
+      let (mg0,mg1,mg2,mg3) = hsplitQuad m0
+          m1 = hcatQuad mg0 mg1 mg2 mg3
+      return (beEqual m0 m1)
+
 
 viewTests :: Test
 viewTests =
@@ -473,4 +505,6 @@ viewTests =
   , prop_hsplitTup
   , prop_vsplitTrip
   , prop_hsplitTrip
+  , prop_vsplitQuad
+  , prop_hsplitQuad
   ]

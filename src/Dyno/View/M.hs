@@ -27,12 +27,16 @@ module Dyno.View.M
        , hcat'
        , hsplitTup
        , hsplitTrip
+       , hsplitQuad
        , hcatTup
        , hcatTrip
+       , hcatQuad
        , vsplitTup
        , vsplitTrip
+       , vsplitQuad
        , vcatTup
        , vcatTrip
+       , vcatQuad
        , row
        , col
        , unrow
@@ -59,7 +63,7 @@ import Dyno.View.Unsafe.M ( M(UnsafeM), mkM, mkM', unM )
 
 import Dyno.Vectorize ( Vectorize(..), Id, fill )
 import Dyno.TypeVecs ( Vec, Dim(..) )
-import Dyno.View.View ( View(..), J, JTuple, JTriple )
+import Dyno.View.View ( View(..), J, JTuple, JTriple, JQuad )
 import Dyno.View.JV ( JV )
 import Dyno.View.JVec ( JVec )
 import Dyno.View.Viewable ( Viewable )
@@ -147,6 +151,28 @@ hcatTrip ::
   => M f g1 a -> M f g2 a -> M f g3 a -> M f (JTriple g1 g2 g3) a
 hcatTrip (UnsafeM x) (UnsafeM y) (UnsafeM z) = mkM (CM.horzcat (V.fromList [x,y,z]))
 
+hsplitQuad ::
+  forall f g0 g1 g2 g3 a .
+  (View f, View g0, View g1, View g2, View g3, CMatrix a)
+  => M f (JQuad g0 g1 g2 g3) a -> (M f g0 a, M f g1 a, M f g2 a, M f g3 a)
+hsplitQuad (UnsafeM x) =
+  case V.toList (CM.horzsplit x ncs) of
+    [g0,g1,g2,g3] -> (mkM g0, mkM g1, mkM g2, mkM g3)
+    n -> error $ "hsplitQuad made a bad split with length " ++ show (length n)
+  where
+    ng0 = size (Proxy :: Proxy g0)
+    ng1 = size (Proxy :: Proxy g1)
+    ng2 = size (Proxy :: Proxy g2)
+    ng3 = size (Proxy :: Proxy g3)
+    ncs = V.fromList [0,ng0,ng0+ng1,ng0+ng1+ng2,ng0+ng1+ng2+ng3]
+
+hcatQuad ::
+  forall f g0 g1 g2 g3 a .
+  (View f, View g0, View g1, View g2, View g3, CMatrix a)
+  => M f g0 a -> M f g1 a -> M f g2 a -> M f g3 a -> M f (JQuad g0 g1 g2 g3) a
+hcatQuad (UnsafeM x0) (UnsafeM x1) (UnsafeM x2) (UnsafeM x3) =
+  mkM (CM.horzcat (V.fromList [x0,x1,x2,x3]))
+
 hcat ::
   forall f g a .
   (View f, Vectorize g, CMatrix a)
@@ -210,6 +236,28 @@ vcatTrip ::
   (View f1, View f2, View f3, View h, CMatrix a)
   => M f1 h a -> M f2 h a -> M f3 h a -> M (JTriple f1 f2 f3) h a
 vcatTrip (UnsafeM x) (UnsafeM y) (UnsafeM z) = mkM (CM.vertcat (V.fromList [x,y,z]))
+
+vsplitQuad ::
+  forall f0 f1 f2 f3 h a .
+  (View f0, View f1, View f2, View f3, View h, CMatrix a)
+  => M (JQuad f0 f1 f2 f3) h a -> (M f0 h a, M f1 h a, M f2 h a, M f3 h a)
+vsplitQuad (UnsafeM x) =
+  case V.toList (CM.vertsplit x ncs) of
+    [f0,f1,f2,f3] -> (mkM f0, mkM f1, mkM f2, mkM f3)
+    n -> error $ "vsplitQuad made a bad split with length " ++ show (length n)
+  where
+    nf0 = size (Proxy :: Proxy f0)
+    nf1 = size (Proxy :: Proxy f1)
+    nf2 = size (Proxy :: Proxy f2)
+    nf3 = size (Proxy :: Proxy f3)
+    ncs = V.fromList [0,nf0,nf0+nf1,nf0+nf1+nf2,nf0+nf1+nf2+nf3]
+
+vcatQuad ::
+  forall f0 f1 f2 f3 h a .
+  (View f0, View f1, View f2, View f3, View h, CMatrix a)
+  => M f0 h a -> M f1 h a -> M f2 h a -> M f3 h a -> M (JQuad f0 f1 f2 f3) h a
+vcatQuad (UnsafeM x0) (UnsafeM x1) (UnsafeM x2) (UnsafeM x3) =
+  mkM (CM.vertcat (V.fromList [x0,x1,x2,x3]))
 
 hcat' ::
   forall f g n a .
