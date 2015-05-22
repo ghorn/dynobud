@@ -28,9 +28,12 @@ import Dyno.View.Unsafe.View ( unsafeUnJ, mkJ' )
 import Dyno.View.Unsafe.M ( unM, mkM' )
 import qualified Dyno.View.M as M
 
-import Dyno.View.View ( View(..), J )
+import Dyno.View.View ( View(..), J, JQuad, JTriple, JTuple )
 import Dyno.View.Viewable ( Viewable )
 
+instance (View f0, View f1, View f2, View f3) => Scheme (JQuad f0 f1 f2 f3)
+instance (View f0, View f1, View f2) => Scheme (JTriple f0 f1 f2)
+instance (View f0, View f1) => Scheme (JTuple f0 f1)
 
 class FunctionIO (f :: * -> *) where
   fromMat :: (CMatrix a, Viewable a) => a -> Either String (f a)
