@@ -135,7 +135,7 @@ executable sofa-viz-2000
   default-language:    Haskell2010
   build-depends:       dynobud,
                        base >=4.6 && < 5,
-                       not-gloss >= 0.7.0.1,
+                       not-gloss >= 0.7.4.0,
                        stm,
                        containers,
 --                       binary,

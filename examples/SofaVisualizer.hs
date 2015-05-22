@@ -114,15 +114,18 @@ toVisObjects (SofaMessage iters r points stages) =
   )
   where
     walls = VisObjects
-            [ Line [ V3 (-4) 1 0
+            [ Line Nothing
+                   [ V3 (-4) 1 0
                    , V3 1 1 0
                    , V3 1 (-4) 0
                    ] (makeColor 1 1 1 1)
-            , Line [ V3 (-4) 2 0
+            , Line Nothing
+                   [ V3 (-4) 2 0
                    , V3 2 2 0
                    , V3 2 (-4) 0
                    ] (makeColor 1 1 1 1)
-            , Line [ V3 (-4) 0 0
+            , Line Nothing
+                   [ V3 (-4) 0 0
                    , V3 0 0 0
                    , V3 0 (-4) 0
                    ] (makeColor 1 1 1 1)
@@ -131,13 +134,13 @@ toVisObjects (SofaMessage iters r points stages) =
     axes = Axes (0.5, 15)
     npoints = length points
     nsteps = length stages
-    shape0 = Line' $
+    shape0 = Line' Nothing $
              zipWith (\(Point x y) c -> ((V3 x y 0) - (V3 2 2 0), c))
              (points ++ [head points])
              (colors (npoints + 1))
     drawOne :: [Point Double] -> Double -> Color -> VisObject Double
     drawOne ps@(p0:_) z =
-      Line
+      Line Nothing
       (map (\(Point x y) -> (V3 x y z)) (ps ++ [p0]))
     drawOne _ _ = const (VisObjects [])
   
