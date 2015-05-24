@@ -339,13 +339,13 @@ toHMat (UnsafeM d) = HMat.trans $ (m HMat.>< n) (V.toList v)
     n = size (Proxy :: Proxy n)
     m = size (Proxy :: Proxy m)
 
-fromHMat :: (View f, View g) => HMat.Matrix Double -> M f g DMatrix
+fromHMat :: (View f, View g, CMatrix a) => HMat.Matrix Double -> M f g a
 fromHMat x = case fromHMat' x of
   Right x' -> x'
   Left msg -> error msg
 
-fromHMat' :: (View f, View g) => HMat.Matrix Double -> Either String (M f g DMatrix)
-fromHMat' = mkM' . CM.vertcat . V.fromList . fmap (CM.trans . CM.fromDVector . V.fromList) . HMat.toLists
+fromHMat' :: (View f, View g, CMatrix a) => HMat.Matrix Double -> Either String (M f g a)
+fromHMat' = mkM' . CM.fromDMatrix . CM.vertcat . V.fromList . fmap (CM.trans . CM.fromDVector . V.fromList) . HMat.toLists
 
 rcond :: (View f, View g) => M f g DMatrix -> Double
 rcond = HMat.rcond . toHMat
