@@ -151,18 +151,8 @@ makeCollProblem roots ocp ocpInputs guess = do
       cijs :: Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
       cijs = lagrangeDerivCoeffs (0 TV.<| taus)
 
-      interpolate' :: (J (JV x) :*: J (JVec deg (JV x))) MX -> J (JV x) MX
+      interpolate' :: View f => (J f :*: J (JVec deg f)) MX -> J f MX
       interpolate' (x0 :*: xs) = case roots of
-        Legendre -> interpolate taus x0 (unJVec (split xs))
-        Radau -> TV.tvlast $ unJVec $ split xs
-
-      interpolateq' :: (J (JV q) :*: J (JVec deg (JV q))) MX -> J (JV q) MX
-      interpolateq' (q0 :*: qs) = case roots of
-        Legendre -> interpolate taus q0 (unJVec (split qs))
-        Radau -> TV.tvlast $ unJVec $ split qs
-
-      interpolateScalar' :: (J (JV Id) :*: J (JVec deg (JV Id))) MX -> J (JV Id) MX
-      interpolateScalar' (x0 :*: xs) = case roots of
         Legendre -> interpolate taus x0 (unJVec (split xs))
         Radau -> TV.tvlast $ unJVec $ split xs
 
@@ -175,8 +165,8 @@ makeCollProblem roots ocp ocpInputs guess = do
                   (sxSplitJV parm) (sxSplitJV fixedParm) (unId (sxSplitJV t))
 
   interpolateFun <- toMXFun "interpolate (JV x)" interpolate' >>= expandMXFun
-  interpolateQFun <- toMXFun "interpolate (JV q)" interpolateq' >>= expandMXFun
-  interpolateScalarFun <- toMXFun "interpolate (JV Id)" interpolateScalar' >>= expandMXFun
+  interpolateQFun <- toMXFun "interpolate (JV q)" interpolate' >>= expandMXFun
+  interpolateScalarFun <- toMXFun "interpolate (JV Id)" interpolate' >>= expandMXFun
 
   let callInterpolateScalar :: J (JV Id) MX -> Vec deg (J (JV Id) MX) -> J (JV Id) MX
       callInterpolateScalar x0 xs = call interpolateScalarFun (x0 :*: cat (JVec xs))
