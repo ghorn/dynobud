@@ -28,7 +28,7 @@ import Dyno.DirectCollocation.Types ( CollTraj(..), CollOcpConstraints(..)
 import Dyno.DirectCollocation.Quadratures ( timesFromTaus )
 
 toMatlab ::
-  forall x z u p fp r o c h q po n deg
+  forall x z u p fp r o c h q qo po n deg
   . ( Lookup (x Double), Vectorize x
     , Lookup (z Double), Vectorize z
     , Lookup (u Double), Vectorize u
@@ -40,9 +40,10 @@ toMatlab ::
     , Lookup (h Double), Vectorize h
     , Lookup (q Double), Vectorize q
     , Lookup (po Double), Vectorize po
+    , Lookup (qo Double), Vectorize qo
     , Dim n, Dim deg
     )
-  => CollProblem x z u p r o c h q po fp n deg
+  => CollProblem x z u p r o c h q qo po fp n deg
   -> fp Double
   -> NlpOut (CollTraj x z u p n deg) (CollOcpConstraints x r c h n deg) (Vector Double)
   -> IO String
@@ -52,8 +53,8 @@ toMatlab cp fp nlpOut = do
       lagBc' = coBc $ split (lambdaGOpt nlpOut)
 
   (_, outs, finalQuads) <- cpHellaOutputs cp (cat ct) (catJV fp)
-  let _ = outs :: Vec n (StageOutputs x o h q po deg Double)
-      _ = finalQuads :: Quadratures q Double
+  let _ = outs :: Vec n (StageOutputs x o h q qo po deg Double)
+      _ = finalQuads :: Quadratures q qo Double
 
   let taus :: Vec deg Double
       taus = cpTaus cp
@@ -90,14 +91,14 @@ toMatlab cp fp nlpOut = do
       hs = map splitJV hs'
       pos = map splitJV pos'
       (os', xdots', hs', pos', _, _) = unzip6 $ F.concatMap (F.toList . soVec) outs
-      toQ :: StageOutputs x o h q po deg Double -> [Quadratures q Double]
+      toQ :: StageOutputs x o h q qo po deg Double -> [Quadratures q qo Double]
       toQ stageOutputs = (map (\(_,_,_,_,qs',_) -> qs') (F.toList (soVec stageOutputs))) ++ [soQNext stageOutputs]
-      qs :: [Quadratures q Double]
+      qs :: [Quadratures q qo Double]
       qs = fill 0 : F.concatMap toQ outs
 
-      toQd :: StageOutputs x o h q po deg Double -> [Quadratures q Double]
+      toQd :: StageOutputs x o h q qo po deg Double -> [Quadratures q qo Double]
       toQd stageOutputs = (map (\(_,_,_,_,_,qd) -> qd) (F.toList (soVec stageOutputs)))
-      qds :: [Quadratures q Double]
+      qds :: [Quadratures q qo Double]
       qds = F.concatMap toQd outs
 
       getXs (CollStage x0 xzus) = splitJV x0 : map (getX . split) (F.toList (unJVec (split xzus)))

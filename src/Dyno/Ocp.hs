@@ -18,6 +18,7 @@ module Dyno.Ocp
        , C
        , H
        , Q
+       , QO
        , PO
        , FP
        ) where
@@ -58,13 +59,15 @@ type family C a :: * -> *
 type family H a :: * -> *
 -- | quadrature state
 type family Q a :: * -> *
+-- | quadrature output states (for plotting only)
+type family QO a :: * -> *
 -- | plot outputs
 type family PO a :: * -> *
 -- | fixed (hardcoded) parameters
 type family FP a :: * -> *
 
 -- | OcpPhase using type families to compress type parameters
-type OcpPhase' ocp = OcpPhase (X ocp) (Z ocp) (U ocp) (P ocp) (R ocp) (O ocp) (C ocp) (H ocp) (Q ocp) (PO ocp) (FP ocp)
+type OcpPhase' ocp = OcpPhase (X ocp) (Z ocp) (U ocp) (P ocp) (R ocp) (O ocp) (C ocp) (H ocp) (Q ocp) (QO ocp) (PO ocp) (FP ocp)
 
 type OcpPhaseInputs' ocp = OcpPhaseInputs (X ocp) (Z ocp) (U ocp) (P ocp) (C ocp) (H ocp) (FP ocp)
 
@@ -103,7 +106,7 @@ type OcpPhaseInputs' ocp = OcpPhaseInputs (X ocp) (Z ocp) (U ocp) (P ocp) (C ocp
 -- The OcpPhaseInputs data type provides bounds on all parameters.
 -- It is split up this way because setting up a problem takes considerable overhead,
 -- so solving many problem with different OcpPhaseInputs can save time.
-data OcpPhase x z u p r o c h q po fp =
+data OcpPhase x z u p r o c h q qo po fp =
   OcpPhase
   { -- | the Mayer term @Jm(T, x(0), x(T), q(T), p, p')@
     ocpMayer :: Sxe -> x Sxe -> x Sxe -> q Sxe -> p Sxe -> fp Sxe -> Sxe
@@ -111,6 +114,8 @@ data OcpPhase x z u p r o c h q po fp =
   , ocpLagrange :: x Sxe -> z Sxe -> u Sxe -> p Sxe -> fp Sxe -> o Sxe -> Sxe -> Sxe -> Sxe
     -- | derivative of quadrature state @q(x(t),z(t),u(t),p,o,p',t,T)@
   , ocpQuadratures :: x Sxe -> z Sxe -> u Sxe -> p Sxe -> fp Sxe -> o Sxe -> Sxe -> Sxe -> q Sxe
+    -- | same as ocpQuadratures, but only used for plotting
+  , ocpQuadratureOutputs :: x Sxe -> z Sxe -> u Sxe -> p Sxe -> fp Sxe -> o Sxe -> Sxe -> Sxe -> qo Sxe
     -- | fully implicit differential-algebraic equation of the form:
     --
     -- > f(x'(t), x(t), z(t), u(t), p, p', t) == 0

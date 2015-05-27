@@ -31,6 +31,7 @@ rocketOcp =
   { ocpMayer = mayer
   , ocpLagrange = lagrange
   , ocpQuadratures = \_ _ _ _ _ _ _ _ -> None
+  , ocpQuadratureOutputs = \_ _ _ _ _ _ _ _ -> None
   , ocpDae = dae
   , ocpBc = bc
   , ocpPathC = pathC
@@ -75,6 +76,7 @@ type instance H RocketOcp = RocketPathC
 type instance P RocketOcp = None
 type instance Z RocketOcp = None
 type instance Q RocketOcp = None
+type instance QO RocketOcp = None
 type instance FP RocketOcp = None
 type instance PO RocketOcp = None
 

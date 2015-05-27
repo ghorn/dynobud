@@ -25,20 +25,20 @@ import Dyno.DirectCollocation.Quadratures ( QuadratureRoots )
 
 
 runOcpHomotopy ::
-  forall x z u p r o c h q po fp n deg t
+  forall x z u p r o c h q qo po fp n deg t
   . ( Dim n, Dim deg
     , Vectorize x, Vectorize z, Vectorize u, Vectorize p
     , Vectorize r, Vectorize o, Vectorize c, Vectorize h
-    , Vectorize q, Vectorize po
+    , Vectorize q, Vectorize po, Vectorize qo
     , Vectorize fp
     , T.Traversable t )
   => Double -> HomotopyParams
-  -> OcpPhase x z u p r o c h q po fp
+  -> OcpPhase x z u p r o c h q qo po fp
   -> OcpPhaseInputs x z u p c h fp
   -> J (CollTraj x z u p n deg) (Vector Double)
   -> QuadratureRoots -> Bool -> Bool -> Solver -> Solver
   -> t (fp Double)
-  -> (CollProblem x z u p r o c h q po fp n deg
+  -> (CollProblem x z u p r o c h q qo po fp n deg
       -> IO ([String] -> J (CollTraj x z u p n deg) (Vector Double) -> J (JV fp) (Vector Double) -> IO Bool)
      )
   -> IO (t (NlpOut (CollTraj x z u p n deg)

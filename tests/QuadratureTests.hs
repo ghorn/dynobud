@@ -41,6 +41,7 @@ type instance O QuadOcp = QuadO
 type instance C QuadOcp = QuadBc
 type instance H QuadOcp = None
 type instance Q QuadOcp = QuadQ
+type instance QO QuadOcp = None
 type instance FP QuadOcp = None
 type instance PO QuadOcp = None
 
@@ -103,6 +104,7 @@ quadOcp stateOrOutput quadOrLag =
   { ocpMayer = mayer quadOrLag
   , ocpLagrange = lagrange stateOrOutput quadOrLag
   , ocpQuadratures = quadratures stateOrOutput
+  , ocpQuadratureOutputs = \_ _ _ _ _ _ _ _ -> None
   , ocpDae = dae
   , ocpBc = bc
   , ocpPathC = pathc

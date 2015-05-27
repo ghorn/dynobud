@@ -93,14 +93,14 @@ catDynPlotPoints pps =
 
 
 dynPlotPoints ::
-  forall x z u p h o q po n deg a .
+  forall x z u p h o q qo po n deg a .
   ( Dim n, Dim deg, Real a, Fractional a, Show a
   , Vectorize x, Vectorize z, Vectorize u, Vectorize o, Vectorize p, Vectorize h, Vectorize q
-  , Vectorize po
+  , Vectorize po, Vectorize qo
   )
   => QuadratureRoots
   -> CollTraj x z u p n deg (Vector a)
-  -> Vec n (StageOutputs x o h q po deg a)
+  -> Vec n (StageOutputs x o h q qo po deg a)
   -> DynPlotPoints a
 dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
   -- if degree is one, each arc will be 1 point and won't get drawn
@@ -129,7 +129,7 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
 
     xss = xss' `V.snoc` (V.singleton (tf, unJ xf))
     -- assumes initial time is 0
-    qss = V.singleton (0, vectorize (fill 0 :: Quadratures q a)) `V.cons` qss'
+    qss = V.singleton (0, vectorize (fill 0 :: Quadratures q qo a)) `V.cons` qss'
 
     xss',zss,uss,oss,poss,xdss,hss :: Vector (Vector (a, Vector a))
     (xss',zss,uss,oss,xdss,hss,poss,qss',qdss) = unzip9 xzuoxdhs
@@ -141,7 +141,7 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
     -- todo(greg): should take the times from toCallbacks, not recalculate
     f :: a
          -> ( CollStage (JV x) (JV z) (JV u) deg (Vector a)
-            , StageOutputs x o h q po deg a
+            , StageOutputs x o h q qo po deg a
             )
          -> ( a
             , ( V.Vector (a, V.Vector a)
@@ -173,7 +173,7 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
         g :: CollPoint (JV x) (JV z) (JV u) (Vector a)
              -> ( J (JV o) (Vector a), J (JV x) (Vector a), J (JV h) (Vector a)
                 , J (JV po) (Vector a)
-                , Quadratures q a, Quadratures q a
+                , Quadratures q qo a, Quadratures q qo a
                 )
              -> a
              -> ( (a, V.Vector a)
@@ -256,15 +256,15 @@ forestFromMeta meta = [xTree,zTree,uTree,oTree,xdTree,hTree,poTree,qTree,qdTree]
         woo = F.toList . fmap (F.toList . fmap (\(t,x) -> (t, x V.! k)))
 
 
-data MetaProxy x z u p o q po h = MetaProxy
+data MetaProxy x z u p o q qo po h = MetaProxy
 
-toMeta :: forall x z u p o q po h .
+toMeta :: forall x z u p o q qo po h .
           ( Lookup (x ()), Lookup (z ()), Lookup (u ()), Lookup (p ()), Lookup (o ()), Lookup (q ())
-          , Lookup (h ()), Lookup (po ())
+          , Lookup (h ()), Lookup (po ()), Lookup (qo ())
           , Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize o, Vectorize q
-          , Vectorize h, Vectorize po
+          , Vectorize h, Vectorize po, Vectorize qo
           )
-          => MetaProxy x z u p o q po h -> CollTrajMeta
+          => MetaProxy x z u p o q qo po h -> CollTrajMeta
 toMeta _ =
   CollTrajMeta
   { ctmX = namesFromAccTree $ accessors (fill () :: x ())
@@ -272,7 +272,7 @@ toMeta _ =
   , ctmU = namesFromAccTree $ accessors (fill () :: u ())
   , ctmP = namesFromAccTree $ accessors (fill () :: p ())
   , ctmO = namesFromAccTree $ accessors (fill () :: o ())
-  , ctmQ = namesFromAccTree $ accessors (fill () :: Quadratures q ())
+  , ctmQ = namesFromAccTree $ accessors (fill () :: Quadratures q qo ())
   , ctmH = namesFromAccTree $ accessors (fill () :: h ())
   , ctmPo = namesFromAccTree $ accessors (fill () :: po ())
   }

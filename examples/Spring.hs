@@ -31,6 +31,7 @@ springOcp =
   { ocpMayer = mayer
   , ocpLagrange = lagrange
   , ocpQuadratures = \_ _ _ _ _ _ _ _ -> None
+  , ocpQuadratureOutputs = \_ _ _ _ _ _ _ _ -> None
   , ocpDae = dae
   , ocpBc = bc
   , ocpPathC = pathC
@@ -69,6 +70,7 @@ type instance H SpringOcp = SpringPathC
 type instance P SpringOcp = None
 type instance Z SpringOcp = None
 type instance Q SpringOcp = None
+type instance QO SpringOcp = None
 type instance FP SpringOcp = None
 type instance PO SpringOcp = None
 

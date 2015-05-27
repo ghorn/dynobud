@@ -38,6 +38,7 @@ type instance O PendOcp = PendO
 type instance C PendOcp = PendBc
 type instance H PendOcp = None
 type instance Q PendOcp = None
+type instance QO PendOcp = None
 type instance FP PendOcp = None
 type instance PO PendOcp = None
 
@@ -100,6 +101,7 @@ pendOcp =
   { ocpMayer = mayer
   , ocpLagrange = lagrange
   , ocpQuadratures = \_ _ _ _ _ _ _ _ -> None
+  , ocpQuadratureOutputs = \_ _ _ _ _ _ _ _ -> None
   , ocpDae = pendDae
   , ocpBc = bc
   , ocpPathC = pathc

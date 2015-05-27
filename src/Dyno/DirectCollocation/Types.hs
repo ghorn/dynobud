@@ -284,24 +284,25 @@ fmapCollPointJ :: forall x1 x2 z1 z2 u1 u2 a b .
 fmapCollPointJ fx fz fu (CollPoint x z u) = CollPoint (fx x) (fz z) (fu u)
 
 -- | for callbacks
-data Quadratures q a =
+data Quadratures q qo a =
   Quadratures
   { qLagrange :: a
   , qUser :: q a
+  , qOutputs :: qo a
   } deriving (Functor, Generic, Generic1)
-instance Vectorize q => Vectorize (Quadratures q)
-instance (Lookup a, Lookup (q a)) => Lookup (Quadratures q a)
+instance (Vectorize q, Vectorize qo) => Vectorize (Quadratures q qo)
+instance (Lookup a, Lookup (q a), Lookup (qo a)) => Lookup (Quadratures q qo a)
 
 -- | for callbacks
-data StageOutputs x o h q qp deg a =
+data StageOutputs x o h q qo po deg a =
   StageOutputs
   { soVec :: Vec deg ( J (JV o) (Vector a)
                      , J (JV x) (Vector a)
                      , J (JV h) (Vector a)
-                     , J (JV qp) (Vector a)
-                     , Quadratures q a -- qs
-                     , Quadratures q a -- qdots
+                     , J (JV po) (Vector a)
+                     , Quadratures q qo a -- qs
+                     , Quadratures q qo a -- qdots
                      )
   , soXNext :: J (JV x) (Vector a)
-  , soQNext :: Quadratures q a
+  , soQNext :: Quadratures q qo a
   }

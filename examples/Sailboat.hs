@@ -52,6 +52,7 @@ type instance O SailboatOcp = SbO
 type instance C SailboatOcp = SbBc
 type instance H SailboatOcp = None
 type instance Q SailboatOcp = None
+type instance QO SailboatOcp = None
 type instance FP SailboatOcp = None
 type instance PO SailboatOcp = None
 
@@ -219,6 +220,7 @@ ocp =
   { ocpMayer = mayer
   , ocpLagrange = lagrange
   , ocpQuadratures = \_ _ _ _ _ _ _ _ -> None
+  , ocpQuadratureOutputs = \_ _ _ _ _ _ _ _ -> None
   , ocpDae = sbDae
   , ocpBc = bc
   , ocpPlotOutputs = \_ _ _ _ _ _ _ _ _ -> None
