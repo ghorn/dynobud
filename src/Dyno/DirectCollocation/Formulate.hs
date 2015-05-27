@@ -18,6 +18,7 @@ module Dyno.DirectCollocation.Formulate
 
 import GHC.Generics ( Generic, Generic1 )
 
+import Control.Applicative ( (<$>), (<*>) )
 import Control.Monad.State ( StateT(..), runStateT )
 import Data.Maybe ( fromMaybe )
 import Data.Proxy ( Proxy(..) )
@@ -76,9 +77,10 @@ data CollProblem x z u p r o c h q qo po fp n deg =
   }
 
 
-data QuadraturePlottingIn x z u p o q fp a =
-  -- x z u p fp o q t T
-  QuadraturePlottingIn (J x a) (J z a) (J u a) (J p a) (J o a) (J q a) (J fp a) (J (JV Id) a) (J (JV Id) a)
+data QuadraturePlottingIn x z u p o q qo fp a =
+  -- x z u p fp o q qo t T
+  QuadraturePlottingIn (J x a) (J z a) (J u a) (J p a) (J o a) (J q a) (J qo a) (J fp a)
+  (J (JV Id) a) (J (JV Id) a)
   deriving (Generic, Generic1)
 
 data QuadratureIn x z u p fp a =
@@ -117,8 +119,8 @@ data DaeOut r o a =
   DaeOut (J r a) (J o a)
   deriving (Generic, Generic1)
 
-instance (View x, View z, View u, View p, View o, View q, View fp)
-         => Scheme (QuadraturePlottingIn x z u p o q fp)
+instance (View x, View z, View u, View p, View o, View q, View qo, View fp)
+         => Scheme (QuadraturePlottingIn x z u p o q qo fp)
 instance (View x, View z, View u, View p, View fp) => Scheme (QuadratureIn x z u p fp)
 instance (View x, View z, View u, View p, View fp, Dim deg) => Scheme (QuadratureStageIn x z u p fp deg)
 instance (View q, Dim deg) => Scheme (QuadratureStageOut q deg)
@@ -231,10 +233,11 @@ makeCollProblem roots ocp ocpInputs guess = do
   pathCFunSX <- toSXFun "pathCFun" pathCFun
 
   let quadraturePlottingFun ::
-        QuadraturePlottingIn (JV x) (JV z) (JV u) (JV p) (JV o) (JV q) (JV fp) SX -> J (JV po) SX
-      quadraturePlottingFun (QuadraturePlottingIn x z u p o q fp t tf) =
+        QuadraturePlottingIn (JV x) (JV z) (JV u) (JV p) (JV o) (JV q) (JV qo) (JV fp) SX -> J (JV po) SX
+      quadraturePlottingFun (QuadraturePlottingIn x z u p o q qo fp t tf) =
         sxCatJV $ ocpPlotOutputs ocp (sxSplitJV x) (sxSplitJV z) (sxSplitJV u) (sxSplitJV p)
-        (sxSplitJV o) (sxSplitJV q) (sxSplitJV fp) (unId (sxSplitJV t)) (unId (sxSplitJV tf))
+        (sxSplitJV o) (sxSplitJV q) (sxSplitJV qo) (sxSplitJV fp)
+        (unId (sxSplitJV t)) (unId (sxSplitJV tf))
   quadPlotFunSX <- toSXFun "quadPlotFun" quadraturePlottingFun
 
   let -- later we could use the intermediate points as outputs, or in path cosntraints
@@ -382,7 +385,7 @@ toCallbacks ::
   -> MXFun (QuadratureStageIn (JV x) (JV z) (JV u) (JV p) (JV fp) deg) (QuadratureStageOut (JV Id) deg)
   -> MXFun (QuadratureStageIn (JV x) (JV z) (JV u) (JV p) (JV fp) deg) (QuadratureStageOut (JV q) deg)
   -> MXFun (QuadratureStageIn (JV x) (JV z) (JV u) (JV p) (JV fp) deg) (QuadratureStageOut (JV qo) deg)
-  -> SXFun (QuadraturePlottingIn (JV x) (JV z) (JV u) (JV p) (JV o) (JV q) (JV fp)) (J (JV po))
+  -> SXFun (QuadraturePlottingIn (JV x) (JV z) (JV u) (JV p) (JV o) (JV q) (JV qo) (JV fp)) (J (JV po))
   -> ( J (CollTraj x z u p n deg) (Vector Double)
        -> J (JV fp) (Vector Double)
           -> IO ( DynPlotPoints Double
@@ -460,14 +463,16 @@ toCallbacks n roots taus outputFun pathStageConFun lagQuadFun quadFun quadOutFun
 
       let quadPlotInputs ::
             Vec deg
-            (QuadraturePlottingIn (JV x) (JV z) (JV u) (JV p) (JV o) (JV q) (JV fp) DMatrix)
-          quadPlotInputs = TV.tvzipWith6 toQuadPlotIn xs zs us outs0 qUsers stageTimes
+            (QuadraturePlottingIn (JV x) (JV z) (JV u) (JV p) (JV o) (JV q) (JV qo) (JV fp) DMatrix)
+          quadPlotInputs =
+            toQuadPlotIn <$> xs <*> zs <*> us <*> outs0 <*> qUsers <*> qOuts <*> stageTimes
           qUsers = fmap (v2d . catJV . qUser) qs
+          qOuts = fmap (v2d . catJV . qOutputs) qs
           (xs,zs,us) = TV.tvunzip3 $ fmap (toXzu . split) (unJVec (split xzus))
             where
               toXzu (CollPoint x z u) = (x, z, u)
               CollStage _ xzus = split stage'
-          toQuadPlotIn x z u o q t = QuadraturePlottingIn x z u p' o q fp' t tf
+          toQuadPlotIn x z u o q qo t = QuadraturePlottingIn x z u p' o q qo fp' t tf
 
       pos <- T.mapM (eval quadPlotFun) quadPlotInputs
 

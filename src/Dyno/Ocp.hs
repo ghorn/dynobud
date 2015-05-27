@@ -125,7 +125,7 @@ data OcpPhase x z u p r o c h q qo po fp =
     -- | the path constraints @hbl <= h(x(t), z(t), u(t), p, p', o, t) <= hbu@
   , ocpPathC :: x Sxe -> z Sxe -> u Sxe -> p Sxe -> fp Sxe -> o Sxe -> Sxe -> h Sxe
     -- | things you might want to plot, like total energy - integral(power)
-  , ocpPlotOutputs :: x Sxe -> z Sxe -> u Sxe -> p Sxe -> o Sxe -> q Sxe -> fp Sxe -> Sxe -> Sxe -> po Sxe
+  , ocpPlotOutputs :: x Sxe -> z Sxe -> u Sxe -> p Sxe -> o Sxe -> q Sxe -> qo Sxe -> fp Sxe -> Sxe -> Sxe -> po Sxe
     -- | scaling
   , ocpObjScale      :: Maybe Double
   , ocpTScale        :: Maybe Double
