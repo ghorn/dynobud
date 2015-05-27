@@ -41,6 +41,7 @@ type instance C GliderOcp = AcX
 type instance H GliderOcp = None
 type instance Q GliderOcp = None
 type instance FP GliderOcp = None
+type instance PO GliderOcp = None
 
 mayer :: Floating a => a -> AcX a -> AcX a -> None a -> None a -> None a -> a
 mayer _ _ _ _ _ _ = 0
@@ -76,6 +77,7 @@ ocp = OcpPhase { ocpMayer = mayer
                , ocpDae = dae
                , ocpBc = bc
                , ocpPathC = pathc
+               , ocpPlotOutputs = \_ _ _ _ _ _ _ _ _ -> None
                , ocpObjScale      = Nothing
                , ocpTScale        = Nothing
                , ocpXScale        = Nothing

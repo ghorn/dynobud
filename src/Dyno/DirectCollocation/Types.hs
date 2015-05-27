@@ -293,11 +293,12 @@ instance Vectorize q => Vectorize (Quadratures q)
 instance (Lookup a, Lookup (q a)) => Lookup (Quadratures q a)
 
 -- | for callbacks
-data StageOutputs x o h q deg a =
+data StageOutputs x o h q qp deg a =
   StageOutputs
   { soVec :: Vec deg ( J (JV o) (Vector a)
                      , J (JV x) (Vector a)
                      , J (JV h) (Vector a)
+                     , J (JV qp) (Vector a)
                      , Quadratures q a -- qs
                      , Quadratures q a -- qdots
                      )

@@ -53,6 +53,7 @@ type instance C SailboatOcp = SbBc
 type instance H SailboatOcp = None
 type instance Q SailboatOcp = None
 type instance FP SailboatOcp = None
+type instance PO SailboatOcp = None
 
 data SbX a = SbX { xGamma :: a
                  , xP :: V2 a
@@ -220,6 +221,7 @@ ocp =
   , ocpQuadratures = \_ _ _ _ _ _ _ _ -> None
   , ocpDae = sbDae
   , ocpBc = bc
+  , ocpPlotOutputs = \_ _ _ _ _ _ _ _ _ -> None
   , ocpPathC = pathc
   , ocpObjScale      = Nothing
   , ocpTScale        = Nothing

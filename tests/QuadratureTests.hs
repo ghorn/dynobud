@@ -42,6 +42,7 @@ type instance C QuadOcp = QuadBc
 type instance H QuadOcp = None
 type instance Q QuadOcp = QuadQ
 type instance FP QuadOcp = None
+type instance PO QuadOcp = None
 
 data QuadX a = QuadX { xP  :: a
                      , xV  :: a
@@ -105,6 +106,7 @@ quadOcp stateOrOutput quadOrLag =
   , ocpDae = dae
   , ocpBc = bc
   , ocpPathC = pathc
+  , ocpPlotOutputs = \_ _ _ _ _ _ _ _ _ -> None
   , ocpObjScale      = Nothing
   , ocpTScale        = Nothing
   , ocpXScale        = Nothing

@@ -39,6 +39,7 @@ type instance C PendOcp = PendBc
 type instance H PendOcp = None
 type instance Q PendOcp = None
 type instance FP PendOcp = None
+type instance PO PendOcp = None
 
 data PendX a = PendX { pX  :: a
                      , pY  :: a
@@ -102,6 +103,7 @@ pendOcp =
   , ocpDae = pendDae
   , ocpBc = bc
   , ocpPathC = pathc
+  , ocpPlotOutputs = \_ _ _ _ _ _ _ _ _ -> None
   , ocpObjScale      = Nothing
   , ocpTScale        = Nothing
   , ocpXScale        = Just pendXScale

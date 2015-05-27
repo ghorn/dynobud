@@ -34,6 +34,7 @@ springOcp =
   , ocpDae = dae
   , ocpBc = bc
   , ocpPathC = pathC
+  , ocpPlotOutputs = \_ _ _ _ _ _ _ _ _ -> None
   , ocpObjScale      = Nothing
   , ocpTScale        = Nothing
   , ocpXScale        = Nothing
@@ -69,6 +70,7 @@ type instance P SpringOcp = None
 type instance Z SpringOcp = None
 type instance Q SpringOcp = None
 type instance FP SpringOcp = None
+type instance PO SpringOcp = None
 
 data SpringX a =
   SpringX

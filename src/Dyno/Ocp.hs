@@ -18,6 +18,7 @@ module Dyno.Ocp
        , C
        , H
        , Q
+       , PO
        , FP
        ) where
 
@@ -57,11 +58,13 @@ type family C a :: * -> *
 type family H a :: * -> *
 -- | quadrature state
 type family Q a :: * -> *
+-- | plot outputs
+type family PO a :: * -> *
 -- | fixed (hardcoded) parameters
 type family FP a :: * -> *
 
 -- | OcpPhase using type families to compress type parameters
-type OcpPhase' ocp = OcpPhase (X ocp) (Z ocp) (U ocp) (P ocp) (R ocp) (O ocp) (C ocp) (H ocp) (Q ocp) (FP ocp)
+type OcpPhase' ocp = OcpPhase (X ocp) (Z ocp) (U ocp) (P ocp) (R ocp) (O ocp) (C ocp) (H ocp) (Q ocp) (PO ocp) (FP ocp)
 
 type OcpPhaseInputs' ocp = OcpPhaseInputs (X ocp) (Z ocp) (U ocp) (P ocp) (C ocp) (H ocp) (FP ocp)
 
@@ -100,7 +103,7 @@ type OcpPhaseInputs' ocp = OcpPhaseInputs (X ocp) (Z ocp) (U ocp) (P ocp) (C ocp
 -- The OcpPhaseInputs data type provides bounds on all parameters.
 -- It is split up this way because setting up a problem takes considerable overhead,
 -- so solving many problem with different OcpPhaseInputs can save time.
-data OcpPhase x z u p r o c h q fp =
+data OcpPhase x z u p r o c h q po fp =
   OcpPhase
   { -- | the Mayer term @Jm(T, x(0), x(T), q(T), p, p')@
     ocpMayer :: Sxe -> x Sxe -> x Sxe -> q Sxe -> p Sxe -> fp Sxe -> Sxe
@@ -116,6 +119,8 @@ data OcpPhase x z u p r o c h q fp =
   , ocpBc :: x Sxe -> x Sxe -> q Sxe -> p Sxe -> fp Sxe -> Sxe -> c Sxe
     -- | the path constraints @hbl <= h(x(t), z(t), u(t), p, p', o, t) <= hbu@
   , ocpPathC :: x Sxe -> z Sxe -> u Sxe -> p Sxe -> fp Sxe -> o Sxe -> Sxe -> h Sxe
+    -- | things you might want to plot, like total energy - integral(power)
+  , ocpPlotOutputs :: x Sxe -> z Sxe -> u Sxe -> p Sxe -> o Sxe -> q Sxe -> fp Sxe -> Sxe -> Sxe -> po Sxe
     -- | scaling
   , ocpObjScale      :: Maybe Double
   , ocpTScale        :: Maybe Double

@@ -34,6 +34,7 @@ rocketOcp =
   , ocpDae = dae
   , ocpBc = bc
   , ocpPathC = pathC
+  , ocpPlotOutputs = \_ _ _ _ _ _ _ _ _ -> None
   , ocpObjScale      = Nothing
   , ocpTScale        = Nothing
   , ocpXScale        = Nothing
@@ -75,6 +76,7 @@ type instance P RocketOcp = None
 type instance Z RocketOcp = None
 type instance Q RocketOcp = None
 type instance FP RocketOcp = None
+type instance PO RocketOcp = None
 
 data RocketX a =
   RocketX
