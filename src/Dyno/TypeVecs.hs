@@ -73,11 +73,15 @@ instance (Dim n, S.Serialize a) => S.Serialize (Vec n a) where
   get = fmap mkVec S.get
 
 instance (Lookup a, Dim n) => Lookup (Vec n a) where
-  toAccessorTree vec f = Data ("Vec " ++ show n, "Vec " ++ show n) $ map child (take n [0..])
+  toAccessorTree vec get set = Data ("Vec " ++ show n, "Vec " ++ show n) $ map child (take n [0..])
     where
       n = reflectDim (Proxy :: Proxy n)
-      child k = ("v" ++ show k, toAccessorTree (getK vec) (getK . f))
+      child k = ("v" ++ show k, toAccessorTree (getK vec) (getK . get) setK)
         where
+          setK vk new = set (mkVec (v V.// [(k,vk)])) new
+            where
+              MkVec v = get new
+
           getK :: Vec n a -> a
           getK (MkVec v) = v V.! k
 

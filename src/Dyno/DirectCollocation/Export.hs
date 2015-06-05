@@ -12,7 +12,7 @@ import Linear.V ( Dim(..) )
 import Data.Vector ( Vector )
 import qualified Data.Foldable as F
 
-import Accessors ( Lookup, flatten, accessors )
+import Accessors ( Lookup, Getter(..), flatten, accessors )
 
 import Dyno.Nlp ( NlpOut(..) )
 import Dyno.TypeVecs ( Vec )
@@ -114,8 +114,15 @@ toMatlab cp fp nlpOut = do
       getU :: CollPoint (JV x) (JV z) (JV u) (Vector Double) -> u Double
       getU (CollPoint _ _ u) = splitJV u
 
-      at :: (Vectorize xzu, Lookup (xzu Double)) => [(String, xzu Double -> Double)]
-      at = flatten $ accessors (fill 0)
+      at :: forall xzu . (Vectorize xzu, Lookup (xzu Double)) => [(String, xzu Double -> Double)]
+      at = map (\(fn,g,_) -> (fn, toDub g)) $ flatten $ accessors (fill (0 :: Double))
+        where
+          toDub :: Getter (xzu Double) -> xzu Double -> Double
+          toDub (GetDouble f) = f
+          toDub (GetFloat f) = realToFrac . f
+          toDub (GetInt f) = realToFrac . f
+          toDub (GetBool f) = fromIntegral . fromEnum . f
+          toDub GetSorry = const (read "NaN")
 
       woo :: String -> [xzu Double] -> String -> (xzu Double -> Double) -> String
       woo topName xzus name get = topName ++ "." ++ name ++ " = " ++ show (map get xzus) ++ ";"
