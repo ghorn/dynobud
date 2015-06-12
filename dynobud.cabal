@@ -22,6 +22,7 @@ library
                        Dyno.LagrangePolynomials
                        Dyno.TypeVecs
                        Dyno.MultipleShooting
+                       Dyno.SimpleOcp
                        Dyno.Ocp
                        Dyno.OcpHomotopy
                        Dyno.DirectCollocation.Dynamic
@@ -102,6 +103,19 @@ executable nlp-solver
                        , base >=4.6 && < 5
                        , casadi-bindings
   ghc-options:         -O2
+
+executable toy-ocp
+  if flag(examples)
+    Buildable: True
+  else
+    Buildable: False
+  hs-source-dirs:      examples
+  main-is:             ToyOcp.hs
+  default-language:    Haskell2010
+  build-depends:       dynobud
+                       , base >=4.6 && < 5
+  ghc-options:         -O2
+
 
 executable multiple_shooting
   if flag(examples)
