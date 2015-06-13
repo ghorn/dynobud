@@ -5,8 +5,9 @@
 This library has a few distinct features, which may later be broken into separate packages:
 * high-level, strongly-typed interface to CasADi
 * NLP modeling/solving (examples/EasyNlp.hs, examples/BasicNlp.hs, examples/SofaExpando.hs)
-* OCP modeling/solving (examles/Glider.hs, examples/DaeColl.hs)
-* proof of concept monadic NLP/OCP modeling DSL (examples/{NlpDsl.hs,OcpDslRocket.hs})
+* OCP modeling/solving (examles/Glider.hs, examples/DaeColl.hs, examples/Rocket.hs, etc)
+* toy OCP solver interface (examples/ToyOcp.hs)
+* proof of concept monadic NLP modeling DSL (examples/NlpDsl.hs)
 * live plotter for OCP solving (examples/Dynoplot.hs)
 
 This package is built on top of CasADi (www.casadi.org).
@@ -16,8 +17,8 @@ Installing ipopt is also highly recommended if you want to solve NLPs (`apt-get 
 
 Please keep in mind that this library is continually evolving as my PhD progresses and I expect it to be very unstable.
 The API is also very messy as the library is evolving fast and it's unclear which parts are internal and external.
-Specifically, the matrix and vector views (J and M) aren't polished enough and don't yet work without leaking internals.
 Nevertheless, I have started making hackage releases so that my few users have some snapshots to version-constrain against.
+The library is tested on travis-ci, so the unit tests pass and the examples build.
 
 To install:
 
