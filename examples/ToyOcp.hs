@@ -11,12 +11,12 @@ import Dyno.SimpleOcp
 
 -- state
 data X a = X { xTheta :: a, xOmega :: a }
-         deriving (Functor, Generic1)
+         deriving (Functor, Generic1, Show)
 instance Vectorize X
 
 -- controls
 data U a = U { uTorque :: a }
-         deriving (Functor, Generic1)
+         deriving (Functor, Generic1, Show)
 instance Vectorize U
 
 pendOde :: Floating a => X a -> U a -> X a
@@ -31,7 +31,7 @@ ocp =
   { ode = pendOde
   , objective = \(X _ omega) (U torque) -> omega * omega + torque * torque
   , xBounds = X (-pi, pi) (-5, 5)
-  , uBounds = U (-10, 10)
+  , uBounds = U (-50, 50)
   , xInitial = X {xTheta = pi/2, xOmega =  0}
   , xFinal = X {xTheta = 0, xOmega = 0}
   , endTime = 1
@@ -43,4 +43,4 @@ main = do
   result <- solveOcp ocp
   case result of
     Left msg -> putStrLn $ "failed with " ++ msg
-    Right _ -> putStrLn "HORRAY"
+    Right xus -> print xus
