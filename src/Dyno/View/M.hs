@@ -9,8 +9,12 @@ module Dyno.View.M
        ( M
        , sparse, dense
        , mm
+       , mv
+       , vm
        , ms
+       , sm
        , vs
+       , sv
        , trans
        , zeros
        , eye
@@ -79,11 +83,23 @@ dense (UnsafeM m) = mkM (CM.densify m)
 mm :: (View f, View h, CMatrix a) => M f g a -> M g h a -> M f h a
 mm (UnsafeM m0) (UnsafeM m1) = mkM (CM.mm m0 m1)
 
+mv :: (View f, View g, CMatrix a, Viewable a) => M f g a -> J g a -> J f a
+mv m v = uncol $ mm m (col v)
+
+vm :: (View f, View g, CMatrix a, Viewable a) => J f a -> M f g a -> J g a
+vm v m = unrow $ mm (row v) m
+
 ms :: (View f, View h, Viewable a, CMatrix a) => M f g a -> J (JV Id) a -> M f h a
-ms (UnsafeM m0) m1 = mkM (m0 * (unJ m1))
+ms m0 m1 = mkM $ (unM m0) * (unJ m1)
+
+sm :: (View f, View h, Viewable a, CMatrix a) => J (JV Id) a -> M f g a -> M f h a
+sm m0 m1 = mkM $ (unJ m0) * (unM m1)
 
 vs :: (View f, Viewable a, CMatrix a) => J f a -> J (JV Id) a -> J f a
 vs m0 m1 = uncol $ ms (col m0) m1
+
+sv :: (View f, Viewable a, CMatrix a) => J (JV Id) a -> J f a -> J f a
+sv m0 m1 = uncol $ sm m0 (col m1)
 
 trans :: (View f, View g, CMatrix a) => M f g a -> M g f a
 trans (UnsafeM m) = mkM (CM.trans m)
