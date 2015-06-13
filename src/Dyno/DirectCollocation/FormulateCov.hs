@@ -19,10 +19,9 @@ import Linear.V
 import Casadi.DMatrix ( DMatrix )
 import Casadi.MX ( MX )
 
-import Dyno.SXElement ( sxCatJV, sxSplitJV )
 import Dyno.View.View ( View(..), J, jfill, v2d, d2v )
 import Dyno.View.Cov ( Cov )
-import Dyno.View.JV ( JV, catJV, catJV' )
+import Dyno.View.JV ( JV, catJV, catJV', splitJV' )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.Fun
 import Dyno.View.JVec( JVec(..), jreplicate )
@@ -99,11 +98,11 @@ makeCollCovProblem roots ocp ocpInputs ocpCov guess = do
                         (computeSensitivities) (ocpCovSq ocpCov)
 
   sbcFun <- toSXFun "sbc" $ \(x0:*:x1) -> ocpCovSbc ocpCov x0 x1
-  shFun <- toSXFun "sh" $ \(x0:*:x1) -> ocpCovSh ocpCov (sxSplitJV x0) x1
+  shFun <- toSXFun "sh" $ \(x0:*:x1) -> ocpCovSh ocpCov (splitJV' x0) x1
   mayerFun <- toSXFun "cov mayer" $ \(x0:*:x1:*:x2:*:x3:*:x4) ->
-    sxCatJV $ Id $ ocpCovMayer ocpCov (unId (sxSplitJV x0)) (sxSplitJV x1) (sxSplitJV x2) x3 x4
+    catJV' $ Id $ ocpCovMayer ocpCov (unId (splitJV' x0)) (splitJV' x1) (splitJV' x2) x3 x4
   lagrangeFun <- toSXFun "cov lagrange" $ \(x0:*:x1:*:x2:*:x3) ->
-    sxCatJV $ Id $ ocpCovLagrange ocpCov (unId (sxSplitJV x0)) (sxSplitJV x1) x2 (unId (sxSplitJV x3))
+    catJV' $ Id $ ocpCovLagrange ocpCov (unId (splitJV' x0)) (splitJV' x1) x2 (unId (splitJV' x3))
 
   cp0 <- makeCollProblem roots ocp ocpInputs guess
 

@@ -33,18 +33,20 @@ import Data.Proxy
 
 import Casadi.SharedObject ( soInit )
 import Casadi.MX ( MX )
+import Casadi.SX ( SX )
 import Casadi.SXFunction
 import Casadi.Function
 import Casadi.CMatrix ( veccat )
+import qualified Casadi.CMatrix as CM
 
-import Dyno.View.Unsafe.View ( mkJ, unJ )
+import Dyno.View.Unsafe.View ( J(..), mkJ, unJ )
 
-import Dyno.SXElement ( SXElement, sxElementSym, sxElementToSX )
 import Dyno.Vectorize ( Id, fill )
 import Dyno.TypeVecs ( Vec )
-import Dyno.View.View ( View(..), J, JNone(..), jfill )
+import Dyno.View.View ( View(..), JNone(..), jfill )
 import Dyno.View.JV ( JV )
 import Dyno.View.JVec ( JVec )
+import qualified Dyno.View.Symbolic as Sym
 import qualified Dyno.TypeVecs as TV
 import Dyno.Solvers ( Solver )
 import Dyno.NlpUtils ( solveNlp )
@@ -52,6 +54,18 @@ import Dyno.Nlp ( Nlp(..), NlpOut(..), Bounds)
 
 import ExampleDsl.LogsAndErrors
 import ExampleDsl.Types
+
+type SXElement = J (JV Id) SX
+
+sxElementSym :: String -> IO SXElement
+sxElementSym = Sym.sym
+
+sxElementToSX :: SXElement -> SX
+sxElementToSX (UnsafeJ x)
+  | (1,1) == sizes' = x
+  | otherwise = error $ "sxElementToSX: got non-scalar of size " ++ show sizes'
+  where
+    sizes' = (CM.size1 x, CM.size2 x)
 
 --withEllipse :: Int -> String -> String
 --withEllipse n blah

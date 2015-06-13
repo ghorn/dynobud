@@ -17,10 +17,10 @@ import Data.Vector ( Vector )
 import qualified Data.Foldable as F
 import Linear.V
 
+import Casadi.SX ( SX )
 import Casadi.MX ( MX )
 
-import Dyno.SXElement ( SXElement, sxSplitJV, sxCatJV )
-import Dyno.View.JV ( JV, splitJV, catJV )
+import Dyno.View.JV ( JV, splitJV, catJV, splitJV', catJV' )
 import Dyno.View.Viewable ( Viewable )
 import Dyno.View.View ( View(..), J, JNone, JTuple(..), jfill )
 import Dyno.View.Fun ( SXFun, call, toSXFun, toMXFun, expandMXFun )
@@ -37,7 +37,7 @@ import Dyno.NlpSolver ( runNlpSolver, liftIO, solve
 import Dyno.DirectCollocation.Types ( CollStage(..), CollPoint(..) )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots, mkTaus, interpolate, timesFromTaus )
 
-
+type Sxe = J (JV Id) SX
 
 data IntegratorX x z n deg a =
   IntegratorX
@@ -135,9 +135,6 @@ dynamicsFunction' dae (t :*: parm :*: x' :*: collPoint) = dae x' x z u parm t
   where
     CollPoint x z u = split collPoint
 
-type Sxe = SXElement
-
-
 withIntegrator ::
   forall x z u p r deg n b .
   (Dim n, Dim deg, Vectorize x, Vectorize p, Vectorize u, Vectorize z, Vectorize r)
@@ -161,9 +158,9 @@ withIntegrator _ roots initialX dae solver userFun = do
 
   dynFun <- toSXFun "dynamics" $ dynamicsFunction' $
             \x0 x1 x2 x3 x4 x5 ->
-            let r = dae (sxSplitJV x0) (sxSplitJV x1) (sxSplitJV x2) (sxSplitJV x3)
-                    (sxSplitJV x4) (unId (sxSplitJV x5))
-            in sxCatJV r
+            let r = dae (splitJV' x0) (splitJV' x1) (splitJV' x2) (splitJV' x3)
+                    (splitJV' x4) (unId (splitJV' x5))
+            in catJV' r
 
   dynStageConFun <- toMXFun "dynamicsStageCon" (dynStageConstraints' cijs taus dynFun)
 --  let callDynStageConFun = call dynStageConFun

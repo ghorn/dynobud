@@ -34,7 +34,6 @@ library
                        Dyno.DirectCollocation.Quadratures
                        Dyno.DirectCollocation.Robust
                        Dyno.DirectCollocation.Types
-                       Dyno.SXElement
                        Dyno.View.Cov
 --                       Dyno.View.CustomFunction
                        Dyno.View.Fun

@@ -18,6 +18,7 @@ import Data.Proxy
 import Data.Vector ( Vector )
 
 import Accessors ( Lookup )
+import Casadi.SX ( SX )
 
 import Dyno.TypeVecs
 import Dyno.Ocp
@@ -27,14 +28,13 @@ import Dyno.Nlp
 import Dyno.DirectCollocation.Formulate
 import Dyno.DirectCollocation.Types
 import Dyno.DirectCollocation.Quadratures
-import Dyno.Vectorize ( Vectorize(..), Tuple(..), None(..), fill, vzipWith )
+import Dyno.Vectorize ( Vectorize(..), Tuple(..), Id, None(..), fill, vzipWith )
 import Dyno.View.View -- ( View(..) )
 import Dyno.View.JV
 import Dyno.View.JVec
-import Dyno.SXElement ( SXElement )
 
 -- | scalar symbolic type
-newtype S = S {unS :: SXElement} deriving (Num, Fractional, Floating)
+newtype S = S {unS :: J (JV Id) SX} deriving (Num, Fractional, Floating)
 
 data SimpleOcp x u =
   SimpleOcp

@@ -32,14 +32,13 @@ import Dyno.View.JV ( JV )
 import Dyno.View.View ( J )
 import Dyno.View.Cov ( Cov )
 import Dyno.Nlp ( Bounds )
-import Dyno.SXElement ( SXElement )
---import Dyno.Vectorize
+import Dyno.Vectorize ( Id )
 
 import Casadi.SX ( SX )
 import Casadi.DMatrix ( DMatrix )
 
 type Sx a = J a SX
-type Sxe = SXElement
+type Sxe = J (JV Id) SX
 
 -- | differential state
 type family X a :: * -> *
@@ -195,7 +194,7 @@ data OcpPhaseWithCov ocp sx sz sw sr sh shr sc =
   , ocpCovSbc :: Sx (Cov (JV sx)) -> Sx (Cov (JV sx)) -> Sx sc
   , ocpCovSbcBnds :: J sc (Vector Bounds)
     -- | the covariance path constraints @h(s)@, only applied to first n Ss
-  , ocpCovSh :: X ocp SXElement -> Sx (Cov (JV sx)) -> Sx sh
+  , ocpCovSh :: X ocp Sxe -> Sx (Cov (JV sx)) -> Sx sh
   , ocpCovShBnds :: J sh (Vector Bounds)
     -- | scaling
   , ocpCovSScale :: Maybe (J (Cov (JV sx)) (Vector Double))

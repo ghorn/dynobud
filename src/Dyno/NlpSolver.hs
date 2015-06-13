@@ -6,7 +6,6 @@
 
 module Dyno.NlpSolver
        ( NlpSolver
-       , SXElement
        , runNlpSolver
          -- * solve
        , solve
@@ -88,7 +87,6 @@ import qualified Casadi.CMatrix as CM
 import Dyno.View.Unsafe.View ( unJ, mkJ )
 import Dyno.View.Unsafe.M ( mkM )
 
-import Dyno.SXElement ( SXElement )
 import Dyno.Vectorize ( Id(..) )
 import Dyno.View.JV ( JV )
 import Dyno.View.View ( View(..), J, fmapJ, d2v, v2d, jfill )
