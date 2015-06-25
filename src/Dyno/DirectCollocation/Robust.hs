@@ -94,7 +94,7 @@ mkComputeSensitivities roots covDae = do
 
   sensitivityStageFun' <- toMXFun "sensitivity stage function" $
                           sensitivityStageFunction (call errorDynStageConFunJac)
-  sensitivityStageFun <- expandMXFun sensitivityStageFun'
+  let sensitivityStageFun = sensitivityStageFun'
   let sens :: J (JV Id) MX
               -> J (JV p) MX
               -> J (JVec deg (JV Id)) MX
