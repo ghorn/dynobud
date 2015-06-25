@@ -11,10 +11,7 @@ module Main
 
 import GHC.Generics ( Generic, Generic1 )
 
-import qualified Data.Vector as V
 import qualified Data.Foldable as F
-import Control.Applicative ( Applicative(..) )
-import Linear
 
 import Graphics.Rendering.Chart hiding ( x0 )
 import Graphics.Rendering.Chart.Gtk
@@ -43,16 +40,6 @@ data P a = P deriving (Functor, Generic, Generic1, Show)
 instance Vectorize X
 instance Vectorize U
 instance Vectorize P
-instance Applicative X where
- pure = fill
- x0 <*> x1 = devectorize (V.zipWith id (vectorize x0) (vectorize x1))
-instance Applicative U where
- pure = fill
- x0 <*> x1 = devectorize (V.zipWith id (vectorize x0) (vectorize x1))
-instance Additive X where
- zero = fill 0
-instance Additive U where
- zero = fill 0
 
 -- ocp specification
 ocp :: MsOcp X U P
