@@ -19,6 +19,7 @@ module Dyno.View.M
        , zeros
        , eye
        , diag
+       , takeDiag
        , ones
        , countUp
        , vsplit
@@ -311,6 +312,9 @@ diag :: forall f a . (View f, Viewable a, CMatrix a) => J f a -> M f f a
 diag x = mkM z
   where
     z = CM.diag (unJ x)
+
+takeDiag :: forall f a . (View f, Viewable a, CMatrix a) => M f f a -> J f a
+takeDiag m = mkJ $ CM.diag (unM m)
 
 ones :: forall f g a . (View f, View g, CMatrix a) => M f g a
 ones = mkM z
