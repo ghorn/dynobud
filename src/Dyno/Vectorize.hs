@@ -24,7 +24,6 @@ module Dyno.Vectorize
        , vzipWith
        , vzipWith3
        , vzipWith4
-       , fill
        , GVectorize(..)
        ) where
 
@@ -107,14 +106,11 @@ instance Vectorize Euler
 instance Vectorize (V3T f)
 instance Vectorize (Rot f1 f2)
 
-fill :: Vectorize f => a -> f a
-fill x = fmap (const x) empty
-
 -- | fmap f == devectorize . (V.map f) . vectorize
 class Functor f => Vectorize (f :: * -> *) where
   vectorize :: f a -> V.Vector a
   devectorize :: V.Vector a -> f a
-  empty :: f ()
+  fill :: a -> f a
 
   default vectorize :: (Generic1 f, GVectorize (Rep1 f)) => f a -> V.Vector a
   vectorize f = gvectorize (from1 f)
@@ -122,8 +118,8 @@ class Functor f => Vectorize (f :: * -> *) where
   default devectorize :: (Generic1 f, GVectorize (Rep1 f)) => V.Vector a -> f a
   devectorize f = to1 (gdevectorize f)
 
-  default empty :: (Generic1 f, GVectorize (Rep1 f)) => f ()
-  empty = to1 gempty
+  default fill :: (Generic1 f, GVectorize (Rep1 f)) => a -> f a
+  fill = to1 . gfill
 
 --vlength :: Vectorize f => Proxy f -> Int
 --vlength = const (gvlength (Proxy :: Proxy (Rep1 f)))
@@ -149,7 +145,7 @@ instance Vectorize f => Traversable f where
   traverse f x = devectorize <$> T.traverse f (vectorize x)
 
 vlength :: Vectorize f => Proxy f -> Int
-vlength = V.length . vectorize . (empty `asFunctorOf`)
+vlength = V.length . vectorize . (fill () `asFunctorOf`)
   where
     asFunctorOf :: f a -> Proxy f -> f a
     asFunctorOf x _ = x
@@ -157,7 +153,7 @@ vlength = V.length . vectorize . (empty `asFunctorOf`)
 class GVectorize (f :: * -> *) where
   gvectorize :: f a -> V.Vector a
   gdevectorize :: V.Vector a -> f a
-  gempty :: f ()
+  gfill :: a -> f a
   gvlength :: Proxy f -> Int
 
 vzipWith :: Vectorize f => (a -> b -> c) -> f a -> f b -> f c
@@ -190,7 +186,7 @@ instance (GVectorize f, GVectorize g) => GVectorize (f :*: g) where
 
       (v0,v1) = V.splitAt n0 v0s
 
-  gempty = gempty :*: gempty
+  gfill x = gfill x :*: gfill x
   gvlength = const (nf + ng)
     where
       nf = gvlength (Proxy :: Proxy f)
@@ -200,7 +196,7 @@ instance (GVectorize f, GVectorize g) => GVectorize (f :*: g) where
 instance GVectorize f => GVectorize (M1 i c f) where
   gvectorize = gvectorize . unM1
   gdevectorize = M1 . gdevectorize
-  gempty = M1 gempty
+  gfill = M1 . gfill
   gvlength = gvlength . proxy
     where
       proxy :: Proxy (M1 i c f) -> Proxy f
@@ -213,7 +209,7 @@ instance GVectorize Par1 where
     [] -> error "gdevectorize Par1: got empty list"
     [x] -> Par1 x
     xs -> error $ "gdevectorize Par1: got non-1 length: " ++ show (length xs)
-  gempty = Par1 ()
+  gfill = Par1
   gvlength = const 1
 
 -- data with no fields
@@ -222,14 +218,14 @@ instance GVectorize U1 where
   gdevectorize v
     | V.null v = U1
     | otherwise = error $ "gdevectorize U1: got non-null vector, length: " ++ show (V.length v)
-  gempty = U1
+  gfill = const U1
   gvlength = const 0
 
 -- Constants, additional parameters, and rank-1 recursion
 instance Vectorize f => GVectorize (Rec1 f) where
   gvectorize = vectorize . unRec1
   gdevectorize = Rec1 . devectorize
-  gempty = Rec1 empty
+  gfill = Rec1 . fill
   gvlength = vlength . proxy
     where
       proxy :: Proxy (Rec1 f) -> Proxy f
@@ -237,7 +233,7 @@ instance Vectorize f => GVectorize (Rec1 f) where
 
 -- composition
 instance (Vectorize f, GVectorize g) => GVectorize (f :.: g) where
-  gempty = Comp1 (devectorize (V.replicate k gempty))
+  gfill = Comp1 . devectorize . V.replicate k . gfill
     where
       k = vlength (Proxy :: Proxy f)
   gvectorize = V.concatMap gvectorize . vectorize . unComp1

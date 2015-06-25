@@ -111,7 +111,7 @@ instance Dim n => Additive (Vec n) where
 instance Dim n => Vectorize (Vec n) where
   vectorize = unVec
   devectorize = mkVec
-  empty = pure ()
+  fill = pure
 
 tvtranspose :: (Dim n, Dim m) => Vec n (Vec m a) -> Vec m (Vec n a)
 tvtranspose = T.sequenceA
