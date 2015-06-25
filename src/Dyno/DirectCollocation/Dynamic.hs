@@ -5,7 +5,7 @@
 
 -- todo(greg): rename to PlotPoints or something
 module Dyno.DirectCollocation.Dynamic
-       ( DynPlotPoints
+       ( DynPlotPoints(..)
        , CollTrajMeta(..)
        , addCollocationChannel
        , MetaProxy(..)
