@@ -12,7 +12,10 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE CPP #-}
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ <= 708
 {-# LANGUAGE OverlappingInstances #-}
+#endif
 
 module Dyno.Vectorize
        ( Vectorize(..)
@@ -122,22 +125,57 @@ class Functor f => Vectorize (f :: * -> *) where
   fill = to1 . gfill
 
 -- undecidable, overlapping, orphan instances to get rid of boilerplate
+
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ <= 708
 instance Vectorize f => Applicative f where
+#else
+instance {-# OVERLAPPABLE #-} Vectorize f => Applicative f where
+#endif
   pure = fill
   x0 <*> x1 = devectorize (V.zipWith id (vectorize x0) (vectorize x1))
+
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ <= 708
 instance Vectorize f => Linear.Additive f where
+#else
+instance {-# OVERLAPPABLE #-} Vectorize f => Linear.Additive f where
+#endif
   zero = fill 0
+
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ <= 708
 instance Vectorize f => Linear.Metric f where
+#else
+instance {-# OVERLAPPABLE #-} Vectorize f => Linear.Metric f where
+#endif
   dot x0 x1 = V.sum $ V.zipWith (*) (vectorize x0) (vectorize x1)
+
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ <= 708
 instance (Vectorize f, Eq a) => Eq (f a) where
+#else
+instance {-# OVERLAPPABLE #-} (Vectorize f, Eq a) => Eq (f a) where
+#endif
   x == y = (vectorize x) == (vectorize y)
   x /= y = (vectorize x) /= (vectorize y)
+
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ <= 708
 instance (Vectorize f, Ord a) => Ord (f a) where
+#else
+instance {-# OVERLAPPABLE #-} (Vectorize f, Ord a) => Ord (f a) where
+#endif
   compare x y = compare (vectorize x) (vectorize y)
+
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ <= 708
 instance Vectorize f => F.Foldable f where
+#else
+instance {-# OVERLAPPABLE #-} Vectorize f => F.Foldable f where
+#endif
   foldMap f x = F.foldMap f (vectorize x)
   foldr f acc0 x = F.foldr f acc0 (vectorize x)
+
+#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ <= 708
 instance Vectorize f => T.Traversable f where
+#else
+instance {-# OVERLAPPABLE #-} Vectorize f => T.Traversable f where
+#endif
   traverse f x = devectorize <$> T.traverse f (vectorize x)
 
 -- this could me more efficient as a class method, but this is safer
