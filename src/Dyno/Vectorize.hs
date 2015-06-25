@@ -121,10 +121,6 @@ class Functor f => Vectorize (f :: * -> *) where
   default fill :: (Generic1 f, GVectorize (Rep1 f)) => a -> f a
   fill = to1 . gfill
 
---vlength :: Vectorize f => Proxy f -> Int
---vlength = const (gvlength (Proxy :: Proxy (Rep1 f)))
-
-
 -- undecidable, overlapping, orphan instances to get rid of boilerplate
 instance Vectorize f => Applicative f where
   pure = fill
@@ -144,6 +140,7 @@ instance Vectorize f => Foldable f where
 instance Vectorize f => Traversable f where
   traverse f x = devectorize <$> T.traverse f (vectorize x)
 
+-- this could me more efficient as a class method, but this is safer
 vlength :: Vectorize f => Proxy f -> Int
 vlength = V.length . vectorize . (fill () `asFunctorOf`)
   where
