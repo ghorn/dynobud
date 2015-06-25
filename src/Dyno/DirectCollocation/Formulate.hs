@@ -18,7 +18,7 @@ module Dyno.DirectCollocation.Formulate
 
 import GHC.Generics ( Generic, Generic1 )
 
-import Control.Applicative ( (<$>), (<*>) )
+import Control.Applicative
 import Control.Monad.State ( StateT(..), runStateT )
 import Data.Maybe ( fromMaybe )
 import Data.Proxy ( Proxy(..) )
@@ -28,6 +28,7 @@ import qualified Data.Traversable as T
 import qualified Data.Packed.Matrix as Mat
 import qualified Numeric.LinearAlgebra.Algorithms as LA
 import Linear hiding ( dot )
+import Prelude -- BBP workaround
 
 import Casadi.DMatrix ( DMatrix )
 import Casadi.MX ( MX )

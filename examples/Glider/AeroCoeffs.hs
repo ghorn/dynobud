@@ -7,7 +7,7 @@ module Glider.AeroCoeffs where
 
 import GHC.Generics ( Generic, Generic1 )
 
-import Data.Foldable ( Foldable )
+import qualified Data.Foldable as F
 import Linear
 
 import Accessors ( Lookup )
@@ -22,7 +22,7 @@ data ControlSurfaces a =
                   , csRudder :: a
                   , csAil :: a
                   , csFlaps :: a
-                  } deriving (Eq, Functor, Foldable, Generic, Generic1, Show)
+                  } deriving (Eq, Functor, F.Foldable, Generic, Generic1, Show)
 instance Vectorize ControlSurfaces
 instance (Lookup a, Generic a) => Lookup (ControlSurfaces a)
 

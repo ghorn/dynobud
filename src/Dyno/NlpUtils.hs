@@ -11,7 +11,7 @@ module Dyno.NlpUtils
        , runNlp
        ) where
 
-import Control.Applicative ( Applicative(..) )
+import qualified Control.Applicative as A
 import qualified Data.Traversable as T
 import Control.Monad ( when, void )
 import Data.Vector ( Vector )
@@ -38,7 +38,7 @@ instance Monad m => Functor (StateL m s) where
     fmap f (StateL k) = StateL $ \ s -> do
       (s', v) <- k s
       return (s', f v)
-instance Monad m => Applicative (StateL m s) where
+instance Monad m => A.Applicative (StateL m s) where
     pure x = StateL (\s -> return (s, x))
     StateL kf <*> StateL kv = StateL $ \ s -> do
       (s', f)  <- kf s

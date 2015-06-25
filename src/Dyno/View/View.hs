@@ -17,8 +17,8 @@ module Dyno.View.View
 
 import GHC.Generics ( Generic, Generic1 )
 
-import Data.Foldable ( Foldable )
-import Data.Traversable ( Traversable )
+import qualified Data.Foldable as F
+import qualified Data.Traversable as T
 import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
@@ -33,7 +33,7 @@ import Dyno.Vectorize ( Vectorize(..) )
 import Dyno.View.Unsafe.View
 
 -- some helper types
-data JNone a = JNone deriving ( Eq, Generic, Generic1, Show, Functor, Foldable, Traversable )
+data JNone a = JNone deriving ( Eq, Generic, Generic1, Show, Functor, F.Foldable, T.Traversable )
 data JTuple f g a = JTuple (J f a) (J g a) deriving ( Generic, Show )
 data JTriple f g h a = JTriple (J f a) (J g a) (J h a) deriving ( Generic, Show )
 data JQuad f0 f1 f2 f3 a = JQuad (J f0 a) (J f1 a) (J f2 a) (J f3 a) deriving ( Generic, Show )

@@ -29,24 +29,24 @@ module Dyno.Vectorize
 
 import GHC.Generics
 
-import Control.Applicative ( Applicative(..), (<$>) )
+import Control.Applicative
 import Data.Serialize ( Serialize )
 import qualified Data.Vector as V
-import Data.Foldable ( Foldable )
 import qualified Data.Foldable as F
-import Data.Traversable ( Traversable )
 import qualified Data.Traversable as T
 import Data.Proxy ( Proxy(..) )
 import qualified Linear
+import Prelude -- BBP workaround
 
 import SpatialMath ( Euler )
 import SpatialMathT ( V3T, Rot )
 
 import Accessors ( Lookup )
 
+
 -- | a length-0 vectorizable type
 data None a = None
-            deriving (Eq, Ord, Generic, Generic1, Functor, Foldable, Traversable, Show)
+            deriving (Eq, Ord, Generic, Generic1, Functor, F.Foldable, T.Traversable, Show)
 instance Vectorize None
 instance Applicative None where
   pure = const None
@@ -56,7 +56,7 @@ instance Serialize (None a)
 
 -- | a length-1 vectorizable type
 newtype Id a = Id { unId :: a }
-             deriving (Eq, Ord, Generic, Generic1, Functor, Foldable, Traversable, Show)
+             deriving (Eq, Ord, Generic, Generic1, Functor, F.Foldable, T.Traversable, Show)
 instance Vectorize Id
 instance Applicative Id where
   pure = Id
@@ -67,7 +67,7 @@ instance Serialize a => Serialize (Id a)
 
 -- | a length-2 vectorizable type
 data Tuple f g a = Tuple (f a) (g a)
-                 deriving (Eq, Ord, Generic, Generic1, Functor, Foldable, Traversable, Show)
+                 deriving (Eq, Ord, Generic, Generic1, Functor, F.Foldable, T.Traversable, Show)
 instance (Vectorize f, Vectorize g) => Vectorize (Tuple f g)
 instance (Applicative f, Applicative g) => Applicative (Tuple f g) where
   pure x = Tuple (pure x) (pure x)
@@ -78,7 +78,7 @@ instance (Vectorize f, Vectorize g, Applicative f, Applicative g) => Linear.Addi
 
 -- | a length-3 vectorizable type
 data Triple f g h a = Triple (f a) (g a) (h a)
-                    deriving (Eq, Ord, Generic, Generic1, Functor, Foldable, Traversable, Show)
+                    deriving (Eq, Ord, Generic, Generic1, Functor, F.Foldable, T.Traversable, Show)
 instance (Vectorize f, Vectorize g, Vectorize h) => Vectorize (Triple f g h)
 instance (Applicative f, Applicative g, Applicative h) => Applicative (Triple f g h) where
   pure x = Triple (pure x) (pure x) (pure x)
@@ -134,10 +134,10 @@ instance (Vectorize f, Eq a) => Eq (f a) where
   x /= y = (vectorize x) /= (vectorize y)
 instance (Vectorize f, Ord a) => Ord (f a) where
   compare x y = compare (vectorize x) (vectorize y)
-instance Vectorize f => Foldable f where
+instance Vectorize f => F.Foldable f where
   foldMap f x = F.foldMap f (vectorize x)
   foldr f acc0 x = F.foldr f acc0 (vectorize x)
-instance Vectorize f => Traversable f where
+instance Vectorize f => T.Traversable f where
   traverse f x = devectorize <$> T.traverse f (vectorize x)
 
 -- this could me more efficient as a class method, but this is safer

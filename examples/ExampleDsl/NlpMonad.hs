@@ -15,7 +15,7 @@ module ExampleDsl.NlpMonad
        , solveStaticNlp
        ) where
 
-import Control.Applicative ( Applicative )
+import qualified Control.Applicative as A
 import Control.Monad ( when )
 import "mtl" Control.Monad.Reader ( MonadIO(..) )
 import "mtl" Control.Monad.Except ( ExceptT, MonadError, runExceptT )
@@ -76,7 +76,7 @@ newtype NlpMonad a =
   NlpMonad
   { runNlp :: ExceptT ErrorMessage (WriterT [LogMessage] (StateT NlpMonadState IO)) a
   } deriving ( Functor
-             , Applicative
+             , A.Applicative
              , Monad
              , MonadError ErrorMessage
              , MonadState NlpMonadState

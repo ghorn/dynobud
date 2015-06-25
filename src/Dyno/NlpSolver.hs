@@ -61,7 +61,7 @@ import Data.Proxy ( Proxy(..) )
 import System.Process ( callProcess, showCommandForUser )
 import Control.Exception ( AsyncException( UserInterrupt ), try )
 import Control.Concurrent ( forkIO, newEmptyMVar, takeMVar, putMVar )
-import Control.Applicative ( Applicative(..) )
+import qualified Control.Applicative as A
 import Control.Monad ( when, void )
 import "mtl" Control.Monad.Reader ( MonadIO(..), MonadReader(..), ReaderT(..) )
 import Data.Maybe ( fromMaybe )
@@ -480,7 +480,7 @@ data NlpState (x :: * -> *) (p :: * -> *) (g :: * -> *) =
 newtype NlpSolver (x :: * -> *) (p :: * -> *) (g :: * -> *) a =
   NlpSolver (ReaderT (NlpState x p g) IO a)
   deriving ( Functor
-           , Applicative
+           , A.Applicative
            , Monad
            , MonadReader (NlpState x p g)
            , MonadIO

@@ -19,7 +19,6 @@ import qualified Data.HashSet as HS
 import qualified Data.Sequence as S
 import qualified Data.Map as M
 import Control.Lens
-import Data.Functor ( (<$>) )
 
 import Casadi.SX ( SX )
 import Dyno.View.View ( J )
@@ -62,30 +61,30 @@ data DaeState = DaeState { _daeXDot :: S.Seq (String, SXElement)
 --makeLenses ''DaeState
 daeXDot :: Lens' DaeState (S.Seq (String, SXElement))
 daeXDot f (DaeState xdot' x z u p o ss c) =
-  (\xdot -> DaeState xdot x z u p o ss c) <$> f xdot'
+  (\xdot -> DaeState xdot x z u p o ss c) `fmap` f xdot'
 {-# INLINE daeXDot #-}
 
 daeX :: Lens' DaeState (S.Seq (String, SXElement))
 daeX f (DaeState xdot x' z u p o ss c) =
-  (\x -> DaeState xdot x z u p o ss c) <$> f x'
+  (\x -> DaeState xdot x z u p o ss c) `fmap` f x'
 {-# INLINE daeX #-}
 
 daeZ :: Lens' DaeState (S.Seq (String, SXElement))
 daeZ f (DaeState xdot x z' u p o ss c) =
-  (\z -> DaeState xdot x z u p o ss c) <$> f z'
+  (\z -> DaeState xdot x z u p o ss c) `fmap` f z'
 {-# INLINE daeZ #-}
 
 daeU :: Lens' DaeState (S.Seq (String, SXElement))
 daeU f (DaeState xdot x z u' p o ss c) =
-  (\u -> DaeState xdot x z u p o ss c) <$> f u'
+  (\u -> DaeState xdot x z u p o ss c) `fmap` f u'
 {-# INLINE daeU #-}
 
 daeP :: Lens' DaeState (S.Seq (String, SXElement))
 daeP f (DaeState xdot x z u p' o ss c) =
-  (\p -> DaeState xdot x z u p o ss c) <$> f p'
+  (\p -> DaeState xdot x z u p o ss c) `fmap` f p'
 {-# INLINE daeP #-}
 
 daeO :: Lens' DaeState (M.Map String SXElement)
 daeO f (DaeState xdot x z u p o' ss c) =
-  (\o -> DaeState xdot x z u p o ss c) <$> f o'
+  (\o -> DaeState xdot x z u p o ss c) `fmap` f o'
 {-# INLINE daeO #-}
