@@ -54,7 +54,8 @@ data CollCovProblem ocp n deg sx sw sh shr sc =
                         (J (CollTraj' ocp n deg))
                         (CovarianceSensitivities (JV sx) (JV sw) n)
   , ccpCovariances :: MXFun
-                      (J (CollTrajCov sx ocp n deg)) (J (CovTraj sx n))
+                      (J (Cov (JV sx)) :*: J (CollTraj (X ocp) (Z ocp) (U ocp) (P ocp) n deg))
+                      (J (CovTraj sx n))
   , ccpRoots :: QuadratureRoots
   }
 
@@ -134,7 +135,7 @@ makeCollCovProblem roots ocp ocpInputs ocpCov guess = do
         (mayerFun :: SXFun (J (JV Id) :*: (J (JV x) :*: (J (JV x) :*: (J (Cov (JV sx)) :*: J (Cov (JV sx)))))) (J (JV Id)))
         (nlpFG nlp0)
 
-  computeCovariancesFun' <- toMXFun "compute covariances" computeCovariances
+  computeCovariancesFun' <- toMXFun "compute covariances" (\(x :*: y) -> computeCovariances x y)
   -- callbacks
   let getPlotPoints :: J (CollTrajCov sx ocp n deg) (Vector Double) -> IO (DynPlotPoints Double)
       getPlotPoints collTrajCov = do
@@ -147,9 +148,9 @@ makeCollCovProblem roots ocp ocpInputs ocpCov guess = do
                           , J (Cov (JV sx)) (Vector Double)
                           )
       getOutputs collTrajCov = do
-        let CollTrajCov _ collTraj = split collTrajCov
+        let CollTrajCov p0 collTraj = split collTrajCov
         outputs <- (cpOutputs cp0) collTraj (catJV None)
-        covTraj <- fmap split $ eval computeCovariancesFun' (v2d collTrajCov)
+        covTraj <- fmap split $ eval computeCovariancesFun' (v2d p0 :*: v2d collTraj)
         let covs' = ctAllButLast covTraj
             pF = ctLast covTraj
         let covs = unJVec (split covs') :: Vec n (J (Cov (JV sx)) DMatrix)
@@ -218,7 +219,7 @@ getFgCov ::
   )
   -- taus
   => Vec deg Double
-  -> (J (CollTrajCov sx ocp n deg) MX -> J (CovTraj sx n) MX)
+  -> (J (Cov (JV sx)) MX -> J (CollTraj x z u p n deg) MX -> J (CovTraj sx n) MX)
   -- gammas
   -> J (JV shr) MX
   -- robustify
@@ -281,7 +282,7 @@ getFgCov
 
     covs' :: J (JVec n (Cov (JV sx))) MX -- all but last covariance
     pF :: J (Cov (JV sx)) MX -- last covariances
-    CovTraj covs' pF = split (computeCovariances collTrajCov)
+    CovTraj covs' pF = split (computeCovariances p0 collTraj)
 
     -- lagrange term
     objectiveLagrangeCov = (lagrangeF + lagrange0s) / fromIntegral n

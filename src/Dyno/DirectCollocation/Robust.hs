@@ -27,7 +27,6 @@ import Casadi.DMatrix ( DMatrix )
 
 import qualified Dyno.View.Unsafe.M as M ( mkM, blockSplit )
 
-import Dyno.Ocp
 import Dyno.View.View ( View(..), J, JNone(..), JTuple(..), fromDMatrix )
 import Dyno.View.JV ( JV, catJV', splitJV' )
 import Dyno.View.HList ( (:*:)(..) )
@@ -141,28 +140,22 @@ mkComputeSensitivities roots covDae = do
 
 -- todo: calculate by first multiplying all the Fs
 mkComputeCovariances ::
-  forall ocp x z u p sx sw n deg .
+  forall x z u p sx sw n deg .
   ( Dim deg, Dim n
   , Vectorize x, Vectorize z, Vectorize u, Vectorize p
   , Vectorize sx, Vectorize sw
-  , X ocp ~ x
-  , Z ocp ~ z
-  , U ocp ~ u
-  , P ocp ~ p
   )
   => (M (JV sx) (JV sx) MX -> M (JV sx) (JV sw) MX -> J (Cov (JV sw)) MX -> J (JV Id) MX
       -> M (JV sx) (JV sx) MX)
   -> (J (CollTraj x z u p n deg) MX -> CovarianceSensitivities (JV sx) (JV sw) n MX)
   -> J (Cov (JV sw)) DMatrix
-  -> IO (J (CollTrajCov sx ocp n deg) MX -> J (CovTraj sx n) MX)
+  -> IO (J (Cov (JV sx)) MX -> J (CollTraj x z u p n deg) MX ->  J (CovTraj sx n) MX)
 mkComputeCovariances c2d computeSens qc' = do
   propOneCovFun <- toMXFun "propogate one covariance" (propOneCov c2d)
 
-  let computeCovs :: J (CollTrajCov sx ocp n deg) MX -> J (CovTraj sx n) MX
-      computeCovs collTrajCov = cat covTraj
+  let computeCovs :: J (Cov (JV sx)) MX -> J (CollTraj x z u p n deg) MX ->  J (CovTraj sx n) MX
+      computeCovs p0 collTraj = cat covTraj
         where
-          CollTrajCov p0 collTraj = split collTrajCov
-
           sensitivities = computeSens collTraj
 
           covTraj =
