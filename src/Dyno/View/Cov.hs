@@ -12,6 +12,7 @@ module Dyno.View.Cov
        , fromMatrix
        , diag
        , diag'
+       , diag''
        , nOfVecLen
        ) where
 
@@ -31,7 +32,7 @@ import qualified Casadi.CMatrix as CM
 import Dyno.View.Unsafe.View ( unJ, mkJ )
 import Dyno.View.Unsafe.M ( M(UnsafeM), mkM )
 
-import Dyno.Vectorize ( Vectorize(..) )
+import Dyno.Vectorize ( Vectorize(..), vlength )
 import Dyno.View.View ( View(..), J )
 import Dyno.View.JV ( JV )
 import Dyno.View.Viewable ( Viewable(..) )
@@ -83,6 +84,16 @@ diag' x offDiag = mkJ $ V.fromList $ concat $ zipWith f vx [0..]
   where
     f y k = replicate k offDiag ++ [y]
     vx = V.toList $ vectorize x
+
+diag'' :: forall f a . (Vectorize f, Num a) => f a -> f (f a)
+diag'' v0 = devectorize $ V.generate n (\k -> devectorize (V.generate n (\j -> gen j k)))
+  where
+    v = vectorize v0
+    n = vlength (Proxy :: Proxy f)
+    gen j k
+      | j /= k = 0
+      | otherwise = v V.! k
+
 
 --data X a = X (J S a) (J S a) deriving (Generic, Show)
 --instance View X
