@@ -23,6 +23,7 @@ module Dyno.DirectCollocation.Types
        , fmapCollPointJ
        , fillCollConstraints
        , getXzus
+       , getXzus'
          -- * for callbacks
        , Quadratures(..)
        , StageOutputs(..)
@@ -33,7 +34,6 @@ module Dyno.DirectCollocation.Types
 
 import GHC.Generics ( Generic, Generic1 )
 
-import qualified Data.Foldable as F
 import Linear.V ( Dim(..) )
 import Data.Vector ( Vector )
 
@@ -47,6 +47,7 @@ import Dyno.View.Cov ( Cov )
 import Dyno.View.JV ( JV, splitJV, catJV )
 import Dyno.Vectorize ( Vectorize(..), Id )
 import Dyno.TypeVecs ( Vec )
+import qualified Dyno.TypeVecs as TV
 
 
 -- | CollTraj using type families to compress type parameters
@@ -121,16 +122,32 @@ instance ( Vectorize (X ocp), Vectorize (R ocp), Vectorize (C ocp), Vectorize (H
 
 getXzus ::
   (Vectorize x, Vectorize z, Vectorize u, Dim n, Dim deg)
-  => CollTraj x z u p n deg (Vector a) -> ([[x a]], [[z a]], [[u a]])
-getXzus (CollTraj _ _ stages xf) = (xs ++ [[splitJV xf]], zs, us)
+  => CollTraj x z u p n deg (Vector a)
+  -> (Vec n (Vec deg (x a)), Vec n (Vec deg (z a)), Vec n (Vec deg (u a)))
+getXzus traj = (fmap snd xs, zs, us)
   where
-    (xs, zs, us) = unzip3 $ map (getXzus' . split) (F.toList (unJVec (split stages)))
+    ((xs, _), zs, us) = getXzus' traj
 
-getXzus' :: (Vectorize x, Vectorize z, Vectorize u, Dim deg)
-            => CollStage (JV x) (JV z) (JV u) deg (Vector a) -> ([x a], [z a], [u a])
-getXzus' (CollStage x0 xzus) = (splitJV x0 : xs, zs, us)
+getXzus' ::
+  (Vectorize x, Vectorize z, Vectorize u, Dim n, Dim deg)
+  => CollTraj x z u p n deg (Vector a)
+  -> ( (Vec n (x a, Vec deg (x a)), x a)
+     , Vec n (Vec deg (z a))
+     , Vec n (Vec deg (u a))
+     )
+getXzus' (CollTraj _ _ stages xf) = ((xs, splitJV xf), zs, us)
   where
-    (xs, zs, us) = unzip3 $ map (f . split) (F.toList (unJVec (split xzus)))
+    (xs, zs, us) = TV.tvunzip3 $ fmap (getXzus'' . split) (unJVec (split stages))
+
+getXzus'' :: (Vectorize x, Vectorize z, Vectorize u, Dim deg)
+             => CollStage (JV x) (JV z) (JV u) deg (Vector a)
+             -> ( (x a, Vec deg (x a))
+                , Vec deg (z a)
+                , Vec deg (u a)
+                )
+getXzus'' (CollStage x0 xzus) = ((splitJV x0, xs), zs, us)
+  where
+    (xs, zs, us) = TV.tvunzip3 $ fmap (f . split) (unJVec (split xzus))
     f (CollPoint x z u) = (splitJV x, splitJV z, splitJV u)
 
 fillCollConstraints ::
