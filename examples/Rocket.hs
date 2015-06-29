@@ -14,11 +14,12 @@ import Accessors ( Lookup )
 
 import Dyno.View.View ( J, jfill )
 import Dyno.View.JV ( catJV )
-import Dyno.Nlp ( Bounds )
+import Dyno.Nlp ( NlpOut(..), Bounds )
 import Dyno.Ocp
 import Dyno.Vectorize ( Vectorize, None(..), fill )
 import Dyno.Solvers ( Solver(..), Opt(..), ipoptSolver )
 import Dyno.NlpUtils ( solveNlp )
+import Dyno.DirectCollocation.ActiveConstraints
 import Dyno.DirectCollocation.Formulate ( CollProblem(..), makeCollProblem )
 import Dyno.DirectCollocation.Types ( CollTraj' )
 import Dyno.DirectCollocation.Dynamic ( toMeta )
@@ -177,5 +178,12 @@ main =
           plotPoints <- cpPlotPoints cp traj (catJV None)
           send (plotPoints, meta)
 
-    _ <- solveNlp solver nlp (Just cb')
-    return ()
+    (ret, opt) <- solveNlp solver nlp (Just cb')
+    case ret of
+      Left msg -> putStrLn $ "\nsolve failed with " ++ show msg
+      Right msg -> do
+        putStrLn $ "\nsolve succeeded with " ++ show msg
+        activeConstraints <- getActiveConstraints (cpConstraints cp) rocketOcp 1e-3
+                             (xOpt opt) (catJV None) rocketOcpInputs
+        putStrLn "\nactive constriants:"
+        putStr $ summarizeActiveConstraints activeConstraints
