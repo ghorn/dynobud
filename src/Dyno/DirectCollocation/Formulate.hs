@@ -67,6 +67,9 @@ data CollProblem x z u p r o c h q qo po fp n deg =
                             , Vec n (StageOutputs x o h q qo po deg Double)
                             , Quadratures q qo Double
                             )
+  , cpConstraints :: J (CollTraj x z u p n deg) (Vector Double)
+                     -> J (JV fp) (Vector Double)
+                     -> IO (J (CollOcpConstraints x r c h n deg) (Vector Double))
   , cpOutputs :: J (CollTraj x z u p n deg) (Vector Double)
                  -> J (JV fp) (Vector Double)
                  -> IO (Vec n (StageOutputs x o h q qo po deg Double))
@@ -347,10 +350,16 @@ makeCollProblem roots ocp ocpInputs guess = do
         let stageIntegrals = fmap (unId . splitJV . d2v) stageIntegrals' :: Vec n Double
         return (F.sum stageIntegrals)
 
+  nlpConstraints <- toMXFun "nlp_constraints" (\(x:*:p) -> snd (nlpFG nlp x p))
+  let evalConstraints x p = do
+        g <- eval nlpConstraints (v2d x :*: v2d p)
+        return (d2v g)
+
   return $ CollProblem { cpNlp = nlp
                        , cpOcp = ocp
                        , cpPlotPoints = getPlotPoints
                        , cpHellaOutputs = getHellaOutputs
+                       , cpConstraints = evalConstraints
                        , cpOutputs = getOutputs
                        , cpTaus = taus
                        , cpRoots = roots
