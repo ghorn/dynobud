@@ -36,6 +36,7 @@ import GHC.Generics ( Generic, Generic1 )
 
 import Linear.V ( Dim(..) )
 import Data.Vector ( Vector )
+import Data.Serialize ( Serialize )
 
 import Accessors ( Lookup )
 
@@ -309,6 +310,7 @@ data Quadratures q qo a =
   } deriving (Functor, Generic, Generic1)
 instance (Vectorize q, Vectorize qo) => Vectorize (Quadratures q qo)
 instance (Lookup a, Lookup (q a), Lookup (qo a)) => Lookup (Quadratures q qo a)
+instance (Serialize a, Serialize (q a), Serialize (qo a)) => Serialize (Quadratures q qo a)
 
 -- | for callbacks
 data StageOutputs x o h q qo po deg a =
@@ -322,4 +324,9 @@ data StageOutputs x o h q qo po deg a =
                      )
   , soXNext :: J (JV x) (Vector a)
   , soQNext :: Quadratures q qo a
-  }
+  } deriving Generic
+
+instance ( Serialize a, Serialize (q a), Serialize (qo a)
+         , Vectorize x, Vectorize o, Vectorize h, Vectorize po
+         , Dim deg
+         ) => (Serialize (StageOutputs x o h q qo po deg a))
