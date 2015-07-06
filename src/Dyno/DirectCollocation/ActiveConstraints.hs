@@ -38,7 +38,7 @@ import Dyno.TypeVecs ( Dim )
 import Accessors ( Lookup, Getter(..), flatten, accessors )
 
 data Active a = Active { activeLower :: a, activeUpper :: a }
-              deriving (Functor, Foldable, Traversable, Generic)
+              deriving (Functor, F.Foldable, T.Traversable, Generic)
 instance Lookup a => Lookup (Active a)
 
 data ActiveConstraints x z u p h c a =
@@ -149,10 +149,10 @@ whatsActive userEps traj@(CollTraj tf p _ _) g inputs ocp =
     countEmAll counts = liftA2 Active lowers uppers
       where
         lowers :: f Int
-        lowers = fmap sum $ sequenceA $ map (fmap activeLower) counts
+        lowers = fmap sum $ T.sequenceA $ map (fmap activeLower) counts
 
         uppers :: f Int
-        uppers = fmap sum $ sequenceA $ map (fmap activeUpper) counts
+        uppers = fmap sum $ T.sequenceA $ map (fmap activeUpper) counts
 
     pathC :: [h Double]
     pathC = concatMap (map splitJV . F.toList . unJVec . split) $ F.toList $ unJVec $ split (coPathC g)
@@ -162,7 +162,7 @@ whatsActive userEps traj@(CollTraj tf p _ _) g inputs ocp =
     us = concatMap F.toList (F.toList us')
 
     isActive :: Applicative f => Maybe (f Double) -> f Bounds -> f Double -> f (Active Int)
-    isActive scale bnds val = (scalarIsActive userEps) <$> sequenceA scale <*> bnds <*> val
+    isActive scale bnds val = (scalarIsActive userEps) <$> T.sequenceA scale <*> bnds <*> val
 
     bc :: c Double
     bc = splitJV (coBc g)
