@@ -61,9 +61,9 @@ before_install:
    # casadi from .deb
 # - wget http://github.com/casadi/casadi/releases/download/2.2.0/libcasadi-shared-2.2.0-x86_64.deb
  - wget http://sourceforge.net/projects/casadi/files/CasADi/2.3.0/linux/libcasadi-v2.3.0.deb
- - sudo dpkg -i libcasadi-2.3.0.deb
+ - sudo dpkg -i libcasadi-v2.3.0.deb
  - sudo apt-get install -f
- - rm libcasadi-2.3.0.deb
+ - rm libcasadi-v2.3.0.deb
 
 
 install:
