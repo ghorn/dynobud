@@ -46,24 +46,24 @@ before_install:
  - travis_retry sudo apt-get install -qq coinor-libipopt-dev libmumps-dev libmumps-seq-dev
 
    # casadi from source:
- - travis_retry sudo apt-get install -qq gcc g++ gfortran git cmake
- - cd ..
- - git clone https://github.com/casadi/casadi.git
- - cd casadi
- - mkdir build
- - cd build
- - cmake -DCMAKE_INSTALL_PREFIX=~/casadi_install ..
- - make
- - make install
- - export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:~/casadi_install/lib/pkgconfig
- - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/casadi_install/lib
- - cd ../../dynobud
-
-#   # casadi from .deb
+# - travis_retry sudo apt-get install -qq gcc g++ gfortran git cmake
+# - cd ..
+# - git clone https://github.com/casadi/casadi.git
+# - cd casadi
+# - mkdir build
+# - cd build
+# - cmake -DCMAKE_INSTALL_PREFIX=~/casadi_install ..
+# - make
+# - make install
+# - export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:~/casadi_install/lib/pkgconfig
+# - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/casadi_install/lib
+# - cd ../../dynobud
+   # casadi from .deb
 # - wget http://github.com/casadi/casadi/releases/download/2.2.0/libcasadi-shared-2.2.0-x86_64.deb
-# - sudo dpkg -i libcasadi-shared-2.2.0-x86_64.deb
-# - sudo apt-get install -f
-# - rm libcasadi-shared-2.2.0-x86_64.deb
+ - wget http://sourceforge.net/projects/casadi/files/CasADi/2.3.0/linux/libcasadi-v2.3.0.deb
+ - sudo dpkg -i libcasadi-2.3.0.deb
+ - sudo apt-get install -f
+ - rm libcasadi-2.3.0.deb
 
 
 install:
