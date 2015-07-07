@@ -53,7 +53,7 @@ before_install:
  - mkdir build
  - cd build
  - cmake -DCMAKE_INSTALL_PREFIX=~/casadi_install -DWITH_EXAMPLES=OFF ..
- - make
+ - make -j2
  - make install
  - export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:~/casadi_install/lib/pkgconfig
  - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/casadi_install/lib
@@ -72,15 +72,15 @@ install:
  - travis_retry cabal update
 # - cabal install alex
 # - cabal install happy
- - travis_retry cabal install gtk2hs-buildtools
+ - travis_retry cabal install gtk2hs-buildtools -j2
  - for pkg in $(ghc-pkg list --user); do ghc-pkg unregister --force ${pkg}; done
- - travis_retry cabal install --only-dependencies -fexamples --enable-tests --enable-benchmarks
+ - travis_retry cabal install --only-dependencies -fexamples --enable-tests --enable-benchmarks -j2
 
 # Here starts the actual work to be performed for the package under test; any command which exits with a non-zero exit code causes the build to fail.
 script:
  - if [ -f configure.ac ]; then autoreconf -i; fi
  - cabal configure -fexamples --enable-tests --enable-benchmarks -v2  # -v2 provides useful information for debugging
- - cabal build   # this builds all libraries and executables (including tests/benchmarks)
+ - cabal build -j2  # this builds all libraries and executables (including tests/benchmarks)
  - cabal test --show-details=always
 # - cabal check # complains about -O2
  - cabal sdist   # tests that a source-distribution can be generated
