@@ -18,12 +18,11 @@ import Dyno.Nlp ( NlpOut(..) )
 import Dyno.TypeVecs ( Vec )
 import Dyno.Vectorize ( Vectorize, Id(..), fill )
 import Dyno.View.View ( View(..) )
-import Dyno.View.JV ( JV, splitJV, catJV )
-import Dyno.View.JVec ( JVec(..) )
+import Dyno.View.JV ( splitJV, catJV )
 import Dyno.DirectCollocation.Formulate ( CollProblem(..) )
 import Dyno.DirectCollocation.Types ( CollTraj(..), CollOcpConstraints(..)
-                                    , CollStage(..), CollPoint(..)
                                     , StageOutputs(..), Quadratures(..)
+                                    , getXzus'
                                     )
 import Dyno.DirectCollocation.Quadratures ( timesFromTaus )
 
@@ -48,7 +47,7 @@ toMatlab ::
   -> NlpOut (CollTraj x z u p n deg) (CollOcpConstraints x r c h n deg) (Vector Double)
   -> IO String
 toMatlab cp fp nlpOut = do
-  let ct@(CollTraj tf' p' stages' xf) = split (xOpt nlpOut)
+  let ct@(CollTraj tf' p' _ _) = split (xOpt nlpOut)
       CollTraj lagTf' lagP' _ _ = split (lambdaXOpt nlpOut)
       lagBc' = coBc $ split (lambdaGOpt nlpOut)
 
@@ -70,17 +69,23 @@ toMatlab cp fp nlpOut = do
       xTimes = concatMap (\(t0,ts) -> t0 : F.toList ts) (F.toList times) ++ [tf]
       zuoTimes = concatMap (\(_,ts) -> F.toList ts) (F.toList times)
 
-      stages :: [CollStage (JV x) (JV z) (JV u) deg (Vector Double)]
-      stages = map split $ F.toList $ unJVec $ split stages'
+      xss :: Vec n (x Double, Vec deg (x Double))
+      xf :: x Double
+      zss :: Vec n (Vec deg (z Double))
+      uss :: Vec n (Vec deg (u Double))
+      ((xss,xf), zss, uss) = getXzus' ct
+
+      fullXs :: [x Double]
+      fullXs = concatMap (\(x0, xs') -> x0 : F.toList xs') (F.toList xss) ++ [xf]
 
       xs :: [x Double]
-      xs = concatMap getXs stages ++ [splitJV xf]
+      xs = concatMap (F.toList . snd) (F.toList xss)
 
       zs :: [z Double]
-      zs = concatMap getZs stages
+      zs = concatMap F.toList (F.toList zss)
 
       us :: [u Double]
-      us = concatMap getUs stages
+      us = concatMap F.toList (F.toList uss)
 
       os :: [o Double]
       xdots :: [x Double]
@@ -91,28 +96,22 @@ toMatlab cp fp nlpOut = do
       hs = map splitJV hs'
       pos = map splitJV pos'
       (os', xdots', hs', pos', _, _) = unzip6 $ F.concatMap (F.toList . soVec) outs
-      toQ :: StageOutputs x o h q qo po deg Double -> [Quadratures q qo Double]
-      toQ stageOutputs = (map (\(_,_,_,_,qs',_) -> qs') (F.toList (soVec stageOutputs))) ++ [soQNext stageOutputs]
+      qsFull :: [Quadratures q qo Double]
+      qsFull = fill 0 : F.concatMap toQFull outs
+        where
+          toQFull :: StageOutputs x o h q qo po deg Double -> [Quadratures q qo Double]
+          toQFull stageOutputs = (map (\(_,_,_,_,qs',_) -> qs') (F.toList (soVec stageOutputs))) ++ [soQNext stageOutputs]
+
       qs :: [Quadratures q qo Double]
-      qs = fill 0 : F.concatMap toQ outs
+      qs = F.concatMap toQ outs
+        where
+          toQ :: StageOutputs x o h q qo po deg Double -> [Quadratures q qo Double]
+          toQ stageOutputs = map (\(_,_,_,_,qs',_) -> qs') (F.toList (soVec stageOutputs))
 
       toQd :: StageOutputs x o h q qo po deg Double -> [Quadratures q qo Double]
       toQd stageOutputs = (map (\(_,_,_,_,_,qd) -> qd) (F.toList (soVec stageOutputs)))
       qds :: [Quadratures q qo Double]
       qds = F.concatMap toQd outs
-
-      getXs (CollStage x0 xzus) = splitJV x0 : map (getX . split) (F.toList (unJVec (split xzus)))
-      getZs (CollStage  _ xzus) =              map (getZ . split) (F.toList (unJVec (split xzus)))
-      getUs (CollStage  _ xzus) =              map (getU . split) (F.toList (unJVec (split xzus)))
-
-      getX :: CollPoint (JV x) (JV z) (JV u) (Vector Double) -> x Double
-      getX (CollPoint x _ _) = splitJV x
-
-      getZ :: CollPoint (JV x) (JV z) (JV u) (Vector Double) -> z Double
-      getZ (CollPoint _ z _) = splitJV z
-
-      getU :: CollPoint (JV x) (JV z) (JV u) (Vector Double) -> u Double
-      getU (CollPoint _ _ u) = splitJV u
 
       at :: forall xzu . (Vectorize xzu, Lookup (xzu Double)) => [(String, xzu Double -> Double)]
       at = map (\(fn,g,_) -> (fn, toDub g)) $ flatten $ accessors (fill (0 :: Double))
@@ -132,6 +131,7 @@ toMatlab cp fp nlpOut = do
 
       ret :: String
       ret = unlines $
+            map (uncurry (woo "ret.diffStatesFull" fullXs)) at ++
             map (uncurry (woo "ret.diffStates" xs)) at ++
             map (uncurry (woo "ret.diffStateDerivs" xdots)) at ++
             map (uncurry (woo "ret.algVars" zs)) at ++
@@ -139,6 +139,7 @@ toMatlab cp fp nlpOut = do
             map (uncurry (woo "ret.outputs" os)) at ++
             map (uncurry (woo "ret.pathConstraints" hs)) at ++
             map (uncurry (woo "ret.plotOutputs" pos)) at ++
+            map (uncurry (woo "ret.quadratureStatesFull" qsFull)) at ++
             map (uncurry (woo "ret.quadratureStates" qs)) at ++
             map (uncurry (woo "ret.quadratureStateDerivs" qds)) at ++
             map (uncurry (wooP "ret.params" (splitJV p'))) at ++
