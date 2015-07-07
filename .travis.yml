@@ -52,7 +52,7 @@ before_install:
  - cd casadi
  - mkdir build
  - cd build
- - cmake -DCMAKE_INSTALL_PREFIX=~/casadi_install ..
+ - cmake -DCMAKE_INSTALL_PREFIX=~/casadi_install -DWITH_EXAMPLES=OFF ..
  - make
  - make install
  - export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:~/casadi_install/lib/pkgconfig
