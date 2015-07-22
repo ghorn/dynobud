@@ -7,6 +7,9 @@
 module Dyno.NlpSolver
        ( NlpSolver
        , runNlpSolver
+       , RunNlpOptions(..)
+       , runNlpSolverWith
+       , defaultRunnerOptions
          -- * solve
        , solve
        , solve'
@@ -498,6 +501,17 @@ generateAndCompile name f = do
   callProcess cmd args
   externalFunction ("./"++name++".so")
 
+data RunNlpOptions =
+  RunNlpOptions
+  {
+  }
+
+defaultRunnerOptions :: RunNlpOptions
+defaultRunnerOptions =
+  RunNlpOptions
+  {
+  }
+
 runNlpSolver ::
   forall x p g a s .
   (View x, View p, View g, Symbolic s)
@@ -509,7 +523,21 @@ runNlpSolver ::
   -> Maybe (J x (Vector Double) -> J p (Vector Double) -> IO Bool)
   -> NlpSolver x p g a
   -> IO a
-runNlpSolver solverStuff nlpFun scaleX scaleG scaleF callback' (NlpSolver nlpMonad) = do
+runNlpSolver = runNlpSolverWith defaultRunnerOptions
+
+runNlpSolverWith ::
+  forall x p g a s .
+  (View x, View p, View g, Symbolic s)
+  => RunNlpOptions
+  -> Solver
+  -> (J x s -> J p s -> (J (JV Id) s, J g s))
+  -> Maybe (J x (Vector Double))
+  -> Maybe (J g (Vector Double))
+  -> Maybe Double
+  -> Maybe (J x (Vector Double) -> J p (Vector Double) -> IO Bool)
+  -> NlpSolver x p g a
+  -> IO a
+runNlpSolverWith runnerOptions solverStuff nlpFun scaleX scaleG scaleF callback' (NlpSolver nlpMonad) = do
   inputsX <- sym "x"
   inputsP <- sym "p"
 
@@ -586,7 +614,7 @@ runNlpSolver solverStuff nlpFun scaleX scaleG scaleF callback' (NlpSolver nlpMon
 --  Op.setOption solver "jac_g" jac_g'
 
   -- set all the user options
-  mapM_ (\(l,Op.Opt o) -> Op.setOption solver l o) (defaultOptions (getSolverInternal solverStuff)
+  mapM_ (\(l,Op.Opt o) -> Op.setOption solver l o) (defaultSolverOptions (getSolverInternal solverStuff)
                                                     ++ options solverStuff)
   soInit solver
 

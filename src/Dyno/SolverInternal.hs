@@ -9,7 +9,7 @@ import Casadi.Option ( Opt(..) )
 data SolverInternal =
   SolverInternal
   { solverName :: String
-  , defaultOptions :: [(String,Opt)]
+  , defaultSolverOptions :: [(String,Opt)]
   , solverInterruptCode :: Int
   , successCodes :: [String]
   }

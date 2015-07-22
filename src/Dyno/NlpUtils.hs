@@ -68,17 +68,34 @@ solveNlpHomotopy ::
   -> Maybe (J x (Vector Double) -> J p (Vector Double) -> IO Bool)
   -> Maybe (J x (Vector Double) -> J p (Vector Double) -> Double -> IO ())
   -> IO (t (NlpOut x g (Vector Double)))
-solveNlpHomotopy userStep hp
+solveNlpHomotopy = solveNlpHomotopyWith defaultRunnerOptions
+
+-- | solve a homotopy nlp
+solveNlpHomotopyWith ::
+  forall x p g t a .
+  (View x, View p, View g, T.Traversable t, Symbolic a)
+  => RunNlpOptions
+  -> Double -> HomotopyParams
+  -> Solver
+  -> Nlp x p g a -> t (J p (Vector Double))
+  -> Maybe (J x (Vector Double) -> J p (Vector Double) -> IO Bool)
+  -> Maybe (J x (Vector Double) -> J p (Vector Double) -> Double -> IO ())
+  -> IO (t (NlpOut x g (Vector Double)))
+solveNlpHomotopyWith options userStep hp
   solverStuff nlp pFs callback callbackP = do
   when ((reduction hp) >= 1) $ error $ "homotopy reduction factor " ++ show (reduction hp) ++ " >= 1"
   when ((increase hp)  <= 1) $ error $ "homotopy increase factor "  ++ show (increase hp)  ++ " <= 1"
   let fg :: J x a -> J p a -> (J (JV Id) a, J g a)
       fg x p = nlpFG nlp x p
 
-  runNlpSolver solverStuff fg (nlpScaleX nlp) (nlpScaleG nlp) (nlpScaleF nlp) callback $ do
+  runNlpSolverWith options solverStuff fg (nlpScaleX nlp) (nlpScaleG nlp) (nlpScaleF nlp) callback $ do
     let (lbx,ubx) = unzipJ (nlpBX nlp)
         (lbg,ubg) = unzipJ (nlpBG nlp)
         p0 = nlpP nlp
+
+    _ <- case callback of
+     Nothing -> return True
+     Just cb -> liftIO $ cb (nlpX0 nlp) (nlpP nlp)
 
     -- initial solve
     setX0 $ nlpX0 nlp
@@ -267,7 +284,17 @@ runNlp ::
   -> Nlp x p g a -> Maybe (J x (Vector Double) -> J p (Vector Double) -> IO Bool)
   -> NlpSolver x p g b
   -> IO b
-runNlp solverStuff nlp callback runMe =
-  runNlpSolver solverStuff (nlpFG nlp) (nlpScaleX nlp) (nlpScaleG nlp) (nlpScaleF nlp) callback $ do
+runNlp = runNlpWith defaultRunnerOptions
+
+-- | set all inputs, handle scaling, and let the user run a NlpMonad
+runNlpWith ::
+  (View x, View p, View g, Symbolic a)
+  => RunNlpOptions
+  -> Solver
+  -> Nlp x p g a -> Maybe (J x (Vector Double) -> J p (Vector Double) -> IO Bool)
+  -> NlpSolver x p g b
+  -> IO b
+runNlpWith options solverStuff nlp callback runMe =
+  runNlpSolverWith options solverStuff (nlpFG nlp) (nlpScaleX nlp) (nlpScaleG nlp) (nlpScaleF nlp) callback $ do
     setNlpInputs nlp
     runMe
