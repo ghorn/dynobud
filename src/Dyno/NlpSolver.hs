@@ -60,6 +60,8 @@ module Dyno.NlpSolver
        , generateAndCompile
        ) where
 
+import Text.Printf ( printf )
+import Data.Time.Clock ( getCurrentTime, diffUTCTime )
 import Data.Proxy ( Proxy(..) )
 import System.Process ( callProcess, showCommandForUser )
 import Control.Exception ( AsyncException( UserInterrupt ), try )
@@ -104,6 +106,13 @@ import Dyno.SolverInternal ( SolverInternal(..) )
 
 type VD a = J a (Vector Double)
 type VMD a = J a (Vector (Maybe Double))
+
+timeIt :: IO a -> IO (a, Double)
+timeIt action = do
+  t0 <- getCurrentTime
+  ret <- action
+  t1 <- getCurrentTime
+  return (ret, realToFrac (diffUTCTime t1 t0))
 
 getStat :: String -> NlpSolver x p g C.GenericType
 getStat name = do
@@ -503,13 +512,13 @@ generateAndCompile name f = do
 
 data RunNlpOptions =
   RunNlpOptions
-  {
+  { verbose :: Bool
   }
 
 defaultRunnerOptions :: RunNlpOptions
 defaultRunnerOptions =
   RunNlpOptions
-  {
+  { verbose = False
   }
 
 runNlpSolver ::
@@ -553,11 +562,21 @@ runNlpSolverWith runnerOptions solverStuff nlpFun scaleX scaleG scaleF callback'
 
   inputScheme <- mkScheme SCHEME_NLPInput [("x", inputsXMat), ("p", inputsPMat)]
   outputScheme <- mkScheme SCHEME_NLPOutput [("f", objMat), ("g", gMat)]
-  nlp <- mkFunction "nlp" inputScheme outputScheme
-  mapM_ (\(l,Op.Opt o) -> Op.setOption nlp l o) (functionOptions solverStuff)
-  soInit nlp
 
-  functionCall solverStuff nlp
+  when (verbose runnerOptions) $ do
+    putStrLn "************** initializing dynobud runNlpSolver ******************"
+    putStrLn "making nlp..."
+  (nlp, nlpTime) <- timeIt $ mkFunction "nlp" inputScheme outputScheme
+  when (verbose runnerOptions) $ printf "made nlp in %.2f seconds\n" nlpTime
+  mapM_ (\(l,Op.Opt o) -> Op.setOption nlp l o) (functionOptions solverStuff)
+  when (verbose runnerOptions) $ putStrLn "init nlp..."
+  (_, nlpInitTime) <- timeIt $ soInit nlp
+  when (verbose runnerOptions) $ printf "nlp initialized in %.2f seconds\n" nlpInitTime
+
+  when (verbose runnerOptions) $ putStrLn "function call..."
+  -- in case the user wants to do something (like codegen?)
+  (_, functionCallTime) <- timeIt $ functionCall solverStuff nlp
+  when (verbose runnerOptions) $ printf "function called in %.2f seconds\n" functionCallTime
 
 --  let eval 0 = error "finished"
 --      eval k = do
@@ -574,7 +593,9 @@ runNlpSolverWith runnerOptions solverStuff nlpFun scaleX scaleG scaleF callback'
 --  jac_sparsity <- C.function_jacSparsity nlp 0 1 True False
 --  C.sparsity_spyMatlab jac_sparsity "jac_sparsity_reorder.m"
 
-  solver <- C.nlpSolver__0 (solverName (getSolverInternal solverStuff)) nlp
+  when (verbose runnerOptions) $ putStrLn "create solver..."
+  (solver, solverCreateTime) <- timeIt $ C.nlpSolver__0 (solverName (getSolverInternal solverStuff)) nlp
+  when (verbose runnerOptions) $ printf "created solver in %.2f seconds\n" solverCreateTime
 
   -- add callback if user provides it
   intref <- newIORef False
@@ -616,7 +637,9 @@ runNlpSolverWith runnerOptions solverStuff nlpFun scaleX scaleG scaleF callback'
   -- set all the user options
   mapM_ (\(l,Op.Opt o) -> Op.setOption solver l o) (defaultSolverOptions (getSolverInternal solverStuff)
                                                     ++ options solverStuff)
-  soInit solver
+  when (verbose runnerOptions) $ putStrLn "initialize solver..."
+  (_, solverInitTime) <- timeIt $ soInit solver
+  when (verbose runnerOptions) $ printf "solver initialized in %.2f seconds\n" solverInitTime
 
   let proxy :: J f b -> Proxy f
       proxy = const Proxy
@@ -630,4 +653,8 @@ runNlpSolverWith runnerOptions solverStuff nlpFun scaleX scaleG scaleF callback'
                           , isScale = scale
                           , isSetParam = liftIO . writeIORef paramRef
                           }
-  liftIO $ runReaderT nlpMonad nlpState
+  when (verbose runnerOptions) $ putStrLn "run NLP monad..."
+  (ret, retTime) <- timeIt $ liftIO $ runReaderT nlpMonad nlpState
+  when (verbose runnerOptions) $ printf "ran NLP monad in %.2f seconds\n" retTime
+  return ret
+
