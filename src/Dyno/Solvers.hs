@@ -93,3 +93,32 @@ worhpSolver =
 
 
 
+
+
+
+
+--_sqpSolver :: Solver
+--_sqpSolver =
+--  Solver
+--  { solverName = "sqpmethod"
+--  , defaultOptions = [ ("qp_solver", Opt "nlp")
+--                     , ("qp_solver_options"
+--                       , Opt [ ( "nlp_solver", Opt "ipopt")
+--                             , ( "nlp_solver_options"
+--                               , Opt [ ("tol", Opt (1e-12 :: Double))
+--                                     , ("linear_solver", Opt "ma86")
+--                                     , ("ma86_order", Opt "metis")
+--                                     , ("print_level", Opt (0 :: Int))
+--                                     , ("print_time", Opt False)
+--                                     ]
+--                               )
+--                             ]
+--                       )
+--                     ]
+--  , options = []
+--  , solverInterruptCode = 1
+--  , successCodes = [""]
+--  , functionOptions = []
+--  , functionCall = const (return ())
+--  }
+--
