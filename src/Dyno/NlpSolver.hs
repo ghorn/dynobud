@@ -96,7 +96,8 @@ import Dyno.View.Symbolic ( Symbolic, sym, mkScheme, mkFunction )
 import Dyno.View.Viewable ( Viewable )
 import Dyno.Nlp ( NlpOut(..), KKT(..) )
 import Dyno.NlpScaling ( ScaleFuns(..), scaledFG, mkScaleFuns )
-import Dyno.Solvers ( Solver(..) )
+import Dyno.Solvers ( Solver(..), getSolverInternal )
+import Dyno.SolverInternal ( SolverInternal(..) )
 
 type VD a = J a (Vector Double)
 type VMD a = J a (Vector (Maybe Double))
@@ -545,8 +546,7 @@ runNlpSolver solverStuff nlpFun scaleX scaleG scaleF callback' (NlpSolver nlpMon
 --  jac_sparsity <- C.function_jacSparsity nlp 0 1 True False
 --  C.sparsity_spyMatlab jac_sparsity "jac_sparsity_reorder.m"
 
-
-  solver <- C.nlpSolver__0 (solverName solverStuff) nlp
+  solver <- C.nlpSolver__0 (solverName (getSolverInternal solverStuff)) nlp
 
   -- add callback if user provides it
   intref <- newIORef False
@@ -560,7 +560,8 @@ runNlpSolver solverStuff nlpFun scaleX scaleG scaleF callback' (NlpSolver nlpMon
             pval <- readIORef paramRef
             callback xval pval
         interrupt <- readIORef intref
-        return $ if callbackRet && not interrupt then 0 else fromIntegral (solverInterruptCode solverStuff)
+        return $ if callbackRet && not interrupt then 0
+                 else fromIntegral (solverInterruptCode (getSolverInternal solverStuff))
   casadiCallback <- makeCallback cb >>= C.genericType__0
   Op.setOption solver "iteration_callback" casadiCallback
 --  grad_f <- gradient nlp 0 0
@@ -585,7 +586,8 @@ runNlpSolver solverStuff nlpFun scaleX scaleG scaleF callback' (NlpSolver nlpMon
 --  Op.setOption solver "jac_g" jac_g'
 
   -- set all the user options
-  mapM_ (\(l,Op.Opt o) -> Op.setOption solver l o) (defaultOptions solverStuff ++ options solverStuff)
+  mapM_ (\(l,Op.Opt o) -> Op.setOption solver l o) (defaultOptions (getSolverInternal solverStuff)
+                                                    ++ options solverStuff)
   soInit solver
 
   let proxy :: J f b -> Proxy f
@@ -596,7 +598,7 @@ runNlpSolver solverStuff nlpFun scaleX scaleG scaleF callback' (NlpSolver nlpMon
                           , isNg = size (proxy g)
                           , isSolver = solver
                           , isInterrupt = writeIORef intref True
-                          , isSuccessCodes = successCodes solverStuff
+                          , isSuccessCodes = successCodes (getSolverInternal solverStuff)
                           , isScale = scale
                           , isSetParam = liftIO . writeIORef paramRef
                           }
