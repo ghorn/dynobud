@@ -55,6 +55,7 @@ library
                        Dyno.NlpSolver
                        Dyno.NlpUtils
                        Dyno.Solvers
+                       Dyno.SolverInternal
 --                       Dyno.Sqp.Sqp
 --                       Dyno.Sqp.LineSearch
 
