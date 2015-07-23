@@ -14,6 +14,7 @@ module Dyno.DirectCollocation.ActiveConstraints
        , flattenActiveConstraints
        , summarizeActiveConstraints
        , matlabActiveConstraints
+       , pythonActiveConstraints
        ) where
 
 import GHC.Generics ( Generic )
@@ -35,7 +36,7 @@ import Dyno.View.JV ( JV, splitJV )
 import Dyno.View.JVec ( unJVec )
 import Dyno.TypeVecs ( Dim )
 
-import Accessors ( Lookup, Getter(..), flatten, accessors )
+import Accessors ( Lookup, Getter(..), flatten', accessors )
 
 data Active a = Active { activeLower :: a, activeUpper :: a }
               deriving (Functor, F.Foldable, T.Traversable, Generic)
@@ -68,7 +69,8 @@ summarizeActiveConstraints activeCons =
   unlines $ catMaybes $ map report $ flattenActiveConstraints activeCons
   where
     report (_, Active 0 0) = Nothing
-    report (name, Active lb ub) = Just $ printf "% 4d lower, % 4d upper (%s)" lb ub name
+    report (name, Active lb ub) =
+      Just $ printf "% 4d lower, % 4d upper (%s)" lb ub (intercalate "." name)
 
 matlabActiveConstraints ::
   ( Functor x, Functor z, Functor u, Functor p, Functor h, Functor c
@@ -82,7 +84,21 @@ matlabActiveConstraints ::
 matlabActiveConstraints activeCons = "{" ++ intercalate "; " cons ++ "}"
   where
     cons = map report $ flattenActiveConstraints activeCons
-    report (name, Active lb ub) = printf "'%s', %d, %d" name lb ub
+    report (name, Active lb ub) = printf "'%s', %d, %d" (intercalate "." name) lb ub
+
+pythonActiveConstraints ::
+  ( Functor x, Functor z, Functor u, Functor p, Functor h, Functor c
+  , Lookup (x Int)
+  , Lookup (z Int)
+  , Lookup (u Int)
+  , Lookup (p Int)
+  , Lookup (h Int)
+  , Lookup (c Int)
+  ) => ActiveConstraints x z u p h c (Active Int) -> String
+pythonActiveConstraints activeCons = "[" ++ intercalate ", " cons ++ "]"
+  where
+    cons = map report $ flattenActiveConstraints activeCons
+    report (name, Active lb ub) = printf "('%s', %d, %d)" (intercalate "." name) lb ub
 
 flattenActiveConstraints ::
   forall x z u p h c .
@@ -93,8 +109,8 @@ flattenActiveConstraints ::
   , Lookup (p Int)
   , Lookup (h Int)
   , Lookup (c Int)
-  ) => ActiveConstraints x z u p h c (Active Int) -> [(String, Active Int)]
-flattenActiveConstraints activeCons = map report $ flatten $ accessors lbs
+  ) => ActiveConstraints x z u p h c (Active Int) -> [([String], Active Int)]
+flattenActiveConstraints activeCons = map report $ flatten' $ accessors lbs
   where
     report (name, GetInt get, _) = (name, Active (get lbs) (get ubs))
     report (name, _, _) =

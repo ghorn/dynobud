@@ -1,5 +1,5 @@
 name:                dynobud
-version:             1.6.2
+version:             1.6.3
 synopsis:            your dynamic optimization buddy
 description:         See readme at <http://www.github.com/ghorn/dynobud http://www.github.com/ghorn/dynobud>
 license:             LGPL-3
@@ -80,7 +80,7 @@ library
                        distributive,
                        process,
                        Plot-ho-matic >= 0.5.0.2,
-                       generic-accessors >= 0.4,
+                       generic-accessors >= 0.4.1,
                        time
 --                       cplex
   hs-source-dirs:      src
