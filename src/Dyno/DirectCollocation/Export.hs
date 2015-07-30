@@ -5,6 +5,7 @@
 module Dyno.DirectCollocation.Export
        ( Export(..)
        , exportTraj
+       , exportTraj'
        ) where
 
 import Control.Monad ( unless )
@@ -21,7 +22,7 @@ import Accessors ( Lookup, Getter(..), flatten, flatten', accessors )
 
 import Dyno.Nlp ( NlpOut(..) )
 import Dyno.TypeVecs ( Vec )
-import Dyno.Vectorize ( Vectorize, Id(..), fill )
+import Dyno.Vectorize ( Vectorize, Id(..), None(..), fill )
 import Dyno.View.View ( View(..) )
 import Dyno.View.JV ( splitJV, catJV )
 import Dyno.DirectCollocation.Formulate ( CollProblem(..) )
@@ -57,7 +58,33 @@ exportTraj ::
   -> fp Double
   -> NlpOut (CollTraj x z u p n deg) (CollOcpConstraints x r c h n deg) (Vector Double)
   -> IO Export
-exportTraj cp fp nlpOut = do
+exportTraj = exportTraj' (Nothing :: Maybe (String, None Double))
+
+
+-- | this version takes optional user data
+exportTraj' ::
+  forall x z u p fp r o c h q qo po n deg e
+  . ( Lookup (x Double), Vectorize x
+    , Lookup (z Double), Vectorize z
+    , Lookup (u Double), Vectorize u
+    , Lookup (o Double), Vectorize o
+    , Lookup (p Double), Vectorize p
+    , Lookup (c Double), Vectorize c
+    , Vectorize r
+    , Lookup (fp Double), Vectorize fp
+    , Lookup (h Double), Vectorize h
+    , Lookup (q Double), Vectorize q
+    , Lookup (po Double), Vectorize po
+    , Lookup (qo Double), Vectorize qo
+    , Dim n, Dim deg
+    , Lookup (e Double), Vectorize e
+    )
+  => Maybe (String, e Double)
+  -> CollProblem x z u p r o c h q qo po fp n deg
+  -> fp Double
+  -> NlpOut (CollTraj x z u p n deg) (CollOcpConstraints x r c h n deg) (Vector Double)
+  -> IO Export
+exportTraj' mextra cp fp nlpOut = do
   let ct@(CollTraj tf' p' _ _) = split (xOpt nlpOut)
       CollTraj lagTf' lagP' _ _ = split (lambdaXOpt nlpOut)
       lagBc' = coBc $ split (lambdaGOpt nlpOut)
@@ -157,6 +184,10 @@ exportTraj cp fp nlpOut = do
         map (uncurry (mlArray "ret.quadratureStates" qs)) at ++
         map (uncurry (mlArray "ret.quadratureStateDerivs" qds)) at ++
         map (uncurry (mlParam "ret.params" (splitJV p'))) at ++
+        ( case mextra of
+            Nothing -> []
+            Just (name,extra) -> map (uncurry (mlParam ("ret."++name) extra)) at
+        ) ++
         map (uncurry (mlParam "ret.lagrangeMultipliers.params" (splitJV lagP'))) at ++
         map (uncurry (mlParam "ret.lagrangeMultipliers.bc" (splitJV lagBc'))) at ++
         map (uncurry (mlParam "ret.finalQuadratureStates" finalQuads)) at ++
@@ -198,6 +229,9 @@ exportTraj cp fp nlpOut = do
         mapM_ (pyArray "ret" "quadratureStates" qs) at'
         mapM_ (pyArray "ret" "quadratureStateDerivs" qds) at'
         mapM_ (pyParam "ret" ["params"] (splitJV p')) at'
+        case mextra of
+          Nothing -> return ()
+          Just (name,extra) -> mapM_ (pyParam "ret" [name] extra) at'
         mapM_ (pyParam "ret" ["lagrangeMultipliers","params"] (splitJV lagP')) at'
         mapM_ (pyParam "ret" ["lagrangeMultipliers","bc"] (splitJV lagBc')) at'
         mapM_ (pyParam "ret" ["finalQuadratureStates"] finalQuads) at'
