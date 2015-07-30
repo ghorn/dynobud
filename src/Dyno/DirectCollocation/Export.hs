@@ -244,7 +244,7 @@ exportTraj' mextra cp fp nlpOut = do
         putVal "ret" ["deg"] (show (reflectDim (Proxy :: Proxy deg)))
         putVal "ret" ["collocationRoots"] ("'" ++ show (cpRoots cp) ++ "'")
 
-  let PyOutState (_, pythonOut) = State.execState runRet (PyOutState (S.empty, [])) 
+  let PyOutState (_, pythonOut) = State.execState runRet (PyOutState (S.empty, []))
   return $ Export
     { exportMatlab = matlabOut
     , exportPython = unlines (reverse pythonOut)
