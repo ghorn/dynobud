@@ -27,6 +27,7 @@ module Dyno.DirectCollocation.Types
          -- * for callbacks
        , Quadratures(..)
        , StageOutputs(..)
+       , StageOutputs'
          -- * robust
        , CollTrajCov(..)
        , CollOcpCovConstraints(..)
@@ -325,6 +326,8 @@ data StageOutputs x o h q qo po deg a =
   , soXNext :: J (JV x) (Vector a)
   , soQNext :: Quadratures q qo a
   } deriving Generic
+
+type StageOutputs' ocp deg = StageOutputs (X ocp) (O ocp) (H ocp) (Q ocp) (QO ocp) (PO ocp) deg
 
 instance ( Serialize a, Serialize (q a), Serialize (qo a)
          , Vectorize x, Vectorize o, Vectorize h, Vectorize po
