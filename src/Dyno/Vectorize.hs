@@ -109,6 +109,25 @@ instance Vectorize Euler
 instance Vectorize (V3T f)
 instance Vectorize (Rot f1 f2)
 
+
+vzipWith :: Vectorize f => (a -> b -> c) -> f a -> f b -> f c
+vzipWith f x y = devectorize $ V.zipWith f (vectorize x) (vectorize y)
+
+vzipWith3 :: Vectorize f => (a -> b -> c -> d) -> f a -> f b -> f c -> f d
+vzipWith3 f x y z = devectorize $ V.zipWith3 f (vectorize x) (vectorize y) (vectorize z)
+
+vzipWith4 :: Vectorize f => (a -> b -> c -> d -> e) -> f a -> f b -> f c -> f d -> f e
+vzipWith4 f x y z w =
+  devectorize $ V.zipWith4 f (vectorize x) (vectorize y) (vectorize z) (vectorize w)
+
+-- this could me more efficient as a class method, but this is safer
+vlength :: Vectorize f => Proxy f -> Int
+vlength = V.length . vectorize . (fill () `asFunctorOf`)
+  where
+    asFunctorOf :: f a -> Proxy f -> f a
+    asFunctorOf x _ = x
+
+
 -- | fmap f == devectorize . (V.map f) . vectorize
 class Functor f => Vectorize (f :: * -> *) where
   vectorize :: f a -> V.Vector a
@@ -178,28 +197,11 @@ instance {-# OVERLAPPABLE #-} Vectorize f => T.Traversable f where
 #endif
   traverse f x = devectorize <$> T.traverse f (vectorize x)
 
--- this could me more efficient as a class method, but this is safer
-vlength :: Vectorize f => Proxy f -> Int
-vlength = V.length . vectorize . (fill () `asFunctorOf`)
-  where
-    asFunctorOf :: f a -> Proxy f -> f a
-    asFunctorOf x _ = x
-
 class GVectorize (f :: * -> *) where
   gvectorize :: f a -> V.Vector a
   gdevectorize :: V.Vector a -> f a
   gfill :: a -> f a
   gvlength :: Proxy f -> Int
-
-vzipWith :: Vectorize f => (a -> b -> c) -> f a -> f b -> f c
-vzipWith f x y = devectorize $ V.zipWith f (vectorize x) (vectorize y)
-
-vzipWith3 :: Vectorize f => (a -> b -> c -> d) -> f a -> f b -> f c -> f d
-vzipWith3 f x y z = devectorize $ V.zipWith3 f (vectorize x) (vectorize y) (vectorize z)
-
-vzipWith4 :: Vectorize f => (a -> b -> c -> d -> e) -> f a -> f b -> f c -> f d -> f e
-vzipWith4 f x y z w =
-  devectorize $ V.zipWith4 f (vectorize x) (vectorize y) (vectorize z) (vectorize w)
 
 -- product type (concatination)
 instance (GVectorize f, GVectorize g) => GVectorize (f :*: g) where
