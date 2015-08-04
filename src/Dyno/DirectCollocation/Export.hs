@@ -4,6 +4,7 @@
 
 module Dyno.DirectCollocation.Export
        ( Export(..)
+       , ExportConfig(..)
        , exportTraj
        , exportTraj'
        ) where
@@ -32,6 +33,12 @@ import Dyno.DirectCollocation.Types ( CollTraj(..), CollOcpConstraints(..)
                                     )
 import Dyno.DirectCollocation.Quadratures ( timesFromTaus )
 
+data ExportConfig =
+  ExportConfig
+  { ecMatlabVariableName :: String
+  , ecPythonVariableName :: String
+  }
+
 data Export =
   Export
   { exportMatlab :: String
@@ -54,7 +61,8 @@ exportTraj ::
     , Lookup (qo Double), Vectorize qo
     , Dim n, Dim deg
     )
-  => CollProblem x z u p r o c h q qo po fp n deg
+  => ExportConfig
+  -> CollProblem x z u p r o c h q qo po fp n deg
   -> fp Double
   -> NlpOut (CollTraj x z u p n deg) (CollOcpConstraints x r c h n deg) (Vector Double)
   -> IO Export
@@ -80,11 +88,15 @@ exportTraj' ::
     , Lookup (e Double), Vectorize e
     )
   => Maybe (String, e Double)
+  -> ExportConfig
   -> CollProblem x z u p r o c h q qo po fp n deg
   -> fp Double
   -> NlpOut (CollTraj x z u p n deg) (CollOcpConstraints x r c h n deg) (Vector Double)
   -> IO Export
-exportTraj' mextra cp fp nlpOut = do
+exportTraj' mextra exportConfig cp fp nlpOut = do
+  let matlabRetName = ecMatlabVariableName exportConfig
+      pyRetName = ecPythonVariableName exportConfig
+
   let ct@(CollTraj tf' p' _ _) = split (xOpt nlpOut)
       CollTraj lagTf' lagP' _ _ = split (lambdaXOpt nlpOut)
       lagBc' = coBc $ split (lambdaGOpt nlpOut)
@@ -165,84 +177,86 @@ exportTraj' mextra cp fp nlpOut = do
       toDub GetSorry = const (read "NaN")
 
       mlArray :: String -> [xzu Double] -> String -> (xzu Double -> Double) -> String
-      mlArray topName xzus name get = topName ++ "." ++ name ++ " = " ++ show (map get xzus) ++ ";"
+      mlArray topName xzus name get =
+        matlabRetName ++ "." ++ topName ++ "." ++ name ++ " = " ++ show (map get xzus) ++ ";"
 
       mlParam :: String -> pq Double -> String -> (pq Double -> Double) -> String
-      mlParam topName p name get = topName ++ "." ++ name ++ " = " ++ show (get p) ++ ";"
+      mlParam topName p name get =
+        matlabRetName ++ "." ++ topName ++ "." ++ name ++ " = " ++ show (get p) ++ ";"
 
       matlabOut :: String
       matlabOut = unlines $
-        map (uncurry (mlArray "ret.diffStatesFull" fullXs)) at ++
-        map (uncurry (mlArray "ret.diffStates" xs)) at ++
-        map (uncurry (mlArray "ret.diffStateDerivs" xdots)) at ++
-        map (uncurry (mlArray "ret.algVars" zs)) at ++
-        map (uncurry (mlArray "ret.controls" us)) at ++
-        map (uncurry (mlArray "ret.outputs" os)) at ++
-        map (uncurry (mlArray "ret.pathConstraints" hs)) at ++
-        map (uncurry (mlArray "ret.plotOutputs" pos)) at ++
-        map (uncurry (mlArray "ret.quadratureStatesFull" qsFull)) at ++
-        map (uncurry (mlArray "ret.quadratureStates" qs)) at ++
-        map (uncurry (mlArray "ret.quadratureStateDerivs" qds)) at ++
-        map (uncurry (mlParam "ret.params" (splitJV p'))) at ++
+        map (uncurry (mlArray "diffStatesFull" fullXs)) at ++
+        map (uncurry (mlArray "diffStates" xs)) at ++
+        map (uncurry (mlArray "diffStateDerivs" xdots)) at ++
+        map (uncurry (mlArray "algVars" zs)) at ++
+        map (uncurry (mlArray "controls" us)) at ++
+        map (uncurry (mlArray "outputs" os)) at ++
+        map (uncurry (mlArray "pathConstraints" hs)) at ++
+        map (uncurry (mlArray "plotOutputs" pos)) at ++
+        map (uncurry (mlArray "quadratureStatesFull" qsFull)) at ++
+        map (uncurry (mlArray "quadratureStates" qs)) at ++
+        map (uncurry (mlArray "quadratureStateDerivs" qds)) at ++
+        map (uncurry (mlParam "params" (splitJV p'))) at ++
         ( case mextra of
             Nothing -> []
-            Just (name,extra) -> map (uncurry (mlParam ("ret."++name) extra)) at
+            Just (name,extra) -> map (uncurry (mlParam (matlabRetName ++ "." ++ name) extra)) at
         ) ++
-        map (uncurry (mlParam "ret.lagrangeMultipliers.params" (splitJV lagP'))) at ++
-        map (uncurry (mlParam "ret.lagrangeMultipliers.bc" (splitJV lagBc'))) at ++
-        map (uncurry (mlParam "ret.finalQuadratureStates" finalQuads)) at ++
-        [ "ret.lagrangeMultipliers.T = " ++ show (unId (splitJV lagTf')) ++ ";"
+        map (uncurry (mlParam "lagrangeMultipliers.params" (splitJV lagP'))) at ++
+        map (uncurry (mlParam "lagrangeMultipliers.bc" (splitJV lagBc'))) at ++
+        map (uncurry (mlParam "finalQuadratureStates" finalQuads)) at ++
+        [ matlabRetName ++ ".lagrangeMultipliers.T = " ++ show (unId (splitJV lagTf')) ++ ";"
         , ""
-        , "ret.tx = " ++ show xTimes ++ ";"
-        , "ret.tzuo = " ++ show zuoTimes ++ ";"
-        , "ret.T = " ++ show tf ++ ";"
-        , "ret.N = " ++ show n ++ ";"
-        , "ret.deg = " ++ show (reflectDim (Proxy :: Proxy deg)) ++ ";"
-        , "ret.collocationRoots = '" ++ show (cpRoots cp) ++ "';"
+        , matlabRetName ++ ".tx = " ++ show xTimes ++ ";"
+        , matlabRetName ++ ".tzuo = " ++ show zuoTimes ++ ";"
+        , matlabRetName ++ ".T = " ++ show tf ++ ";"
+        , matlabRetName ++ ".N = " ++ show n ++ ";"
+        , matlabRetName ++ ".deg = " ++ show (reflectDim (Proxy :: Proxy deg)) ++ ";"
+        , matlabRetName ++ ".collocationRoots = '" ++ show (cpRoots cp) ++ "';"
         ]
 
-      pyArray :: String -> String -> [xzu Double] -> ([String], (xzu Double -> Double))
+      pyArray :: String -> [xzu Double] -> ([String], (xzu Double -> Double))
               -> State PyOutState ()
-      pyArray topName otherName xzus (name, get) = putVal topName (otherName : name)
+      pyArray otherName xzus (name, get) = putVal pyRetName (otherName : name)
          (npArray (show (map get xzus)))
 
       npArray str = "numpy.array(" ++ str ++ ")"
 
-      pyParam :: String -> [String] -> pq Double -> ([String], (pq Double -> Double))
+      pyParam :: [String] -> pq Double -> ([String], (pq Double -> Double))
               -> State PyOutState ()
-      pyParam topName otherNames p (name, get) = putVal topName (otherNames ++ name) (show (get p))
+      pyParam otherNames p (name, get) = putVal pyRetName (otherNames ++ name) (show (get p))
 
       runRet :: State PyOutState ()
       runRet = do
         write "import numpy"
         write ""
-        write "ret = {}"
-        mapM_ (pyArray "ret" "diffStatesFull" fullXs) at'
-        mapM_ (pyArray "ret" "diffStates" xs) at'
-        mapM_ (pyArray "ret" "diffStateDerivs" xdots) at'
-        mapM_ (pyArray "ret" "algVars" zs) at'
-        mapM_ (pyArray "ret" "controls" us) at'
-        mapM_ (pyArray "ret" "outputs" os) at'
-        mapM_ (pyArray "ret" "pathConstraints" hs) at'
-        mapM_ (pyArray "ret" "plotOutputs" pos) at'
-        mapM_ (pyArray "ret" "quadratureStatesFull" qsFull) at'
-        mapM_ (pyArray "ret" "quadratureStates" qs) at'
-        mapM_ (pyArray "ret" "quadratureStateDerivs" qds) at'
-        mapM_ (pyParam "ret" ["params"] (splitJV p')) at'
+        write $ pyRetName ++ " = {}"
+        mapM_ (pyArray "diffStatesFull" fullXs) at'
+        mapM_ (pyArray "diffStates" xs) at'
+        mapM_ (pyArray "diffStateDerivs" xdots) at'
+        mapM_ (pyArray "algVars" zs) at'
+        mapM_ (pyArray "controls" us) at'
+        mapM_ (pyArray "outputs" os) at'
+        mapM_ (pyArray "pathConstraints" hs) at'
+        mapM_ (pyArray "plotOutputs" pos) at'
+        mapM_ (pyArray "quadratureStatesFull" qsFull) at'
+        mapM_ (pyArray "quadratureStates" qs) at'
+        mapM_ (pyArray "quadratureStateDerivs" qds) at'
+        mapM_ (pyParam ["params"] (splitJV p')) at'
         case mextra of
           Nothing -> return ()
-          Just (name,extra) -> mapM_ (pyParam "ret" [name] extra) at'
-        mapM_ (pyParam "ret" ["lagrangeMultipliers","params"] (splitJV lagP')) at'
-        mapM_ (pyParam "ret" ["lagrangeMultipliers","bc"] (splitJV lagBc')) at'
-        mapM_ (pyParam "ret" ["finalQuadratureStates"] finalQuads) at'
-        putVal "ret" ["lagrangeMultipliers","T"] (show (unId (splitJV lagTf')))
+          Just (name,extra) -> mapM_ (pyParam [name] extra) at'
+        mapM_ (pyParam ["lagrangeMultipliers","params"] (splitJV lagP')) at'
+        mapM_ (pyParam ["lagrangeMultipliers","bc"] (splitJV lagBc')) at'
+        mapM_ (pyParam ["finalQuadratureStates"] finalQuads) at'
+        putVal pyRetName ["lagrangeMultipliers","T"] (show (unId (splitJV lagTf')))
         write ""
-        putVal "ret" ["tx"] (npArray (show xTimes))
-        putVal "ret" ["tzuo"] (npArray (show zuoTimes))
-        putVal "ret" ["T"] (show tf)
-        putVal "ret" ["N"] (show n)
-        putVal "ret" ["deg"] (show (reflectDim (Proxy :: Proxy deg)))
-        putVal "ret" ["collocationRoots"] ("'" ++ show (cpRoots cp) ++ "'")
+        putVal pyRetName ["tx"] (npArray (show xTimes))
+        putVal pyRetName ["tzuo"] (npArray (show zuoTimes))
+        putVal pyRetName ["T"] (show tf)
+        putVal pyRetName ["N"] (show n)
+        putVal pyRetName ["deg"] (show (reflectDim (Proxy :: Proxy deg)))
+        putVal pyRetName ["collocationRoots"] ("'" ++ show (cpRoots cp) ++ "'")
 
   let PyOutState (_, pythonOut) = State.execState runRet (PyOutState (S.empty, []))
   return $ Export
