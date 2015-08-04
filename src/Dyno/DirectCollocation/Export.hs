@@ -7,6 +7,15 @@ module Dyno.DirectCollocation.Export
        , ExportConfig(..)
        , exportTraj
        , exportTraj'
+         -- * matlab specific
+       , matlabParam
+       , matlabTraj
+         -- * python specific
+       , PythonExporter
+       , runPythonExporter
+       , pythonParam
+       , pythonTraj
+       , write
        ) where
 
 import Control.Monad ( unless )
@@ -163,48 +172,27 @@ exportTraj' mextra exportConfig cp fp nlpOut = do
       qds :: [Quadratures q qo Double]
       qds = F.concatMap toQd outs
 
-      at :: forall xzu . (Vectorize xzu, Lookup (xzu Double)) => [(String, xzu Double -> Double)]
-      at = map (\(fn,g,_) -> (fn, toDub g)) $ flatten $ accessors (fill (0 :: Double))
-
-      at' :: forall xzu . (Vectorize xzu, Lookup (xzu Double)) => [([String], xzu Double -> Double)]
-      at' = map (\(fn,g,_) -> (fn, toDub g)) $ flatten' $ accessors (fill (0 :: Double))
-
-      toDub :: Getter (xzu Double) -> xzu Double -> Double
-      toDub (GetDouble f) = f
-      toDub (GetFloat f) = realToFrac . f
-      toDub (GetInt f) = realToFrac . f
-      toDub (GetBool f) = fromIntegral . fromEnum . f
-      toDub GetSorry = const (read "NaN")
-
-      mlArray :: String -> [xzu Double] -> String -> (xzu Double -> Double) -> String
-      mlArray topName xzus name get =
-        matlabRetName ++ "." ++ topName ++ "." ++ name ++ " = " ++ show (map get xzus) ++ ";"
-
-      mlParam :: String -> pq Double -> String -> (pq Double -> Double) -> String
-      mlParam topName p name get =
-        matlabRetName ++ "." ++ topName ++ "." ++ name ++ " = " ++ show (get p) ++ ";"
-
       matlabOut :: String
       matlabOut = unlines $
-        map (uncurry (mlArray "diffStatesFull" fullXs)) at ++
-        map (uncurry (mlArray "diffStates" xs)) at ++
-        map (uncurry (mlArray "diffStateDerivs" xdots)) at ++
-        map (uncurry (mlArray "algVars" zs)) at ++
-        map (uncurry (mlArray "controls" us)) at ++
-        map (uncurry (mlArray "outputs" os)) at ++
-        map (uncurry (mlArray "pathConstraints" hs)) at ++
-        map (uncurry (mlArray "plotOutputs" pos)) at ++
-        map (uncurry (mlArray "quadratureStatesFull" qsFull)) at ++
-        map (uncurry (mlArray "quadratureStates" qs)) at ++
-        map (uncurry (mlArray "quadratureStateDerivs" qds)) at ++
-        map (uncurry (mlParam "params" (splitJV p'))) at ++
+        matlabTraj (matlabRetName ++ ".diffStatesFull") fullXs ++
+        matlabTraj (matlabRetName ++ ".diffStates") xs ++
+        matlabTraj (matlabRetName ++ ".diffStateDerivs") xdots ++
+        matlabTraj (matlabRetName ++ ".algVars") zs ++
+        matlabTraj (matlabRetName ++ ".controls") us ++
+        matlabTraj (matlabRetName ++ ".outputs") os ++
+        matlabTraj (matlabRetName ++ ".pathConstraints") hs ++
+        matlabTraj (matlabRetName ++ ".plotOutputs") pos ++
+        matlabTraj (matlabRetName ++ ".quadratureStatesFull") qsFull ++
+        matlabTraj (matlabRetName ++ ".quadratureStates") qs ++
+        matlabTraj (matlabRetName ++ ".quadratureStateDerivs") qds ++
+        matlabParam (matlabRetName ++ ".params") (splitJV p') ++
         ( case mextra of
             Nothing -> []
-            Just (name,extra) -> map (uncurry (mlParam (matlabRetName ++ "." ++ name) extra)) at
+            Just (name,extra) -> matlabParam (matlabRetName ++ "." ++ name) extra
         ) ++
-        map (uncurry (mlParam "lagrangeMultipliers.params" (splitJV lagP'))) at ++
-        map (uncurry (mlParam "lagrangeMultipliers.bc" (splitJV lagBc'))) at ++
-        map (uncurry (mlParam "finalQuadratureStates" finalQuads)) at ++
+        matlabParam (matlabRetName ++ ".lagrangeMultipliers.params") (splitJV lagP') ++
+        matlabParam (matlabRetName ++ ".lagrangeMultipliers.bc") (splitJV lagBc') ++
+        matlabParam (matlabRetName ++ ".finalQuadratureStates") finalQuads ++
         [ matlabRetName ++ ".lagrangeMultipliers.T = " ++ show (unId (splitJV lagTf')) ++ ";"
         , ""
         , matlabRetName ++ ".tx = " ++ show xTimes ++ ";"
@@ -215,40 +203,29 @@ exportTraj' mextra exportConfig cp fp nlpOut = do
         , matlabRetName ++ ".collocationRoots = '" ++ show (cpRoots cp) ++ "';"
         ]
 
-      pyArray :: String -> [xzu Double] -> ([String], (xzu Double -> Double))
-              -> State PyOutState ()
-      pyArray otherName xzus (name, get) = putVal pyRetName (otherName : name)
-         (npArray (show (map get xzus)))
-
-      npArray str = "numpy.array(" ++ str ++ ")"
-
-      pyParam :: [String] -> pq Double -> ([String], (pq Double -> Double))
-              -> State PyOutState ()
-      pyParam otherNames p (name, get) = putVal pyRetName (otherNames ++ name) (show (get p))
-
-      runRet :: State PyOutState ()
+      runRet :: State PythonExporter ()
       runRet = do
         write "import numpy"
         write ""
         write $ pyRetName ++ " = {}"
-        mapM_ (pyArray "diffStatesFull" fullXs) at'
-        mapM_ (pyArray "diffStates" xs) at'
-        mapM_ (pyArray "diffStateDerivs" xdots) at'
-        mapM_ (pyArray "algVars" zs) at'
-        mapM_ (pyArray "controls" us) at'
-        mapM_ (pyArray "outputs" os) at'
-        mapM_ (pyArray "pathConstraints" hs) at'
-        mapM_ (pyArray "plotOutputs" pos) at'
-        mapM_ (pyArray "quadratureStatesFull" qsFull) at'
-        mapM_ (pyArray "quadratureStates" qs) at'
-        mapM_ (pyArray "quadratureStateDerivs" qds) at'
-        mapM_ (pyParam ["params"] (splitJV p')) at'
+        pythonTraj pyRetName ["diffStatesFull"] fullXs
+        pythonTraj pyRetName ["diffStates"] xs
+        pythonTraj pyRetName ["diffStateDerivs"] xdots
+        pythonTraj pyRetName ["algVars"] zs
+        pythonTraj pyRetName ["controls"] us
+        pythonTraj pyRetName ["outputs"] os
+        pythonTraj pyRetName ["pathConstraints"] hs
+        pythonTraj pyRetName ["plotOutputs"] pos
+        pythonTraj pyRetName ["quadratureStatesFull"] qsFull
+        pythonTraj pyRetName ["quadratureStates"] qs
+        pythonTraj pyRetName ["quadratureStateDerivs"] qds
+        pythonParam pyRetName ["params"] (splitJV p')
         case mextra of
           Nothing -> return ()
-          Just (name,extra) -> mapM_ (pyParam [name] extra) at'
-        mapM_ (pyParam ["lagrangeMultipliers","params"] (splitJV lagP')) at'
-        mapM_ (pyParam ["lagrangeMultipliers","bc"] (splitJV lagBc')) at'
-        mapM_ (pyParam ["finalQuadratureStates"] finalQuads) at'
+          Just (name,extra) -> pythonParam pyRetName [name] extra
+        pythonParam pyRetName ["lagrangeMultipliers","params"] (splitJV lagP')
+        pythonParam pyRetName ["lagrangeMultipliers","bc"] (splitJV lagBc')
+        pythonParam pyRetName ["finalQuadratureStates"] finalQuads
         putVal pyRetName ["lagrangeMultipliers","T"] (show (unId (splitJV lagTf')))
         write ""
         putVal pyRetName ["tx"] (npArray (show xTimes))
@@ -258,33 +235,87 @@ exportTraj' mextra exportConfig cp fp nlpOut = do
         putVal pyRetName ["deg"] (show (reflectDim (Proxy :: Proxy deg)))
         putVal pyRetName ["collocationRoots"] ("'" ++ show (cpRoots cp) ++ "'")
 
-  let PyOutState (_, pythonOut) = State.execState runRet (PyOutState (S.empty, []))
   return $ Export
     { exportMatlab = matlabOut
-    , exportPython = unlines (reverse pythonOut)
+    , exportPython = unlines (runPythonExporter runRet)
     }
 
+runPythonExporter :: State PythonExporter () -> [String]
+runPythonExporter action = reverse pythonOut
+  where
+    PythonExporter (_, pythonOut) = State.execState action (PythonExporter (S.empty, []))
 
-data PyOutState = PyOutState (S.Set [String], [String])
+npArray :: String -> String
+npArray str = "numpy.array(" ++ str ++ ")"
+
+toDub :: Getter (xzu Double) -> xzu Double -> Double
+toDub (GetDouble f) = f
+toDub (GetFloat f) = realToFrac . f
+toDub (GetInt f) = realToFrac . f
+toDub (GetBool f) = fromIntegral . fromEnum . f
+toDub GetSorry = const (read "NaN")
+
+
+pythonParam :: forall p . (Vectorize p, Lookup (p Double))
+              => String -> [String] -> p Double -> State PythonExporter ()
+pythonParam pyRetName topNames p = mapM_ pyParam at'
+  where
+    pyParam :: ([String], (p Double -> Double)) -> State PythonExporter ()
+    pyParam (name, get) = putVal pyRetName (topNames ++ name) (show (get p))
+
+    at' :: [([String], p Double -> Double)]
+    at' = map (\(fn,g,_) -> (fn, toDub g)) $ flatten' $ accessors (fill (0 :: Double))
+
+pythonTraj :: forall x . (Vectorize x, Lookup (x Double))
+              => String -> [String] -> [x Double] -> State PythonExporter ()
+pythonTraj pyRetName topNames xs = mapM_ pyArray at'
+  where
+    pyArray :: ([String], (x Double -> Double)) -> State PythonExporter ()
+    pyArray (name, get) = putVal pyRetName (topNames ++ name) (npArray (show (map get xs)))
+
+    at' :: [([String], x Double -> Double)]
+    at' = map (\(fn,g,_) -> (fn, toDub g)) $ flatten' $ accessors (fill (0 :: Double))
+
+
+matlabParam :: forall p . (Vectorize p, Lookup (p Double)) => String -> p Double -> [String]
+matlabParam topName p = map (uncurry mlParam) at
+  where
+    mlParam :: String -> (p Double -> Double) -> String
+    mlParam name get = topName ++ "." ++ name ++ " = " ++ show (get p) ++ ";"
+
+    at :: [(String, p Double -> Double)]
+    at = map (\(fn,g,_) -> (fn, toDub g)) $ flatten $ accessors (fill (0 :: Double))
+
+matlabTraj :: forall x . (Vectorize x, Lookup (x Double)) => String -> [x Double] -> [String]
+matlabTraj topName xs = map (uncurry mlArray) at
+  where
+    mlArray :: String -> (x Double -> Double) -> String
+    mlArray name get =
+      topName ++ "." ++ name ++ " = " ++ show (map get xs) ++ ";"
+
+    at :: [(String, x Double -> Double)]
+    at = map (\(fn,g,_) -> (fn, toDub g)) $ flatten $ accessors (fill (0 :: Double))
+
+data PythonExporter = PythonExporter (S.Set [String], [String])
 
 pyname :: String -> [String] -> String
 pyname topName xs = topName ++ concatMap (\x -> "['" ++ x ++ "']") xs
 
-putNameIfMissing :: String -> [String] -> State PyOutState ()
+putNameIfMissing :: String -> [String] -> State PythonExporter ()
 putNameIfMissing _ [] = return ()
 putNameIfMissing topName name = do
-  PyOutState (set0, _) <- State.get
+  PythonExporter (set0, _) <- State.get
   unless (S.member name set0) $ do
     putNameIfMissing topName (init name)
-    PyOutState (set1, out1) <- State.get
-    State.put $ PyOutState (S.insert name set1, (pyname topName name ++ " = {}") : out1)
+    PythonExporter (set1, out1) <- State.get
+    State.put $ PythonExporter (S.insert name set1, (pyname topName name ++ " = {}") : out1)
 
-write :: String -> State PyOutState ()
+write :: String -> State PythonExporter ()
 write str = do
-  PyOutState (set0, outs0) <- State.get
-  State.put $ PyOutState (set0, str:outs0)
+  PythonExporter (set0, outs0) <- State.get
+  State.put $ PythonExporter (set0, str:outs0)
 
-putVal :: String -> [String] -> String -> State PyOutState ()
+putVal :: String -> [String] -> String -> State PythonExporter ()
 putVal topName name val = do
   putNameIfMissing topName name
   write (pyname topName name ++ " = " ++ val)
