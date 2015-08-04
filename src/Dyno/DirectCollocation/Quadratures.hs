@@ -26,6 +26,7 @@ import JacobiRoots ( shiftedLegendreRoots, shiftedRadauRoots )
 
 import Dyno.View.View ( View, J )
 import Dyno.TypeVecs ( Vec )
+import Dyno.Vectorize ( devectorize )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeXis )
 
@@ -40,7 +41,7 @@ mkTaus ::
   . (Dim deg, Fractional a)
   => QuadratureRoots -> Vec deg a
 mkTaus quadratureRoots = case taus of
-  Just taus' -> TV.mkVec $ V.map (fromRational . toRational) taus'
+  Just taus' -> devectorize $ V.map (fromRational . toRational) taus'
   Nothing -> error "makeTaus: too high degree"
   where
     deg = reflectDim (Proxy :: Proxy deg)

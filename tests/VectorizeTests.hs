@@ -136,13 +136,15 @@ vectorizeThenDevectorize ::
   forall x
   . (Show (x Int), Eq (x Int), Vectorize x)
   => Proxy x -> Bool
-vectorizeThenDevectorize _ = x0 == x1
+vectorizeThenDevectorize _ = case ex1 of
+  Right x1 -> x0 == x1
+  Left _ -> False
   where
     x0 :: x Int
     x0 = fillInc
 
-    x1 :: x Int
-    x1 = devectorize (vectorize x0)
+    ex1 :: Either String (x Int)
+    ex1 = devectorize' (vectorize x0)
 
 prop_vecThenDevec :: Vectorizes -> Bool
 prop_vecThenDevec (Vectorizes _ _ p) = vectorizeThenDevectorize p

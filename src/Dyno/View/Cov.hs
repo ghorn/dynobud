@@ -32,7 +32,7 @@ import qualified Casadi.CMatrix as CM
 import Dyno.View.Unsafe.View ( unJ, mkJ )
 import Dyno.View.Unsafe.M ( M(UnsafeM), mkM )
 
-import Dyno.Vectorize ( Vectorize(..), vlength )
+import Dyno.Vectorize ( Vectorize(..), vlength, devectorize )
 import Dyno.View.View ( View(..), J )
 import Dyno.View.JV ( JV )
 import Dyno.View.Viewable ( Viewable(..) )

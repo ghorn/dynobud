@@ -41,7 +41,7 @@ import qualified Casadi.CMatrix as CM
 
 import Dyno.View.Unsafe.View ( J(..), mkJ, unJ )
 
-import Dyno.Vectorize ( Id, fill )
+import Dyno.Vectorize ( Id, devectorize, fill )
 import Dyno.TypeVecs ( Vec )
 import Dyno.View.View ( View(..), JNone(..), jfill )
 import Dyno.View.JV ( JV )
@@ -161,7 +161,7 @@ constr (Ineq3 x (lhs,rhs)) = (x, (Just lhs, Just rhs))
 
 
 toG :: Dim ng => S.Seq (Constraint SXElement) -> Vec ng (SXElement, Bounds)
-toG nlpConstraints' = TV.mkVec $ V.fromList $ F.toList $ fmap constr nlpConstraints'
+toG nlpConstraints' = devectorize $ V.fromList $ F.toList $ fmap constr nlpConstraints'
 
 buildNlp :: forall nx ng .
             (Dim nx, Dim ng) => NlpMonadState -> IO (Nlp (JVec nx (JV Id)) JNone (JVec ng (JV Id)) MX)

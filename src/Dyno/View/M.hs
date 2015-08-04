@@ -66,7 +66,7 @@ import qualified Numeric.LinearAlgebra.HMatrix as HMat
 import Dyno.View.Unsafe.View ( unJ, mkJ )
 import Dyno.View.Unsafe.M ( M(UnsafeM), mkM, mkM', unM )
 
-import Dyno.Vectorize ( Vectorize(..), Id, fill )
+import Dyno.Vectorize ( Vectorize(..), Id, fill, devectorize )
 import Dyno.TypeVecs ( Vec, Dim(..) )
 import Dyno.View.View ( View(..), J, JTuple, JTriple, JQuad )
 import Dyno.View.JV ( JV )

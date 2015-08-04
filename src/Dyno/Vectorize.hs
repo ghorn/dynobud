@@ -19,6 +19,7 @@
 
 module Dyno.Vectorize
        ( Vectorize(..)
+       , devectorize
        , None(..)
        , Id(..)
        , Tuple(..)
@@ -33,12 +34,14 @@ module Dyno.Vectorize
 import GHC.Generics
 
 import Control.Applicative
+import Data.Either ( partitionEithers )
 import Data.Serialize ( Serialize )
 import qualified Data.Vector as V
 import qualified Data.Foldable as F
 import qualified Data.Traversable as T
 import Data.Proxy ( Proxy(..) )
 import qualified Linear
+import Text.Printf ( printf )
 import Prelude -- BBP workaround
 
 import SpatialMath ( Euler )
@@ -109,6 +112,11 @@ instance Vectorize Euler
 instance Vectorize (V3T f)
 instance Vectorize (Rot f1 f2)
 
+ -- | partial version of devectorize'
+devectorize :: Vectorize f => V.Vector a -> f a
+devectorize x = case devectorize' x of
+  Right y -> y
+  Left msg -> error msg
 
 vzipWith :: Vectorize f => (a -> b -> c) -> f a -> f b -> f c
 vzipWith f x y = devectorize $ V.zipWith f (vectorize x) (vectorize y)
@@ -127,18 +135,17 @@ vlength = V.length . vectorize . (fill () `asFunctorOf`)
     asFunctorOf :: f a -> Proxy f -> f a
     asFunctorOf x _ = x
 
-
 -- | fmap f == devectorize . (V.map f) . vectorize
 class Functor f => Vectorize (f :: * -> *) where
   vectorize :: f a -> V.Vector a
-  devectorize :: V.Vector a -> f a
+  devectorize' :: V.Vector a -> Either String (f a)
   fill :: a -> f a
 
   default vectorize :: (Generic1 f, GVectorize (Rep1 f)) => f a -> V.Vector a
   vectorize f = gvectorize (from1 f)
 
-  default devectorize :: (Generic1 f, GVectorize (Rep1 f)) => V.Vector a -> f a
-  devectorize f = to1 (gdevectorize f)
+  default devectorize' :: (Generic1 f, GVectorize (Rep1 f)) => V.Vector a -> Either String (f a)
+  devectorize' f = fmap to1 (gdevectorize f)
 
   default fill :: (Generic1 f, GVectorize (Rep1 f)) => a -> f a
   fill = to1 . gfill
@@ -199,7 +206,7 @@ instance {-# OVERLAPPABLE #-} Vectorize f => T.Traversable f where
 
 class GVectorize (f :: * -> *) where
   gvectorize :: f a -> V.Vector a
-  gdevectorize :: V.Vector a -> f a
+  gdevectorize :: V.Vector a -> Either String (f a)
   gfill :: a -> f a
   gvlength :: Proxy f -> Int
 
@@ -208,15 +215,22 @@ instance (GVectorize f, GVectorize g) => GVectorize (f :*: g) where
   gvectorize (f :*: g) = gvectorize f V.++ gvectorize g
   gdevectorize v0s
     | V.length v0s < n0 =
-      error $ "gdevectorize (f :*: g): V.length v0s < vlength f0  (" ++
-              show (V.length v0s) ++ " < " ++ show n0 ++ ")"
+      Left $ "gdevectorize (f :*: g): V.length v0s < vlength f0  (" ++
+             show (V.length v0s) ++ " < " ++ show n0 ++ ")"
     | V.length v1 /= n1 =
-      error $ "gdevectorize (f :*: g): V.length v1 /= vlength f1  (" ++
-               show (V.length v1) ++ " /= " ++ show n1 ++ ")"
-    | otherwise = f0 :*: f1
+      Left $ "gdevectorize (f :*: g): V.length v1 /= vlength f1  (" ++
+             show (V.length v1) ++ " /= " ++ show n1 ++ ")"
+    | otherwise = case (ef0, ef1) of
+      (Left msg0, Left msg1) ->
+        Left $ "gdevectorize (f :*: g): errored on both sides: {" ++ msg0 ++ ", " ++ msg1 ++ "}"
+      (Left msg0, Right   _) ->
+        Left $ "gdevectorize (f :*: g): errored on left side: " ++ msg0
+      (Right   _, Left msg1) ->
+        Left $ "gdevectorize (f :*: g): errored on right side: " ++ msg1
+      (Right f0, Right f1) -> Right (f0 :*: f1)
     where
-      f0 = gdevectorize v0
-      f1 = gdevectorize v1
+      ef0 = gdevectorize v0
+      ef1 = gdevectorize v1
 
       n0 = gvlength (Proxy :: Proxy f)
       n1 = gvlength (Proxy :: Proxy g)
@@ -232,7 +246,7 @@ instance (GVectorize f, GVectorize g) => GVectorize (f :*: g) where
 -- Metadata (constructor name, etc)
 instance GVectorize f => GVectorize (M1 i c f) where
   gvectorize = gvectorize . unM1
-  gdevectorize = M1 . gdevectorize
+  gdevectorize = fmap M1 . gdevectorize
   gfill = M1 . gfill
   gvlength = gvlength . proxy
     where
@@ -243,9 +257,9 @@ instance GVectorize f => GVectorize (M1 i c f) where
 instance GVectorize Par1 where
   gvectorize = V.singleton . unPar1
   gdevectorize v = case V.toList v of
-    [] -> error "gdevectorize Par1: got empty list"
-    [x] -> Par1 x
-    xs -> error $ "gdevectorize Par1: got non-1 length: " ++ show (length xs)
+    [] -> Left "gdevectorize Par1: got empty list"
+    [x] -> Right (Par1 x)
+    xs -> Left $ "gdevectorize Par1: got non-1 length: " ++ show (length xs)
   gfill = Par1
   gvlength = const 1
 
@@ -253,15 +267,15 @@ instance GVectorize Par1 where
 instance GVectorize U1 where
   gvectorize = const V.empty
   gdevectorize v
-    | V.null v = U1
-    | otherwise = error $ "gdevectorize U1: got non-null vector, length: " ++ show (V.length v)
+    | V.null v = Right U1
+    | otherwise = Left $ "gdevectorize U1: got non-null vector, length: " ++ show (V.length v)
   gfill = const U1
   gvlength = const 0
 
 -- Constants, additional parameters, and rank-1 recursion
 instance Vectorize f => GVectorize (Rec1 f) where
   gvectorize = vectorize . unRec1
-  gdevectorize = Rec1 . devectorize
+  gdevectorize = fmap Rec1 . devectorize'
   gfill = Rec1 . fill
   gvlength = vlength . proxy
     where
@@ -270,17 +284,25 @@ instance Vectorize f => GVectorize (Rec1 f) where
 
 -- composition
 instance (Vectorize f, GVectorize g) => GVectorize (f :.: g) where
-  gfill = Comp1 . devectorize . V.replicate k . gfill
+  gfill = Comp1 . devectorize'' . V.replicate k . gfill
     where
+      devectorize'' x = case devectorize' x of
+        Right y -> y
+        Left msg -> error $ "gfill (f :.: g) devectorize error: " ++ msg
       k = vlength (Proxy :: Proxy f)
+
   gvectorize = V.concatMap gvectorize . vectorize . unComp1
-  gdevectorize v = Comp1 (devectorize vs)
+  gdevectorize v = case partitionEithers (V.toList evs) of
+    ([], vs) -> fmap Comp1 (devectorize' (V.fromList vs))
+    (bad, good) -> Left $ printf "gdevectorize (f :.: g): got %d failures and %d successes"
+                          (length bad) (length good)
     where
       kf = vlength (Proxy :: Proxy f)
       kg = gvlength (Proxy :: Proxy g)
 
-      -- vs :: V.Vector (g a)
-      vs = fmap gdevectorize (splitsAt kg kf v {-:: Vec nf (Vec ng a)-} )
+      --evs :: V.Vector (Either String (g a))
+      evs = fmap gdevectorize (splitsAt kg kf v {-:: Vec nf (Vec ng a)-} )
+
   gvlength = const (nf * ng)
     where
       nf = vlength (Proxy :: Proxy f)

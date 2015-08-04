@@ -23,7 +23,7 @@ import Dyno.View.Unsafe.View ( mkJ, unJ )
 
 import Dyno.View.View ( View(..), J )
 import Dyno.View.Viewable ( Viewable(..) )
-import Dyno.Vectorize ( Vectorize(..), Id, vlength )
+import Dyno.Vectorize ( Vectorize(..), Id, vlength, devectorize )
 
 -- | views into Vectorizable things
 newtype JV f a = JV { unJV :: f a } deriving (Functor, Generic, Generic1)

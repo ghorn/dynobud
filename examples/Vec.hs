@@ -40,7 +40,7 @@ unknownLength = V.fromList [Params 1 2, Params 3 4, Params 5 6, Params 7 8]
 
 -- you do know the length at compile time
 knownLength :: (Num a, Show a) => Vec 4 (Params a)
-knownLength = mkVec unknownLength
+knownLength = devectorize unknownLength
 
 -- do something on type-safe vec data
 doSomething :: (Dim n, Num a) => Vec n (Params a) -> a
