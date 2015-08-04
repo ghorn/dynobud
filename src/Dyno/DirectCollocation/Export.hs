@@ -19,7 +19,7 @@ module Dyno.DirectCollocation.Export
        ) where
 
 import Control.Monad ( unless )
-import Data.List ( unzip6 )
+import Data.List ( unzip6, intercalate )
 import Data.Proxy ( Proxy(..) )
 import Linear.V ( Dim(..) )
 import Data.Vector ( Vector )
@@ -75,7 +75,7 @@ exportTraj ::
   -> fp Double
   -> NlpOut (CollTraj x z u p n deg) (CollOcpConstraints x r c h n deg) (Vector Double)
   -> IO Export
-exportTraj = exportTraj' (Nothing :: Maybe (String, None Double))
+exportTraj = exportTraj' (Nothing :: Maybe ([String], None Double))
 
 
 -- | this version takes optional user data
@@ -96,7 +96,7 @@ exportTraj' ::
     , Dim n, Dim deg
     , Lookup (e Double), Vectorize e
     )
-  => Maybe (String, e Double)
+  => Maybe ([String], e Double)
   -> ExportConfig
   -> CollProblem x z u p r o c h q qo po fp n deg
   -> fp Double
@@ -188,7 +188,7 @@ exportTraj' mextra exportConfig cp fp nlpOut = do
         matlabParam (matlabRetName ++ ".params") (splitJV p') ++
         ( case mextra of
             Nothing -> []
-            Just (name,extra) -> matlabParam (matlabRetName ++ "." ++ name) extra
+            Just (names,extra) -> matlabParam (intercalate "." (matlabRetName : names)) extra
         ) ++
         matlabParam (matlabRetName ++ ".lagrangeMultipliers.params") (splitJV lagP') ++
         matlabParam (matlabRetName ++ ".lagrangeMultipliers.bc") (splitJV lagBc') ++
@@ -222,7 +222,7 @@ exportTraj' mextra exportConfig cp fp nlpOut = do
         pythonParam pyRetName ["params"] (splitJV p')
         case mextra of
           Nothing -> return ()
-          Just (name,extra) -> pythonParam pyRetName [name] extra
+          Just (names,extra) -> pythonParam pyRetName names extra
         pythonParam pyRetName ["lagrangeMultipliers","params"] (splitJV lagP')
         pythonParam pyRetName ["lagrangeMultipliers","bc"] (splitJV lagBc')
         pythonParam pyRetName ["finalQuadratureStates"] finalQuads
