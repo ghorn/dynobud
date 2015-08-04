@@ -68,10 +68,18 @@ newtype Vec (n :: k) a = MkVec (V.Vector a)
                 deriving (Functor, Generic, Generic1)
 instance (Dim n, B.Binary a) => B.Binary (Vec n a) where
   put = B.put . unVec
-  get = fmap devectorize B.get
+  get = do
+    x <- B.get
+    case devectorize' x of
+      Right y -> return y
+      Left msg -> fail msg
 instance (Dim n, S.Serialize a) => S.Serialize (Vec n a) where
   put = S.put . unVec
-  get = fmap devectorize S.get
+  get = do
+    x <- S.get
+    case devectorize' x of
+      Right y -> return y
+      Left msg -> fail msg
 
 instance (Lookup a, Dim n) => Lookup (Vec n a) where
   toAccessorTree vec get set = Data ("Vec " ++ show n, "Vec " ++ show n) $ map child (take n [0..])

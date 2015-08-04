@@ -32,10 +32,18 @@ newtype J (f :: * -> *) (a :: *) = UnsafeJ { unsafeUnJ :: a } deriving (Eq, Gene
 
 instance (View f, B.Binary a, Viewable a) => B.Binary (J f a) where
   put = B.put . unJ
-  get = fmap mkJ B.get
+  get = do
+    x <- B.get
+    case mkJ' x of
+      Right y -> return y
+      Left msg -> fail msg
 instance (View f, S.Serialize a, Viewable a) => S.Serialize (J f a) where
   put = S.put . unJ
-  get = fmap mkJ S.get
+  get = do
+    x <- S.get
+    case mkJ' x of
+      Right y -> return y
+      Left msg -> fail msg
 
 instance Show a => Show (J f a) where
   showsPrec p (UnsafeJ x) = showsPrec p x
