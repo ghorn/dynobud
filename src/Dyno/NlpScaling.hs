@@ -1,5 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Dyno.NlpScaling
        ( ScaleFuns(..)

@@ -3,12 +3,12 @@
 -- Used with permission.
 
 {-# OPTIONS_GHC -Wall #-}
-{-# Language TypeFamilies #-}
-{-# Language ScopedTypeVariables #-}
-{-# Language FlexibleInstances #-}
-{-# Language DeriveFunctor #-}
-{-# Language DeriveGeneric #-}
-{-# Language DataKinds #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DataKinds #-}
 
 module Main ( main
             , SbX(..) -- to suppress warnings about unused record names

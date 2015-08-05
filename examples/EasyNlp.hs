@@ -2,8 +2,8 @@
 -- the most basic NLP interface.
 
 {-# OPTIONS_GHC -Wall #-}
-{-# Language DeriveFunctor #-}
-{-# Language DeriveGeneric #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 module Main where
 

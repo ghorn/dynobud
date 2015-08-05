@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language ScopedTypeVariables #-}
-{-# Language DeriveGeneric #-}
-{-# Language PolyKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE PolyKinds #-}
 
 -- todo(greg): rename to PlotPoints or something
 module Dyno.DirectCollocation.Dynamic

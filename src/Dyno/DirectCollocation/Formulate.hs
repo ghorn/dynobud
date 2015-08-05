@@ -1,9 +1,9 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language ScopedTypeVariables #-}
-{-# Language TypeOperators #-}
-{-# Language DeriveGeneric #-}
-{-# Language FlexibleContexts #-}
-{-# Language PolyKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE PolyKinds #-}
 
 module Dyno.DirectCollocation.Formulate
        ( CollProblem(..)

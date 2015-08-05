@@ -1,8 +1,8 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language TypeFamilies #-}
-{-# Language DeriveFunctor #-}
-{-# Language DeriveGeneric #-}
-{-# Language DataKinds #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DataKinds #-}
 
 module Main ( main ) where
 

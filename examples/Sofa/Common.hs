@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language DeriveFunctor #-}
-{-# Language DeriveGeneric #-}
-{-# Language PolyKinds #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE PolyKinds #-}
 
 module Sofa.Common
        ( SofaMessage(..)

@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language FlexibleInstances #-}
-{-# Language DeriveFunctor #-}
-{-# Language DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 module Dyno.Nlp
        ( Bounds

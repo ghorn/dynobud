@@ -1,5 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language PolyKinds #-}
+{-# LANGUAGE PolyKinds #-}
 
 module Utils
        ( reproxy

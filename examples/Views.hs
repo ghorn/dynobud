@@ -4,8 +4,8 @@
 -- vector is reconstructed
 
 {-# OPTIONS_GHC -Wall #-}
-{-# Language DeriveGeneric #-}
-{-# Language ScopedTypeVariables #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Main where
 

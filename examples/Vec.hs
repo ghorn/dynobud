@@ -2,11 +2,11 @@
 -- Don't forget to import DataKinds/PolyKinds !
 
 {-# OPTIONS_GHC -Wall #-}
-{-# Language ScopedTypeVariables #-}
-{-# Language DeriveFunctor #-}
-{-# Language DeriveGeneric #-}
-{-# Language DataKinds #-}
-{-# Language PolyKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE PolyKinds #-}
 
 module Main where
 

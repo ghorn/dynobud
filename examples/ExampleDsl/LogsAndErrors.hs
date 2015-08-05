@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language PackageImports #-}
-{-# Language FlexibleContexts #-}
+{-# LANGUAGE PackageImports #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module ExampleDsl.LogsAndErrors
        ( ErrorMessage (..)

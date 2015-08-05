@@ -5,8 +5,8 @@
 -- todo: comment up the multiple shooting code as an example
 
 {-# OPTIONS_GHC -Wall #-}
-{-# Language DeriveFunctor #-}
-{-# Language DeriveGeneric #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 module Main where
 

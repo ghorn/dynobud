@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language DeriveFunctor #-}
-{-# Language DeriveFoldable #-}
-{-# Language DeriveGeneric #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 module Glider.AeroCoeffs where
 

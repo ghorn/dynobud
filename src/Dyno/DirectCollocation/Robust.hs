@@ -1,9 +1,9 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language TypeFamilies #-}
-{-# Language ScopedTypeVariables #-}
-{-# Language TypeOperators #-}
-{-# Language DeriveGeneric #-}
-{-# Language FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PolyKinds #-}
 
 module Dyno.DirectCollocation.Robust

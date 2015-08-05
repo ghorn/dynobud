@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language ScopedTypeVariables #-}
-{-# Language DeriveFunctor #-}
-{-# Language DeriveGeneric #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 module Dyno.AutoScaling
        ( scalingNlp

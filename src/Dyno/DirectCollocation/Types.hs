@@ -1,9 +1,9 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language ScopedTypeVariables #-}
-{-# Language DeriveFunctor #-}
-{-# Language DeriveGeneric #-}
-{-# Language FlexibleContexts #-}
-{-# Language PolyKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE PolyKinds #-}
 
 module Dyno.DirectCollocation.Types
        ( CollTraj(..)

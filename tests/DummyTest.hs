@@ -1,5 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module DummyTest ( dummyTests ) where
 

@@ -1,8 +1,8 @@
 {-# OPTIONS_GHC -Wall -fno-warn-orphans #-}
-{-# Language ScopedTypeVariables #-}
-{-# Language DeriveFunctor #-}
-{-# Language FlexibleInstances #-}
-{-# Language MultiWayIf #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiWayIf #-}
 
 module Qps.Qp
        ( Qp(..)

@@ -1,8 +1,8 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language ScopedTypeVariables #-}
-{-# Language TypeOperators #-}
-{-# Language DeriveGeneric #-}
-{-# Language FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Dyno.DirectCollocation.Integrate
        ( withIntegrator

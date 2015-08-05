@@ -1,9 +1,9 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language ScopedTypeVariables #-}
-{-# Language DeriveFunctor #-}
-{-# Language DeriveFoldable #-}
-{-# Language DeriveTraversable #-}
-{-# Language PolyKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE PolyKinds #-}
 
 module Dyno.DirectCollocation.Interpolate
        ( interpolateTraj

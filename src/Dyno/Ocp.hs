@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language DeriveGeneric #-}
-{-# Language TypeFamilies #-}
-{-# Language FlexibleContexts #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Dyno.Ocp
        ( OcpPhase(..)

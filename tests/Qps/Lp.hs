@@ -1,10 +1,10 @@
 {-# OPTIONS_GHC -Wall -fno-warn-orphans #-}
-{-# Language ScopedTypeVariables #-}
-{-# Language MultiWayIf #-}
-{-# Language MultiParamTypeClasses #-}
-{-# Language FunctionalDependencies #-}
-{-# Language FlexibleInstances #-}
-{-# Language DeriveFunctor #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DeriveFunctor #-}
 
 module Qps.Lp
        ( Lp(..), FLp(..), ILp(..), Coef(..)

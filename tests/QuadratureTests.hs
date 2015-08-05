@@ -1,8 +1,8 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language DataKinds #-}
-{-# Language TypeFamilies #-}
-{-# Language DeriveFunctor #-}
-{-# Language DeriveGeneric #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 module QuadratureTests
        ( quadratureTests

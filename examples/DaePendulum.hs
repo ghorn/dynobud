@@ -1,10 +1,10 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language TypeFamilies #-}
-{-# Language FlexibleInstances #-}
-{-# Language DeriveFunctor #-}
-{-# Language DeriveGeneric #-}
-{-# Language DataKinds #-}
-{-# Language PolyKinds #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE PolyKinds #-}
 
 module Main where
 

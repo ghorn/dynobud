@@ -1,11 +1,11 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language ScopedTypeVariables #-}
-{-# Language FlexibleContexts #-}
-{-# Language DeriveFunctor #-}
-{-# Language DeriveFoldable #-}
-{-# Language DeriveTraversable #-}
-{-# Language DeriveGeneric #-}
-{-# Language PolyKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE PolyKinds #-}
 
 module Dyno.DirectCollocation.ActiveConstraints
        ( ActiveConstraints(..)

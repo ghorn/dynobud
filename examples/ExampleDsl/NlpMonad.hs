@@ -1,8 +1,8 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language ScopedTypeVariables #-}
-{-# Language PackageImports #-}
-{-# Language GeneralizedNewtypeDeriving #-}
-{-# Language RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE PackageImports #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE RankNTypes #-}
 
 module ExampleDsl.NlpMonad
        ( NlpMonad

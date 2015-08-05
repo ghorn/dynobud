@@ -1,9 +1,9 @@
 {-# OPTIONS_GHC -Wall -fno-warn-orphans #-}
-{-# Language ScopedTypeVariables #-}
-{-# Language GADTs #-}
-{-# Language DeriveGeneric #-}
-{-# Language FlexibleInstances #-}
-{-# Language PolyKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE PolyKinds #-}
 
 module ViewTests
        ( Views(..)

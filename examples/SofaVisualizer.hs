@@ -1,5 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language CPP #-}
+{-# LANGUAGE CPP #-}
 
 module Main ( main ) where
 

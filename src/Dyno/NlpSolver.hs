@@ -1,8 +1,8 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language ScopedTypeVariables #-}
-{-# Language PackageImports #-}
-{-# Language KindSignatures #-}
-{-# Language GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE PackageImports #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Dyno.NlpSolver
        ( NlpSolver

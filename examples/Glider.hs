@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# Language TypeFamilies #-}
-{-# Language DataKinds #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DataKinds #-}
 
 module Main ( main ) where
 

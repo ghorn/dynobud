@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wall -fno-cse #-}
-{-# Language ScopedTypeVariables #-}
-{-# Language KindSignatures #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE KindSignatures #-}
 
 module Dyno.View.Cov
        ( Cov(..)

@@ -1,10 +1,10 @@
 -- | How big of a sofa can we get around a corner?
 
 {-# OPTIONS_GHC -Wall #-}
-{-# Language DeriveFunctor #-}
-{-# Language DeriveGeneric #-}
-{-# Language ScopedTypeVariables #-}
-{-# Language DataKinds #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DataKinds #-}
 
 module Main where
 
