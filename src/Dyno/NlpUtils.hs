@@ -5,10 +5,13 @@
 module Dyno.NlpUtils
        ( HomotopyParams(..)
        , solveNlpHomotopy
+       , solveNlpHomotopyWith
        , solveNlp
+       , solveNlpWith
        , solveNlpV
        , setNlpInputs
        , runNlp
+       , runNlpWith
        ) where
 
 import qualified Control.Applicative as A
@@ -255,6 +258,16 @@ solveNlp ::
   -> IO (Either String String, NlpOut x g (Vector Double))
 solveNlp solverStuff nlp callback =
   runNlp solverStuff nlp callback solve'
+
+-- | convenience function to solve a pure Nlp
+solveNlpWith ::
+  (View x, View p, View g, Symbolic a)
+  => RunNlpOptions
+  -> Solver
+  -> Nlp x p g a -> Maybe (J x (Vector Double) -> J p (Vector Double) -> IO Bool)
+  -> IO (Either String String, NlpOut x g (Vector Double))
+solveNlpWith opts solverStuff nlp callback =
+  runNlpWith opts solverStuff nlp callback solve'
 
 
 -- | set all inputs
