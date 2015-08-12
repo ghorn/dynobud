@@ -24,6 +24,7 @@ module Dyno.DirectCollocation.Types
        , fillCollConstraints
        , getXzus
        , getXzus'
+       , fromXzus
          -- * for callbacks
        , Quadratures(..)
        , StageOutputs(..)
@@ -47,7 +48,7 @@ import Dyno.View.View ( View(..), J, jfill )
 import Dyno.View.JVec ( JVec(..), jreplicate )
 import Dyno.View.Cov ( Cov )
 import Dyno.View.JV ( JV, splitJV, catJV )
-import Dyno.Vectorize ( Vectorize(..), Id )
+import Dyno.Vectorize ( Vectorize(..), Id(..) )
 import Dyno.TypeVecs ( Vec )
 
 
@@ -120,6 +121,21 @@ instance ( Vectorize (X ocp), Vectorize (R ocp), Vectorize (C ocp), Vectorize (H
          , View sh, Vectorize shr, View sc
          ) => View (CollOcpCovConstraints ocp n deg sh shr sc)
 
+-- todo(greg): unit test to ensure this is the inverse of getXzus'
+fromXzus :: forall x z u p n deg a
+            . (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Dim n, Dim deg)
+            => a -> p a -> Vec n (x a, Vec deg (x a, z a, u a)) -> x a
+            -> CollTraj x z u p n deg (Vector a)
+fromXzus t p xzus xf = CollTraj (catJV (Id t)) (catJV p) (cat (JVec traj)) (catJV xf)
+  where
+    traj :: Vec n (J (CollStage (JV x) (JV z) (JV u) deg) (Vector a))
+    traj = fmap (cat . toCollStage) xzus
+
+    toCollStage :: (x a, Vec deg (x a, z a, u a)) -> CollStage (JV x) (JV z) (JV u) deg (Vector a)
+    toCollStage (x0, xzus') = CollStage (catJV x0) (cat (JVec (fmap toCollPoint xzus')))
+
+    toCollPoint :: (x a, z a, u a) -> J (CollPoint (JV x) (JV z) (JV u)) (Vector a)
+    toCollPoint (x,z,u) = cat $ CollPoint (catJV x) (catJV z) (catJV u)
 
 getXzus ::
   (Vectorize x, Vectorize z, Vectorize u, Dim n, Dim deg)
