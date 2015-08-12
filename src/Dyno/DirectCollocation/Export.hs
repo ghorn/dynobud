@@ -32,14 +32,13 @@ import Accessors ( Lookup, Getter(..), flatten, flatten', accessors )
 
 import Dyno.Nlp ( NlpOut(..) )
 import Dyno.TypeVecs ( Vec )
-import qualified Dyno.TypeVecs as TV
 import Dyno.Vectorize ( Vectorize, Id(..), None(..), fill )
 import Dyno.View.View ( View(..) )
 import Dyno.View.JV ( splitJV, catJV )
 import Dyno.DirectCollocation.Formulate ( CollProblem(..) )
 import Dyno.DirectCollocation.Types ( CollTraj(..), CollOcpConstraints(..)
                                     , StageOutputs(..), Quadratures(..)
-                                    , getXzus'
+                                    , getXzus'''
                                     )
 import Dyno.DirectCollocation.Quadratures ( timesFromTaus )
 
@@ -133,12 +132,7 @@ exportTraj' mextra exportConfig cp fp nlpOut = do
       xf :: x Double
       zss :: Vec n (Vec deg (z Double))
       uss :: Vec n (Vec deg (u Double))
-      (xss, zss, uss) = TV.tvunzip3 $ fmap f xzuss
-        where
-          f (x0, xzus) = ((x0,xs'), zs', us')
-            where
-              (xs',zs',us') = TV.tvunzip3 xzus
-      (xzuss,xf) = getXzus' ct
+      ((xss,xf), zss, uss) = getXzus''' ct
 
       fullXs :: [x Double]
       fullXs = concatMap (\(x0, xs') -> x0 : F.toList xs') (F.toList xss) ++ [xf]

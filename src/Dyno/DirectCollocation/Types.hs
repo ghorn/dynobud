@@ -24,6 +24,8 @@ module Dyno.DirectCollocation.Types
        , fillCollConstraints
        , getXzus
        , getXzus'
+       , getXzus''
+       , getXzus'''
        , fromXzus
          -- * for callbacks
        , Quadratures(..)
@@ -50,6 +52,7 @@ import Dyno.View.Cov ( Cov )
 import Dyno.View.JV ( JV, splitJV, catJV )
 import Dyno.Vectorize ( Vectorize(..), Id(..) )
 import Dyno.TypeVecs ( Vec )
+import qualified Dyno.TypeVecs as TV
 
 
 -- | CollTraj using type families to compress type parameters
@@ -149,6 +152,37 @@ getXzus' ::
   -> (Vec n (x a, Vec deg (x a, z a, u a)), x a)
 getXzus' (CollTraj _ _ stages xf) =
   (fmap (getXzusFromStage . split) (unJVec (split stages)), splitJV xf)
+
+getXzus'' ::
+  forall x z u p n deg a
+  . (Vectorize x, Vectorize z, Vectorize u, Dim n, Dim deg)
+  => CollTraj x z u p n deg (Vector a)
+  -> ( Vec n (Vec deg (x a))
+     , Vec n (Vec deg (z a))
+     , Vec n (Vec deg (u a))
+     )
+getXzus'' traj = (fmap snd xs, zs, us)
+  where
+    ((xs,_),zs,us) = getXzus''' traj
+
+getXzus''' ::
+  forall x z u p n deg a
+  . (Vectorize x, Vectorize z, Vectorize u, Dim n, Dim deg)
+  => CollTraj x z u p n deg (Vector a)
+  -> ( ( Vec n (x a, Vec deg (x a))
+       , x a
+       )
+     , Vec n (Vec deg (z a))
+     , Vec n (Vec deg (u a))
+     )
+getXzus''' traj = ((xs, xf), zs, us)
+  where
+    (xzus, xf) = getXzus' traj
+    (xs, zs, us) = TV.tvunzip3 $ fmap f xzus
+      where
+        f (x0, xzus') = ((x0,xs'), zs', us')
+          where
+            (xs',zs',us') = TV.tvunzip3 xzus'
 
 getXzusFromStage :: (Vectorize x, Vectorize z, Vectorize u, Dim deg)
                     => CollStage (JV x) (JV z) (JV u) deg (Vector a)
