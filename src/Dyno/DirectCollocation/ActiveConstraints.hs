@@ -35,6 +35,7 @@ import Dyno.View.View ( View(..), J )
 import Dyno.View.JV ( JV, splitJV )
 import Dyno.View.JVec ( unJVec )
 import Dyno.TypeVecs ( Dim )
+import qualified Dyno.TypeVecs as TV
 
 import Accessors ( Lookup, Getter(..), flatten', accessors )
 
@@ -172,7 +173,7 @@ whatsActive userEps traj@(CollTraj tf p _ _) g inputs ocp =
 
     pathC :: [h Double]
     pathC = concatMap (map splitJV . F.toList . unJVec . split) $ F.toList $ unJVec $ split (coPathC g)
-    (xs', zs', us') = getXzus traj
+    (xs', zs', us') = TV.tvunzip3 $ fmap TV.tvunzip3 $ getXzus traj
     xs = concatMap F.toList (F.toList xs')
     zs = concatMap F.toList (F.toList zs')
     us = concatMap F.toList (F.toList us')
