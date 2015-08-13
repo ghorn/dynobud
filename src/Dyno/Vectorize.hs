@@ -112,7 +112,8 @@ instance Vectorize Euler
 instance Vectorize (V3T f)
 instance Vectorize (Rot f1 f2)
 
- -- | partial version of devectorize'
+-- | partial version of 'devectorize\'' which throws an error
+-- if the vector length doesn' match the type length
 devectorize :: Vectorize f => V.Vector a -> f a
 devectorize x = case devectorize' x of
   Right y -> y
