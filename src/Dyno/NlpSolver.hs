@@ -92,6 +92,7 @@ import qualified Casadi.CMatrix as CM
 import Dyno.View.Unsafe.View ( unJ, mkJ )
 import Dyno.View.Unsafe.M ( mkM )
 
+import Dyno.FormatTime ( formatSeconds )
 import Dyno.Vectorize ( Id(..) )
 import Dyno.View.JV ( JV )
 import Dyno.View.View ( View(..), J, fmapJ, d2v, v2d, jfill )
@@ -567,16 +568,16 @@ runNlpSolverWith runnerOptions solverStuff nlpFun scaleX scaleG scaleF callback'
     putStrLn "************** initializing dynobud runNlpSolver ******************"
     putStrLn "making nlp..."
   (nlp, nlpTime) <- timeIt $ mkFunction "nlp" inputScheme outputScheme
-  when (verbose runnerOptions) $ printf "made nlp in %.2f seconds\n" nlpTime
+  when (verbose runnerOptions) $ printf "made nlp in %s\n" (formatSeconds nlpTime)
   mapM_ (\(l,Op.Opt o) -> Op.setOption nlp l o) (functionOptions solverStuff)
   when (verbose runnerOptions) $ putStrLn "init nlp..."
   (_, nlpInitTime) <- timeIt $ soInit nlp
-  when (verbose runnerOptions) $ printf "nlp initialized in %.2f seconds\n" nlpInitTime
+  when (verbose runnerOptions) $ printf "nlp initialized in %s\n" (formatSeconds nlpInitTime)
 
   when (verbose runnerOptions) $ putStrLn "function call..."
   -- in case the user wants to do something (like codegen?)
   (_, functionCallTime) <- timeIt $ functionCall solverStuff nlp
-  when (verbose runnerOptions) $ printf "function called in %.2f seconds\n" functionCallTime
+  when (verbose runnerOptions) $ printf "function called in %s\n" (formatSeconds functionCallTime)
 
 --  let eval 0 = error "finished"
 --      eval k = do
@@ -595,7 +596,7 @@ runNlpSolverWith runnerOptions solverStuff nlpFun scaleX scaleG scaleF callback'
 
   when (verbose runnerOptions) $ putStrLn "create solver..."
   (solver, solverCreateTime) <- timeIt $ C.nlpSolver__0 (solverName (getSolverInternal solverStuff)) nlp
-  when (verbose runnerOptions) $ printf "created solver in %.2f seconds\n" solverCreateTime
+  when (verbose runnerOptions) $ printf "created solver in %s\n" (formatSeconds solverCreateTime)
 
   -- add callback if user provides it
   intref <- newIORef False
@@ -639,7 +640,7 @@ runNlpSolverWith runnerOptions solverStuff nlpFun scaleX scaleG scaleF callback'
                                                     ++ options solverStuff)
   when (verbose runnerOptions) $ putStrLn "initialize solver..."
   (_, solverInitTime) <- timeIt $ soInit solver
-  when (verbose runnerOptions) $ printf "solver initialized in %.2f seconds\n" solverInitTime
+  when (verbose runnerOptions) $ printf "solver initialized in %s\n" (formatSeconds solverInitTime)
 
   let proxy :: J f b -> Proxy f
       proxy = const Proxy
@@ -655,6 +656,6 @@ runNlpSolverWith runnerOptions solverStuff nlpFun scaleX scaleG scaleF callback'
                           }
   when (verbose runnerOptions) $ putStrLn "run NLP monad..."
   (ret, retTime) <- timeIt $ liftIO $ runReaderT nlpMonad nlpState
-  when (verbose runnerOptions) $ printf "ran NLP monad in %.2f seconds\n" retTime
+  when (verbose runnerOptions) $ printf "ran NLP monad in %s\n" (formatSeconds retTime)
   return ret
 
