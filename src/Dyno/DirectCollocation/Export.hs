@@ -253,6 +253,7 @@ toDub (GetDouble f) = f
 toDub (GetFloat f) = realToFrac . f
 toDub (GetInt f) = realToFrac . f
 toDub (GetBool f) = fromIntegral . fromEnum . f
+toDub (GetString _) = const (read "NaN")
 toDub GetSorry = const (read "NaN")
 
 
