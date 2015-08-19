@@ -1,6 +1,3 @@
-# NB: don't set `language: haskell` here
-
-# The following enables several GHC versions to be tested; often it's enough to test only against the last release in a major GHC version. Feel free to omit lines listings versions you don't need/want testing for.
 env:
   matrix:
     - CABALVER=1.22 GHCVER=7.8.4
