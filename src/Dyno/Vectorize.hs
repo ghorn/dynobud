@@ -72,7 +72,7 @@ instance Serialize a => Serialize (Id a)
 
 
 -- | a length-2 vectorizable type
-data Tuple f g a = Tuple (f a) (g a)
+data Tuple f g a = Tuple { unFst :: f a, unSnd :: g a }
                  deriving (Eq, Ord, Generic, Generic1, Functor, F.Foldable, T.Traversable, Show)
 instance (Vectorize f, Vectorize g) => Vectorize (Tuple f g)
 instance (Applicative f, Applicative g) => Applicative (Tuple f g) where
@@ -83,7 +83,7 @@ instance (Vectorize f, Vectorize g, Applicative f, Applicative g) => Linear.Addi
 
 
 -- | a length-3 vectorizable type
-data Triple f g h a = Triple (f a) (g a) (h a)
+data Triple f g h a = Triple { unFst3 :: f a, unSnd3 :: g a, unThd3 :: h a }
                     deriving (Eq, Ord, Generic, Generic1, Functor, F.Foldable, T.Traversable, Show)
 instance (Vectorize f, Vectorize g, Vectorize h) => Vectorize (Triple f g h)
 instance (Applicative f, Applicative g, Applicative h) => Applicative (Triple f g h) where
