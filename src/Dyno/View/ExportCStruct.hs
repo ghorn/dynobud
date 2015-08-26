@@ -4,8 +4,9 @@
 module Dyno.View.ExportCStruct
        ( CStructExporter
        , runCStructExporter
-       , putStruct
-       , exportStruct
+       , putTypedef
+       , exportTypedef
+       , exportCData
        ) where
 
 import Control.Monad ( unless )
@@ -65,12 +66,36 @@ writeCField fieldName (ATGetter (get,_)) = case get of
 
 
 -- | convenience function to export only one struct
-putStruct :: Lookup a => a -> State CStructExporter String
-putStruct x =
+putTypedef :: Lookup a => a -> State CStructExporter String
+putTypedef x =
   case accessors x of
     (Data (typeName, _) fields) -> typedefStructIfMissing typeName fields >> return typeName
     (ATGetter _) -> error "putStruct: accessors got ATGetter instead of Data"
 
 -- | convenience function to export only one struct
-exportStruct :: Lookup a => a -> String
-exportStruct = snd . runCStructExporter . putStruct
+exportTypedef :: Lookup a => a -> String
+exportTypedef = snd . runCStructExporter . putTypedef
+
+-- | Export data as a C struct.
+-- If a string with a variable name is given, the variable is declared.
+exportCData :: forall a . Lookup a => Maybe String -> a -> String
+exportCData maybeVarName theData = case (accessors theData, maybeVarName) of
+  (Data _ fields, Nothing) -> exportStructData fields
+  (Data (typeName,_) fields, Just varName) ->
+    printf "%s %s = %s;" typeName varName (exportStructData fields)
+  (ATGetter _, _) -> error "exportStructData: accessors got ATGetter instead of Data"
+  where
+    exportStructData :: [(String, AccessorTree a)] -> String
+    exportStructData fields = "{ " ++ intercalate ", " (map (uncurry exportField) fields) ++ " }"
+
+    toString (GetDouble get) = show (get theData)
+    toString (GetFloat get) = show (get theData)
+    toString (GetInt get) = show (get theData)
+    toString (GetBool _) = "NAN"
+    toString (GetString _) = "NAN"
+    toString GetSorry = "NAN"
+
+    exportField :: String -> AccessorTree a -> String
+    exportField fieldName (ATGetter (get, _)) = printf ".%s = %s" fieldName (toString get)
+    exportField fieldName (Data _ subfields) =
+      printf ".%s = %s" fieldName (exportStructData subfields)

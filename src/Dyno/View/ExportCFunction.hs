@@ -35,8 +35,8 @@ exportCFunction ::
   => (J (JV f) MX -> J (JV g) MX) -> CExportOptions -> IO (String, String)
 exportCFunction userFun options = do
   let ((fname, gname), typedefs) = runCStructExporter $ do
-        fname' <- putStruct (fill 0 :: f Double)
-        gname' <- putStruct (fill 0 :: g Double)
+        fname' <- putTypedef (fill 0 :: f Double)
+        gname' <- putTypedef (fill 0 :: g Double)
         return (fname', gname')
 
   mxfun <- toMXFun "userCodegenFun" userFun

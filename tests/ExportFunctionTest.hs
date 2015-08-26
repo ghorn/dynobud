@@ -16,6 +16,7 @@ import System.Process ( showCommandForUser, spawnProcess, waitForProcess )
 import Accessors ( Lookup )
 
 import Dyno.View.ExportCFunction ( CExportOptions(..), exportCFunction' )
+import Dyno.View.ExportCStruct ( exportCData )
 import Dyno.Vectorize ( Vectorize )
 
 data Bar a =
@@ -39,7 +40,7 @@ myfun :: Floating a => Bar a -> Foo a
 myfun (Bar x y) = Foo (x*y) (x/(0.1 + y**2)) (Bar (x + y) ((0.1 + y**2) ** (1 + x**2)))
 
 removeFilesAfter :: Bool
-removeFilesAfter = True -- False for debugging broken test
+removeFilesAfter = False
 
 main :: IO ()
 main = do
@@ -51,9 +52,16 @@ main = do
         , exportName = name
         }
 
-  (source, header) <- exportCFunction' myfun opts
+  (source0, header) <- exportCFunction' myfun opts
+  let -- test the data export functionality
+      source = source0 ++
+        unlines
+        [ ""
+        , "// put some data here to check the struct export"
+        , exportCData (Just "some_random_data") (Foo 1 2 (Bar 3 4) :: Foo Double)
+        ]
 
-  let writeFile' path txt = do
+      writeFile' path txt = do
         putStrLn $ "writing " ++ show path ++ "..."
         writeFile path txt
 
@@ -75,7 +83,7 @@ main = do
       action = do
         writeFile' sourceName source
         writeFile' headerName header
-        myRunProcess "gcc" [name ++ ".c", "-lm", "-o", binName]
+        myRunProcess "gcc" [sourceName, "-lm", "-o", binName]
         myRunProcess ("./" ++ binName) []
         putStrLn $ show binName ++ " ran successfully"
 
