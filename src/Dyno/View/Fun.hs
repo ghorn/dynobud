@@ -44,7 +44,7 @@ import Dyno.View.FunJac
 
 newtype MXFun (f :: * -> *) (g :: * -> *) = MXFun C.MXFunction
 newtype SXFun (f :: * -> *) (g :: * -> *) = SXFun C.SXFunction
-newtype Fun (f :: * -> *) (g :: * -> *) = Fun C.Function
+newtype Fun (f :: * -> *) (g :: * -> *) = Fun { unFun :: C.Function }
 
 instance Show (MXFun f g) where
   showsPrec k (MXFun f) = showsPrec k f

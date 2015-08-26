@@ -47,9 +47,9 @@ main = do
   let name = "my_awesome_function"
       opts =
         CExportOptions
-        { expand = True
-        , generateMain = True
+        { generateMain = True
         , exportName = name
+        , headerOverride = Nothing
         }
 
   (source0, header) <- exportCFunction' myfun opts

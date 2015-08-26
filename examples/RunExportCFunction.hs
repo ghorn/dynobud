@@ -40,10 +40,10 @@ main :: IO ()
 main = do
   let opts =
         CExportOptions
-        { expand = True
+        { exportName = "my_awesome_function"
+        , headerOverride = Nothing
         --, generateMain = False
         , generateMain = True
-        , exportName = "my_awesome_function"
         }
   (source, header) <- exportCFunction' myfun opts
 
