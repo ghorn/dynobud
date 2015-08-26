@@ -50,6 +50,8 @@ library
                        Dyno.View.Unsafe.M
                        Dyno.View.View
                        Dyno.View.Viewable
+                       Dyno.View.ExportCFunction
+                       Dyno.View.ExportCStruct
                        Dyno.Vectorize
                        Dyno.Nlp
                        Dyno.NlpScaling
@@ -82,7 +84,8 @@ library
                        process,
                        Plot-ho-matic >= 0.5.0.2,
                        generic-accessors >= 0.4.1,
-                       time
+                       time,
+                       directory
 --                       cplex
   hs-source-dirs:      src
   default-language:    Haskell2010
@@ -93,6 +96,19 @@ library
 flag examples
     description:    build the examples
     default:        False
+
+executable export-c-function
+  if flag(examples)
+    Buildable: True
+  else
+    Buildable: False
+  hs-source-dirs:      examples
+  main-is:             RunExportCFunction.hs
+  default-language:    Haskell2010
+  build-depends:       dynobud
+                       , base >=4.6 && < 5
+                       , generic-accessors
+  ghc-options:         -O2
 
 executable nlp-solver
   if flag(examples)
@@ -469,6 +485,18 @@ test-suite unit-tests
                        casadi-bindings,
                        hmatrix,
                        hmatrix-gsl,
+                       base >=4.6 && < 5
+  ghc-options:         -O2
+
+test-suite codegen-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      tests
+  main-is:             ExportFunctionTest.hs
+  default-language:    Haskell2010
+  build-depends:       dynobud,
+                       process,
+                       directory,
+                       generic-accessors,
                        base >=4.6 && < 5
   ghc-options:         -O2
 
