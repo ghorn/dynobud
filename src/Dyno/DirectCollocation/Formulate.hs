@@ -81,8 +81,8 @@ data CollProblem x z u p r o c h q qo po fp n deg =
 
 
 data QuadraturePlottingIn x z u p o q qo fp a =
-  -- x z u p fp o q qo t T
-  QuadraturePlottingIn (J x a) (J z a) (J u a) (J p a) (J o a) (J q a) (J qo a) (J fp a)
+  -- x0 xF x z u p fp o q qo t T
+  QuadraturePlottingIn (J x a) (J x a) (J x a) (J z a) (J u a) (J p a) (J o a) (J q a) (J qo a) (J fp a)
   (J (JV Id) a) (J (JV Id) a)
   deriving (Generic, Generic1)
 
@@ -237,8 +237,9 @@ makeCollProblem roots ocp ocpInputs guess = do
 
   let quadraturePlottingFun ::
         QuadraturePlottingIn (JV x) (JV z) (JV u) (JV p) (JV o) (JV q) (JV qo) (JV fp) SX -> J (JV po) SX
-      quadraturePlottingFun (QuadraturePlottingIn x z u p o q qo fp t tf) =
-        catJV' $ ocpPlotOutputs ocp (splitJV' x) (splitJV' z) (splitJV' u) (splitJV' p)
+      quadraturePlottingFun (QuadraturePlottingIn x0 xF x z u p o q qo fp t tf) =
+        catJV' $ ocpPlotOutputs ocp (splitJV' x0, splitJV' xF)
+        (splitJV' x) (splitJV' z) (splitJV' u) (splitJV' p)
         (splitJV' o) (splitJV' q) (splitJV' qo) (splitJV' fp)
         (unId (splitJV' t)) (unId (splitJV' tf))
   quadPlotFunSX <- toSXFun "quadPlotFun" quadraturePlottingFun
@@ -420,7 +421,8 @@ toCallbacks n roots taus outputFun pathStageConFun lagQuadFun quadFun quadOutFun
             )
     f o' x' h' po' q q' = (d2v o', d2v x', d2v h', d2v po', q, q')
 
-    callOutputFun :: J (JV p) (Vector Double)
+    callOutputFun :: (J (JV x) DMatrix, J (JV x) DMatrix)
+                     -> J (JV p) (Vector Double)
                      -> J (JV fp) (Vector Double)
                      -> J (JV Id) (Vector Double)
                      -> J (JV Id) DMatrix
@@ -431,7 +433,7 @@ toCallbacks n roots taus outputFun pathStageConFun lagQuadFun quadFun quadOutFun
                      -> IO ( StageOutputs x o h q qo po deg Double
                            , Quadratures q qo Double
                            )
-    callOutputFun p fp h tf previousQuadratures (stage, k) = do
+    callOutputFun (x0,xF) p fp h tf previousQuadratures (stage, k) = do
       let p' = v2d p
           fp' = v2d fp
           stage' = v2d stage
@@ -481,7 +483,7 @@ toCallbacks n roots taus outputFun pathStageConFun lagQuadFun quadFun quadOutFun
             where
               toXzu (CollPoint x z u) = (x, z, u)
               CollStage _ xzus = split stage'
-          toQuadPlotIn x z u o q qo t = QuadraturePlottingIn x z u p' o q qo fp' t tf
+          toQuadPlotIn x z u o q qo t = QuadraturePlottingIn x0 xF x z u p' o q qo fp' t tf
 
       pos <- T.mapM (eval quadPlotFun) quadPlotInputs
 
@@ -500,7 +502,7 @@ toCallbacks n roots taus outputFun pathStageConFun lagQuadFun quadFun quadOutFun
                           , Quadratures q qo Double
                           )
     mapOutputFun ct fp = do
-      let CollTraj tf p stages _ = split ct
+      let CollTraj tf p stages xF = split ct
           h = catJV $ Id (tf' / fromIntegral n)
             where
               Id tf' = splitJV tf
@@ -510,9 +512,10 @@ toCallbacks n roots taus outputFun pathStageConFun lagQuadFun quadFun quadOutFun
           ks :: Vec n (J (JV Id) (Vector Double))
           ks = TV.mkVec' $ map (catJV . Id . realToFrac) (take n [(0::Int)..])
 
+          CollStage x0 _ = split (TV.tvhead vstages)
           quadratures0 :: Quadratures q qo Double
           quadratures0 = fill 0
-      mapAccumM (callOutputFun p fp h (v2d tf)) quadratures0 (TV.tvzip vstages ks)
+      mapAccumM (callOutputFun (v2d x0, v2d xF) p fp h (v2d tf)) quadratures0 (TV.tvzip vstages ks)
 
     getHellaOutputs ::
       J (CollTraj x z u p n deg) (Vector Double)

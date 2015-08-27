@@ -69,7 +69,7 @@ toOcp simple =
      in (r, None)
   , ocpBc = \(Tuple x0 _) (Tuple xf _) _ _ _ _ ->SimpleBc x0 xf
   , ocpPathC = \_ _ _ _ _ _ _ -> None
-  , ocpPlotOutputs = \_ _ _ _ _ _ _ _ _ _ -> None
+  , ocpPlotOutputs = \_ _ _ _ _ _ _ _ _ _ _ -> None
   , ocpObjScale      = Nothing
   , ocpTScale        = Nothing
   , ocpXScale        = Nothing

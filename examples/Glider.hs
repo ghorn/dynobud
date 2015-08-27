@@ -79,7 +79,7 @@ ocp = OcpPhase { ocpMayer = mayer
                , ocpDae = dae
                , ocpBc = bc
                , ocpPathC = pathc
-               , ocpPlotOutputs = \_ _ _ _ _ _ _ _ _ _ -> None
+               , ocpPlotOutputs = \_ _ _ _ _ _ _ _ _ _ _ -> None
                , ocpObjScale      = Nothing
                , ocpTScale        = Nothing
                , ocpXScale        = Nothing
