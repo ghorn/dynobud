@@ -72,7 +72,7 @@ exportCFunction fun options = (source, header)
       , printf "#include \"%s\"" (fromMaybe (funName ++ ".h") (headerOverride options))
       , ""
       , printf "void %s(const %s* input, %s* output) {" funName fname gname
-      , "  evaluate(input, output);"
+      , "  evaluate((const double *)input, (double *)output);"
       , "}"
       ]
 

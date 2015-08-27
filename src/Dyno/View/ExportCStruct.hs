@@ -15,6 +15,7 @@ import qualified Control.Monad.State.Lazy as State
 import Data.List
 import qualified Data.Set as S
 import Text.Printf ( printf )
+import Text.Read ( readMaybe )
 
 import Accessors ( Lookup, AccessorTree(..), Getter(..), accessors )
 --import Dyno.Vectorize ( Vectorize, fill )
@@ -35,7 +36,6 @@ write str =
 
 typedefStruct :: String -> [(String, AccessorTree a)] -> State CStructExporter ()
 typedefStruct typeName fields = do
---  write $ "// " ++ typeName
   write "typedef struct {"
   mapM_ (uncurry writeCField) fields
   write $ "} " ++ typeName ++ ";"
@@ -52,17 +52,36 @@ typedefStructIfMissing typeName fields = do
     State.modify $
       \(CStructExporter (set, structs, _)) -> CStructExporter (set, structs, currentStack)
 
+parseVecName :: String -> Maybe Int
+parseVecName ('V':'e':'c':' ':k) = readMaybe k
+parseVecName _ = Nothing
+
 writeCField :: String -> AccessorTree a -> State CStructExporter ()
-writeCField fieldName (Data (typeName, _) fields) = do
-  typedefStructIfMissing typeName fields
-  write (printf "  %s %s;" typeName fieldName)
-writeCField fieldName (ATGetter (get,_)) = case get of
-  GetDouble _ -> write (printf "  double %s;" fieldName)
-  GetInt _    -> write (printf "  int64_t %s;" fieldName)
-  GetFloat _  -> write (printf "  float %s;" fieldName)
-  GetString _ -> error "writeCField: strings can't be struct fields :("
-  GetBool _   -> error "writeCField: bools can't be struct fields :("
-  GetSorry    -> error "writeCField: found a GetSorry (generic-accessors doesn't support a type)"
+writeCField fieldName (ATGetter (get,_)) =
+  write $ printf "  %s %s;" (primitiveName get) fieldName
+writeCField fieldName (Data (typeName, _) fields) = case parseVecName typeName of
+  Nothing -> do
+    typedefStructIfMissing typeName fields
+    write $ printf "  %s %s;" typeName fieldName
+  Just k -> do -- handle Vecs as arrays
+    childtype <- case fields of
+      [] -> error "writeCField: Vec child has no children"
+      ((_, ATGetter (get,_)):_) -> return (primitiveName get)
+      ((_, Data (typename,_) childfields):_) -> do
+        typedefStructIfMissing typename childfields
+        return typename
+    write $ printf "  %s %s[%d];" childtype fieldName k
+
+
+primitiveName :: Getter a -> String
+primitiveName (GetDouble _) = "double"
+primitiveName (GetInt _   ) = "int64_t"
+primitiveName (GetFloat _ ) = "float"
+primitiveName (GetString _) = error "writeCField: strings can't be struct fields :("
+primitiveName (GetBool _  ) = error "writeCField: bools can't be struct fields :("
+primitiveName GetSorry    =
+  error "writeCField: found a GetSorry (generic-accessors doesn't support a type)"
+
 
 
 -- | convenience function to export only one struct
