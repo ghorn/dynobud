@@ -78,7 +78,7 @@ rk4 f x0 u p t h =  x0 ^+^ h/6*^(k1 ^+^ 2 *^ k2 ^+^ 2 *^ k3 ^+^ k4)
       k1 = f x0 u p t
       k2 = f (x0 ^+^ h/2 *^ k1) u p (t+h/2)
       k3 = f (x0 ^+^ h/2 *^ k2) u p (t+h/2)
-      k4 = f (x0 ^+^ h *^ k2) u p (t+h)
+      k4 = f (x0 ^+^ h *^ k3) u p (t+h)
 
 simulate :: (Floating a, Additive x) => Int -> Ode x u p a -> x a -> u a -> p a -> a -> a -> x a
 simulate n ode x0' u p t h = xf
