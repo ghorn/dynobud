@@ -112,7 +112,7 @@ runIntegration _ _ roots ode x0 p tf = do
         , ocpFixedP = None
         }
   let guess :: J (CollTraj x None None p n deg) (Vector Double)
-      guess = cat $ makeGuessSim roots tf x0 (\x _ -> ode x p 0) (\_ _ -> None) p
+      guess = cat $ makeGuessSim roots tf x0 (\_ x _ -> ode x p 0) (\_ _ -> None) p
   cp  <- makeCollProblem roots ocp ocpInputs guess :: IO (CollProblem x None None p x None x None None None None None n deg)
   (msg, opt') <- solveNlp solver (cpNlp cp) Nothing
   return $ case msg of
