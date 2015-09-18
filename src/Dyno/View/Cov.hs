@@ -21,7 +21,7 @@ import Data.Vector ( Vector )
 import qualified Data.Vector as V
 import qualified Data.Sequence as Seq
 import System.IO.Unsafe ( unsafePerformIO )
-import qualified Data.Packed.Matrix as Mat
+import qualified Numeric.LinearAlgebra as Mat
 
 import qualified Casadi.Sparsity as Sparsity
 import Casadi.Slice ( slice' )

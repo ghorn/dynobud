@@ -17,8 +17,7 @@ import Data.Proxy ( Proxy(..) )
 import qualified Data.Binary as B
 import qualified Data.Serialize as S
 import qualified Data.Traversable as T
-import qualified Data.Packed.Matrix as Mat
-import qualified Numeric.LinearAlgebra ( ) -- for Eq Matrix
+import qualified Numeric.LinearAlgebra as Mat
 import qualified Data.Vector as V
 import GHC.Generics ( Generic )
 import System.IO.Unsafe ( unsafePerformIO )

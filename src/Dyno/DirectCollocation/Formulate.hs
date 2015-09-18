@@ -25,8 +25,7 @@ import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 import qualified Data.Foldable as F
 import qualified Data.Traversable as T
-import qualified Data.Packed.Matrix as Mat
-import qualified Numeric.LinearAlgebra.Algorithms as LA
+import qualified Numeric.LinearAlgebra as Mat
 import Linear hiding ( dot )
 import Prelude -- BBP workaround
 
@@ -759,7 +758,7 @@ toQuadratureFun n cijs interpolate' evalQuadDeriv (QuadratureStageIn collStage p
     cijMat = Mat.fromLists $ F.toList $ fmap F.toList cijs'
 
     cijInv' :: Mat.Matrix Double
-    cijInv' = LA.inv cijMat
+    cijInv' = Mat.inv cijMat
 
     cijInv :: Vec deg (Vec deg Double)
     cijInv = TV.mkVec' (map TV.mkVec' (Mat.toLists cijInv'))
@@ -829,7 +828,7 @@ genericQuadraturesFunction interpolate' cijs' n (qdots' :*: tf) =
     cijMat = Mat.fromLists $ F.toList $ fmap F.toList cijs
 
     cijInv' :: Mat.Matrix Double
-    cijInv' = LA.inv cijMat
+    cijInv' = Mat.inv cijMat
 
     cijInv :: Vec deg (Vec deg Double)
     cijInv = TV.mkVec' (map TV.mkVec' (Mat.toLists cijInv'))

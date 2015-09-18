@@ -60,8 +60,7 @@ import Data.Proxy ( Proxy(..) )
 import Casadi.CMatrix ( CMatrix )
 import Casadi.DMatrix ( DMatrix, dnonzeros, dsparsify )
 import qualified Casadi.CMatrix as CM
-import qualified Data.Packed.Matrix as HMat
-import qualified Numeric.LinearAlgebra.HMatrix as HMat
+import qualified Numeric.LinearAlgebra as HMat
 
 import Dyno.View.Unsafe.View ( unJ, mkJ )
 import Dyno.View.Unsafe.M ( M(UnsafeM), mkM, mkM', unM )
@@ -353,7 +352,7 @@ solve (UnsafeM x) (UnsafeM y) = mkM (CM.solve x y)
 toHMat :: forall n m
        . (View n, View m)
        => M n m DMatrix -> HMat.Matrix Double
-toHMat (UnsafeM d) = HMat.trans $ (m HMat.>< n) (V.toList v)
+toHMat (UnsafeM d) = HMat.tr' $ (m HMat.>< n) (V.toList v)
   where
     v = dnonzeros (CM.densify d)
     n = size (Proxy :: Proxy n)
