@@ -33,6 +33,7 @@ import Casadi.DMatrix ( DMatrix )
 import Casadi.MX ( MX )
 import Casadi.SX ( SX )
 
+import Dyno.Integrate ( InitialTime(..), TimeStep(..), rk45 )
 import Dyno.View.View ( View(..), J, jfill, JTuple(..), v2d, d2v )
 import qualified Dyno.View.M as M
 import Dyno.View.JV ( JV, splitJV, catJV, splitJV', catJV' )
@@ -985,8 +986,8 @@ makeGuessSim ::
   => QuadratureRoots
   -> Double
   -> x Double
-  -> (x Double -> u Double -> x Double)
-  -> (x Double -> Double -> u Double)
+  -> (Double -> x Double -> u Double -> x Double)
+  -> (Double -> x Double -> u Double)
   -> p Double
   -> CollTraj x z u p n deg (Vector Double)
 makeGuessSim quadratureRoots tf x00 ode guessU p =
@@ -1006,25 +1007,23 @@ makeGuessSim quadratureRoots tf x00 ode guessU p =
 
     stageGuess :: x Double -> Double
                   -> (x Double, J (CollStage (JV x) (JV z) (JV u) deg) (Vector Double))
-    stageGuess x0 t0 = (integrate 1, cat (CollStage (catJV x0) points))
+    stageGuess x0 t0 = (fst (integrate 1), cat (CollStage (catJV x0) points))
       where
         points = cat $ JVec $ fmap (toCollPoint . integrate) taus
-        u = guessU x0 t0
-        f x = ode x u
-        toCollPoint x = cat $ CollPoint (catJV x) (catJV (fill 0 :: z Double)) (catJV u)
-        integrate localTau = rk4 f (localTau * dt) x0
+        f :: Double -> x Double -> x Double
+        f t x = ode t x u
+          where
+            u = guessU t x
+        toCollPoint (x,u) = cat $ CollPoint (catJV x) (catJV (fill 0 :: z Double)) (catJV u)
+        integrate localTau = (x, u)
+          where
+            t = localTau * dt
+            x = rk45 f (InitialTime t0) (TimeStep t) x0
+            u = guessU t x
 
     -- the collocation points
     taus :: Vec deg Double
     taus = mkTaus quadratureRoots
-
-    rk4 :: (x Double -> x Double) -> Double -> x Double -> x Double
-    rk4 f h x0 = x0 ^+^ ((k1 ^+^ (2 *^ k2) ^+^ (2 *^ k3) ^+^ k4) ^/ 6)
-      where
-        k1 = (f  x0)            ^* h
-        k2 = (f (x0 ^+^ (k1^/2))) ^* h
-        k3 = (f (x0 ^+^ (k2^/2))) ^* h
-        k4 = (f (x0 ^+^ k3))    ^* h
 
 
 -- http://stackoverflow.com/questions/11652809/how-to-implement-mapaccumm
