@@ -81,7 +81,7 @@ library
                        distributive,
                        process,
                        Plot-ho-matic >= 0.5.0.2,
-                       generic-accessors >= 0.4.1,
+                       generic-accessors >= 0.4.2.0,
                        time,
                        directory
 --                       cplex
