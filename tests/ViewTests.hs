@@ -13,6 +13,7 @@ module ViewTests
 
 import GHC.Generics ( Generic1 )
 
+import qualified Data.Map as M
 import Data.Proxy ( Proxy(..) )
 import qualified Data.Binary as B
 import qualified Data.Serialize as S
@@ -27,7 +28,6 @@ import Test.Framework.Providers.QuickCheck2 ( testProperty )
 
 import Casadi.Function ( evalDMatrix )
 import Casadi.MXFunction ( mxFunction )
-import Casadi.SharedObject ( soInit )
 import Casadi.CMatrix ( CMatrix )
 import Casadi.DMatrix ( DMatrix )
 import Casadi.MX ( MX )
@@ -105,8 +105,7 @@ instance (Arbitrary a, Dim n) => Arbitrary (Vec n a) where
 
 evalMX :: MX -> DMatrix
 evalMX x = unsafePerformIO $ do
-  f <- mxFunction V.empty (V.singleton x)
-  soInit f
+  f <- mxFunction "evalMX" V.empty (V.singleton x) M.empty
   ret <- evalDMatrix f V.empty
   return (V.head ret)
 

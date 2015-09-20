@@ -109,13 +109,13 @@ module Dyno.LagrangePolynomials
        , interpolate
        ) where
 
+import qualified Data.Map as M
 import qualified Data.Foldable as F
 import qualified Data.Vector as V
 import Linear ( Additive, (^*), sumV )
 
 import Casadi.SXFunction ( sxFunction )
 import Casadi.Function ( evalDMatrix )
-import Casadi.SharedObject ( soInit )
 import Casadi.SX ( SX, ssym, sgradient )
 import Casadi.DMatrix ( DMatrix, dnonzeros )
 import Casadi.CMatrix ( densify )
@@ -285,8 +285,7 @@ runComparison = do
       zs = map (lagrangeXis taus tau) [0..deg]
       inputs = tau : taus
       zdot = map (`sgradient` tau) zs
-  zdotAlg <- sxFunction (V.fromList inputs) (V.fromList zdot)
-  soInit zdotAlg
+  zdotAlg <- sxFunction "zdotAlg" (V.fromList inputs) (V.fromList zdot) M.empty
 
   --mapM_ print zdot'
   

@@ -16,21 +16,20 @@ import qualified Data.Vector as V
 --import qualified Numeric.LinearAlgebra.HMatrix as HMat
 import Text.Printf ( printf )
 
-import Casadi.Sparsity ( getRow, getCol )
-import Casadi.SX ( SX )
-import Casadi.DMatrix ( DMatrix, dnonzeros )
 import qualified Casadi.CMatrix as CM
+import Casadi.DMatrix ( DMatrix, dnonzeros )
+import Casadi.MX ( MX )
+import Casadi.Sparsity ( getRow, getCol )
 
+import Dyno.View.JV ( JV, splitJV )
+import Dyno.View.M ( M )
+import qualified Dyno.View.M as M
+import Dyno.Nlp ( KKT(..), Nlp(..) )
 import Dyno.View.Unsafe.View ( mkJ, unJ )
 import Dyno.View.Unsafe.M ( unM )
-
 import Dyno.Vectorize ( Id(..) )
-import Dyno.Nlp ( KKT(..), Nlp(..) )
 import Dyno.View.View ( View(..), J, JNone(..), v2d, d2v, jfill)
 import Dyno.View.Viewable ( Viewable )
-import qualified Dyno.View.M as M
-import Dyno.View.M ( M )
-import Dyno.View.JV ( JV, splitJV )
 
 
 toSparse :: (View f, View g) => String -> M f g DMatrix -> [(Int,Int,Double)]
@@ -173,7 +172,8 @@ toSum rowVec colVec (rowi,colj,value)
 scalingNlp ::
  forall x g sdv
  . (View x, View g, View sdv)
- => KKT x g -> (J sdv SX -> (J (JV Id) SX, J x SX, J g SX)) -> Nlp sdv JNone JNone SX
+ => KKT x g -> (J sdv MX -> (J (JV Id) MX, J x MX, J g MX))
+ -> Nlp sdv JNone JNone MX
 scalingNlp kkt expand =
   Nlp
   { nlpBX = jfill (Nothing, Nothing)
@@ -188,7 +188,7 @@ scalingNlp kkt expand =
   , nlpFG = fg
   }
   where
-    fg :: J sdv SX -> J JNone SX -> (J (JV Id) SX, J JNone SX)
+    fg :: J sdv MX -> J JNone MX -> (J (JV Id) MX, J JNone MX)
     fg sdvs _ = (obj, cat JNone)
       where
         obj = toObjective $ toLogScaling kkt expand sdvs

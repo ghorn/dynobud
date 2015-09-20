@@ -46,7 +46,6 @@ library
                        Dyno.View.JVec
                        Dyno.View.M
                        Dyno.View.Scheme
-                       Dyno.View.Symbolic
                        Dyno.View.Unsafe.View
                        Dyno.View.Unsafe.M
                        Dyno.View.View
@@ -64,8 +63,8 @@ library
   other-modules:
 
   build-depends:       base >=4.6 && < 5,
-                       casadi-bindings-core >= 2.3.0.0,
-                       casadi-bindings >= 2.3.0.0,
+                       casadi-bindings-core >= 2.4.0.0,
+                       casadi-bindings >= 2.4.0.0,
 --                       casadi-bindings-internal,
                        jacobi-roots >=0.2 && <0.3,
                        spatial-math >= 0.2.1.0,
@@ -465,6 +464,7 @@ test-suite unit-tests
                        test-framework,
                        test-framework-hunit,
                        test-framework-quickcheck2,
+                       containers,
                        vector,
                        linear,
                        binary,

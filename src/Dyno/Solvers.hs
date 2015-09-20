@@ -6,7 +6,7 @@ module Dyno.Solvers ( Solver(options, functionOptions, functionCall)
                     , getSolverInternal
                     ) where
 
-import Casadi.Core.Classes.Function ( Function )
+import Casadi.MXFunction ( MXFunction )
 import Casadi.Option ( Opt(..) )
 
 import Dyno.SolverInternal ( SolverInternal(..) )
@@ -15,7 +15,7 @@ data Solver =
   Solver
   { options :: [(String,Opt)]
   , functionOptions :: [(String, Opt)]
-  , functionCall :: Function -> IO ()
+  , functionCall :: MXFunction -> IO ()
   , solverInternal :: SolverInternal
   }
 

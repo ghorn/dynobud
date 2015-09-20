@@ -4,11 +4,15 @@
 
 module Dyno.View.Fun
        ( FunClass(..)
+       , AlwaysInline(..)
+       , NeverInline(..)
        , MXFun
        , SXFun
        , Fun(..)
        , toMXFun
+       , toMXFun'
        , toSXFun
+       , toSXFun'
        , eval
        , call
        , callSX
@@ -17,17 +21,18 @@ module Dyno.View.Fun
        ) where
 
 import Control.Monad ( zipWithM )
+import qualified Data.Map as M
 import Data.Proxy
 import qualified Data.Vector as V
 import Data.Vector ( Vector )
 
 import Casadi.MX ( symM )
 import Casadi.SX ( ssymM )
+import Casadi.Function ( AlwaysInline(..), NeverInline(..) )
 import qualified Casadi.Function as C
 import qualified Casadi.MXFunction as C
 import qualified Casadi.SXFunction as C
 import Casadi.Option
-import Casadi.SharedObject
 import Casadi.MX ( MX )
 import Casadi.SX ( SX )
 import Casadi.DMatrix ( DMatrix )
@@ -82,13 +87,20 @@ eval f' = fmap fromVector . C.evalDMatrix f . toVector
 
 -- | call a function on MX inputs, yielding MX outputs
 call :: (FunClass fun, Scheme f, Scheme g) => fun f g -> f MX -> g MX
-call f' = fromVector . C.callMX f . toVector
+call f x = call' f x (AlwaysInline False) (NeverInline False)
+
+-- | call a function on MX inputs, yielding MX outputs
+call' :: (FunClass fun, Scheme f, Scheme g)
+        => fun f g -> f MX -> AlwaysInline -> NeverInline -> g MX
+call' f' x ai ni = fromVector $ C.callMX f (toVector x) ai ni
   where
     Fun f = toFun f'
 
--- | call an SXFunction on symbolic inputs, getting symbolic outputs
+---- | call an SXFunction on symbolic inputs, getting symbolic outputs
 callSX :: (Scheme f, Scheme g) => SXFun f g -> f SX -> g SX
-callSX (SXFun sxf) = fromVector . C.callSX sxf . toVector
+callSX (SXFun sxf) x =
+  fromVector $
+  C.callSX sxf (toVector x) (AlwaysInline False) (NeverInline False)
 
 mkSym :: forall a f .
          (Scheme f, CMatrix a, Viewable a)
@@ -102,28 +114,50 @@ mkSym mk name _ = do
   ms <- zipWithM f sizes [(0::Int)..]
   return $ fromVector (V.fromList ms)
 
-mkFun :: forall f g fun fun' a
-         . (Scheme f, Scheme g, Viewable a, C.SharedObjectClass fun, C.OptionsFunctionalityClass fun)
-         => (Vector a -> Vector a -> IO fun)
-         -> (String -> Proxy f -> IO (f a))
-         -> (fun -> fun' f g)
-         -> String
-         -> (f a -> g a)
-         -> IO (fun' f g)
-mkFun mkfun mksym con name userf = do
+mkFun ::
+  forall f g fun fun' a
+  . ( Scheme f, Scheme g, Viewable a
+    , C.SharedObjectClass fun, C.OptionsFunctionalityClass fun
+    )
+  => (String -> Vector a -> Vector a -> M.Map String Opt -> IO fun)
+  -> (String -> Proxy f -> IO (f a))
+  -> (fun -> fun' f g)
+  -> String
+  -> (f a -> g a)
+  -> M.Map String Opt
+  -> IO (fun' f g)
+mkFun mkfun mksym con name userf opts = do
   inputs <- mksym "x" (Proxy :: Proxy f)
-  fun <- mkfun (toVector inputs) (toVector (userf inputs))
-  setOption fun "name" name
-  soInit fun
+  fun <- mkfun name (toVector inputs) (toVector (userf inputs)) opts
   return (con fun)
 
--- | make an MXFunction
-toMXFun :: forall f g . (Scheme f, Scheme g) => String -> (f MX -> g MX) -> IO (MXFun f g)
-toMXFun name fun = mkFun C.mxFunction (mkSym symM) MXFun name fun
+-- | make an MXFunction with name
+toMXFun :: forall f g
+           . (Scheme f, Scheme g)
+           => String -> (f MX -> g MX)
+           -> IO (MXFun f g)
+toMXFun n f = toMXFun' n f M.empty
 
--- | make an MXFunction
-toSXFun :: forall f g . (Scheme f, Scheme g) => String -> (f SX -> g SX) -> IO (SXFun f g)
-toSXFun name fun = mkFun C.sxFunction (mkSym ssymM) SXFun name fun
+-- | make an MXFunction with name and options
+toMXFun' :: forall f g
+           . (Scheme f, Scheme g)
+           => String -> (f MX -> g MX) -> M.Map String Opt
+           -> IO (MXFun f g)
+toMXFun' = mkFun C.mxFunction (mkSym symM) MXFun
+
+-- | make an SXFunction with name
+toSXFun :: forall f g
+           . (Scheme f, Scheme g)
+           => String -> (f SX -> g SX)
+           -> IO (SXFun f g)
+toSXFun n f = toSXFun' n f M.empty
+
+-- | make an SXFunction with name and options
+toSXFun' :: forall f g
+           . (Scheme f, Scheme g)
+           => String -> (f SX -> g SX) -> M.Map String Opt
+           -> IO (SXFun f g)
+toSXFun' = mkFun C.sxFunction (mkSym ssymM) SXFun
 
 -- | expand an MXFunction
 expandMXFun :: MXFun f g -> IO (SXFun f g)
@@ -138,15 +172,9 @@ toFunJac ::
   fun (JacIn xj x) (JacOut fj f) -> IO (fun (JacIn xj x) (Jac xj fj f))
 toFunJac fun0 = do
   let Fun fun = toFun fun0
-  maybeName <- getOption fun "name"
-  let name = case maybeName of Nothing -> "no_name"
-                               Just n -> n
-  let compact = False
+      compact = False
       symmetric = False
   funJac <- C.jacobian fun 0 0 compact symmetric
-  setOption funJac "name" (name ++ "_dynobudJac")
-  soInit funJac
-
   fromFun (Fun funJac)
 
 

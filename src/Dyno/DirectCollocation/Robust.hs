@@ -361,8 +361,8 @@ sensitivityStageFunction dynStageConJac
     -- TODO: this should be much simpler for radau
 
     -- TODO: check these next 4 lines
-    dsxz_dsx0 = - (M.solve df_dsxz df_dsx0) :: M (JVec deg (JTuple sx sz)) sx MX
-    dsxz_dsw0 = - (M.solve df_dsxz df_dsw0) :: M (JVec deg (JTuple sx sz)) sw MX
+    dsxz_dsx0 = - (M.solve' df_dsxz df_dsx0) :: M (JVec deg (JTuple sx sz)) sx MX
+    dsxz_dsw0 = - (M.solve' df_dsxz df_dsw0) :: M (JVec deg (JTuple sx sz)) sw MX
 
     dsx1_dsx0 = dg_dsx0 + dg_dsxz `M.mm` dsxz_dsx0 :: M sx sx MX
     dsx1_dsw0 = dg_dsw0 + dg_dsxz `M.mm` dsxz_dsw0 :: M sx sw MX

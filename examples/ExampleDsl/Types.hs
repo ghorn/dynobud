@@ -20,7 +20,7 @@ import qualified Data.Sequence as S
 import qualified Data.Map as M
 import Control.Lens
 
-import Casadi.SX ( SX )
+import Casadi.MX ( MX )
 import Dyno.View.View ( J )
 import Dyno.View.JV ( JV )
 import Dyno.Vectorize ( Id )
@@ -32,59 +32,59 @@ data Constraint a = Eq2 a a
 data Objective a = ObjectiveUnset | Objective a
 data HomotopyParam a = HomotopyParamUnset | HomotopyParam a
 
-type SXElement = J (JV Id) SX
+type MXElement = J (JV Id) MX
 
 data NlpMonadState =
   NlpMonadState
-  { nlpX :: S.Seq (String, SXElement)
+  { nlpX :: S.Seq (String, MXElement)
   , nlpXSet :: HS.HashSet String
-  , nlpConstraints :: S.Seq (Constraint SXElement)
-  , nlpObj :: Objective SXElement
-  , nlpHomoParam :: HomotopyParam SXElement
+  , nlpConstraints :: S.Seq (Constraint MXElement)
+  , nlpObj :: Objective MXElement
+  , nlpHomoParam :: HomotopyParam MXElement
   }
 
-data OcpState = OcpState { ocpPathConstraints :: S.Seq (Constraint SXElement)
-                         , ocpLagrangeObj :: Objective SXElement
-                         , ocpHomoParam :: HomotopyParam SXElement
+data OcpState = OcpState { ocpPathConstraints :: S.Seq (Constraint MXElement)
+                         , ocpLagrangeObj :: Objective MXElement
+                         , ocpHomoParam :: HomotopyParam MXElement
                          }
 
-data DaeState = DaeState { _daeXDot :: S.Seq (String, SXElement)
-                         , _daeX :: S.Seq (String, SXElement)
-                         , _daeZ :: S.Seq (String, SXElement)
-                         , _daeU :: S.Seq (String, SXElement)
-                         , _daeP :: S.Seq (String, SXElement)
-                         , _daeO :: M.Map String SXElement
+data DaeState = DaeState { _daeXDot :: S.Seq (String, MXElement)
+                         , _daeX :: S.Seq (String, MXElement)
+                         , _daeZ :: S.Seq (String, MXElement)
+                         , _daeU :: S.Seq (String, MXElement)
+                         , _daeP :: S.Seq (String, MXElement)
+                         , _daeO :: M.Map String MXElement
                          , daeNameSet :: HS.HashSet String
-                         , daeConstraints :: S.Seq (SXElement, SXElement)
+                         , daeConstraints :: S.Seq (MXElement, MXElement)
                          }
 
 --makeLenses ''DaeState
-daeXDot :: Lens' DaeState (S.Seq (String, SXElement))
+daeXDot :: Lens' DaeState (S.Seq (String, MXElement))
 daeXDot f (DaeState xdot' x z u p o ss c) =
   (\xdot -> DaeState xdot x z u p o ss c) `fmap` f xdot'
 {-# INLINE daeXDot #-}
 
-daeX :: Lens' DaeState (S.Seq (String, SXElement))
+daeX :: Lens' DaeState (S.Seq (String, MXElement))
 daeX f (DaeState xdot x' z u p o ss c) =
   (\x -> DaeState xdot x z u p o ss c) `fmap` f x'
 {-# INLINE daeX #-}
 
-daeZ :: Lens' DaeState (S.Seq (String, SXElement))
+daeZ :: Lens' DaeState (S.Seq (String, MXElement))
 daeZ f (DaeState xdot x z' u p o ss c) =
   (\z -> DaeState xdot x z u p o ss c) `fmap` f z'
 {-# INLINE daeZ #-}
 
-daeU :: Lens' DaeState (S.Seq (String, SXElement))
+daeU :: Lens' DaeState (S.Seq (String, MXElement))
 daeU f (DaeState xdot x z u' p o ss c) =
   (\u -> DaeState xdot x z u p o ss c) `fmap` f u'
 {-# INLINE daeU #-}
 
-daeP :: Lens' DaeState (S.Seq (String, SXElement))
+daeP :: Lens' DaeState (S.Seq (String, MXElement))
 daeP f (DaeState xdot x z u p' o ss c) =
   (\p -> DaeState xdot x z u p o ss c) `fmap` f p'
 {-# INLINE daeP #-}
 
-daeO :: Lens' DaeState (M.Map String SXElement)
+daeO :: Lens' DaeState (M.Map String MXElement)
 daeO f (DaeState xdot x z u p o' ss c) =
   (\o -> DaeState xdot x z u p o ss c) `fmap` f o'
 {-# INLINE daeO #-}

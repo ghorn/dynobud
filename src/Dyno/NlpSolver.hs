@@ -52,27 +52,29 @@ module Dyno.NlpSolver
        , evalScaledKKT
          -- * options
        , Op.Opt(..)
-       , setOption
-       , reinit
          -- * other
        , MonadIO
        , liftIO
        , generateAndCompile
        ) where
 
-import Text.Printf ( printf )
-import Data.Time.Clock ( getCurrentTime, diffUTCTime )
-import Data.Proxy ( Proxy(..) )
-import System.Process ( callProcess, showCommandForUser )
 import Control.Exception ( AsyncException( UserInterrupt ), try )
 import Control.Concurrent ( forkIO, newEmptyMVar, takeMVar, putMVar )
 import qualified Control.Applicative as A
 import Control.Monad ( when, void )
 import "mtl" Control.Monad.Reader ( MonadIO(..), MonadReader(..), ReaderT(..) )
-import Data.Maybe ( fromMaybe )
 import Data.IORef ( newIORef, readIORef, writeIORef )
+import qualified Data.Map as M
+import Data.Maybe ( fromMaybe )
+import Data.Proxy ( Proxy(..) )
+import qualified Data.Traversable as T
+import Data.Time.Clock ( getCurrentTime, diffUTCTime )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
+import Foreign.C.Types ( CInt )
+
+import System.Process ( callProcess, showCommandForUser )
+import Text.Printf ( printf )
 
 import Casadi.Core.Enums ( InputOutputScheme(..) )
 import qualified Casadi.Core.Classes.Function as C
@@ -81,29 +83,28 @@ import qualified Casadi.Core.Classes.GenericType as C
 import qualified Casadi.Core.Classes.IOInterfaceFunction as C
 
 import Casadi.Callback ( makeCallback )
-import Casadi.DMatrix ( DMatrix, dnonzeros )
-import Casadi.Function ( Function, externalFunction, generateCode )
-import qualified Casadi.Option as Op
-import qualified Casadi.GenericC as Gen
-import Casadi.SharedObject ( soInit )
 import Casadi.CMatrix ( CMatrix )
 import qualified Casadi.CMatrix as CM
-
-import Dyno.View.Unsafe.View ( unJ, mkJ )
-import Dyno.View.Unsafe.M ( mkM )
+import Casadi.DMatrix ( DMatrix, dnonzeros )
+import Casadi.Function ( Function, externalFunction, generateCode )
+import Casadi.IOScheme ( mxFunctionWithSchemes )
+import Casadi.MX ( MX, symV )
+import qualified Casadi.Option as Op
+import qualified Casadi.GenericC as Gen
 
 import Dyno.FormatTime ( formatSeconds )
+import qualified Dyno.View.M as M
+import Dyno.Nlp ( NlpOut(..), KKT(..) )
+import Dyno.NlpScaling ( ScaleFuns(..), scaledFG, mkScaleFuns )
+import Dyno.SolverInternal ( SolverInternal(..) )
+import Dyno.Solvers ( Solver(..), getSolverInternal )
 import Dyno.Vectorize ( Id(..) )
 import Dyno.View.JV ( JV )
 import Dyno.View.View ( View(..), J, fmapJ, d2v, v2d, jfill )
 import Dyno.View.M ( M )
-import qualified Dyno.View.M as M
-import Dyno.View.Symbolic ( Symbolic, sym, mkScheme, mkFunction )
+import Dyno.View.Unsafe.View ( unJ, mkJ )
+import Dyno.View.Unsafe.M ( mkM )
 import Dyno.View.Viewable ( Viewable )
-import Dyno.Nlp ( NlpOut(..), KKT(..) )
-import Dyno.NlpScaling ( ScaleFuns(..), scaledFG, mkScaleFuns )
-import Dyno.Solvers ( Solver(..), getSolverInternal )
-import Dyno.SolverInternal ( SolverInternal(..) )
 
 type VD a = J a (Vector Double)
 type VMD a = J a (Vector (Maybe Double))
@@ -180,7 +181,7 @@ getInput ::
   -> String -> NlpSolver x p g (J xg (Vector Double))
 getInput scaleFun name = do
   nlpState <- ask
-  dmat <- liftIO $ C.ioInterfaceFunction_input__0 (isSolver nlpState) name
+  dmat <- liftIO $ C.ioInterfaceFunction_getInput__0 (isSolver nlpState) name
   let scale = scaleFun (isScale nlpState)
   return (mkJ $ dnonzeros $ unJ $ scale (mkJ dmat))
 
@@ -214,7 +215,7 @@ getOutput ::
   -> String -> NlpSolver x p g (J xg (Vector Double))
 getOutput scaleFun name = do
   nlpState <- ask
-  dmat <- liftIO $ C.ioInterfaceFunction_output__0 (isSolver nlpState) name
+  dmat <- liftIO $ C.ioInterfaceFunction_getOutput__0 (isSolver nlpState) name
   let scale = scaleFun (isScale nlpState)
   return (mkJ $ dnonzeros $ unJ $ scale (mkJ dmat))
 
@@ -247,8 +248,8 @@ evalScaledGradF = do
     C.ioInterfaceFunction_setInput__0 gradF (unJ (v2d x0bar)) "x"
     C.ioInterfaceFunction_setInput__0 gradF (unJ (v2d pbar)) "p"
     C.function_evaluate gradF
-    gradF' <- C.ioInterfaceFunction_output__0 gradF "grad"
-    f' <- C.ioInterfaceFunction_output__0 gradF "f"
+    gradF' <- C.ioInterfaceFunction_getOutput__0 gradF "grad"
+    f' <- C.ioInterfaceFunction_getOutput__0 gradF "f"
     return (mkJ gradF', mkJ f')
 
 evalGradF :: forall x p g . (View x, View g, View p)
@@ -275,8 +276,8 @@ evalScaledJacG = do
     C.ioInterfaceFunction_setInput__0 jacG (unJ (v2d x0bar)) "x"
     C.ioInterfaceFunction_setInput__0 jacG (unJ (v2d pbar)) "p"
     C.function_evaluate jacG
-    jacG' <- C.ioInterfaceFunction_output__0 jacG "jac"
-    g' <- C.ioInterfaceFunction_output__0 jacG "g"
+    jacG' <- C.ioInterfaceFunction_getOutput__0 jacG "jac"
+    g' <- C.ioInterfaceFunction_getOutput__0 jacG "g"
     return (mkM jacG', mkJ g')
 
 evalJacG :: forall x p g . (View x, View g, View p)
@@ -304,7 +305,7 @@ evalScaledHessLag = do
     C.ioInterfaceFunction_setInput__0 hessLag (unJ (v2d lamGbar)) "lam_g"
     C.ioInterfaceFunction_setInput__0 hessLag 1.0 "lam_f"
     C.function_evaluate hessLag
-    hess' <- C.ioInterfaceFunction_output__0 hessLag "hess"
+    hess' <- C.ioInterfaceFunction_getOutput__0 hessLag "hess"
     return (mkM hess')
 
 -- | only valid at the solution
@@ -332,7 +333,7 @@ evalScaledHessF = do
     C.ioInterfaceFunction_setInput__0 hessLag (unJ (v2d lamGbar)) "lam_g"
     C.ioInterfaceFunction_setInput__0 hessLag 1.0 "lam_f"
     C.function_evaluate hessLag
-    hess' <- C.ioInterfaceFunction_output__0 hessLag "hess"
+    hess' <- C.ioInterfaceFunction_getOutput__0 hessLag "hess"
     return (mkM hess')
 
 evalHessF :: forall x p g . (View x, View g, View p)
@@ -359,7 +360,7 @@ evalScaledHessLambdaG = do
     C.ioInterfaceFunction_setInput__0 hessLag (unJ (v2d lamGbar)) "lam_g"
     C.ioInterfaceFunction_setInput__0 hessLag 0.0 "lam_f"
     C.function_evaluate hessLag
-    hess' <- C.ioInterfaceFunction_output__0 hessLag "hess"
+    hess' <- C.ioInterfaceFunction_getOutput__0 hessLag "hess"
     return (mkM hess')
 
 
@@ -411,19 +412,6 @@ evalScaledKKT = do
     , kktHessLambdaG = hessLambdaG
     }
 
-
-setOption :: Gen.GenericC a => String -> a -> NlpSolver x p g ()
-setOption name val = do
-  nlpState <- ask
-  let nlp = isSolver nlpState
-  liftIO $ Op.setOption nlp name val
-
-
-reinit :: NlpSolver x p g ()
-reinit = do
-  nlpState <- ask
-  let nlp = isSolver nlpState
-  liftIO $ soInit nlp
 
 -- | solve with current inputs, return success or failure code
 solve :: NlpSolver x p g (Either String String)
@@ -503,13 +491,13 @@ newtype NlpSolver (x :: * -> *) (p :: * -> *) (g :: * -> *) a =
 generateAndCompile :: String -> Function -> IO Function
 generateAndCompile name f = do
   putStrLn $ "generating " ++ name ++ ".c"
-  writeFile (name ++ ".c") (generateCode f True)
---  C.function_generateCode__1 f (name ++ ".c") True
+  let opts = M.fromList [("generate_main", Op.Opt True)]
+  writeFile (name ++ ".c") (generateCode f opts)
   let cmd = "clang"
       args = ["-fPIC","-shared","-Wall","-Wno-unused-variable",name++".c","-o",name++".so"]
   putStrLn (showCommandForUser cmd args)
   callProcess cmd args
-  externalFunction ("./"++name++".so")
+  externalFunction ("./"++name++".so") M.empty
 
 data RunNlpOptions =
   RunNlpOptions
@@ -523,10 +511,10 @@ defaultRunnerOptions =
   }
 
 runNlpSolver ::
-  forall x p g a s .
-  (View x, View p, View g, Symbolic s)
+  forall x p g a .
+  (View x, View p, View g)
   => Solver
-  -> (J x s -> J p s -> (J (JV Id) s, J g s))
+  -> (J x MX -> J p MX -> (J (JV Id) MX, J g MX))
   -> Maybe (J x (Vector Double))
   -> Maybe (J g (Vector Double))
   -> Maybe Double
@@ -536,11 +524,11 @@ runNlpSolver ::
 runNlpSolver = runNlpSolverWith defaultRunnerOptions
 
 runNlpSolverWith ::
-  forall x p g a s .
-  (View x, View p, View g, Symbolic s)
+  forall x p g a .
+  (View x, View p, View g)
   => RunNlpOptions
   -> Solver
-  -> (J x s -> J p s -> (J (JV Id) s, J g s))
+  -> (J x MX -> J p MX -> (J (JV Id) MX, J g MX))
   -> Maybe (J x (Vector Double))
   -> Maybe (J g (Vector Double))
   -> Maybe Double
@@ -548,31 +536,29 @@ runNlpSolverWith ::
   -> NlpSolver x p g a
   -> IO a
 runNlpSolverWith runnerOptions solverStuff nlpFun scaleX scaleG scaleF callback' (NlpSolver nlpMonad) = do
-  inputsX <- sym "x"
-  inputsP <- sym "p"
+  inputsX <- mkJ <$> symV "x" (size (Proxy :: Proxy x))
+  inputsP <- mkJ <$> symV "p" (size (Proxy :: Proxy p))
 
   let scale :: forall sfa . (CMatrix sfa, Viewable sfa) => ScaleFuns x g sfa
       scale = mkScaleFuns scaleX scaleG scaleF
 
-  let (obj, g) = scaledFG scale nlpFun inputsX inputsP
+      (obj, g) = scaledFG scale nlpFun inputsX inputsP
 
-  let inputsXMat = unJ inputsX
+      inputsXMat = unJ inputsX
       inputsPMat = unJ inputsP
       objMat     = unJ obj
       gMat       = unJ g
 
-  inputScheme <- mkScheme SCHEME_NLPInput [("x", inputsXMat), ("p", inputsPMat)]
-  outputScheme <- mkScheme SCHEME_NLPOutput [("f", objMat), ("g", gMat)]
-
   when (verbose runnerOptions) $ do
     putStrLn "************** initializing dynobud runNlpSolver ******************"
     putStrLn "making nlp..."
-  (nlp, nlpTime) <- timeIt $ mkFunction "nlp" inputScheme outputScheme
-  when (verbose runnerOptions) $ printf "made nlp in %s\n" (formatSeconds nlpTime)
-  mapM_ (\(l,Op.Opt o) -> Op.setOption nlp l o) (functionOptions solverStuff)
-  when (verbose runnerOptions) $ putStrLn "init nlp..."
-  (_, nlpInitTime) <- timeIt $ soInit nlp
-  when (verbose runnerOptions) $ printf "nlp initialized in %s\n" (formatSeconds nlpInitTime)
+
+  (nlp, nlpTime) <- timeIt $ mxFunctionWithSchemes "nlp"
+    (SCHEME_NLPInput, M.fromList [("x", inputsXMat), ("p", inputsPMat)])
+    (SCHEME_NLPOutput, M.fromList [("f", objMat), ("g", gMat)])
+    (M.fromList (functionOptions solverStuff))
+  when (verbose runnerOptions) $ printf "nlp initialized in %s\n"
+    (formatSeconds nlpTime)
 
   when (verbose runnerOptions) $ putStrLn "function call..."
   -- in case the user wants to do something (like codegen?)
@@ -594,26 +580,40 @@ runNlpSolverWith runnerOptions solverStuff nlpFun scaleX scaleG scaleF callback'
 --  jac_sparsity <- C.function_jacSparsity nlp 0 1 True False
 --  C.sparsity_spyMatlab jac_sparsity "jac_sparsity_reorder.m"
 
-  when (verbose runnerOptions) $ putStrLn "create solver..."
-  (solver, solverCreateTime) <- timeIt $ C.nlpSolver__0 (solverName (getSolverInternal solverStuff)) nlp
-  when (verbose runnerOptions) $ printf "created solver in %s\n" (formatSeconds solverCreateTime)
-
   -- add callback if user provides it
+  when (verbose runnerOptions) $ putStrLn "create callback..."
   intref <- newIORef False
   paramRef <- newIORef (jfill 0)
-  let cb function' = do
+  let cb :: Function -> IO CInt
+      cb function' = do
         callbackRet <- case callback' of
           Nothing -> return True
           Just callback -> do
             xval <- fmap (d2v . xbarToX scale . mkJ . CM.densify) $
-                    C.ioInterfaceFunction_output__2 function' 0
+                    C.ioInterfaceFunction_getOutput__2 function' 0
             pval <- readIORef paramRef
             callback xval pval
         interrupt <- readIORef intref
         return $ if callbackRet && not interrupt then 0
                  else fromIntegral (solverInterruptCode (getSolverInternal solverStuff))
-  casadiCallback <- makeCallback cb >>= C.genericType__0
-  Op.setOption solver "iteration_callback" casadiCallback
+  casadiCallback <- makeCallback cb >>= C.genericType__1
+
+  -- make the solver
+  solverOptions <-
+    T.mapM Gen.mkGeneric $
+    M.fromList $
+    ("iteration_callback", Op.Opt casadiCallback)
+    : defaultSolverOptions (getSolverInternal solverStuff)
+    ++ options solverStuff
+  when (verbose runnerOptions) $ putStrLn "create solver..."
+  (solver, solverInitTime) <-
+    timeIt $ C.nlpSolver__5 "nlpSolver"
+    (solverName (getSolverInternal solverStuff)) (C.castFunction nlp)
+    solverOptions
+  when (verbose runnerOptions) $
+    printf "solver initialized in %s\n" (formatSeconds solverInitTime)
+
+
 --  grad_f <- gradient nlp 0 0
 --  soInit grad_f
 --  jac_g <- jacobian nlp 0 1 True False
@@ -635,12 +635,6 @@ runNlpSolverWith runnerOptions solverStuff nlpFun scaleX scaleG scaleF callback'
 --  Op.setOption solver "grad_f" grad_f'
 --  Op.setOption solver "jac_g" jac_g'
 
-  -- set all the user options
-  mapM_ (\(l,Op.Opt o) -> Op.setOption solver l o) (defaultSolverOptions (getSolverInternal solverStuff)
-                                                    ++ options solverStuff)
-  when (verbose runnerOptions) $ putStrLn "initialize solver..."
-  (_, solverInitTime) <- timeIt $ soInit solver
-  when (verbose runnerOptions) $ printf "solver initialized in %s\n" (formatSeconds solverInitTime)
 
   let proxy :: J f b -> Proxy f
       proxy = const Proxy
@@ -658,4 +652,3 @@ runNlpSolverWith runnerOptions solverStuff nlpFun scaleX scaleG scaleF callback'
   (ret, retTime) <- timeIt $ liftIO $ runReaderT nlpMonad nlpState
   when (verbose runnerOptions) $ printf "ran NLP monad in %s\n" (formatSeconds retTime)
   return ret
-

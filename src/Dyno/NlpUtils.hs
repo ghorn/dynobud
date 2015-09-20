@@ -22,7 +22,7 @@ import qualified Data.Vector as V
 import System.IO ( hFlush, stdout )
 import Text.Printf ( printf )
 
-import Casadi.SX ( SX )
+import Casadi.MX ( MX )
 import qualified Casadi.GenericC as Gen
 
 import Dyno.View.Unsafe.View ( unJ, mkJ )
@@ -30,7 +30,6 @@ import Dyno.View.Unsafe.View ( unJ, mkJ )
 import Dyno.Vectorize ( Vectorize(..), Id(..) )
 import Dyno.View.JV ( JV, catJV, catJV', splitJV, splitJV' )
 import Dyno.View.View ( View(..), J, JNone(..), unzipJ )
-import Dyno.View.Symbolic ( Symbolic )
 import Dyno.Nlp ( Nlp(..), NlpOut(..), Bounds )
 import Dyno.Solvers ( Solver )
 import Dyno.NlpSolver
@@ -63,11 +62,11 @@ data HomotopyParams =
 
 -- | solve a homotopy nlp
 solveNlpHomotopy ::
-  forall x p g t a .
-  (View x, View p, View g, T.Traversable t, Symbolic a)
+  forall x p g t .
+  (View x, View p, View g, T.Traversable t)
   => Double -> HomotopyParams
   -> Solver
-  -> Nlp x p g a -> t (J p (Vector Double))
+  -> Nlp x p g MX -> t (J p (Vector Double))
   -> Maybe (J x (Vector Double) -> J p (Vector Double) -> IO Bool)
   -> Maybe (J x (Vector Double) -> J p (Vector Double) -> Double -> IO ())
   -> IO (t (NlpOut x g (Vector Double)))
@@ -75,12 +74,12 @@ solveNlpHomotopy = solveNlpHomotopyWith defaultRunnerOptions
 
 -- | solve a homotopy nlp
 solveNlpHomotopyWith ::
-  forall x p g t a .
-  (View x, View p, View g, T.Traversable t, Symbolic a)
+  forall x p g t .
+  (View x, View p, View g, T.Traversable t)
   => RunNlpOptions
   -> Double -> HomotopyParams
   -> Solver
-  -> Nlp x p g a -> t (J p (Vector Double))
+  -> Nlp x p g MX -> t (J p (Vector Double))
   -> Maybe (J x (Vector Double) -> J p (Vector Double) -> IO Bool)
   -> Maybe (J x (Vector Double) -> J p (Vector Double) -> Double -> IO ())
   -> IO (t (NlpOut x g (Vector Double)))
@@ -88,7 +87,7 @@ solveNlpHomotopyWith options userStep hp
   solverStuff nlp pFs callback callbackP = do
   when ((reduction hp) >= 1) $ error $ "homotopy reduction factor " ++ show (reduction hp) ++ " >= 1"
   when ((increase hp)  <= 1) $ error $ "homotopy increase factor "  ++ show (increase hp)  ++ " <= 1"
-  let fg :: J x a -> J p a -> (J (JV Id) a, J g a)
+  let fg :: J x MX -> J p MX -> (J (JV Id) MX, J g MX)
       fg x p = nlpFG nlp x p
 
   runNlpSolverWith options solverStuff fg (nlpScaleX nlp) (nlpScaleG nlp) (nlpScaleF nlp) callback $ do
@@ -207,27 +206,30 @@ solveNlpV :: forall x g .
   -> Maybe (x Double -> IO Bool)
   -> IO (Either String (Double, x Double))
 solveNlpV solverStuff fg bx bg x0 cb = do
-  let nlp :: Nlp (JV x) JNone (JV g) SX
-      nlp = Nlp { nlpFG = \x' _ -> let _ = x' :: J (JV x) SX
-                                       x = splitJV' x' :: x (J (JV Id) SX)
-                                       (obj,g) = fg x :: (J (JV Id) SX, g (J (JV Id) SX))
-                                       --obj' = sxCatJV (Id obj) :: J (JV Id) SX
-                                       --g' = sxCatJV g :: J (JV g) SX
-                                   in (obj, catJV' g)
-                , nlpBX = catJV bx -- mkJ $ vectorize (nlpBX nlp) :: J (JV x) (V.Vector Bounds)
-                , nlpBG = catJV bg -- mkJ $ vectorize (nlpBG nlp) :: J (JV g) (V.Vector Bounds)
-                , nlpX0 = catJV x0 -- mkJ $ vectorize (nlpX0 nlp) :: J (JV x) (V.Vector Double)
-                , nlpP  = cat JNone -- mkJ $ vectorize (nlpP  nlp) :: J (JV p) (V.Vector Double)
-                , nlpLamX0 = Nothing --fmap (mkJ . vectorize) (nlpLamX0 nlp)
-                             -- :: Maybe (J (JV x) (V.Vector Double))
-                , nlpLamG0 = Nothing -- fmap (mkJ . vectorize) (nlpLamG0 nlp)
-                             -- :: Maybe (J (JV g) (V.Vector Double))
-                , nlpScaleF = Nothing -- nlpScaleF nlp
-                , nlpScaleX = Nothing -- fmap (mkJ . vectorize) (nlpScaleX nlp)
+  let nlp :: Nlp (JV x) JNone (JV g) MX
+      nlp =
+        Nlp
+        { nlpFG = \x' _ ->
+           let _ = x' :: J (JV x) MX
+               x = splitJV' x' :: x (J (JV Id) MX)
+               (obj,g) = fg x :: (J (JV Id) MX, g (J (JV Id) MX))
+               --obj' = sxCatJV (Id obj) :: J (JV Id) MX
+               --g' = sxCatJV g :: J (JV g) MX
+           in (obj, catJV' g)
+        , nlpBX = catJV bx -- mkJ $ vectorize (nlpBX nlp) :: J (JV x) (V.Vector Bounds)
+        , nlpBG = catJV bg -- mkJ $ vectorize (nlpBG nlp) :: J (JV g) (V.Vector Bounds)
+        , nlpX0 = catJV x0 -- mkJ $ vectorize (nlpX0 nlp) :: J (JV x) (V.Vector Double)
+        , nlpP  = cat JNone -- mkJ $ vectorize (nlpP  nlp) :: J (JV p) (V.Vector Double)
+        , nlpLamX0 = Nothing --fmap (mkJ . vectorize) (nlpLamX0 nlp)
                               -- :: Maybe (J (JV x) (V.Vector Double))
-                , nlpScaleG = Nothing -- fmap (mkJ . vectorize) (nlpScaleG nlp)
-                               -- :: Maybe (J (JV g) (V.Vector Double))
-                }
+        , nlpLamG0 = Nothing -- fmap (mkJ . vectorize) (nlpLamG0 nlp)
+                              -- :: Maybe (J (JV g) (V.Vector Double))
+        , nlpScaleF = Nothing -- nlpScaleF nlp
+        , nlpScaleX = Nothing -- fmap (mkJ . vectorize) (nlpScaleX nlp)
+                               -- :: Maybe (J (JV x) (V.Vector Double))
+        , nlpScaleG = Nothing -- fmap (mkJ . vectorize) (nlpScaleG nlp)
+                      -- :: Maybe (J (JV g) (V.Vector Double))
+        }
 
       callback :: Maybe (J (JV x) (Vector Double) -> J JNone (Vector Double) -> IO Bool)
       callback = case cb of
@@ -252,26 +254,26 @@ solveNlpV solverStuff fg bx bg x0 cb = do
 
 -- | convenience function to solve a pure Nlp
 solveNlp ::
-  (View x, View p, View g, Symbolic a)
+  (View x, View p, View g)
   => Solver
-  -> Nlp x p g a -> Maybe (J x (Vector Double) -> J p (Vector Double) -> IO Bool)
+  -> Nlp x p g MX -> Maybe (J x (Vector Double) -> J p (Vector Double) -> IO Bool)
   -> IO (Either String String, NlpOut x g (Vector Double))
 solveNlp solverStuff nlp callback =
   runNlp solverStuff nlp callback solve'
 
 -- | convenience function to solve a pure Nlp
 solveNlpWith ::
-  (View x, View p, View g, Symbolic a)
+  (View x, View p, View g)
   => RunNlpOptions
   -> Solver
-  -> Nlp x p g a -> Maybe (J x (Vector Double) -> J p (Vector Double) -> IO Bool)
+  -> Nlp x p g MX -> Maybe (J x (Vector Double) -> J p (Vector Double) -> IO Bool)
   -> IO (Either String String, NlpOut x g (Vector Double))
 solveNlpWith opts solverStuff nlp callback =
   runNlpWith opts solverStuff nlp callback solve'
 
 
 -- | set all inputs
-setNlpInputs :: (View x, View p, View g, Symbolic a) => Nlp x p g a -> NlpSolver x p g ()
+setNlpInputs :: (View x, View p, View g) => Nlp x p g MX -> NlpSolver x p g ()
 setNlpInputs nlp = do
   let (lbx,ubx) = unzipJ (nlpBX nlp)
       (lbg,ubg) = unzipJ (nlpBG nlp)
@@ -292,19 +294,19 @@ setNlpInputs nlp = do
 
 -- | set all inputs, handle scaling, and let the user run a NlpMonad
 runNlp ::
-  (View x, View p, View g, Symbolic a)
+  (View x, View p, View g)
   => Solver
-  -> Nlp x p g a -> Maybe (J x (Vector Double) -> J p (Vector Double) -> IO Bool)
+  -> Nlp x p g MX -> Maybe (J x (Vector Double) -> J p (Vector Double) -> IO Bool)
   -> NlpSolver x p g b
   -> IO b
 runNlp = runNlpWith defaultRunnerOptions
 
 -- | set all inputs, handle scaling, and let the user run a NlpMonad
 runNlpWith ::
-  (View x, View p, View g, Symbolic a)
+  (View x, View p, View g)
   => RunNlpOptions
   -> Solver
-  -> Nlp x p g a -> Maybe (J x (Vector Double) -> J p (Vector Double) -> IO Bool)
+  -> Nlp x p g MX -> Maybe (J x (Vector Double) -> J p (Vector Double) -> IO Bool)
   -> NlpSolver x p g b
   -> IO b
 runNlpWith options solverStuff nlp callback runMe =

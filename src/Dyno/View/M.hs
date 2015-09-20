@@ -47,6 +47,7 @@ module Dyno.View.M
        , unrow
        , uncol
        , solve
+       , solve'
        , toHMat
        , fromHMat
        , fromHMat'
@@ -55,16 +56,18 @@ module Dyno.View.M
        , rank
        ) where
 
-import qualified Data.Vector as V
 import Data.Proxy ( Proxy(..) )
+import qualified Data.Map as M
+import qualified Data.Vector as V
+import qualified Numeric.LinearAlgebra as HMat
+
+import Casadi.GenericC ( GenericType )
 import Casadi.CMatrix ( CMatrix )
 import Casadi.DMatrix ( DMatrix, dnonzeros, dsparsify )
 import qualified Casadi.CMatrix as CM
-import qualified Numeric.LinearAlgebra as HMat
 
 import Dyno.View.Unsafe.View ( unJ, mkJ )
 import Dyno.View.Unsafe.M ( M(UnsafeM), mkM, mkM', unM )
-
 import Dyno.Vectorize ( Vectorize(..), Id, fill, devectorize )
 import Dyno.TypeVecs ( Vec, Dim(..) )
 import Dyno.View.View ( View(..), J, JTuple, JTriple, JQuad )
@@ -346,8 +349,14 @@ unrow (UnsafeM x) = mkJ (CM.trans x)
 uncol :: (Viewable a, CMatrix a, View f) => M f (JV Id) a -> J f a
 uncol (UnsafeM x) = mkJ x
 
-solve :: (View g, View h, CMatrix a) => M f g a -> M f h a -> M g h a
-solve (UnsafeM x) (UnsafeM y) = mkM (CM.solve x y)
+solve :: (View g, View h, CMatrix a)
+         => M f g a -> M f h a -> String -> M.Map String GenericType
+         -> M g h a
+solve (UnsafeM x) (UnsafeM y) n options = mkM (CM.solve x y n options)
+
+solve' :: (View g, View h, CMatrix a) => M f g a -> M f h a -> M g h a
+solve' (UnsafeM x) (UnsafeM y) = mkM (CM.solve' x y)
+{-# DEPRECATED solve' "use the new solve, this one is going away" #-}
 
 toHMat :: forall n m
        . (View n, View m)

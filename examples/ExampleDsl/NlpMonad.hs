@@ -24,6 +24,7 @@ import "mtl" Control.Monad.Writer ( WriterT, MonadWriter, runWriterT )
 import qualified Data.Foldable as F
 import qualified Data.HashSet as HS
 import qualified Data.Sequence as S
+import qualified Data.Map.Lazy as LM
 import qualified Data.Map.Strict as M
 import Data.Sequence ( (|>) )
 import Data.Vector ( Vector )
@@ -31,10 +32,8 @@ import qualified Data.Vector as V
 import Linear.V ( Dim(..) )
 import Data.Proxy
 
-import Casadi.SharedObject ( soInit )
-import Casadi.MX ( MX )
-import Casadi.SX ( SX )
-import Casadi.SXFunction
+import Casadi.MX ( MX, sym )
+import Casadi.MXFunction
 import Casadi.Function
 import Casadi.CMatrix ( veccat )
 import qualified Casadi.CMatrix as CM
@@ -46,7 +45,6 @@ import Dyno.TypeVecs ( Vec )
 import Dyno.View.View ( View(..), JNone(..), jfill )
 import Dyno.View.JV ( JV )
 import Dyno.View.JVec ( JVec )
-import qualified Dyno.View.Symbolic as Sym
 import qualified Dyno.TypeVecs as TV
 import Dyno.Solvers ( Solver )
 import Dyno.NlpUtils ( solveNlp )
@@ -55,15 +53,15 @@ import Dyno.Nlp ( Nlp(..), NlpOut(..), Bounds)
 import ExampleDsl.LogsAndErrors
 import ExampleDsl.Types
 
-type SXElement = J (JV Id) SX
+type MXElement = J (JV Id) MX
 
-sxElementSym :: String -> IO SXElement
-sxElementSym = Sym.sym
+mxElementSym :: String -> IO MXElement
+mxElementSym name = mkJ <$> sym name
 
-sxElementToSX :: SXElement -> SX
-sxElementToSX (UnsafeJ x)
+mxElementToMX :: MXElement -> MX
+mxElementToMX (UnsafeJ x)
   | (1,1) == sizes' = x
-  | otherwise = error $ "sxElementToSX: got non-scalar of size " ++ show sizes'
+  | otherwise = error $ "mxElementToMX: got non-scalar of size " ++ show sizes'
   where
     sizes' = (CM.size1 x, CM.size2 x)
 
@@ -95,21 +93,21 @@ build = build' emptySymbolicNlp
       ((result,logs),state) <- flip runStateT nlp0 . runWriterT . runExceptT . runNlp $ builder
       return (result, logs, state)
 
-designVar :: String -> NlpMonad SXElement
+designVar :: String -> NlpMonad MXElement
 designVar name = do
   debug $ "adding design variable \""++name++"\""
   state0 <- get
   let map0 = nlpXSet state0
-  sym <- liftIO (sxElementSym name)
+  newSym <- liftIO (mxElementSym name)
   when (HS.member name map0) $ err $ name ++ " already in symbol map"
-  let state1 = state0 { nlpX = nlpX state0 |> (name, sym)
+  let state1 = state0 { nlpX = nlpX state0 |> (name, newSym)
                       , nlpXSet =  HS.insert name map0
                       }
   put state1
-  return sym
+  return newSym
 
 infix 4 ===
-(===) :: SXElement -> SXElement -> NlpMonad ()
+(===) :: MXElement -> MXElement -> NlpMonad ()
 (===) lhs rhs = do
   debug $ "adding equality constraint: "
 --    ++ withEllipse 30 (show lhs) ++ " == " ++ withEllipse 30 (show rhs)
@@ -117,7 +115,7 @@ infix 4 ===
   put $ state0 { nlpConstraints = nlpConstraints state0 |> Eq2 lhs rhs }
 
 infix 4 <==
-(<==) :: SXElement -> SXElement -> NlpMonad ()
+(<==) :: MXElement -> MXElement -> NlpMonad ()
 (<==) lhs rhs = do
   debug $ "adding inequality constraint: "
 --    ++ withEllipse 30 (show lhs) ++ " <= " ++ withEllipse 30 (show rhs)
@@ -125,14 +123,14 @@ infix 4 <==
   put $ state0 { nlpConstraints = nlpConstraints state0 |> Ineq2 lhs rhs }
 
 infix 4 >==
-(>==) :: SXElement -> SXElement -> NlpMonad ()
+(>==) :: MXElement -> MXElement -> NlpMonad ()
 (>==) lhs rhs = do
   debug $ "adding inequality constraint: "
 --    ++ withEllipse 30 (show lhs) ++ " >= " ++ withEllipse 30 (show rhs)
   state0 <- get
   put $ state0 { nlpConstraints = nlpConstraints state0 |> Ineq2 rhs lhs }
 
-bound :: SXElement -> (Double,Double) -> NlpMonad ()
+bound :: MXElement -> (Double,Double) -> NlpMonad ()
 bound mid (lhs, rhs) = do
   debug $ "adding inequality bound: " -- ++
 --    withEllipse 30 (show lhs) ++ " <= " ++
@@ -141,7 +139,7 @@ bound mid (lhs, rhs) = do
   state0 <- get
   put $ state0 { nlpConstraints = nlpConstraints state0 |> Ineq3 mid (lhs, rhs) }
 
-minimize :: SXElement -> NlpMonad ()
+minimize :: MXElement -> NlpMonad ()
 minimize obj = do
   debug $ "setting objective function: " -- ++ withEllipse 30 (show obj)
   state0 <- get
@@ -154,13 +152,13 @@ minimize obj = do
     ObjectiveUnset -> put $ state0 { nlpObj = Objective obj }
 
 
-constr :: Constraint SXElement -> (SXElement, Bounds)
+constr :: Constraint MXElement -> (MXElement, Bounds)
 constr (Eq2 lhs rhs) = (lhs - rhs, (Just 0, Just 0))
 constr (Ineq2 lhs rhs) = (lhs - rhs, (Nothing, Just 0))
 constr (Ineq3 x (lhs,rhs)) = (x, (Just lhs, Just rhs))
 
 
-toG :: Dim ng => S.Seq (Constraint SXElement) -> Vec ng (SXElement, Bounds)
+toG :: Dim ng => S.Seq (Constraint MXElement) -> Vec ng (MXElement, Bounds)
 toG nlpConstraints' = devectorize $ V.fromList $ F.toList $ fmap constr nlpConstraints'
 
 buildNlp :: forall nx ng .
@@ -170,24 +168,24 @@ buildNlp state = do
     Objective obj' -> return obj'
     ObjectiveUnset -> error "solveNlp: objective unset"
 
-  let inputs :: Vector SXElement
+  let inputs :: Vector MXElement
       inputs = V.fromList $ map snd $ F.toList (nlpX state)
 
-      g :: Vec ng SXElement
+      g :: Vec ng MXElement
       gbnd :: Vec ng Bounds
       (g, gbnd) = TV.tvunzip $ toG (nlpConstraints state)
 
       xbnd :: Vec nx Bounds
       xbnd = fill (Nothing, Nothing)
 
-      svector = veccat . fmap sxElementToSX
+      svector = veccat . fmap mxElementToMX
 
-  sxfun <- sxFunction (V.fromList [svector inputs]) (V.fromList [svector (V.singleton obj), svector (TV.unVec g)])
-  soInit sxfun
+  mxfun <- mxFunction "nlp" (V.fromList [svector inputs]) (V.fromList [svector (V.singleton obj), svector (TV.unVec g)]) LM.empty
   let fg :: J (JVec nx (JV Id)) MX -> J JNone MX -> (J (JV Id) MX, J (JVec ng (JV Id)) MX)
       fg x _ = (mkJ (ret V.! 0), mkJ (ret V.! 1))
         where
-          ret = callMX sxfun (V.singleton (unJ x))
+          ret = callMX mxfun (V.singleton (unJ x))
+                (AlwaysInline False) (NeverInline False)
 
   return Nlp { nlpFG = fg
              , nlpBX = mkJ (TV.unVec xbnd)
