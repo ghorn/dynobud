@@ -43,8 +43,9 @@ class FunctionIO (f :: * -> *) where
 instance View x => Scheme (J x) where
   numFields = const 1
   fromVector v = case V.toList v of
-    [m] -> case fromMat m of Left err -> error $ "Scheme fromVector J error: " ++ err
-                             Right m' -> m'
+    [m] -> case fromMat m of
+            Left err -> error $ "Scheme fromVector J error: " ++ err
+            Right m' -> m'
     _ -> error $ "Scheme fromVector (J x) length mismatch, should be 1 but got: "
          ++ show (V.length v)
   toVector = V.singleton . toFioMat
@@ -53,8 +54,9 @@ instance View x => Scheme (J x) where
 instance (View f, View g) => Scheme (M.M f g) where
   numFields = const 1
   fromVector v = case V.toList v of
-    [m] -> case fromMat m of Left err -> error $ "Scheme fromVector M error: " ++ err
-                             Right m' -> m'
+    [m] -> case fromMat m of
+            Left err -> error $ "Scheme fromVector M error: " ++ err
+            Right m' -> m'
     _ -> error $ "Scheme fromVector (M f g) length mismatch, should be 1 but got: "
          ++ show (V.length v)
   toVector = V.singleton . toFioMat
@@ -76,13 +78,15 @@ class Scheme (f :: * -> *) where
   toVector :: f a -> V.Vector a
   sizeList :: Proxy f -> [(Int,Int)]
 
-  default numFields :: (GNumFields (Rep (f ())), Generic (f ())) => Proxy f -> Int
+  default numFields :: (GNumFields (Rep (f ())), Generic (f ()))
+                       => Proxy f -> Int
   numFields = gnumFields . reproxy
     where
       reproxy :: Proxy g -> Proxy ((Rep (g ())) p)
       reproxy = const Proxy
 
-  default sizeList :: (GSizeList (Rep (f ())), Generic (f ())) => Proxy f -> [(Int,Int)]
+  default sizeList :: (GSizeList (Rep (f ())), Generic (f ()))
+                      => Proxy f -> [(Int,Int)]
   sizeList = F.toList . gsizeList . reproxy
     where
       reproxy :: Proxy g -> Proxy ((Rep (g ())) p)
@@ -151,11 +155,14 @@ instance FunctionIO f => GSizeList (Rec0 (f p)) where
       reproxy = const Proxy
 
 --------------------- GFromVector ----------------------------
-instance (GFromVector f a, GFromVector g a, GNumFields f, GNumFields g) => GFromVector (f :*: g) a where
+instance (GFromVector f a, GFromVector g a, GNumFields f, GNumFields g)
+         => GFromVector (f :*: g) a where
   gfromVector name vs pxy
-    | V.length vs == nx + ny = gfromVector name vx px :*: gfromVector name vy py
-    | otherwise = error $ "\"" ++ name ++ "\" GFromVector (:*:) length error, need " ++
-                  show (nx,ny) ++ " but got " ++ show (V.length vs)
+    | V.length vs == nx + ny =
+        gfromVector name vx px :*: gfromVector name vy py
+    | otherwise =
+        error $ "\"" ++ name ++ "\" GFromVector (:*:) length error, need " ++
+        show (nx,ny) ++ " but got " ++ show (V.length vs)
     where
       nx = gnumFields px
       ny = gnumFields py
@@ -192,7 +199,8 @@ instance (FunctionIO f, Viewable a) => GFromVector (Rec0 (f a)) a where
     where
       j = case fromMat m of
         Right j' -> j'
-        Left err -> error $ "\"" ++ name ++ "\" GFromVector fromMat error: " ++ err
+        Left err ->
+          error $ "\"" ++ name ++ "\" GFromVector fromMat error: " ++ err
       m = case V.toList ms of
         [m'] -> m'
         _ -> error $ "\"" ++ name ++ "\" GFromVector Rec0 length error, " ++
@@ -202,7 +210,8 @@ instance (FunctionIO f, Viewable a) => GFromVector (Rec0 (f a)) a where
 
 
 --------------------- GToVector ----------------------------
-instance (GToVector f a, GToVector g a, GNumFields f, GNumFields g) => GToVector (f :*: g) a where
+instance (GToVector f a, GToVector g a, GNumFields f, GNumFields g)
+         => GToVector (f :*: g) a where
   gtoVector (x :*: y) = gtoVector x Seq.>< gtoVector y
 
 instance GToVector f a => GToVector (M1 i d f) a where
