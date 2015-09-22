@@ -20,32 +20,37 @@ module Dyno.View.Fun
        , toFunJac
        ) where
 
-import Control.Monad ( zipWithM )
+import Control.Monad ( (>=>), zipWithM )
 import qualified Data.Map as M
+import Data.Maybe ( catMaybes )
 import Data.Proxy
 import qualified Data.Vector as V
 import Data.Vector ( Vector )
+import Text.Printf ( printf )
+import System.IO.Unsafe ( unsafePerformIO )
 
-import Casadi.MX ( symM )
-import Casadi.SX ( ssymM )
+import Casadi.MX ( MX, symM )
+import Casadi.SX ( SX, ssymM )
 import Casadi.Function ( AlwaysInline(..), NeverInline(..) )
 import qualified Casadi.Function as C
 import qualified Casadi.MXFunction as C
 import qualified Casadi.SXFunction as C
 import Casadi.Option
-import Casadi.MX ( MX )
-import Casadi.SX ( SX )
 import Casadi.DMatrix ( DMatrix )
 import Casadi.CMatrix ( CMatrix )
 
 import qualified Casadi.Core.Classes.Function as F
 import qualified Casadi.Core.Classes.MXFunction as M
+import qualified Casadi.Core.Classes.Sparsity as C
 import qualified Casadi.Core.Classes.SharedObject as C
 import qualified Casadi.Core.Classes.OptionsFunctionality as C
 
 import Dyno.View.Viewable ( Viewable )
 import Dyno.View.Scheme
 import Dyno.View.FunJac
+import Dyno.View.Scheme
+import Dyno.View.View ( View )
+import Dyno.View.Viewable ( Viewable )
 
 newtype MXFun (f :: * -> *) (g :: * -> *) = MXFun C.MXFunction
 newtype SXFun (f :: * -> *) (g :: * -> *) = SXFun C.SXFunction
@@ -71,7 +76,6 @@ instance FunClass SXFun where
     sxf <- C.sxFunctionFromFunction f
     return (SXFun sxf)
   toFun (SXFun f) = Fun (F.castFunction f)
-
 
 instance FunClass MXFun where
   fromFun (Fun f) = do
@@ -114,22 +118,23 @@ mkSym mk name _ = do
   ms <- zipWithM f sizes [(0::Int)..]
   return $ fromVector (V.fromList ms)
 
-mkFun ::
+mkToFun ::
   forall f g fun fun' a
-  . ( Scheme f, Scheme g, Viewable a
+  . ( Scheme f, Scheme g, Viewable a, FunClass fun'
     , C.SharedObjectClass fun, C.OptionsFunctionalityClass fun
     )
-  => (String -> Vector a -> Vector a -> M.Map String Opt -> IO fun)
+  => String
+  -> (String -> Vector a -> Vector a -> M.Map String Opt -> IO fun)
   -> (String -> Proxy f -> IO (f a))
   -> (fun -> fun' f g)
   -> String
   -> (f a -> g a)
   -> M.Map String Opt
   -> IO (fun' f g)
-mkFun mkfun mksym con name userf opts = do
+mkToFun errName mkfun mksym con name userf opts = do
   inputs <- mksym "x" (Proxy :: Proxy f)
   fun <- mkfun name (toVector inputs) (toVector (userf inputs)) opts
-  return (con fun)
+  checkFunDimensionsWith errName (con fun)
 
 -- | make an MXFunction with name
 toMXFun :: forall f g
@@ -143,7 +148,7 @@ toMXFun' :: forall f g
            . (Scheme f, Scheme g)
            => String -> (f MX -> g MX) -> M.Map String Opt
            -> IO (MXFun f g)
-toMXFun' = mkFun C.mxFunction (mkSym symM) MXFun
+toMXFun' = mkToFun "toMXFun" C.mxFunction (mkSym symM) MXFun
 
 -- | make an SXFunction with name
 toSXFun :: forall f g
@@ -157,25 +162,75 @@ toSXFun' :: forall f g
            . (Scheme f, Scheme g)
            => String -> (f SX -> g SX) -> M.Map String Opt
            -> IO (SXFun f g)
-toSXFun' = mkFun C.sxFunction (mkSym ssymM) SXFun
+toSXFun' = mkToFun "toSXFun" C.sxFunction (mkSym ssymM) SXFun
 
 -- | expand an MXFunction
-expandMXFun :: MXFun f g -> IO (SXFun f g)
+expandMXFun :: (Scheme f, Scheme g) => MXFun f g -> IO (SXFun f g)
 expandMXFun (MXFun mxf) = do
   sxf <- M.mxFunction_expand__0 mxf
-  C.sharedObject_init__0 sxf
-  return (SXFun sxf)
+  checkFunDimensionsWith "expandMXFun" (SXFun sxf)
+
+-- partial version of checkFunDimensions which throws an error
+checkFunDimensionsWith ::
+  forall fun f g
+  . (FunClass fun, Scheme f, Scheme g)
+  => String -> fun f g -> IO (fun f g)
+checkFunDimensionsWith name fun = do
+  case checkFunDimensions fun of
+   Just msg -> error $ name ++ " error:\n" ++ msg
+   Nothing -> return fun
+
+-- if dimensions are good, return Nothing, otherwise return error message
+checkFunDimensions ::
+  forall fun f g
+  . (FunClass fun, Scheme f, Scheme g)
+  => fun f g -> Maybe String
+checkFunDimensions f' = unsafePerformIO $ do
+  let f :: F.Function
+      Fun f = toFun f'
+  nIn' <- F.function_nIn f
+  nOut' <- F.function_nOut f
+  let nIn  = numFields (Proxy :: Proxy f)
+      nOut = numFields (Proxy :: Proxy g)
+      ioLenErr name nIO nIO'
+        | nIO == nIO' = Nothing
+        | otherwise =
+            Just $ printf "num %s incorrect: expected %d, got %d"
+            name nIO nIO'
+
+  case catMaybes [ioLenErr "inputs" nIn nIn', ioLenErr "outputs" nOut nOut'] of
+   errs@(_:_) -> return $ Just $ unlines ("checkFunDimensions error:":errs)
+   [] -> do
+     let getSize sp = do
+           s1 <- C.sparsity_size1 sp
+           s2 <- C.sparsity_size2 sp
+           return (s1, s2)
+     sIns <- mapM (F.function_inputSparsity__2 f >=> getSize) (take nIn [0..])
+     sOuts <- mapM (F.function_outputSparsity__2 f >=> getSize) (take nOut [0..])
+     let sIns'  = sizeList (Proxy :: Proxy f)
+         sOuts' = sizeList (Proxy :: Proxy g)
+         ioSizeErr name k s s'
+           | s == s' = Nothing
+           | otherwise =
+               Just $ printf "%s %d dimension mismatch, expected %s, got %s"
+               name (k :: Int) (show s) (show s')
+         sizeErrs =
+           (zipWith3 (ioSizeErr "input")  [0..] sIns  sIns') ++
+           (zipWith3 (ioSizeErr "output") [0..] sOuts sOuts')
+     return $ case catMaybes sizeErrs of
+      [] -> Nothing
+      errs -> Just $ unlines ("checkFunDimensions error:":errs)
 
 -- | make a function which also contains a jacobian
 toFunJac ::
-  FunClass fun =>
+  (FunClass fun, View xj, View fj, Scheme x, Scheme f) =>
   fun (JacIn xj x) (JacOut fj f) -> IO (fun (JacIn xj x) (Jac xj fj f))
 toFunJac fun0 = do
   let Fun fun = toFun fun0
       compact = False
       symmetric = False
   funJac <- C.jacobian fun 0 0 compact symmetric
-  fromFun (Fun funJac)
+  fromFun (Fun funJac) >>= checkFunDimensionsWith "toFunJac"
 
 
 --toFunJac' ::
