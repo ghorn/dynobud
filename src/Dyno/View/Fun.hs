@@ -142,7 +142,7 @@ mkToFun ::
 mkToFun errName mkfun mksym con name userf opts = do
   inputs <- mksym "x" (Proxy :: Proxy f)
   fun <- mkfun name (toVector inputs) (toVector (userf inputs)) opts
-  checkFunDimensionsWith errName (con fun)
+  checkFunDimensionsWith (errName ++ " (" ++ name ++ ")") (con fun)
 
 -- | make an MXFunction with name
 toMXFun :: forall f g
