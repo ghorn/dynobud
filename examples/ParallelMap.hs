@@ -16,6 +16,7 @@ import Casadi.Option ( Opt(..) )
 import qualified Dyno.TypeVecs as TV
 import Dyno.Vectorize ( Id(..) )
 import Dyno.View.Fun ( call, funMap, toSXFun, toMXFun, eval )
+import Dyno.View.M ( M, row )
 import Dyno.View.JV ( JV, catJV )
 import Dyno.View.JVec ( JVec(..) )
 import Dyno.View.View ( J, View(..), v2d )
@@ -34,16 +35,19 @@ main :: IO ()
 main = do
   let dummyInput :: J (JVec N (JV Id)) DMatrix
       dummyInput = v2d $ cat $ JVec $ fmap (catJV . Id) (TV.tvlinspace 0 (2*pi))
+      dummyInput' :: M (JV Id) (JVec N (JV Id)) DMatrix
+      dummyInput' = row dummyInput
   show dummyInput `seq` return ()
+  show dummyInput' `seq` return ()
 
   -- make a dummy function that's moderately expensive to evaluate
   putStrLn "creating dummy function..."
   f0 <- toSXFun "f0" f0'
 
-  let runOne name someMap = do
+  let runOne name someMap input = do
         putStrLn $ "evaluating " ++ name ++ "..."
         t0 <- getCurrentTime
-        _ <- eval someMap dummyInput
+        _ <- eval someMap input
         t1 <- getCurrentTime
         printf "evaluated %s in %.3f seconds\n"
           name (realToFrac (diffUTCTime t1 t0) :: Double)
@@ -55,6 +59,6 @@ main = do
   par <- funMap "parallel symbolic map" f0
          (M.fromList [("parallelization", Opt "openmp")])
 
-  runOne "naive map" naive
-  runOne "serial symbolic map" ser
-  runOne "parallel symbolic map" par
+  runOne "naive map" naive dummyInput
+  runOne "serial symbolic map" ser dummyInput'
+  runOne "parallel symbolic map" par dummyInput'

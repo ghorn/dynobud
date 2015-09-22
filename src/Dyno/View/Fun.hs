@@ -50,10 +50,13 @@ import qualified Casadi.Core.Classes.OptionsFunctionality as C
 
 import Dyno.TypeVecs ( Dim )
 import qualified Dyno.TypeVecs as TV
+import Dyno.Vectorize ( Id )
 import Dyno.View.FunJac
+import Dyno.View.JV ( JV )
 import Dyno.View.JVec ( JVec )
 import Dyno.View.Scheme
 import Dyno.View.Unsafe.View ( J(..) )
+import Dyno.View.M ( M )
 import Dyno.View.View ( View )
 import Dyno.View.Viewable ( Viewable )
 
@@ -230,7 +233,7 @@ checkFunDimensions f' = unsafePerformIO $ do
 funMap :: forall fun f g n
           . (FunClass fun, View f, View g, Dim n)
           => String -> fun (J f) (J g) -> M.Map String Opt
-          -> IO (Fun (J (JVec n f)) (J (JVec n g)))
+          -> IO (Fun (M (JV Id) (JVec n f)) (M (JV Id) (JVec n g)))
 funMap name f' opts0 = do
   opts <- T.mapM mkGeneric opts0 :: IO (M.Map String GenericType)
   let Fun f = toFun f'
