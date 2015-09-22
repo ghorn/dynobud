@@ -15,7 +15,7 @@ import Casadi.Option ( Opt(..) )
 
 import qualified Dyno.TypeVecs as TV
 import Dyno.Vectorize ( Id(..) )
-import Dyno.View.Fun ( call, funMap, toSXFun, toMXFun, eval )
+import Dyno.View.Fun ( call, mapFun, toSXFun, toMXFun, eval )
 import Dyno.View.M ( M, row )
 import Dyno.View.JV ( JV, catJV )
 import Dyno.View.JVec ( JVec(..) )
@@ -54,9 +54,9 @@ main = do
 
   naive <- toMXFun "naive map" $
            \xs -> cat $ JVec $ fmap (call f0) (unJVec (split xs))
-  ser <- funMap "serial symbolic map" f0
+  ser <- mapFun "serial symbolic map" f0
          (M.fromList [("parallelization", Opt "serial")])
-  par <- funMap "parallel symbolic map" f0
+  par <- mapFun "parallel symbolic map" f0
          (M.fromList [("parallelization", Opt "openmp")])
 
   runOne "naive map" naive dummyInput

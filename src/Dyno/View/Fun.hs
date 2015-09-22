@@ -19,7 +19,7 @@ module Dyno.View.Fun
        , callSX
        , expandMXFun
        , toFunJac
-       , funMap
+       , mapFun
        ) where
 
 import Control.Monad ( (>=>), zipWithM )
@@ -230,11 +230,11 @@ checkFunDimensions f' = unsafePerformIO $ do
       errs -> Just $ unlines ("checkFunDimensions error:":errs)
 
 -- | symbolic fmap
-funMap :: forall fun f g n
+mapFun :: forall fun f g n
           . (FunClass fun, View f, View g, Dim n)
           => String -> fun (J f) (J g) -> M.Map String Opt
           -> IO (Fun (M (JV Id) (JVec n f)) (M (JV Id) (JVec n g)))
-funMap name f' opts0 = do
+mapFun name f' opts0 = do
   opts <- T.mapM mkGeneric opts0 :: IO (M.Map String GenericType)
   let Fun f = toFun f'
       n = TV.reflectDim (Proxy :: Proxy n)
