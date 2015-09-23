@@ -41,11 +41,9 @@ import qualified Casadi.SXFunction as C
 import Casadi.Option
 import Casadi.DMatrix ( DMatrix )
 import Casadi.CMatrix ( CMatrix )
-
 import qualified Casadi.Core.Classes.Function as F
 import qualified Casadi.Core.Classes.MXFunction as M
 import qualified Casadi.Core.Classes.Sparsity as C
-import qualified Casadi.Core.Classes.SharedObject as C
 import qualified Casadi.Core.Classes.OptionsFunctionality as C
 
 import Dyno.View.FunJac
@@ -122,7 +120,7 @@ mkSym mk name _ = do
 mkToFun ::
   forall f g fun fun' a
   . ( Scheme f, Scheme g, Viewable a, FunClass fun'
-    , C.SharedObjectClass fun, C.OptionsFunctionalityClass fun
+    , C.OptionsFunctionalityClass fun
     )
   => String
   -> (String -> Vector a -> Vector a -> M.Map String Opt -> IO fun)
