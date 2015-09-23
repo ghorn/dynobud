@@ -45,6 +45,7 @@ library
                        Dyno.View.JV
                        Dyno.View.JVec
                        Dyno.View.M
+                       Dyno.View.MapFun
                        Dyno.View.Scheme
                        Dyno.View.Unsafe.View
                        Dyno.View.Unsafe.M

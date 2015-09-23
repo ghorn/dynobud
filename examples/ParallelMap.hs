@@ -15,7 +15,8 @@ import Casadi.Option ( Opt(..) )
 
 import qualified Dyno.TypeVecs as TV
 import Dyno.Vectorize ( Id(..) )
-import Dyno.View.Fun ( call, mapFun, toSXFun, toMXFun, eval )
+import Dyno.View.Fun ( call, toSXFun, toMXFun, eval )
+import Dyno.View.MapFun ( mapFun )
 import Dyno.View.M ( M, row )
 import Dyno.View.JV ( JV, catJV )
 import Dyno.View.JVec ( JVec(..) )
