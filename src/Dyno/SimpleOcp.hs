@@ -122,6 +122,7 @@ solveOcp' simple _ _ = do
       dirCollOpts =
         DirCollOptions
         { collocationRoots = Radau
+        , mapStrategy = Unrolled
         } -- todo(greg): = def
       roots = collocationRoots dirCollOpts
 

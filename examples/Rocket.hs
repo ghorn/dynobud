@@ -8,6 +8,7 @@ module Main ( main ) where
 
 import GHC.Generics ( Generic, Generic1 )
 
+import qualified Data.Map as M
 import Data.Vector ( Vector )
 
 import Accessors ( Lookup )
@@ -21,7 +22,7 @@ import Dyno.Solvers ( Solver(..), Opt(..), ipoptSolver )
 import Dyno.NlpUtils ( solveNlp )
 import Dyno.DirectCollocation.ActiveConstraints
 import Dyno.DirectCollocation.Formulate
-       ( CollProblem(..), DirCollOptions(..), makeCollProblem )
+       ( CollProblem(..), DirCollOptions(..), MapStrategy(..), makeCollProblem )
 import Dyno.DirectCollocation.Types ( CollTraj' )
 import Dyno.DirectCollocation.Dynamic ( toMeta )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..) )
@@ -171,6 +172,7 @@ dirCollOpts :: DirCollOptions
 dirCollOpts =
   DirCollOptions
   { collocationRoots = Legendre
+  , mapStrategy = Unrolled
   }
 
 main :: IO ()

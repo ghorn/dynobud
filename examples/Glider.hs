@@ -141,7 +141,8 @@ eye3' =
 dirCollOpts :: DirCollOptions
 dirCollOpts =
   DirCollOptions
-  { collocationRoots = Legendre
+  { mapStrategy = Unrolled
+  , collocationRoots = Legendre
   }
 
 main :: IO ()

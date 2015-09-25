@@ -22,7 +22,7 @@ import Dyno.Nlp
 import Dyno.NlpUtils
 import Dyno.Ocp
 import Dyno.DirectCollocation.Formulate
-       ( CollProblem(..), DirCollOptions(..)
+       ( CollProblem(..), DirCollOptions(..), MapStrategy(..)
        , makeCollProblem, makeGuess )
 import Dyno.DirectCollocation.Types ( CollTraj' )
 import Dyno.DirectCollocation.Dynamic ( toMeta )
@@ -202,7 +202,8 @@ solver2 = ipoptSolver { options = [("expand", Opt True)] }
 dirCollOpts :: DirCollOptions
 dirCollOpts =
   DirCollOptions
-  { collocationRoots = Legendre
+  { mapStrategy = Unrolled
+  , collocationRoots = Legendre
   }
 
 main :: IO ()

@@ -20,7 +20,7 @@ import Dyno.Vectorize ( Vectorize, None(..), fill )
 import Dyno.Solvers ( Solver(..), Opt(..), ipoptSolver )
 import Dyno.NlpUtils ( solveNlp )
 import Dyno.DirectCollocation.Formulate
-       ( CollProblem(..), DirCollOptions(..), makeCollProblem )
+       ( CollProblem(..), DirCollOptions(..), MapStrategy(..), makeCollProblem )
 import Dyno.DirectCollocation.Types ( CollTraj' )
 import Dyno.DirectCollocation.Dynamic ( toMeta )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..) )
@@ -157,7 +157,8 @@ type CollDeg = 3
 dirCollOpts :: DirCollOptions
 dirCollOpts =
   DirCollOptions
-  { collocationRoots = Legendre
+  { mapStrategy = Unrolled
+  , collocationRoots = Legendre
   }
 
 main :: IO ()

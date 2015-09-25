@@ -116,6 +116,7 @@ runIntegration _ _ roots ode x0 p tf = do
       dirCollOpts =
         DirCollOptions
         { collocationRoots = roots
+        , mapStrategy = Unrolled
         }
   cp  <- makeCollProblem dirCollOpts ocp ocpInputs guess :: IO (CollProblem x None None p x None x None None None None None n deg)
   (msg, opt') <- solveNlp solver (cpNlp cp) Nothing

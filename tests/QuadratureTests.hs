@@ -10,6 +10,7 @@ module QuadratureTests
 
 import GHC.Generics ( Generic, Generic1 )
 
+import qualified Data.Map as M
 import Data.Vector ( Vector )
 import qualified Test.HUnit.Base as HUnit
 import Test.Framework ( Test, testGroup )
@@ -191,11 +192,12 @@ goodSolution out = HUnit.assertBool msg (abs (f - fExpected) < 1e-8 && abs (pF -
     CollTraj _ _ _ xf' = split (xOpt out)
     Id f = splitJV (fOpt out)
 
-compareIntegration :: (QuadratureRoots, StateOrOutput, QuadOrLagrange) -> HUnit.Assertion
-compareIntegration (roots, stateOrOutput, quadOrLag) = HUnit.assert $ do
+compareIntegration :: (MapStrategy, QuadratureRoots, StateOrOutput, QuadOrLagrange) -> HUnit.Assertion
+compareIntegration (mapStrat, roots, stateOrOutput, quadOrLag) = HUnit.assert $ do
   let dirCollOpts =
         DirCollOptions
-        { collocationRoots = roots
+        { mapStrategy = mapStrat
+        , collocationRoots = roots
         }
   cp  <- makeCollProblem dirCollOpts (quadOcp stateOrOutput quadOrLag) quadOcpInputs (guess roots)
   let nlp = cpNlp cp
@@ -212,5 +214,9 @@ quadratureTests =
   | root <- [Radau, Legendre]
   , stateOrOutput <- [TestState, TestOutput]
   , quadOrLagr <- [TestQuadratures, TestLagrangeTerm]
-  , let input = (root, stateOrOutput, quadOrLagr)
+  , mapStrat <- [ Unrolled
+                , Symbolic (M.fromList [("parallelization", Opt "serial")])
+                , Symbolic (M.fromList [("parallelization", Opt "openmp")])
+                ]
+  , let input = (mapStrat, root, stateOrOutput, quadOrLagr)
   ]

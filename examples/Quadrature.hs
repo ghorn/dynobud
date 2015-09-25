@@ -204,7 +204,8 @@ compareIntegration (roots, stateOrOutput, quadOrLag) = do
     let dirCollOpts :: DirCollOptions
         dirCollOpts =
           DirCollOptions
-          { collocationRoots = roots
+          { mapStrategy = Unrolled
+          , collocationRoots = roots
           }
     cp  <- makeCollProblem dirCollOpts (quadOcp stateOrOutput quadOrLag) quadOcpInputs (guess roots)
     let nlp = cpNlp cp

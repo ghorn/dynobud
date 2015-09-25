@@ -8,6 +8,7 @@
 module Dyno.DirectCollocation.Formulate
        ( CollProblem(..)
        , DirCollOptions(..)
+       , MapStrategy(..)
        , makeCollProblem
        , mkTaus
        , makeGuess
@@ -20,6 +21,8 @@ import GHC.Generics ( Generic, Generic1 )
 
 import Control.Applicative
 import Control.Monad.State ( StateT(..), runStateT )
+import Data.Map ( Map )
+import qualified Data.Map as M
 import Data.Maybe ( fromMaybe )
 import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
@@ -31,17 +34,20 @@ import Prelude -- BBP workaround
 
 import Casadi.DMatrix ( DMatrix )
 import Casadi.MX ( MX )
+import Casadi.Option ( Opt(..) )
 import Casadi.SX ( SX )
 
 import Dyno.Integrate ( InitialTime(..), TimeStep(..), rk45 )
 import Dyno.View.View ( View(..), J, jfill, JTuple(..), v2d, d2v )
+import Dyno.View.M ( M )
 import qualified Dyno.View.M as M
 import Dyno.View.JV ( JV, splitJV, catJV, splitJV', catJV' )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.Fun
+import Dyno.View.MapFun
 import Dyno.View.JVec( JVec(..), jreplicate )
 import Dyno.View.Scheme ( Scheme )
-import Dyno.Vectorize ( Vectorize(..), Id(..), fill, vlength, vzipWith )
+import Dyno.Vectorize ( Vectorize(..), Id(..), fill, vlength )
 import Dyno.TypeVecs ( Vec, Dim, reflectDim )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs )
@@ -78,6 +84,11 @@ data CollProblem x z u p r o c h q qo po fp n deg =
   , cpEvalQuadratures :: Vec n (Vec deg Double) -> Double -> IO Double
   , cpMetaProxy :: MetaProxy x z u p o q qo po h
   }
+
+data MapStrategy =
+  Unrolled -- ^ split vector then use haskell fmap
+  | Symbolic (Map String Opt) -- ^ use casadi symbolic map, with options
+    deriving Show
 
 data DirCollOptions =
   DirCollOptions
@@ -283,7 +294,128 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
   dynFun <- toSXFun "dynamics" dynamicsFunction
 
   dynamicsStageFun <- toMXFun "dynamicsStageFunction" (toDynamicsStage callInterpolate cijs dynFun)
-  callDynamicsStageFun <- fmap call (expandMXFun dynamicsStageFun)
+                      >>= expandMXFun
+                      :: IO (SXFun
+                             (J (JV x)
+                              :*: J (JVec deg (JTuple (JV x) (JV z)))
+                              :*: J (JVec deg (JV u))
+                              :*: J (JV Id)
+                              :*: J (JV p)
+                              :*: J (JV fp)
+                              :*: J (JVec deg (JV Id))
+                             )
+                             (J (JVec deg (JV r))
+                              :*: J (JV x)
+                             )
+                            )
+--  let callDynamicsStageFun = call dynamicsStageFun
+
+  -- dt, parm, and fixedParm have to be repeated
+  -- that is why they are row matrices
+  let stageFun :: (M (JV Id) (JV Id)
+                   :*: M (JV Id) (CollStage (JV x) (JV z) (JV u) deg)
+                   :*: M (JV Id) (JVec deg (JV Id))
+                   :*: M (JV Id) (JV p)
+                   :*: M (JV Id) (JV fp)
+                  ) MX ->
+                  (M (JV Id) (JVec deg (JV r))
+                   :*: M (JV Id) (JVec deg (JV h))
+                   :*: M (JV Id) (JV x)
+                  ) MX
+      stageFun (dt' :*: collStageRow :*: stageTimesRow :*: parm' :*: fixedParm') =
+        (M.row dc :*: M.row stageHs :*: M.row interpolatedX')
+        where
+          dt = M.unrow dt'
+          parm = M.unrow parm'
+          fixedParm = M.unrow fixedParm'
+
+          stageTimes = M.unrow stageTimesRow
+          collStage = M.unrow collStageRow
+          CollStage x0 xzus = split collStage
+          dc :*: interpolatedX' =
+            call dynamicsStageFun
+            (x0 :*: xzs :*: us :*: dt :*: parm :*: fixedParm :*: stageTimes)
+
+          pathCStageIn = PathCStageIn collStage parm fixedParm stageTimes dt
+          stageHs = pathCStageFun pathCStageIn
+
+          xzs = cat (JVec xzs') :: J (JVec deg (JTuple (JV x) (JV z))) MX
+          us = cat (JVec us') :: J (JVec deg (JV u)) MX
+          (xzs', us') = TV.tvunzip $ fmap toTuple $ unJVec (split xzus)
+          toTuple xzu = (cat (JTuple x z), u)
+            where
+              CollPoint x z u = split xzu
+  stageFunMX <- toMXFun "stageFun" stageFun
+
+  let mapOpts = case mapStrategy dirCollOpts of
+        Unrolled -> M.empty
+        Symbolic r -> r
+  mapStageFunMX <- mapFun'' (Proxy :: Proxy n) "mapDynamicsStageFun" stageFunMX mapOpts
+-- use repeated outputs for now
+    :: IO (Fun
+           (   M (JV Id) (JVec n (JV Id))
+           :*: M (JV Id) (JVec n (CollStage (JV x) (JV z) (JV u) deg))
+           :*: M (JV Id) (JVec n (JVec deg (JV Id)))
+           :*: M (JV Id) (JVec n (JV p))
+           :*: M (JV Id) (JVec n (JV fp))
+           )
+           (   M (JV Id) (JVec n (JVec deg (JV r)))
+           :*: M (JV Id) (JVec n (JVec deg (JV h)))
+           :*: M (JV Id) (JVec n (JV x))
+           )
+          )
+---- non-repeated outputs don't work yet, and we need them for exact hessian
+--    :: IO (Fun
+--           (M (JV Id) (JV Id)
+--            :*: M (JV Id) (JVec n (CollStage (JV x) (JV z) (JV u) deg))
+--            :*: M (JV Id) (JVec n (JVec deg (JV Id)))
+--            :*: M (JV Id) (JV p)
+--            :*: M (JV Id) (JV fp)
+--           )
+--           (M (JV Id) (JVec n (JVec deg (JV r)))
+--            :*: M (JV Id) (JVec n (JVec deg (JV h)))
+--            :*: M (JV Id) (JVec n (JV x))
+--           )
+--          )
+  let mapStageFun ::
+        MapStrategy
+        -> ( J (JV Id) MX
+           , J (JVec n (CollStage (JV x) (JV z) (JV u) deg)) MX
+           , J (JVec n (JVec deg (JV Id))) MX
+           , J (JV p) MX
+           , J (JV fp) MX
+           )
+        -> ( J (JVec n (JVec deg (JV r))) MX
+           , J (JVec n (JVec deg (JV h))) MX
+           , J (JVec n (JV x)) MX
+           )
+
+      mapStageFun Unrolled (dt', stages, times, parm', fixedParm') =
+        (cat (JVec dcs), cat (JVec hs), cat (JVec xnexts))
+        where
+          dt = M.row dt'
+          parm = M.row parm'
+          fixedParm = M.row fixedParm'
+
+          (dcs, hs, xnexts) =
+            TV.tvunzip3 $ TV.tvzipWith f (unJVec (split stages)) (unJVec (split times))
+          f stage stageTimes = (M.unrow dc, M.unrow h, M.unrow xnext)
+            where
+              dc :*: h :*: xnext =
+                call stageFunMX
+                (dt :*: (M.row stage) :*: (M.row stageTimes) :*: parm :*: fixedParm)
+--              dc :*: h :*: xnext =
+--                stageFun
+--                (dt :*: (M.row stage) :*: (M.row stageTimes) :*: parm :*: fixedParm)
+
+      mapStageFun (Symbolic _) (x0', x1, x2, x3', x4') = (M.unrow y0, M.unrow y1, M.unrow y2)
+        where
+          x0 = jreplicate x0' :: J (JVec n (JV Id)) MX
+          x3 = jreplicate x3' :: J (JVec n (JV p)) MX
+          x4 = jreplicate x4' :: J (JVec n (JV fp)) MX
+          y0 :*: y1 :*: y2 =
+            call mapStageFunMX
+            (M.row x0 :*: M.row x1 :*: M.row x2 :*: M.row x3 :*: M.row x4)
 
   let nlp :: Nlp (CollTraj x z u p n deg) (JV fp) (CollOcpConstraints x r c h n deg) MX
       nlp = Nlp {
@@ -309,8 +441,7 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
            )
            (call lagrangeStageFunMX)
            (call quadratureStageFunMX)
-           (call pathCStageFunMX)
-           (callDynamicsStageFun)
+           (mapStageFun (mapStrategy dirCollOpts))
         , nlpBX = cat (ocpPhaseBx ocpInputs)
         , nlpBG = cat (ocpPhaseBg ocpInputs)
         , nlpX0 = guess :: J (CollTraj x z u p n deg) (Vector Double)
@@ -357,6 +488,7 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
         let stageIntegrals = fmap (unId . splitJV . d2v) stageIntegrals' :: Vec n Double
         return (F.sum stageIntegrals)
 
+
   nlpConstraints <- toMXFun "nlp_constraints" (\(x:*:p) -> snd (nlpFG nlp x p))
   let evalConstraints x p = do
         g <- eval nlpConstraints (v2d x :*: v2d p)
@@ -369,7 +501,7 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
                        , cpConstraints = evalConstraints
                        , cpOutputs = getOutputs
                        , cpTaus = taus
-                       , cpRoots = roots
+                       , cpDirCollOpts = dirCollOpts
                        , cpEvalQuadratures = evalQuadratures
                        , cpMetaProxy = MetaProxy
                        }
@@ -579,20 +711,17 @@ getFg ::
   -> (QuadratureStageIn (JV x) (JV z) (JV u) (JV p) (JV fp) deg MX -> J (JV Id) MX)
   -- quadFun
   -> (QuadratureStageIn (JV x) (JV z) (JV u) (JV p) (JV fp) deg MX -> J (JV q) MX)
-  -- pathCStageFun
-  -> (PathCStageIn (JV x) (JV z) (JV u) (JV p) (JV fp) deg MX -> J (JVec deg (JV h)) MX)
   -- stageFun
-  -> ( (   J (JV x)
-       :*: J (JVec deg (JTuple (JV x) (JV z)))
-       :*: J (JVec deg (JV u))
-       :*: J (JV Id)
-       :*: J (JV p)
-       :*: J (JV fp)
-       :*: J (JVec deg (JV Id))
-       ) MX
-       -> (   J (JVec deg (JV r))
-          :*: J (JV x)
-          ) MX
+  -> ( ( J (JV Id) MX
+       , J (JVec n (CollStage (JV x) (JV z) (JV u) deg)) MX
+       , J (JVec n (JVec deg (JV Id))) MX
+       , J (JV p) MX
+       , J (JV fp) MX
+       )
+       -> ( J (JVec n (JVec deg (JV r))) MX
+          , J (JVec n (JVec deg (JV h))) MX
+          , J (JVec n (JV x)) MX
+          )
      )
   -- collTraj
   -> J (CollTraj x z u p n deg) MX
@@ -600,7 +729,8 @@ getFg ::
   -> J (JV fp) MX
   -- (objective, constraints)
   -> (J (JV Id) MX, J (CollOcpConstraints x r c h n deg) MX)
-getFg taus bcFun mayerFun lagQuadFun quadFun pathCStageFun dynamicsStageFun collTraj fixedParm = (obj, cat g)
+getFg taus bcFun mayerFun lagQuadFun quadFun
+  mapStageFun collTraj fixedParm = (obj, cat g)
   where
     -- split up the design vars
     CollTraj tf parm stages' xf = split collTraj
@@ -649,37 +779,19 @@ getFg taus bcFun mayerFun lagQuadFun quadFun pathCStageFun dynamicsStageFun coll
 
     x0 = (\(CollStage x0' _) -> x0') (TV.tvhead spstages)
     g = CollOcpConstraints
-        { coCollPoints = cat $ JVec dcs
-        , coContinuity = cat $ JVec integratorMatchingConstraints
-        , coPathC = cat $ JVec hs
+        { coCollPoints = dcs
+        , coContinuity = integratorMatchingConstraints
+        , coPathC = hs
         , coBc = call bcFun (x0 :*: xf :*: finalQuadratures :*: parm :*: fixedParm :*: tf)
         }
 
-    integratorMatchingConstraints :: Vec n (J (JV x) MX) -- THIS SHOULD BE A NONLINEAR FUNCTION
-    integratorMatchingConstraints = vzipWith (-) interpolatedXs xfs
+    integratorMatchingConstraints :: J (JVec n (JV x)) MX -- THIS SHOULD BE A NONLINEAR FUNCTION
+    integratorMatchingConstraints = interpolatedXs - (cat (JVec xfs))
 
-    dcs :: Vec n (J (JVec deg (JV r)) MX)
-    hs :: Vec n (J (JVec deg (JV h)) MX)
-    interpolatedXs :: Vec n (J (JV x) MX)
-    (dcs, hs, interpolatedXs) = TV.tvunzip3 $ fmap fff $ TV.tvzip spstages times'
-    fff :: (CollStage (JV x) (JV z) (JV u) deg MX, J (JVec deg (JV Id)) MX) ->
-           (J (JVec deg (JV r)) MX, J (JVec deg (JV h)) MX, J (JV x) MX)
-    fff (CollStage x0' xzus, stageTimes) = (dc, stageHs, interpolatedX')
-      where
-        -- todo: could share xdot here instead of embedding in pathc and dynamics
-        dc :*: interpolatedX' =
-          dynamicsStageFun (x0' :*: xzs :*: us :*: dt :*: parm :*: fixedParm :*: stageTimes)
-
-        -- todo: don't split/cat this
-        pathCStageIn = PathCStageIn (cat (CollStage x0 xzus)) parm fixedParm stageTimes dt
-        stageHs = pathCStageFun pathCStageIn
-
-        xzs = cat (JVec xzs') :: J (JVec deg (JTuple (JV x) (JV z))) MX
-        us = cat (JVec us') :: J (JVec deg (JV u)) MX
-        (xzs', us') = TV.tvunzip $ fmap toTuple $ unJVec (split xzus)
-        toTuple xzu = (cat (JTuple x z), u)
-          where
-            CollPoint x z u = split xzu
+    dcs :: J (JVec n (JVec deg (JV r))) MX
+    hs :: J (JVec n (JVec deg (JV h))) MX
+    interpolatedXs :: J (JVec n (JV x)) MX
+    (dcs, hs, interpolatedXs) = mapStageFun (dt, stages', cat (JVec times'), parm, fixedParm)
 
 
 ocpPhaseBx :: forall x z u p c h fp n deg .
@@ -955,7 +1067,7 @@ makeGuess ::
   -> p Double
   -> CollTraj x z u p n deg (Vector Double)
 makeGuess quadratureRoots tf guessX guessZ guessU parm =
-  CollTraj (jfill tf) (catJV parm) guesses (catJV (guessX tf))
+  CollTraj (catJV (Id tf)) (catJV parm) guesses (catJV (guessX tf))
   where
     -- timestep
     dt = tf / fromIntegral n
