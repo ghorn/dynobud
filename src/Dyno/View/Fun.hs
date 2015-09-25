@@ -176,49 +176,62 @@ checkFunDimensionsWith ::
   => String -> fun f g -> IO (fun f g)
 checkFunDimensionsWith name fun = do
   case checkFunDimensions fun of
-   Just msg -> error $ name ++ " error:\n" ++ msg
-   Nothing -> return fun
+   Left msg -> error $ name ++ " error:\n" ++ msg
+   Right _ -> return fun
 
 -- if dimensions are good, return Nothing, otherwise return error message
 checkFunDimensions ::
   forall fun f g
   . (FunClass fun, Scheme f, Scheme g)
-  => fun f g -> Maybe String
+  => fun f g -> Either String String
 checkFunDimensions f' = unsafePerformIO $ do
   let f :: F.Function
       Fun f = toFun f'
-  nIn' <- F.function_nIn f
-  nOut' <- F.function_nOut f
-  let nIn  = numFields (Proxy :: Proxy f)
-      nOut = numFields (Proxy :: Proxy g)
-      ioLenErr name nIO nIO'
-        | nIO == nIO' = Nothing
+  nInRuntime <- F.function_nIn f
+  nOutRuntime <- F.function_nOut f
+  let nInType  = numFields (Proxy :: Proxy f)
+      nOutType = numFields (Proxy :: Proxy g)
+      ioLenErr name nIOType nIORuntime
+        | nIOType == nIORuntime = Nothing
         | otherwise =
-            Just $ printf "num %s incorrect: expected %d, got %d"
-            name nIO nIO'
+            Just $ printf "num %s incorrect: type: %d, runtime: %d"
+            name nIOType nIORuntime
 
-  case catMaybes [ioLenErr "inputs" nIn nIn', ioLenErr "outputs" nOut nOut'] of
-   errs@(_:_) -> return $ Just $ unlines ("checkFunDimensions error:":errs)
+  case catMaybes [ ioLenErr "inputs" nInType nInRuntime
+                 , ioLenErr "outputs" nOutType nOutRuntime
+                 ] of
+   errs@(_:_) -> return $ Left $ unlines
+                 ("checkFunDimensions got ill-dimensioned function:":errs)
    [] -> do
      let getSize sp = do
            s1 <- C.sparsity_size1 sp
            s2 <- C.sparsity_size2 sp
            return (s1, s2)
-     sIns <- mapM (F.function_inputSparsity__2 f >=> getSize) (take nIn [0..])
-     sOuts <- mapM (F.function_outputSparsity__2 f >=> getSize) (take nOut [0..])
-     let sIns'  = sizeList (Proxy :: Proxy f)
-         sOuts' = sizeList (Proxy :: Proxy g)
-         ioSizeErr name k s s'
-           | s == s' = Nothing
+     sInsRuntime <- mapM (F.function_inputSparsity__2 f >=> getSize)
+                    (take nInRuntime [0..])
+     sOutsRuntime <- mapM (F.function_outputSparsity__2 f >=> getSize)
+                     (take nOutRuntime [0..])
+     let sInsType  = sizeList (Proxy :: Proxy f)
+         sOutsType = sizeList (Proxy :: Proxy g)
+         ioSizeErr name k sType sRuntime
+           | sType == sRuntime = Nothing
+           | sType == (1,0) && sRuntime == (0,1) = Nothing
            | otherwise =
-               Just $ printf "%s %d dimension mismatch, expected %s, got %s"
-               name (k :: Int) (show s) (show s')
+               Just $ printf "%s %d dimension mismatch! type: %s, runtime: %s"
+               name (k :: Int) (show sType) (show sRuntime)
          sizeErrs =
-           (zipWith3 (ioSizeErr "input")  [0..] sIns  sIns') ++
-           (zipWith3 (ioSizeErr "output") [0..] sOuts sOuts')
+           (zipWith3 (ioSizeErr "input")  [0..] sInsType  sInsRuntime) ++
+           (zipWith3 (ioSizeErr "output") [0..] sOutsType sOutsRuntime)
      return $ case catMaybes sizeErrs of
-      [] -> Nothing
-      errs -> Just $ unlines ("checkFunDimensions error:":errs)
+      [] -> Right $
+            unlines
+            [ "checkFunDimensions got well-dimensioned function"
+            , printf "%d inputs, %d outputs" nInType nOutType
+            , "input sizes:  " ++ show sInsType
+            , "output sizes: " ++ show sOutsType
+            ]
+      errs -> Left $ unlines
+              ("checkFunDimensions got ill-dimensioned function:":errs)
 
 -- | make a function which also contains a jacobian
 toFunJac ::
