@@ -261,6 +261,7 @@ executable rocket
   build-depends:       base >=4.6 && < 5
                      , dynobud
                      , casadi-bindings
+                     , containers
                      , vector
                      , generic-accessors
                      , bytestring
