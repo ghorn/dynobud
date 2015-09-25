@@ -84,6 +84,8 @@ data CollProblem x z u p r o c h q qo po fp n deg =
   , cpDirCollOpts :: DirCollOptions
   , cpEvalQuadratures :: Vec n (Vec deg Double) -> Double -> IO Double
   , cpMetaProxy :: MetaProxy x z u p o q qo po h
+--  , cpJacSparsitySpy :: String
+--  , cpHessSparsitySpy :: String
   }
 
 data MapStrategy =
