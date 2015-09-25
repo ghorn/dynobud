@@ -86,7 +86,7 @@ import Casadi.Callback ( makeCallback )
 import Casadi.CMatrix ( CMatrix )
 import qualified Casadi.CMatrix as CM
 import Casadi.DMatrix ( DMatrix, dnonzeros )
-import Casadi.Function ( Function, externalFunction, generateCode )
+import Casadi.Function ( Function, evalDMatrix', externalFunction, generateCode )
 import Casadi.IOScheme ( mxFunctionWithSchemes )
 import Casadi.MX ( MX, symV )
 import qualified Casadi.Option as Op
@@ -245,12 +245,15 @@ evalScaledGradF = do
   let solver = isSolver nlpState :: C.NlpSolver
   liftIO $ do
     gradF <- C.nlpSolver_gradF solver
-    C.ioInterfaceFunction_setInput__0 gradF (unJ (v2d x0bar)) "x"
-    C.ioInterfaceFunction_setInput__0 gradF (unJ (v2d pbar)) "p"
-    C.function_evaluate gradF
-    gradF' <- C.ioInterfaceFunction_getOutput__0 gradF "grad"
-    f' <- C.ioInterfaceFunction_getOutput__0 gradF "f"
-    return (mkJ gradF', mkJ f')
+    result <- evalDMatrix' gradF (M.fromList [("x", unJ (v2d x0bar)), ("p", unJ (v2d pbar))])
+    let mret = do
+          grad <- M.lookup "grad" result
+          f <- M.lookup "f" result
+          return (mkJ grad, mkJ f)
+    case mret of
+      Nothing -> error $ "evalScaledGradF: error looking up output\n"
+                 ++ "fields available: " ++ show (M.keys result)
+      Just r -> return r
 
 evalGradF :: forall x p g . (View x, View g, View p)
              => NlpSolver x p g (J x DMatrix, J (JV Id) DMatrix)
@@ -273,12 +276,15 @@ evalScaledJacG = do
     then return (M.zeros, M.uncol M.zeros)
     else liftIO $ do
     jacG <- C.nlpSolver_jacG solver
-    C.ioInterfaceFunction_setInput__0 jacG (unJ (v2d x0bar)) "x"
-    C.ioInterfaceFunction_setInput__0 jacG (unJ (v2d pbar)) "p"
-    C.function_evaluate jacG
-    jacG' <- C.ioInterfaceFunction_getOutput__0 jacG "jac"
-    g' <- C.ioInterfaceFunction_getOutput__0 jacG "g"
-    return (mkM jacG', mkJ g')
+    result <- evalDMatrix' jacG (M.fromList [("x", unJ (v2d x0bar)), ("p", unJ (v2d pbar))])
+    let mret = do
+          jac <- M.lookup "jac" result
+          g <- M.lookup "g" result
+          return (mkM jac, mkJ g)
+    case mret of
+      Nothing -> error $ "evalScaledJacG: error looking up output\n"
+                 ++"fields available: " ++ show (M.keys result)
+      Just r -> return r
 
 evalJacG :: forall x p g . (View x, View g, View p)
             => NlpSolver x p g (M g x DMatrix, J g DMatrix)
@@ -300,13 +306,17 @@ evalScaledHessLag = do
   let solver = isSolver nlpState :: C.NlpSolver
   liftIO $ do
     hessLag <- C.nlpSolver_hessLag solver
-    C.ioInterfaceFunction_setInput__0 hessLag (unJ (v2d x0bar)) "x"
-    C.ioInterfaceFunction_setInput__0 hessLag (unJ (v2d pbar)) "p"
-    C.ioInterfaceFunction_setInput__0 hessLag (unJ (v2d lamGbar)) "lam_g"
-    C.ioInterfaceFunction_setInput__0 hessLag 1.0 "lam_f"
-    C.function_evaluate hessLag
-    hess' <- C.ioInterfaceFunction_getOutput__0 hessLag "hess"
-    return (mkM hess')
+    result <- evalDMatrix' hessLag $
+              M.fromList
+              [ ("der_x", unJ (v2d x0bar))
+              , ("der_p", unJ (v2d pbar))
+              , ("adj0_f", 1.0)
+              , ("adj0_g", unJ (v2d lamGbar))
+              ]
+    case M.lookup "jac" result of -- ????????????????
+      Nothing -> error $ "evalScaledHessLag: error looking up hess lag output\n"
+                 ++ "available fields are: " ++ show (M.keys result)
+      Just r -> return (mkM r)
 
 -- | only valid at the solution
 evalHessLag :: forall x p g . (View x, View g, View p)
@@ -328,13 +338,17 @@ evalScaledHessF = do
   let solver = isSolver nlpState :: C.NlpSolver
   liftIO $ do
     hessLag <- C.nlpSolver_hessLag solver
-    C.ioInterfaceFunction_setInput__0 hessLag (unJ (v2d x0bar)) "x"
-    C.ioInterfaceFunction_setInput__0 hessLag (unJ (v2d pbar)) "p"
-    C.ioInterfaceFunction_setInput__0 hessLag (unJ (v2d lamGbar)) "lam_g"
-    C.ioInterfaceFunction_setInput__0 hessLag 1.0 "lam_f"
-    C.function_evaluate hessLag
-    hess' <- C.ioInterfaceFunction_getOutput__0 hessLag "hess"
-    return (mkM hess')
+    result <- evalDMatrix' hessLag $
+              M.fromList
+              [ ("der_x", unJ (v2d x0bar))
+              , ("der_p", unJ (v2d pbar))
+              , ("adj0_f", 1.0)
+              , ("adj0_g", unJ (v2d lamGbar))
+              ]
+    case M.lookup "jac" result of -- ????????????????
+      Nothing -> error $ "evalScaledHessF: error looking up hess lag output\n"
+                 ++ "available fields are: " ++ show (M.keys result)
+      Just r -> return (mkM r)
 
 evalHessF :: forall x p g . (View x, View g, View p)
              => NlpSolver x p g (M x x DMatrix)
@@ -355,13 +369,17 @@ evalScaledHessLambdaG = do
   let solver = isSolver nlpState :: C.NlpSolver
   liftIO $ do
     hessLag <- C.nlpSolver_hessLag solver
-    C.ioInterfaceFunction_setInput__0 hessLag (unJ (v2d x0bar)) "x"
-    C.ioInterfaceFunction_setInput__0 hessLag (unJ (v2d pbar)) "p"
-    C.ioInterfaceFunction_setInput__0 hessLag (unJ (v2d lamGbar)) "lam_g"
-    C.ioInterfaceFunction_setInput__0 hessLag 0.0 "lam_f"
-    C.function_evaluate hessLag
-    hess' <- C.ioInterfaceFunction_getOutput__0 hessLag "hess"
-    return (mkM hess')
+    result <- evalDMatrix' hessLag $
+              M.fromList
+              [ ("der_x", unJ (v2d x0bar))
+              , ("der_p", unJ (v2d pbar))
+              , ("adj0_f", 0.0)
+              , ("adj0_g", unJ (v2d lamGbar))
+              ]
+    case M.lookup "jac" result of -- ????????????????
+      Nothing -> error $ "evalScaledHessLambdaG: error looking up hess lag output\n"
+                 ++ "available fields are: " ++ show (M.keys result)
+      Just r -> return (mkM r)
 
 
 -- | only valid at solution
