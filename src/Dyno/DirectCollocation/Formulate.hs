@@ -253,7 +253,8 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
   pathCFunSX <- toSXFun "pathCFun" pathCFun
 
   let quadraturePlottingFun ::
-        QuadraturePlottingIn (JV x) (JV z) (JV u) (JV p) (JV o) (JV q) (JV qo) (JV fp) SX -> J (JV po) SX
+        QuadraturePlottingIn (JV x) (JV z) (JV u) (JV p) (JV o) (JV q) (JV qo) (JV fp) SX
+        -> J (JV po) SX
       quadraturePlottingFun (QuadraturePlottingIn x0 xF x z u p o q qo fp t tf) =
         catJV' $ ocpPlotOutputs ocp (splitJV' x0, splitJV' xF)
         (splitJV' x) (splitJV' z) (splitJV' u) (splitJV' p)

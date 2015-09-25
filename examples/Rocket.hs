@@ -176,7 +176,7 @@ dirCollOpts =
   }
 
 main :: IO ()
-main = 
+main =
   withCallback $ \send -> do
 
     cp  <- makeCollProblem dirCollOpts rocketOcp rocketOcpInputs guess

@@ -42,7 +42,8 @@ runOcpHomotopyWith ::
   -> Bool -> Bool -> Solver -> Solver
   -> t (fp Double)
   -> (CollProblem x z u p r o c h q qo po fp n deg
-      -> IO ([String] -> J (CollTraj x z u p n deg) (Vector Double) -> J (JV fp) (Vector Double) -> IO Bool)
+      -> IO ([String] -> J (CollTraj x z u p n deg) (Vector Double)
+             -> J (JV fp) (Vector Double) -> IO Bool)
      )
   -> IO (t (NlpOut (CollTraj x z u p n deg)
                    (CollOcpConstraints x r c h n deg)
