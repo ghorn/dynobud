@@ -22,8 +22,8 @@ import Dyno.Nlp ( Nlp(..), NlpOut(..) )
 import Dyno.NlpSolver ( RunNlpOptions, defaultRunnerOptions )
 import Dyno.NlpUtils ( HomotopyParams(..), solveNlpWith, solveNlpHomotopyWith )
 import Dyno.DirectCollocation.Types ( CollTraj(..), CollOcpConstraints )
-import Dyno.DirectCollocation.Formulate ( CollProblem(..), makeCollProblem )
-import Dyno.DirectCollocation.Quadratures ( QuadratureRoots )
+import Dyno.DirectCollocation.Formulate
+       ( CollProblem(..), DirCollOptions, makeCollProblem )
 
 
 runOcpHomotopyWith ::
@@ -34,12 +34,12 @@ runOcpHomotopyWith ::
     , Vectorize q, Vectorize po, Vectorize qo
     , Vectorize fp
     , T.Traversable t )
-  => RunNlpOptions
+  => DirCollOptions -> RunNlpOptions
   -> Double -> HomotopyParams
   -> OcpPhase x z u p r o c h q qo po fp
   -> OcpPhaseInputs x z u p c h fp
   -> J (CollTraj x z u p n deg) (Vector Double)
-  -> QuadratureRoots -> Bool -> Bool -> Solver -> Solver
+  -> Bool -> Bool -> Solver -> Solver
   -> t (fp Double)
   -> (CollProblem x z u p r o c h q qo po fp n deg
       -> IO ([String] -> J (CollTraj x z u p n deg) (Vector Double) -> J (JV fp) (Vector Double) -> IO Bool)
@@ -47,10 +47,10 @@ runOcpHomotopyWith ::
   -> IO (t (NlpOut (CollTraj x z u p n deg)
                    (CollOcpConstraints x r c h n deg)
                    (Vector Double)))
-runOcpHomotopyWith opts step0 homotopyParams ocpHomotopy ocpHomotopyInputs guess roots
+runOcpHomotopyWith dirCollOpts opts step0 homotopyParams ocpHomotopy ocpHomotopyInputs guess
   useStartupCallback useHomotopyCallback
   startupSolver homotopySolver nominalParams makeCallback = do
-  cp0 <- makeCollProblem roots ocpHomotopy ocpHomotopyInputs guess
+  cp0 <- makeCollProblem dirCollOpts ocpHomotopy ocpHomotopyInputs guess
   callback <- makeCallback cp0
   let nlpHomotopy :: Nlp
                      (CollTraj x z u p n deg)
@@ -104,11 +104,11 @@ runOcpHomotopy ::
     , Vectorize q, Vectorize po, Vectorize qo
     , Vectorize fp
     , T.Traversable t )
-  => Double -> HomotopyParams
+  => DirCollOptions -> Double -> HomotopyParams
   -> OcpPhase x z u p r o c h q qo po fp
   -> OcpPhaseInputs x z u p c h fp
   -> J (CollTraj x z u p n deg) (Vector Double)
-  -> QuadratureRoots -> Bool -> Bool -> Solver -> Solver
+  -> Bool -> Bool -> Solver -> Solver
   -> t (fp Double)
   -> (CollProblem x z u p r o c h q qo po fp n deg
       -> IO ([String] -> J (CollTraj x z u p n deg) (Vector Double) -> J (JV fp) (Vector Double) -> IO Bool)
@@ -116,4 +116,4 @@ runOcpHomotopy ::
   -> IO (t (NlpOut (CollTraj x z u p n deg)
                    (CollOcpConstraints x r c h n deg)
                    (Vector Double)))
-runOcpHomotopy = runOcpHomotopyWith defaultRunnerOptions
+runOcpHomotopy dirCollOpts = runOcpHomotopyWith dirCollOpts defaultRunnerOptions

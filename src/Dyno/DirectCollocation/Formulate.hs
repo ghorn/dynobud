@@ -7,7 +7,7 @@
 
 module Dyno.DirectCollocation.Formulate
        ( CollProblem(..)
-       , StageOutputs(..)
+       , DirCollOptions(..)
        , makeCollProblem
        , mkTaus
        , makeGuess
@@ -74,10 +74,15 @@ data CollProblem x z u p r o c h q qo po fp n deg =
                  -> J (JV fp) (Vector Double)
                  -> IO (Vec n (StageOutputs x o h q qo po deg Double))
   , cpTaus :: Vec deg Double
-  , cpRoots :: QuadratureRoots
+  , cpDirCollOpts :: DirCollOptions
   , cpEvalQuadratures :: Vec n (Vec deg Double) -> Double -> IO Double
   , cpMetaProxy :: MetaProxy x z u p o q qo po h
   }
+
+data DirCollOptions =
+  DirCollOptions
+  { collocationRoots :: QuadratureRoots -- ^ which collocation roots to use
+  } deriving Show
 
 
 data QuadraturePlottingIn x z u p o q qo fp a =
@@ -140,13 +145,14 @@ makeCollProblem ::
   , Vectorize r, Vectorize o, Vectorize h, Vectorize c, Vectorize q
   , Vectorize po, Vectorize fp, Vectorize qo
   )
-  => QuadratureRoots
+  => DirCollOptions
   -> OcpPhase x z u p r o c h q qo po fp
   -> OcpPhaseInputs x z u p c h fp
   -> J (CollTraj x z u p n deg) (Vector Double)
   -> IO (CollProblem x z u p r o c h q qo po fp n deg)
-makeCollProblem roots ocp ocpInputs guess = do
+makeCollProblem dirCollOpts ocp ocpInputs guess = do
   let -- the collocation points
+      roots = collocationRoots dirCollOpts
       taus :: Vec deg Double
       taus = mkTaus roots
 

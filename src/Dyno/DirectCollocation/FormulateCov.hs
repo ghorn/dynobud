@@ -33,7 +33,7 @@ import Dyno.Ocp
 
 import Dyno.DirectCollocation.Types
 import Dyno.DirectCollocation.Dynamic ( DynPlotPoints )
-import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..), timesFromTaus )
+import Dyno.DirectCollocation.Quadratures ( timesFromTaus )
 import Dyno.DirectCollocation.Robust
 import Dyno.DirectCollocation.Formulate
 
@@ -56,7 +56,7 @@ data CollCovProblem ocp n deg sx sw sh shr sc =
   , ccpCovariances :: MXFun
                       (J (Cov (JV sx)) :*: J (CollTraj (X ocp) (Z ocp) (U ocp) (P ocp) n deg))
                       (J (CovTraj sx n))
-  , ccpRoots :: QuadratureRoots
+  , ccpDirCollOpts :: DirCollOptions
   }
 
 
@@ -83,14 +83,15 @@ makeCollCovProblem ::
   , fp ~ None
   , None ~ FP ocp
   )
-  => QuadratureRoots
+  => DirCollOptions
   -> OcpPhase' ocp
   -> OcpPhaseInputs x z u p c h fp
   -> OcpPhaseWithCov ocp sx sz sw sr sh shr sc
   -> J (CollTraj x z u p n deg) (Vector Double)
   -> IO (CollCovProblem ocp n deg sx sw sh shr sc)
-makeCollCovProblem roots ocp ocpInputs ocpCov guess = do
+makeCollCovProblem dirCollOpts ocp ocpInputs ocpCov guess = do
   let -- the collocation points
+      roots = collocationRoots dirCollOpts
       taus :: Vec deg Double
       taus = mkTaus roots
 
@@ -105,7 +106,7 @@ makeCollCovProblem roots ocp ocpInputs ocpCov guess = do
   lagrangeFun <- toSXFun "cov lagrange" $ \(x0:*:x1:*:x2:*:x3) ->
     catJV' $ Id $ ocpCovLagrange ocpCov (unId (splitJV' x0)) (splitJV' x1) x2 (unId (splitJV' x3))
 
-  cp0 <- makeCollProblem roots ocp ocpInputs guess
+  cp0 <- makeCollProblem dirCollOpts ocp ocpInputs guess
 
   robustify <- mkRobustifyFunction (ocpCovProjection ocpCov) (ocpCovRobustifyPathC ocpCov)
 
@@ -199,7 +200,7 @@ makeCollCovProblem roots ocp ocpInputs ocpCov guess = do
                           , ccpOutputs = getOutputs
                           , ccpSensitivities = computeSensitivitiesFun'
                           , ccpCovariances = computeCovariancesFun'
-                          , ccpRoots = roots
+                          , ccpDirCollOpts = dirCollOpts
                           }
 
 

@@ -201,7 +201,12 @@ goodSolution out = msg
 compareIntegration :: (QuadratureRoots, StateOrOutput, QuadOrLagrange) -> IO ()
 compareIntegration (roots, stateOrOutput, quadOrLag) = do
   withCallback $ \send -> do
-    cp  <- makeCollProblem roots (quadOcp stateOrOutput quadOrLag) quadOcpInputs (guess roots)
+    let dirCollOpts :: DirCollOptions
+        dirCollOpts =
+          DirCollOptions
+          { collocationRoots = roots
+          }
+    cp  <- makeCollProblem dirCollOpts (quadOcp stateOrOutput quadOrLag) quadOcpInputs (guess roots)
     let nlp = cpNlp cp
         meta = toMeta (cpMetaProxy cp)
         cb traj _ = do

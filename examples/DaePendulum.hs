@@ -21,7 +21,9 @@ import Dyno.Solvers
 import Dyno.Nlp
 import Dyno.NlpUtils
 import Dyno.Ocp
-import Dyno.DirectCollocation.Formulate ( CollProblem(..), makeCollProblem, makeGuess )
+import Dyno.DirectCollocation.Formulate
+       ( CollProblem(..), DirCollOptions(..)
+       , makeCollProblem, makeGuess )
 import Dyno.DirectCollocation.Types ( CollTraj' )
 import Dyno.DirectCollocation.Dynamic ( toMeta )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..) )
@@ -197,10 +199,15 @@ solver = ipoptSolver { options = [ ("expand", Opt True)
 solver2 :: Solver
 solver2 = ipoptSolver { options = [("expand", Opt True)] }
 
+dirCollOpts :: DirCollOptions
+dirCollOpts =
+  DirCollOptions
+  { collocationRoots = Legendre
+  }
 
 main :: IO ()
 main = do
-  cp  <- makeCollProblem Legendre pendOcp pendOcpInputs guess
+  cp  <- makeCollProblem dirCollOpts pendOcp pendOcpInputs guess
   withCallback $ \send -> do
     let nlp = cpNlp cp
         meta = toMeta (cpMetaProxy cp)

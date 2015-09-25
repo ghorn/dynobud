@@ -20,7 +20,8 @@ import Dyno.Vectorize ( Vectorize, None(..), fill )
 import Dyno.Solvers ( Solver(..), Opt(..), ipoptSolver )
 import Dyno.NlpUtils ( solveNlp )
 import Dyno.DirectCollocation.ActiveConstraints
-import Dyno.DirectCollocation.Formulate ( CollProblem(..), makeCollProblem )
+import Dyno.DirectCollocation.Formulate
+       ( CollProblem(..), DirCollOptions(..), makeCollProblem )
 import Dyno.DirectCollocation.Types ( CollTraj' )
 import Dyno.DirectCollocation.Dynamic ( toMeta )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..) )
@@ -166,11 +167,17 @@ guess = jfill 1
 type NCollStages = 100
 type CollDeg = 3
 
+dirCollOpts :: DirCollOptions
+dirCollOpts =
+  DirCollOptions
+  { collocationRoots = Legendre
+  }
+
 main :: IO ()
 main = 
   withCallback $ \send -> do
 
-    cp  <- makeCollProblem Legendre rocketOcp rocketOcpInputs guess
+    cp  <- makeCollProblem dirCollOpts rocketOcp rocketOcpInputs guess
     let nlp = cpNlp cp
         meta = toMeta (cpMetaProxy cp)
 

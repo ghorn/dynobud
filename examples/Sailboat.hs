@@ -290,9 +290,15 @@ solver :: Solver
 solver = ipoptSolver
 --solver = snoptSolver { options = [("detect_linear", Opt False)] }
 
+dirCollOpts :: DirCollOptions
+dirCollOpts =
+  DirCollOptions
+  { collocationRoots = Legendre
+  }
+
 main :: IO ()
 main = do
-  cp <- makeCollProblem Legendre ocp ocpInputs (cat initialGuess)
+  cp <- makeCollProblem dirCollOpts ocp ocpInputs (cat initialGuess)
   let nlp = cpNlp cp
   ZMQ.withContext $ \context ->
     withPublisher context urlDynoPlot $ \sendDynoPlotMsg -> do

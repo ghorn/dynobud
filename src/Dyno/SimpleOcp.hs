@@ -119,10 +119,15 @@ solveOcp' simple _ _ = do
   let ocp = toOcp simple
       ocpInputs = toOcpInputs simple
       tf = endTime simple
-      roots = Legendre
+      dirCollOpts =
+        DirCollOptions
+        { collocationRoots = Radau
+        } -- todo(greg): = def
+      roots = collocationRoots dirCollOpts
+
       guess :: CollTraj (Tuple x u) None u None n deg (Vector Double)
       guess = makeGuess roots tf (\t -> Tuple (initialGuess simple t) (fill 0)) (const None) (const (fill 0)) None
-  cp <- makeCollProblem roots ocp ocpInputs (cat guess)
+  cp <- makeCollProblem dirCollOpts ocp ocpInputs (cat guess)
   let _ = cp :: CollProblem (Tuple x u) None u None (Tuple x u) None (SimpleBc x) None None None None None n deg
   (emsg, opt) <- solveNlp solver (cpNlp cp) Nothing
   case emsg of

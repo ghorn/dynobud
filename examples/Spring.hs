@@ -19,7 +19,8 @@ import Dyno.Ocp
 import Dyno.Vectorize ( Vectorize, None(..), fill )
 import Dyno.Solvers ( Solver(..), Opt(..), ipoptSolver )
 import Dyno.NlpUtils ( solveNlp )
-import Dyno.DirectCollocation.Formulate ( CollProblem(..), makeCollProblem )
+import Dyno.DirectCollocation.Formulate
+       ( CollProblem(..), DirCollOptions(..), makeCollProblem )
 import Dyno.DirectCollocation.Types ( CollTraj' )
 import Dyno.DirectCollocation.Dynamic ( toMeta )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..) )
@@ -153,11 +154,17 @@ guess = jfill 1
 type NCollStages = 100
 type CollDeg = 3
 
+dirCollOpts :: DirCollOptions
+dirCollOpts =
+  DirCollOptions
+  { collocationRoots = Legendre
+  }
+
 main :: IO ()
 main = 
   withCallback $ \send -> do
 
-    cp  <- makeCollProblem Legendre springOcp springOcpInputs guess
+    cp  <- makeCollProblem dirCollOpts springOcp springOcpInputs guess
     let nlp = cpNlp cp
         meta = toMeta (cpMetaProxy cp)
 

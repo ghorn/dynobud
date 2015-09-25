@@ -193,7 +193,11 @@ goodSolution out = HUnit.assertBool msg (abs (f - fExpected) < 1e-8 && abs (pF -
 
 compareIntegration :: (QuadratureRoots, StateOrOutput, QuadOrLagrange) -> HUnit.Assertion
 compareIntegration (roots, stateOrOutput, quadOrLag) = HUnit.assert $ do
-  cp  <- makeCollProblem roots (quadOcp stateOrOutput quadOrLag) quadOcpInputs (guess roots)
+  let dirCollOpts =
+        DirCollOptions
+        { collocationRoots = roots
+        }
+  cp  <- makeCollProblem dirCollOpts (quadOcp stateOrOutput quadOrLag) quadOcpInputs (guess roots)
   let nlp = cpNlp cp
   (ret, out) <- solveNlp solver nlp Nothing
   case ret of

@@ -35,7 +35,7 @@ import Dyno.TypeVecs ( Vec )
 import Dyno.Vectorize ( Vectorize, Id(..), None(..), fill )
 import Dyno.View.View ( View(..) )
 import Dyno.View.JV ( splitJV, catJV )
-import Dyno.DirectCollocation.Formulate ( CollProblem(..) )
+import Dyno.DirectCollocation.Formulate ( CollProblem(..), DirCollOptions(..) )
 import Dyno.DirectCollocation.Types ( CollTraj(..), CollOcpConstraints(..)
                                     , StageOutputs(..), Quadratures(..)
                                     , getXzus'''
@@ -114,7 +114,8 @@ exportTraj' mextra exportConfig cp fp nlpOut = do
   let _ = outs :: Vec n (StageOutputs x o h q qo po deg Double)
       _ = finalQuads :: Quadratures q qo Double
 
-  let taus :: Vec deg Double
+  let roots = collocationRoots (cpDirCollOpts cp)
+      taus :: Vec deg Double
       taus = cpTaus cp
       Id tf = splitJV tf'
 
@@ -200,7 +201,7 @@ exportTraj' mextra exportConfig cp fp nlpOut = do
         , matlabRetName ++ ".T = " ++ show tf ++ ";"
         , matlabRetName ++ ".N = " ++ show n ++ ";"
         , matlabRetName ++ ".deg = " ++ show (reflectDim (Proxy :: Proxy deg)) ++ ";"
-        , matlabRetName ++ ".collocationRoots = '" ++ show (cpRoots cp) ++ "';"
+        , matlabRetName ++ ".collocationRoots = '" ++ show roots ++ "';"
         ]
 
       runRet :: State PythonExporter ()
@@ -233,7 +234,7 @@ exportTraj' mextra exportConfig cp fp nlpOut = do
         putVal pyRetName ["T"] (show tf)
         putVal pyRetName ["N"] (show n)
         putVal pyRetName ["deg"] (show (reflectDim (Proxy :: Proxy deg)))
-        putVal pyRetName ["collocationRoots"] ("'" ++ show (cpRoots cp) ++ "'")
+        putVal pyRetName ["collocationRoots"] ("'" ++ show roots ++ "'")
 
   return $ Export
     { exportMatlab = matlabOut

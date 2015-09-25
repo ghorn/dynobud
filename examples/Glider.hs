@@ -138,11 +138,16 @@ eye3' =
   (V3 0 1 0)
   (V3 0 0 1)
 
+dirCollOpts :: DirCollOptions
+dirCollOpts =
+  DirCollOptions
+  { collocationRoots = Legendre
+  }
 
 main :: IO ()
 main = do
   let guess = jfill 1 :: J (CollTraj' GliderOcp NCollStages CollDeg) (Vector Double)
-  cp <- makeCollProblem Legendre ocp ocpInputs guess
+  cp <- makeCollProblem dirCollOpts ocp ocpInputs guess
   let nlp = cpNlp cp
   withCallback $ \send -> do
     let meta = toMeta (cpMetaProxy cp)
