@@ -94,6 +94,7 @@ data MapStrategy =
 data DirCollOptions =
   DirCollOptions
   { collocationRoots :: QuadratureRoots -- ^ which collocation roots to use
+  , mapStrategy :: MapStrategy
   } deriving Show
 
 instance Default DirCollOptions where
