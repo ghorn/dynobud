@@ -64,8 +64,8 @@ library
   other-modules:
 
   build-depends:       base >=4.6 && < 5,
-                       casadi-bindings-core >= 2.4.0.0,
-                       casadi-bindings >= 2.4.0.0,
+                       casadi-bindings-core >= 2.4.1.0,
+                       casadi-bindings >= 2.4.1.0,
 --                       casadi-bindings-internal,
                        jacobi-roots >=0.2 && <0.3,
                        spatial-math >= 0.2.1.0,
