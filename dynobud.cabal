@@ -67,6 +67,7 @@ library
                        casadi-bindings-core >= 2.4.1.0,
                        casadi-bindings >= 2.4.1.0,
 --                       casadi-bindings-internal,
+                       data-default-class,
                        jacobi-roots >=0.2 && <0.3,
                        spatial-math >= 0.2.1.0,
                        vector >=0.10,

@@ -21,6 +21,7 @@ import GHC.Generics ( Generic, Generic1 )
 
 import Control.Applicative
 import Control.Monad.State ( StateT(..), runStateT )
+import Data.Default.Class ( Default(..) )
 import Data.Map ( Map )
 import qualified Data.Map as M
 import Data.Maybe ( fromMaybe )
@@ -95,6 +96,12 @@ data DirCollOptions =
   { collocationRoots :: QuadratureRoots -- ^ which collocation roots to use
   } deriving Show
 
+instance Default DirCollOptions where
+  def =
+    DirCollOptions
+    { mapStrategy = Unrolled
+    , collocationRoots = Radau
+    }
 
 data QuadraturePlottingIn x z u p o q qo fp a =
   -- x0 xF x z u p fp o q qo t T
