@@ -309,9 +309,10 @@ main = do
           callback :: J (CollTraj' SailboatOcp NCollStages CollDeg) (Vector Double) -> b -> IO Bool
           callback traj _ = do
             plotPoints <- cpPlotPoints cp traj (catJV None)
+                          :: IO (DynPlotPoints Double)
             -- dynoplot
             let dynoPlotMsg = encodeSerial (plotPoints, meta)
-            sendDynoPlotMsg "glider" dynoPlotMsg
+            sendDynoPlotMsg "dynoplot" dynoPlotMsg
 
 --            -- 3d vis
 --            let CollTraj tf' _ _ stages' xf = split traj
