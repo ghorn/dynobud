@@ -49,18 +49,25 @@ instance (View f, S.Serialize a, Viewable a) => S.Serialize (J f a) where
 instance Show a => Show (J f a) where
   showsPrec p (UnsafeJ x) = showsPrec p x
 
+over :: (View f, Viewable a, CM.CMatrix a) => (a -> a) -> J f a -> J f a
+over f (UnsafeJ x) = mkJ (f x)
+
+over2 :: (View f, Viewable a, CM.CMatrix a) => (a -> a -> a) -> J f a -> J f a -> J f a
+over2 f (UnsafeJ x) (UnsafeJ y)= mkJ (f x y)
+
 instance (View f, Viewable a, CM.CMatrix a) => Num (J f a) where
-  (UnsafeJ x) + (UnsafeJ y) = mkJ (x + y)
-  (UnsafeJ x) - (UnsafeJ y) = mkJ (x - y)
-  (UnsafeJ x) * (UnsafeJ y) = mkJ (x * y)
-  abs (UnsafeJ x) = mkJ $ abs x
-  signum (UnsafeJ x) = mkJ $ signum x
+  (+) = over2 (+)
+  (-) = over2 (-)
+  (*) = over2 (*)
+  negate = over negate
+  abs = over abs
+  signum = over signum
   fromInteger k = mkJ (fromInteger k * CM.ones (n, 1))
     where
       n = size (Proxy :: Proxy f)
 
 instance (View f, Viewable a, CM.CMatrix a) => Fractional (J f a) where
-  (UnsafeJ x) / (UnsafeJ y) = mkJ (x / y)
+  (/) = over2 (/)
   fromRational x = mkJ (fromRational x * CM.ones (n, 1))
     where
       n = size (Proxy :: Proxy f)
@@ -69,36 +76,36 @@ instance (View f, Viewable a, CM.CMatrix a) => Floating (J f a) where
   pi = mkJ (pi * CM.ones (n, 1))
     where
       n = size (Proxy :: Proxy f)
-  (**) (UnsafeJ x) (UnsafeJ y) = mkJ (x ** y)
-  exp   (UnsafeJ x) = mkJ $ exp   x
-  log   (UnsafeJ x) = mkJ $ log   x
-  sin   (UnsafeJ x) = mkJ $ sin   x
-  cos   (UnsafeJ x) = mkJ $ cos   x
-  tan   (UnsafeJ x) = mkJ $ tan   x
-  asin  (UnsafeJ x) = mkJ $ asin  x
-  atan  (UnsafeJ x) = mkJ $ atan  x
-  acos  (UnsafeJ x) = mkJ $ acos  x
-  sinh  (UnsafeJ x) = mkJ $ sinh  x
-  cosh  (UnsafeJ x) = mkJ $ cosh  x
-  tanh  (UnsafeJ x) = mkJ $ tanh  x
-  asinh (UnsafeJ x) = mkJ $ asinh x
-  atanh (UnsafeJ x) = mkJ $ atanh x
-  acosh (UnsafeJ x) = mkJ $ acosh x
+  (**) = over2 (**)
+  exp   = over exp
+  log   = over log
+  sin   = over sin
+  cos   = over cos
+  tan   = over tan
+  asin  = over asin
+  atan  = over atan
+  acos  = over acos
+  sinh  = over sinh
+  cosh  = over cosh
+  tanh  = over tanh
+  asinh = over asinh
+  atanh = over atanh
+  acosh = over acosh
 
 instance (View f, Viewable a, CM.CMatrix a) => ArcTan2 (J f a) where
-  arctan2 (UnsafeJ x0) (UnsafeJ x1) = mkJ (arctan2 x0 x1)
+  arctan2 = over2 arctan2
 
 instance (View f, Viewable a, CM.CMatrix a) => Erf (J f a) where
-  erf (UnsafeJ x) = mkJ (erf x)
-  erfinv (UnsafeJ x) = mkJ (erfinv x)
+  erf = over erf
+  erfinv = over erfinv
 
 instance (View f, Viewable a, CM.CMatrix a) => Fmod (J f a) where
-  fmod (UnsafeJ x0) (UnsafeJ x1) = mkJ (fmod x0 x1)
+  fmod = over2 fmod
 
 instance (View f, Viewable a, CM.CMatrix a) => SymOrd (J f a) where
-  leq (UnsafeJ x0) (UnsafeJ x1) = mkJ (leq x0 x1)
-  geq (UnsafeJ x0) (UnsafeJ x1) = mkJ (geq x0 x1)
-  eq  (UnsafeJ x0) (UnsafeJ x1) = mkJ (eq  x0 x1)
+  leq = over2 leq
+  geq = over2 geq
+  eq  = over2 eq
 
 mkJ :: forall f a . (View f, Viewable a) => a -> J f a
 mkJ x = case mkJ' x of
