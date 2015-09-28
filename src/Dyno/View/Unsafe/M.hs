@@ -21,7 +21,7 @@ import qualified Data.Foldable as F
 import qualified Data.Vector as V
 import Data.Vector ( Vector )
 
-import Casadi.Overloading ( Fmod(..), ArcTan2(..), SymOrd(..) )
+import Casadi.Overloading ( ArcTan2(..), Erf(..), Fmod(..), SymOrd(..) )
 import Casadi.DMatrix ( DMatrix )
 import Casadi.CMatrix ( CMatrix )
 import qualified Casadi.CMatrix as CM
@@ -96,6 +96,10 @@ instance (View f, View g, CMatrix a) => SymOrd (M f g a) where
   leq = over2 leq
   geq = over2 geq
   eq  = over2 eq
+
+instance (View f, View g, CMatrix a) => Erf (M f g a) where
+  erf = over erf
+  erfinv = over erfinv
 
 mkM :: forall f g a . (View f, View g, CMatrix a) => a -> M f g a
 mkM x = case mkM' x of

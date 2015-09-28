@@ -25,6 +25,7 @@ import qualified Data.Binary as B
 import qualified Data.Serialize as S
 
 import qualified Casadi.CMatrix as CM
+import Casadi.Overloading ( ArcTan2(..), Erf(..), Fmod(..), SymOrd(..) )
 
 import Dyno.View.Viewable ( Viewable(..) )
 
@@ -83,6 +84,21 @@ instance (View f, Viewable a, CM.CMatrix a) => Floating (J f a) where
   asinh (UnsafeJ x) = mkJ $ asinh x
   atanh (UnsafeJ x) = mkJ $ atanh x
   acosh (UnsafeJ x) = mkJ $ acosh x
+
+instance (View f, Viewable a, CM.CMatrix a) => ArcTan2 (J f a) where
+  arctan2 (UnsafeJ x0) (UnsafeJ x1) = mkJ (arctan2 x0 x1)
+
+instance (View f, Viewable a, CM.CMatrix a) => Erf (J f a) where
+  erf (UnsafeJ x) = mkJ (erf x)
+  erfinv (UnsafeJ x) = mkJ (erfinv x)
+
+instance (View f, Viewable a, CM.CMatrix a) => Fmod (J f a) where
+  fmod (UnsafeJ x0) (UnsafeJ x1) = mkJ (fmod x0 x1)
+
+instance (View f, Viewable a, CM.CMatrix a) => SymOrd (J f a) where
+  leq (UnsafeJ x0) (UnsafeJ x1) = mkJ (leq x0 x1)
+  geq (UnsafeJ x0) (UnsafeJ x1) = mkJ (geq x0 x1)
+  eq  (UnsafeJ x0) (UnsafeJ x1) = mkJ (eq  x0 x1)
 
 mkJ :: forall f a . (View f, Viewable a) => a -> J f a
 mkJ x = case mkJ' x of
