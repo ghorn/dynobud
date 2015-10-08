@@ -240,7 +240,7 @@ forestFromMeta meta = [xTree,zTree,uTree,oTree,xdTree,hTree,poTree,qTree,qdTree]
     oTree  = blah (\(DynPlotPoints _ _ _ o  _ _  _ _ _ ) ->  o) "outputs" (ctmO meta)
     xdTree = blah (\(DynPlotPoints _ _ _ _ xd _  _ _ _ ) -> xd) "diff state derivatives" (ctmX meta)
     hTree  = blah (\(DynPlotPoints _ _ _ _  _ h  _ _ _ ) ->  h) "path constraints" (ctmH meta)
-    poTree = blah (\(DynPlotPoints _ _ _ _  _ _ po _ _ ) -> po) "quadrature outputs" (ctmPo meta)
+    poTree = blah (\(DynPlotPoints _ _ _ _  _ _ po _ _ ) -> po) "plot outputs" (ctmPo meta)
     qTree  = blah (\(DynPlotPoints _ _ _ _  _ _  _ q _ ) ->  q) "quadrature states" (ctmQ meta)
     qdTree = blah (\(DynPlotPoints _ _ _ _  _ _  _ _ qd) -> qd) "ddt(quadrature states)" (ctmQ meta)
 
