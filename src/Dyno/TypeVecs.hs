@@ -123,7 +123,8 @@ instance Dim n => Vectorize (Vec n) where
   devectorize' :: V.Vector a -> Either String (Vec n a)
   devectorize' x
     | n == n' = Right (MkVec x)
-    | otherwise = Left $ "mkVec: length mismatch, " ++ show (n,n')
+    | otherwise = Left $ "mkVec: length mismatch, type-level: "
+                  ++ show n ++ ", value-level: " ++ show n'
     where
       n = reflectDim (Proxy :: Proxy n)
       n' = V.length x
@@ -142,7 +143,8 @@ infixl 5 |>
 unVec :: forall n a . Dim n => Vec n a -> V.Vector a
 unVec (MkVec x)
   | n == n' = x
-  | otherwise = error $ "unVec: length mismatch, " ++ show (n,n')
+  | otherwise = error $ "unVec: length mismatch, type-level: "
+                ++ show n ++ ", value-level: " ++ show n'
   where
     n = reflectDim (Proxy :: Proxy n)
     n' = V.length x
