@@ -36,6 +36,7 @@ library
                        Dyno.DirectCollocation.Interpolate
                        Dyno.DirectCollocation.Quadratures
                        Dyno.DirectCollocation.Robust
+                       Dyno.DirectCollocation.ScaleFactors
                        Dyno.DirectCollocation.Types
                        Dyno.ExportCStruct
                        Dyno.Integrate
