@@ -39,6 +39,7 @@ library
                        Dyno.DirectCollocation.Types
                        Dyno.ExportCStruct
                        Dyno.Integrate
+                       Dyno.Linearize
                        Dyno.View.Cov
 --                       Dyno.View.CustomFunction
                        Dyno.View.Fun
