@@ -40,6 +40,7 @@ library
                        Dyno.ExportCStruct
                        Dyno.Integrate
                        Dyno.Linearize
+                       Dyno.Random
                        Dyno.View.Cov
 --                       Dyno.View.CustomFunction
                        Dyno.View.Fun
@@ -89,7 +90,8 @@ library
                        Plot-ho-matic >= 0.5.0.2,
                        generic-accessors >= 0.4.2.0,
                        time,
-                       directory
+                       directory,
+                       mwc-random
 --                       cplex
   hs-source-dirs:      src
   default-language:    Haskell2010
