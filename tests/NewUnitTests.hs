@@ -10,13 +10,15 @@ import QuadratureTests ( quadratureTests )
 import VectorizeTests ( vectorizeTests )
 import ViewTests ( viewTests )
 import IntegrationTests ( integrationTests )
+import MapTests ( mapTests )
 
 main :: IO ()
 main = defaultMainWithOpts tests opts
 
 tests :: [Test]
 tests =
-  [ quadratureTests
+  [ mapTests
+  , quadratureTests
   , integrationTests
   , vectorizeTests
   , viewTests

@@ -361,7 +361,7 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
   let mapOpts = case mapStrategy dirCollOpts of
         Unrolled -> M.empty
         Symbolic r -> r
-  mapStageFunMX <- mapFun'' (Proxy :: Proxy n) "mapDynamicsStageFun" stageFunMX mapOpts
+  mapStageFunMX <- mapFun' (Proxy :: Proxy n) "mapDynamicsStageFun" stageFunMX mapOpts
 -- use repeated outputs for now
     :: IO (Fun
            (   M (JV Id) (JVec n (JV Id))

@@ -6,60 +6,81 @@
 module Main ( main ) where
 
 import qualified Data.Map as M
+import Data.Proxy ( Proxy(..) )
 import Data.Time.Clock ( getCurrentTime, diffUTCTime )
+import Linear ( V2(..), V3(..) )
 import Text.Printf ( printf )
 
 import Casadi.DMatrix ( DMatrix )
 import Casadi.SX ( SX )
+import Casadi.MX ( MX )
 import Casadi.Option ( Opt(..) )
 
 import qualified Dyno.TypeVecs as TV
 import Dyno.Vectorize ( Id(..) )
-import Dyno.View.Fun ( call, toSXFun, toMXFun, eval )
+import Dyno.View.Fun ( FunClass, Fun, SXFun, call, toSXFun, toMXFun, eval )
 import Dyno.View.MapFun ( mapFun )
-import Dyno.View.M ( M, row )
-import Dyno.View.JV ( JV, catJV )
+import Dyno.View.M ( M, col, uncol, hcat', hsplit' )
+import Dyno.View.JV ( JV, catJV', splitJV' )
 import Dyno.View.JVec ( JVec(..) )
-import Dyno.View.View ( J, View(..), v2d )
+import Dyno.View.View ( J )
 
 type N = 300
 
--- todo(greg): one with different sized input/output and non-scalar input/output
 -- some random function
-f0' :: J (JV Id) SX -> J (JV Id) SX
-f0' x = g (100000 :: Int) x
+f0' :: J (JV V2) SX -> J (JV V3) SX
+f0' x = catJV' $ V3 (g (100000 :: Int) x0) x1 (2*x1)
   where
+    V2 x0 x1 = splitJV' x
+
     g 0 y = y
     g k y = g (k-1) (sin y)
 
 main :: IO ()
 main = do
-  let dummyInput :: J (JVec N (JV Id)) DMatrix
-      dummyInput = v2d $ cat $ JVec $ fmap (catJV . Id) (TV.tvlinspace 0 (2*pi))
-      dummyInput' :: M (JV Id) (JVec N (JV Id)) DMatrix
-      dummyInput' = row dummyInput
+  let dummyInput :: M (JV V2) (JVec N (JV Id)) DMatrix
+      dummyInput = hcat' $ fmap (\x -> col (catJV' (V2 x (2*x))))
+                    (TV.tvlinspace 0 (2*pi))
+
   show dummyInput `seq` return ()
-  show dummyInput' `seq` return ()
 
   -- make a dummy function that's moderately expensive to evaluate
   putStrLn "creating dummy function..."
   f0 <- toSXFun "f0" f0'
+        :: IO (SXFun (J (JV V2)) (J (JV V3)))
 
-  let runOne name someMap input = do
+  let runOne :: FunClass fun
+                => String
+                -> fun
+                   (M (JV V2) (JVec N (JV Id)))
+                   (M (JV V3) (JVec N (JV Id)))
+                -> IO ()
+      runOne name someMap = do
         putStrLn $ "evaluating " ++ name ++ "..."
         t0 <- getCurrentTime
-        _ <- eval someMap input
+        _ <- eval someMap dummyInput
         t1 <- getCurrentTime
         printf "evaluated %s in %.3f seconds\n"
           name (realToFrac (diffUTCTime t1 t0) :: Double)
 
-  naive <- toMXFun "naive map" $
-           \xs -> cat $ JVec $ fmap (call f0) (unJVec (split xs))
-  ser <- mapFun "serial symbolic map" f0
+  let naiveFun :: M (JV V2) (JVec N (JV Id)) MX -> M (JV V3) (JVec N (JV Id)) MX
+      naiveFun xs = hcat' ys
+        where
+          ys :: TV.Vec N (M (JV V3) (JV Id) MX)
+          ys = fmap (col . call f0 . uncol) xs'
+
+          xs' :: TV.Vec N (M (JV V2) (JV Id) MX)
+          xs' = hsplit' xs
+
+  naive <- toMXFun "naive map" naiveFun
+  ser <- mapFun (Proxy :: Proxy N) "serial symbolic map" f0
          (M.fromList [("parallelization", Opt "serial")])
-  par <- mapFun "parallel symbolic map" f0
+         :: IO (Fun
+                (M (JV V2) (JVec N (JV Id)))
+                (M (JV V3) (JVec N (JV Id))))
+  par <- mapFun (Proxy :: Proxy N) "parallel symbolic map" f0
          (M.fromList [("parallelization", Opt "openmp")])
 
-  runOne "naive map" naive dummyInput
-  runOne "serial symbolic map" ser dummyInput'
-  runOne "parallel symbolic map" par dummyInput'
+  runOne "naive map" naive
+  runOne "serial symbolic map" ser
+  runOne "parallel symbolic map" par
