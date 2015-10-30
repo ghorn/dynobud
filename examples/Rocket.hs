@@ -8,7 +8,6 @@ module Main ( main ) where
 
 import GHC.Generics ( Generic, Generic1 )
 
-import qualified Data.Map as M
 import Data.Vector ( Vector )
 
 import Accessors ( Lookup )
