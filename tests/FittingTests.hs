@@ -8,7 +8,6 @@ module FittingTests
 
 import Casadi.Option ( Opt(..) )
 import Casadi.Overloading ( ArcTan2 )
-import qualified Data.Foldable as F
 import qualified Data.Map as M
 import qualified Test.HUnit.Base as HUnit
 import Test.Framework ( Test, testGroup )
@@ -73,6 +72,7 @@ testFit ::
       -> (forall a . (Floating a, ArcTan2 a) => Id a -> None a)
       -> Id Bounds
       -> None Bounds
+      -> M.Map String Opt
       -> Vec 3 (None Double, Double)
       -> IO (Either String (Id Double))
      )

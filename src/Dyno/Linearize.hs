@@ -120,13 +120,13 @@ evalOdeJacobian (OdeJacobian fj) x0 u0 p0 sc0 = do
       jacIn = JacIn (cat (JQuad x u w p)) sc
   jacOut <- eval fj jacIn
   let Jac dxo_dxup xo' _ = jacOut
-      (x',o) = vsplitTup (col xo')
+      (x',o) = vsplitTup xo'
       (dxo_dx,dxo_du,dxo_dw,dxo_dp) = hsplitQuad dxo_dxup
       (dx_dx, do_dx) = vsplitTup dxo_dx
       (dx_du, do_du) = vsplitTup dxo_du
       (dx_dw, do_dw) = vsplitTup dxo_dw
       (dx_dp, do_dp) = vsplitTup dxo_dp
-  return (dx_dx, dx_du, dx_dw, dx_dp, do_dx, do_du, do_dw, do_dp, uncol x', uncol o)
+  return (dx_dx, dx_du, dx_dw, dx_dp, do_dx, do_du, do_dw, do_dp, x', o)
 
 
 evalErrorOdeJacobian ::
@@ -159,10 +159,10 @@ evalErrorOdeJacobian (ErrorOdeJacobian fj) x0 u0 p0 sc0 = do
       jacIn = JacIn (cat (JQuad e du w p)) x0u0sc0
   jacOut <- eval fj jacIn
   let Jac dxo_dxup xo' _ = jacOut
-      (x',o) = vsplitTup (col xo')
+      (x',o) = vsplitTup xo'
       (dxo_dx,dxo_du,dxo_dw,dxo_dp) = hsplitQuad dxo_dxup
       (dx_dx, do_dx) = vsplitTup dxo_dx
       (dx_du, do_du) = vsplitTup dxo_du
       (dx_dw, do_dw) = vsplitTup dxo_dw
       (dx_dp, do_dp) = vsplitTup dxo_dp
-  return (dx_dx, dx_du, dx_dw, dx_dp, do_dx, do_du, do_dw, do_dp, uncol x', uncol o)
+  return (dx_dx, dx_du, dx_dw, dx_dp, do_dx, do_du, do_dw, do_dp, x', o)

@@ -12,7 +12,6 @@ module Dyno.View.View
        , jfill
        , v2d, d2v
        , fmapJ, unzipJ
-       , fromDMatrix
        ) where
 
 import GHC.Generics ( Generic, Generic1 )
@@ -26,11 +25,8 @@ import qualified Data.Vector as V
 import qualified Casadi.DMatrix as DMatrix
 import qualified Casadi.CMatrix as CM
 
-import Dyno.View.Viewable ( Viewable(..) )
 import Dyno.Vectorize ( Vectorize(..) )
-
-
-import Dyno.View.Unsafe.View
+import Dyno.View.Unsafe ( View(..), J, mkJ, unJ )
 
 -- some helper types
 data JNone a = JNone deriving ( Eq, Generic, Generic1, Show, Functor, F.Foldable, T.Traversable )
@@ -47,9 +43,6 @@ jfill :: forall a f . View f => a -> J f (Vector a)
 jfill x = mkJ (V.replicate n x)
   where
     n = size (Proxy :: Proxy f)
-
-fromDMatrix :: (CM.CMatrix a, Viewable a, View f) => J f DMatrix.DMatrix -> J f a
-fromDMatrix = mkJ . CM.fromDMatrix . unJ
 
 v2d :: View f => J f (V.Vector Double) -> J f DMatrix.DMatrix
 v2d = mkJ . CM.fromDVector . unJ

@@ -24,32 +24,19 @@ import Data.Vector ( Vector )
 
 import Casadi.CMatrix ( CMatrix )
 
-import Dyno.View.Unsafe.View ( unsafeUnJ, mkJ' )
-import Dyno.View.Unsafe.M ( unM, mkM' )
+import Dyno.View.Unsafe ( mkM', unsafeUnM )
 import qualified Dyno.View.M as M
 
-import Dyno.View.View ( View(..), J, JQuad, JTriple, JTuple )
-import Dyno.View.Viewable ( Viewable )
+import Dyno.View.View ( View(..), JQuad, JTriple, JTuple )
 
 instance (View f0, View f1, View f2, View f3) => Scheme (JQuad f0 f1 f2 f3)
 instance (View f0, View f1, View f2) => Scheme (JTriple f0 f1 f2)
 instance (View f0, View f1) => Scheme (JTuple f0 f1)
 
 class FunctionIO (f :: * -> *) where
-  fromMat :: (CMatrix a, Viewable a) => a -> Either String (f a)
+  fromMat :: CMatrix a => a -> Either String (f a)
   toFioMat :: f a -> a
   matSizes :: Proxy f -> (Int,Int)
-
-instance View x => Scheme (J x) where
-  numFields = const 1
-  fromVector v = case V.toList v of
-    [m] -> case fromMat m of
-            Left err -> error $ "Scheme fromVector J error: " ++ err
-            Right m' -> m'
-    _ -> error $ "Scheme fromVector (J x) length mismatch, should be 1 but got: "
-         ++ show (V.length v)
-  toVector = V.singleton . toFioMat
-  sizeList p = [matSizes p]
 
 instance (View f, View g) => Scheme (M.M f g) where
   numFields = const 1
@@ -62,19 +49,14 @@ instance (View f, View g) => Scheme (M.M f g) where
   toVector = V.singleton . toFioMat
   sizeList p = [matSizes p]
 
-instance View f => FunctionIO (J f) where
-  toFioMat = unsafeUnJ
-  fromMat = mkJ'
-  matSizes = const (size (Proxy :: Proxy f), 1)
-
 instance (View f, View g) => FunctionIO (M.M f g) where
-  toFioMat = unM
+  toFioMat = unsafeUnM
   fromMat = mkM'
   matSizes = const (size (Proxy :: Proxy f), size (Proxy :: Proxy g))
 
 class Scheme (f :: * -> *) where
   numFields :: Proxy f -> Int
-  fromVector :: (CMatrix a, Viewable a) => V.Vector a -> f a
+  fromVector :: CMatrix a => V.Vector a -> f a
   toVector :: f a -> V.Vector a
   sizeList :: Proxy f -> [(Int,Int)]
 
@@ -93,7 +75,7 @@ class Scheme (f :: * -> *) where
       reproxy = const Proxy
 
   default fromVector :: ( Rep (f a) aa ~ M1 t d ff aa, GFromVector (Rep (f a)) a
-                        , Generic (f a), Datatype d, CMatrix a, Viewable a )
+                        , Generic (f a), Datatype d, CMatrix a )
                         => Vector a -> f a
   fromVector vs = out'
     where
@@ -188,13 +170,13 @@ instance (Constructor c, GFromVector f a) => GFromVector (C1 c f) a where
       reproxy :: Proxy (C1 c f a) -> Proxy (f a)
       reproxy = const Proxy
 
-instance (GFromVector f a) => GFromVector (S1 s f) a where
+instance GFromVector f a => GFromVector (S1 s f) a where
   gfromVector name vs = M1 . gfromVector name vs . reproxy
     where
       reproxy :: Proxy (S1 s f a) -> Proxy (f a)
       reproxy = const Proxy
 
-instance (FunctionIO f, Viewable a) => GFromVector (Rec0 (f a)) a where
+instance FunctionIO f => GFromVector (Rec0 (f a)) a where
   gfromVector name ms = const (K1 j)
     where
       j = case fromMat m of
@@ -217,11 +199,8 @@ instance (GToVector f a, GToVector g a, GNumFields f, GNumFields g)
 instance GToVector f a => GToVector (M1 i d f) a where
   gtoVector = gtoVector . unM1
 
-instance View f => GToVector (Rec0 (J f a)) a where
-  gtoVector = Seq.singleton . unsafeUnJ . unK1
-
 instance (View f, View g) => GToVector (Rec0 (M.M f g a)) a where
-  gtoVector = Seq.singleton . unM . unK1
+  gtoVector = Seq.singleton . unsafeUnM . unK1
 
 --instance GToVector U1 a where
 --  gtoVector = const Seq.empty

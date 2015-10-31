@@ -29,13 +29,10 @@ import Casadi.DMatrix ( DMatrix )
 import Casadi.CMatrix ( CMatrix )
 import qualified Casadi.CMatrix as CM
 
-import Dyno.View.Unsafe.View ( unJ, mkJ )
-import Dyno.View.Unsafe.M ( M(UnsafeM), mkM )
-
+import Dyno.View.Unsafe ( M(UnsafeM), mkM, unJ, mkJ )
 import Dyno.Vectorize ( Vectorize(..), vlength, devectorize )
 import Dyno.View.View ( View(..), J )
 import Dyno.View.JV ( JV )
-import Dyno.View.Viewable ( Viewable(..) )
 import Dyno.View.M ( toHMat )
 
 newtype Cov (f :: * -> *) a = Cov a
@@ -57,11 +54,11 @@ nOfVecLen m
     m' = fromIntegral m :: Double
     n = round $ sqrt (2*m' + 1/4) - 1/2
 
-toMat :: (View f, CMatrix a, Viewable a) => J (Cov f) a -> M f f a
+toMat :: (View f, CMatrix a) => J (Cov f) a -> M f f a
 toMat c = mkM (toMatrix c)
 {-# NOINLINE toMat #-}
 
-toMatrix :: forall f a . (View f, CMatrix a, Viewable a) => J (Cov f) a -> a
+toMatrix :: forall f a . (View f, CMatrix a) => J (Cov f) a -> a
 toMatrix c = unsafePerformIO $ do
   let n = size (Proxy :: Proxy f)
   m <- CM.copy (CM.zerosSp (Sparsity.upper n))
@@ -76,7 +73,7 @@ toHMatrix m = toHMat (toMat m)
 toHMatrix' :: forall f . View f => J (Cov f) (Vector Double) -> Mat.Matrix Double
 toHMatrix' v = toHMatrix $ (mkJ (CM.fromDVector (unJ v)) :: J (Cov f) DMatrix)
 
-diag :: (View f, CMatrix a, Viewable a) => J f a -> J (Cov f) a
+diag :: (View f, CMatrix a) => J f a -> J (Cov f) a
 diag = fromMatrix . CM.diag . unJ
 
 diag' :: Vectorize f => f a -> a -> J (Cov (JV f)) (Vector a)
@@ -109,9 +106,9 @@ diag'' v0 = devectorize $ V.generate n (\k -> devectorize (V.generate n (\j -> g
 --dd2 :: J (Cov X) DMatrix
 --dd2 = fromMatrix sp
 
-fromMat :: (View f, CMatrix a, Viewable a) => M f f a -> J (Cov f) a
+fromMat :: (View f, CMatrix a) => M f f a -> J (Cov f) a
 fromMat (UnsafeM c) = fromMatrix c
 
-fromMatrix :: (View f, CMatrix a, Viewable a) => a -> J (Cov f) a
+fromMatrix :: (View f, CMatrix a) => a -> J (Cov f) a
 fromMatrix x = mkJ $ CM.getNZ (CM.triu (CM.densify x)) slice'
 --fromMatrix x = mkJ $ CM.getNZ (CM.triu x) slice'

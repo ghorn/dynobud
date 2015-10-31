@@ -24,17 +24,17 @@ import Linear.V
 import Casadi.MX ( MX )
 import Casadi.SX ( SX )
 import Casadi.DMatrix ( DMatrix )
+import Casadi.Viewable ( Viewable )
 
-import qualified Dyno.View.Unsafe.M as M ( mkM, blockSplit )
+import Dyno.View.Unsafe ( mkM )
 
-import Dyno.View.View ( View(..), J, JNone(..), JTuple(..), fromDMatrix )
+import Dyno.View.View ( View(..), J, JNone(..), JTuple(..) )
 import Dyno.View.JV ( JV, catJV', splitJV' )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.Cov ( Cov, toMat, fromMat )
 import Dyno.View.Fun
-import Dyno.View.Viewable ( Viewable )
-import qualified Dyno.View.M as M
 import Dyno.View.M ( M )
+import qualified Dyno.View.M as M
 import Dyno.View.JVec ( JVec(..) )
 import Dyno.View.FunJac
 import Dyno.View.Scheme ( Scheme )
@@ -170,7 +170,7 @@ mkComputeCovariances c2d computeSens qc' = do
                            TV.tvzip (M.vsplit' (csFs sensitivities)) (M.vsplit' (csWs sensitivities))
 
           qc :: J (Cov (JV sw)) MX
-          qc = fromDMatrix qc'
+          qc = M.fromDMatrix qc'
 
           ffs :: J (Cov (JV sx)) MX
                  -> (M (JV sx) (JV sx) MX, M (JV sx) (JV sw) MX)
@@ -263,7 +263,7 @@ errorDynStageConstraints cijs taus dynFun
     xs = fmap ((\(CollPoint x _ _) -> x) . split) xzus
 
     xdots :: Vec deg (J x MX)
-    xdots = fmap (`M.vs` (1 / h)) $ interpolateXDots cijs (x0 TV.<| xs)
+    xdots = fmap (`M.ms` (1 / h)) $ interpolateXDots cijs (x0 TV.<| xs)
 
 --    -- interpolated final state
 --    xnext :: J x MX
@@ -289,7 +289,7 @@ errorDynStageConstraints cijs taus dynFun
 
     -- error state derivatives
     sxdots :: Vec deg (J sx MX)
-    sxdots = fmap (`M.vs` (1/h)) $ interpolateXDots cijs (sx0 TV.<| sxs)
+    sxdots = fmap (`M.ms` (1/h)) $ interpolateXDots cijs (sx0 TV.<| sxs)
 
     sxs :: Vec deg (J sx MX)
     szs :: Vec deg (J sz MX)
@@ -335,11 +335,11 @@ sensitivityStageFunction dynStageConJac
   (dt :*: parm :*: stageTimes :*: x0' :*: xzus') = dsx1_dsx0 :*: dsx1_dsw0
   where
     sx0 :: J sx MX
-    sx0  = M.uncol M.zeros
+    sx0  = M.zeros
     sw0 :: J sw MX
-    sw0  = M.uncol M.zeros
+    sw0  = M.zeros
     sxzs :: J (JVec deg (JTuple sx sz)) MX
-    sxzs = M.uncol M.zeros
+    sxzs = M.zeros
 
     mat :: M.M (ErrorOut sr sx deg) (ErrorInD sx sw sz deg) MX
     Jac mat _ _ =
@@ -354,8 +354,8 @@ sensitivityStageFunction dynStageConJac
     dg_dsxz :: M sx (JVec deg (JTuple sx sz)) MX
     ((df_dsx0, df_dsw0, df_dsxz), (dg_dsx0, dg_dsw0, dg_dsxz)) =
       case fmap F.toList (F.toList (M.blockSplit mat)) of
-      [[x00,x01,x02],[x10,x11,x12]] -> ((M.mkM x00, M.mkM x01, M.mkM x02),
-                                        (M.mkM x10, M.mkM x11, M.mkM x12))
+      [[x00,x01,x02],[x10,x11,x12]] -> ((mkM x00, mkM x01, mkM x02),
+                                        (mkM x10, mkM x11, mkM x12))
       _ -> error "stageFunction: got wrong number of elements in jacobian"
 
     -- TODO: this should be much simpler for radau
@@ -386,7 +386,7 @@ mkRobustifyFunction project robustifyPathC = do
                      (JacIn (JV sx) (J (JV x)))
                      (Jac (JV sx) (JV x) (J JNone))
 
-  let zerosx = (M.uncol M.zeros) :: J (JV sx) SX
+  let zerosx = M.zeros :: J (JV sx) SX
   simplifiedPropJac <- toSXFun "simplified error space projection jacobian" $
                        \x0 -> (\(Jac j0 _ _) -> j0) (callSX projJac (JacIn zerosx x0))
   let _ = simplifiedPropJac :: SXFun
@@ -410,7 +410,7 @@ mkRobustifyFunction project robustifyPathC = do
       srh (x :*: p) = ret
         where
 
-          xe = M.uncol M.zeros :: J (JV sx) SX
+          xe = M.zeros :: J (JV sx) SX
           xxe = cat (JTuple x xe) :: J (JTuple (JV x) (JV sx)) SX
 
           ret :: Jac (JTuple (JV x) (JV sx)) (JV shr) (J JNone) SX
@@ -465,7 +465,7 @@ mkRobustifyFunction project robustifyPathC = do
                          -> M.M (JV Id) (JV x) MX
                          -> M.M (JV Id) (JV sx) MX
                          -> J (JV Id) MX
-            robustify gamma h0 gHx gHe = h0 + gamma * sqrt (M.uncol sigma2)
+            robustify gamma h0 gHx gHe = h0 + gamma * sqrt sigma2
               where
                 sigma2 :: M.M (JV Id) (JV Id) MX
                 sigma2 =

@@ -102,9 +102,7 @@ import Dyno.Vectorize ( Id(..) )
 import Dyno.View.JV ( JV )
 import Dyno.View.View ( View(..), J, fmapJ, d2v, v2d, jfill )
 import Dyno.View.M ( M )
-import Dyno.View.Unsafe.View ( unJ, mkJ )
-import Dyno.View.Unsafe.M ( mkM )
-import Dyno.View.Viewable ( Viewable )
+import Dyno.View.Unsafe ( unJ, mkJ, mkM )
 
 type VD a = J a (Vector Double)
 type VMD a = J a (Vector (Maybe Double))
@@ -273,7 +271,7 @@ evalScaledJacG = do
   let solver = isSolver nlpState :: C.NlpSolver
   -- todo: remove this workaround when casadi fixes https://github.com/casadi/casadi/issues/1345
   if size (Proxy :: Proxy g) == 0
-    then return (M.zeros, M.uncol M.zeros)
+    then return (M.zeros, M.zeros)
     else liftIO $ do
     jacG <- C.nlpSolver_jacG solver
     result <- evalDMatrix' jacG (M.fromList [("x", unJ (v2d x0bar)), ("p", unJ (v2d pbar))])
@@ -557,7 +555,7 @@ runNlpSolverWith runnerOptions solverStuff nlpFun scaleX scaleG scaleF callback'
   inputsX <- mkJ <$> symV "x" (size (Proxy :: Proxy x))
   inputsP <- mkJ <$> symV "p" (size (Proxy :: Proxy p))
 
-  let scale :: forall sfa . (CMatrix sfa, Viewable sfa) => ScaleFuns x g sfa
+  let scale :: forall sfa . CMatrix sfa => ScaleFuns x g sfa
       scale = mkScaleFuns scaleX scaleG scaleF
 
       (obj, g) = scaledFG scale nlpFun inputsX inputsP

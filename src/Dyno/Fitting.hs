@@ -13,7 +13,6 @@ module Dyno.Fitting
 
 import GHC.Generics ( Generic )
 
-import Casadi.CMatrix ( CMatrix, sumRows )
 import Casadi.MX ( MX )
 import Casadi.Option ( Opt(..) )
 import Casadi.Overloading ( ArcTan2 )
@@ -30,11 +29,9 @@ import Dyno.View.Fun ( Fun, SXFun, call, toSXFun )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.JVec ( JVec(..) )
 import Dyno.View.JV ( JV, catJV, catJV', splitJV, splitJV' )
-import Dyno.View.M ( M, col, row, unrow, hcat', mfromDMatrix )
+import Dyno.View.M ( M, fromDMatrix, hcat', sumRows, trans )
 import Dyno.View.MapFun ( mapFun' )
-import Dyno.View.Viewable ( Viewable )
-import Dyno.View.View ( View(..), JTuple(..), jfill, v2d)
-import Dyno.View.Unsafe.View ( J(..), mkJ )
+import Dyno.View.View ( J, View(..), JTuple(..), jfill, v2d)
 
 data L1X q n a =
   L1X (J (JV q) a) (J (JVec n (JV Id)) a)
@@ -45,9 +42,6 @@ data GSlacks g n a =
   GSlacks (J (JV g) a) (J (JVec n (JV Id)) a) (J (JVec n (JV Id)) a)
   deriving Generic
 instance (Vectorize g, Dim n) => View (GSlacks g n)
-
-jsum :: (CMatrix a, Viewable a) => J x a -> J (JV Id) a
-jsum (UnsafeJ x) = mkJ (sumRows x)
 
 -- | Minimize the L1 norm of model mismatch.
 --
@@ -108,21 +102,21 @@ l1Fit solver fitModel qConstraints qbnds gbnds mapOpts featuresData = do
           L1X q s' = split dvs
 
           s :: M (JV Id) (JVec n (JV Id)) MX
-          s = row s'
+          s = trans s'
 
           ys :: M (JV Id) (JVec n (JV Id)) MX
-          ys = row $ cat $ JVec (fmap realToFrac fitData)
+          ys = trans $ cat $ JVec (fmap realToFrac fitData)
 
           xs :: M (JV x) (JVec n (JV Id)) MX
-          xs = mfromDMatrix $ hcat' $ fmap (col . v2d . catJV) fitFeatures
+          xs = fromDMatrix $ hcat' $ fmap (v2d . catJV) fitFeatures
 
           gs0 :: J (JVec n (JV Id)) MX
-          gs0 = unrow $ call mapFitModel (q :*: xs :*: ys :*: (-s))
+          gs0 = trans $ call mapFitModel (q :*: xs :*: ys :*: (-s))
 
           gs1 :: J (JVec n (JV Id)) MX
-          gs1 = unrow $ call mapFitModel (q :*: xs :*: ys :*: s)
+          gs1 = trans $ call mapFitModel (q :*: xs :*: ys :*: s)
 
-          f = jsum s'
+          f = sumRows s'
 
           g :: GSlacks g n MX
           g = GSlacks (catJV' (qConstraints (splitJV' q))) gs0 gs1
@@ -199,11 +193,11 @@ l2Fit solver fitModel qConstraints qbnds gbnds mapOpts featuresData = do
         where
           -- fit data
           ys :: M (JV Id) (JVec n (JV Id)) MX
-          ys = row $ cat $ JVec (fmap realToFrac fitData)
+          ys = trans $ cat $ JVec (fmap realToFrac fitData)
 
           -- fit features
           xs :: M (JV x) (JVec n (JV Id)) MX
-          xs = mfromDMatrix $ hcat' $ fmap (col . v2d . catJV) fitFeatures
+          xs = fromDMatrix $ hcat' $ fmap (v2d . catJV) fitFeatures
 
           -- objective function
           f :: J (JV Id) MX
@@ -294,16 +288,16 @@ lInfFit solver fitModel qConstraints qbnds gbnds mapOpts featuresData = do
           JTuple q s = split dvs
 
           ys :: M (JV Id) (JVec n (JV Id)) MX
-          ys = row $ cat $ JVec (fmap realToFrac fitData)
+          ys = trans $ cat $ JVec (fmap realToFrac fitData)
 
           xs :: M (JV x) (JVec n (JV Id)) MX
-          xs = mfromDMatrix $ hcat' $ fmap (col . v2d . catJV) fitFeatures
+          xs = fromDMatrix $ hcat' $ fmap (v2d . catJV) fitFeatures
 
           gs0 :: J (JVec n (JV Id)) MX
-          gs0 = unrow $ call mapFitModel (q :*: xs :*: ys :*: (-s))
+          gs0 = trans $ call mapFitModel (q :*: xs :*: ys :*: (-s))
 
           gs1 :: J (JVec n (JV Id)) MX
-          gs1 = unrow $ call mapFitModel (q :*: xs :*: ys :*: s)
+          gs1 = trans $ call mapFitModel (q :*: xs :*: ys :*: s)
 
           g :: GSlacks g n MX
           g = GSlacks (catJV' (qConstraints (splitJV' q))) gs0 gs1

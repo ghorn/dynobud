@@ -17,7 +17,7 @@ import qualified Data.Foldable as F
 import Linear.V
 import Linear ( lerp )
 
-import Dyno.View.Unsafe.View ( unJ, mkJ )
+import Dyno.View.Unsafe ( unJ, mkJ )
 import Dyno.View.View ( View(..), J )
 import Dyno.View.JV ( JV )
 import Dyno.View.JVec

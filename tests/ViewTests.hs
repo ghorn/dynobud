@@ -32,15 +32,13 @@ import Casadi.CMatrix ( CMatrix )
 import Casadi.DMatrix ( DMatrix )
 import Casadi.MX ( MX )
 import Casadi.SX ( SX )
+import Casadi.Viewable ( Viewable )
 
-import Dyno.View.Unsafe.View ( J(UnsafeJ), mkJ )
-import Dyno.View.Unsafe.M ( M(UnsafeM) )
-
+import Dyno.View.Unsafe ( M(UnsafeM), mkJ )
 import Dyno.TypeVecs ( Vec, Dim )
 import Dyno.Vectorize ( Vectorize(..), Id, fill )
-import Dyno.View.View ( View(..), JNone, JTuple, JTriple, JQuad )
+import Dyno.View.View ( J, View(..), JNone, JTuple, JTriple, JQuad )
 import Dyno.View.JV ( JV )
-import Dyno.View.Viewable ( Viewable )
 import Dyno.View.M
 import Dyno.View.Cov ( Cov, fromMat, toMat )
 
@@ -97,8 +95,6 @@ instance (View f, View g, CMatrix a) => Arbitrary (M f g a) where
           , return $ x / z
           , fmap trans (arbitrary :: Gen (M g f a))
           ]
-instance (View f, CMatrix a, Viewable a) => Arbitrary (J f a) where
-  arbitrary = fmap uncol arbitrary
 
 instance (Arbitrary a, Dim n) => Arbitrary (Vec n a) where
   arbitrary = T.sequence (fill arbitrary)
@@ -128,8 +124,6 @@ maxViewSize = 200
 class MyEq a where
   myEq :: a -> a -> Bool
 
-instance MyEq a => MyEq (J f a) where
-  myEq (UnsafeJ x) (UnsafeJ y) = myEq x y
 instance MyEq a => MyEq (M f g a) where
   myEq (UnsafeM x) (UnsafeM y) = myEq x y
 instance MyEq SX where

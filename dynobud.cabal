@@ -1,5 +1,5 @@
 name:                dynobud
-version:             1.8.0.0
+version:             1.9.0.0
 synopsis:            your dynamic optimization buddy
 description:         See readme at <http://www.github.com/ghorn/dynobud http://www.github.com/ghorn/dynobud>
 license:             LGPL-3
@@ -54,10 +54,8 @@ library
                        Dyno.View.M
                        Dyno.View.MapFun
                        Dyno.View.Scheme
-                       Dyno.View.Unsafe.View
-                       Dyno.View.Unsafe.M
+                       Dyno.View.Unsafe
                        Dyno.View.View
-                       Dyno.View.Viewable
                        Dyno.Vectorize
                        Dyno.Nlp
                        Dyno.NlpScaling
@@ -72,7 +70,7 @@ library
 
   build-depends:       base >=4.6 && < 5,
                        casadi-bindings-core >= 2.4.1.0,
-                       casadi-bindings >= 2.4.1.0,
+                       casadi-bindings >= 2.4.1.2,
 --                       casadi-bindings-internal,
                        data-default-class,
                        jacobi-roots >=0.2 && <0.3,

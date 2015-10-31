@@ -41,6 +41,7 @@ import qualified Casadi.SXFunction as C
 import Casadi.Option
 import Casadi.DMatrix ( DMatrix )
 import Casadi.CMatrix ( CMatrix )
+import Casadi.Viewable ( Viewable )
 import qualified Casadi.Core.Classes.Function as F
 import qualified Casadi.Core.Classes.MXFunction as M
 import qualified Casadi.Core.Classes.Sparsity as C
@@ -49,7 +50,6 @@ import qualified Casadi.Core.Classes.OptionsFunctionality as C
 import Dyno.View.FunJac
 import Dyno.View.Scheme
 import Dyno.View.View ( View )
-import Dyno.View.Viewable ( Viewable )
 
 newtype MXFun (f :: * -> *) (g :: * -> *) = MXFun C.MXFunction
 newtype SXFun (f :: * -> *) (g :: * -> *) = SXFun C.SXFunction
@@ -106,7 +106,7 @@ callSX (SXFun sxf) x =
   C.callSX sxf (toVector x) (AlwaysInline False) (NeverInline False)
 
 mkSym :: forall a f .
-         (Scheme f, CMatrix a, Viewable a)
+         (Scheme f, CMatrix a)
          => (String -> Int -> Int -> IO a)
          -> String -> Proxy f -> IO (f a)
 mkSym mk name _ = do

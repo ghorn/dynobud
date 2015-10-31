@@ -9,12 +9,8 @@ module Dyno.View.M
        ( M
        , sparse, dense
        , mm
-       , mv
-       , vm
        , ms
        , sm
-       , vs
-       , sv
        , trans
        , zeros
        , eye
@@ -42,23 +38,23 @@ module Dyno.View.M
        , vcatTup
        , vcatTrip
        , vcatQuad
-       , row
-       , col
-       , unrow
-       , uncol
        , solve
        , solve'
-       , mfromDMatrix
+       , sumRows, sumCols
+       , fromDMatrix
        , toHMat
        , fromHMat
        , fromHMat'
+       , blockSplit
          -- * hmatrix wrappers
        , rcond
        , rank
        ) where
 
 import Data.Proxy ( Proxy(..) )
+import qualified Data.Foldable as F
 import qualified Data.Map as M
+import Data.Vector ( Vector )
 import qualified Data.Vector as V
 import qualified Numeric.LinearAlgebra as HMat
 
@@ -67,14 +63,12 @@ import Casadi.CMatrix ( CMatrix )
 import Casadi.DMatrix ( DMatrix, dnonzeros, dsparsify )
 import qualified Casadi.CMatrix as CM
 
-import Dyno.View.Unsafe.View ( unJ, mkJ )
-import Dyno.View.Unsafe.M ( M(UnsafeM), mkM, mkM', unM )
+import Dyno.View.Unsafe ( M(UnsafeM), mkM, mkM', unM, unJ, mkJ )
 import Dyno.Vectorize ( Vectorize(..), Id, fill, devectorize )
 import Dyno.TypeVecs ( Vec, Dim(..) )
 import Dyno.View.View ( View(..), J, JTuple, JTriple, JQuad )
 import Dyno.View.JV ( JV )
 import Dyno.View.JVec ( JVec )
-import Dyno.View.Viewable ( Viewable )
 
 
 -- todo: generalize once casadi 2.3 is ready
@@ -87,23 +81,11 @@ dense (UnsafeM m) = mkM (CM.densify m)
 mm :: (View f, View h, CMatrix a) => M f g a -> M g h a -> M f h a
 mm (UnsafeM m0) (UnsafeM m1) = mkM (CM.mm m0 m1)
 
-mv :: (View f, View g, CMatrix a, Viewable a) => M f g a -> J g a -> J f a
-mv m v = uncol $ mm m (col v)
-
-vm :: (View f, View g, CMatrix a, Viewable a) => J f a -> M f g a -> J g a
-vm v m = unrow $ mm (row v) m
-
-ms :: (View f, View h, Viewable a, CMatrix a) => M f g a -> J (JV Id) a -> M f h a
+ms :: (View f, View g, CMatrix a) => M f g a -> J (JV Id) a -> M f g a
 ms m0 m1 = mkM $ (unM m0) * (unJ m1)
 
-sm :: (View f, View h, Viewable a, CMatrix a) => J (JV Id) a -> M f g a -> M f h a
+sm :: (View f, View g, CMatrix a) => J (JV Id) a -> M f g a -> M f g a
 sm m0 m1 = mkM $ (unJ m0) * (unM m1)
-
-vs :: (View f, Viewable a, CMatrix a) => J f a -> J (JV Id) a -> J f a
-vs m0 m1 = uncol $ ms (col m0) m1
-
-sv :: (View f, Viewable a, CMatrix a) => J (JV Id) a -> J f a -> J f a
-sv m0 m1 = uncol $ sm m0 (col m1)
 
 trans :: (View f, View g, CMatrix a) => M f g a -> M g f a
 trans (UnsafeM m) = mkM (CM.trans m)
@@ -311,12 +293,12 @@ eye = mkM z
     z = CM.eye n
     n = size (Proxy :: Proxy f)
 
-diag :: forall f a . (View f, Viewable a, CMatrix a) => J f a -> M f f a
+diag :: forall f a . (View f, CMatrix a) => J f a -> M f f a
 diag x = mkM z
   where
     z = CM.diag (unJ x)
 
-takeDiag :: forall f a . (View f, Viewable a, CMatrix a) => M f f a -> J f a
+takeDiag :: forall f a . (View f, CMatrix a) => M f f a -> J f a
 takeDiag m = mkJ $ CM.diag (unM m)
 
 ones :: forall f g a . (View f, View g, CMatrix a) => M f g a
@@ -337,18 +319,6 @@ countUp = mkM z
                                ])
     rows = size (Proxy :: Proxy f)
     cols = size (Proxy :: Proxy g)
-
-row :: (CMatrix a, View f, Viewable a) => J f a -> M (JV Id) f a
-row = mkM . CM.trans . unJ
-
-col :: (CMatrix a, View f, Viewable a) => J f a -> M f (JV Id) a
-col = mkM . unJ
-
-unrow :: (Viewable a, CMatrix a, View f) => M (JV Id) f a -> J f a
-unrow (UnsafeM x) = mkJ (CM.trans x)
-
-uncol :: (Viewable a, CMatrix a, View f) => M f (JV Id) a -> J f a
-uncol (UnsafeM x) = mkJ x
 
 solve :: (View g, View h, CMatrix a)
          => M f g a -> M f h a -> String -> M.Map String GenericType
@@ -382,7 +352,19 @@ rcond = HMat.rcond . toHMat
 rank :: (View f, View g) => M f g DMatrix -> Int
 rank = HMat.rank . toHMat
 
--- todo(greg): merge this with fromDMatrix
-mfromDMatrix :: (CM.CMatrix a, Viewable a, View f, View g)
+fromDMatrix :: (CM.CMatrix a, View f, View g)
                => M f g DMatrix -> M f g a
-mfromDMatrix = mkM . CM.fromDMatrix . unM
+fromDMatrix = mkM . CM.fromDMatrix . unM
+
+blockSplit :: forall f g a . (View f, View g, CMatrix a) => M f g a -> Vector (Vector a)
+blockSplit (UnsafeM m) = fmap (flip CM.horzsplit hsizes) ms'
+  where
+    vsizes = V.fromList $ 0 : (F.toList (sizes 0 (Proxy :: Proxy f)))
+    hsizes = V.fromList $ 0 : (F.toList (sizes 0 (Proxy :: Proxy g)))
+    ms' = CM.vertsplit m vsizes
+
+sumRows :: (View f, View g, CMatrix a) => M f g a -> M (JV Id) g a
+sumRows (UnsafeM x) = mkM (CM.sumRows x)
+
+sumCols :: (View f, View g, CMatrix a) => M f g a -> M g (JV Id) a
+sumCols (UnsafeM x) = mkM (CM.sumCols x)

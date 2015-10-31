@@ -19,9 +19,9 @@ import Linear.V
 
 import Casadi.SX ( SX )
 import Casadi.MX ( MX )
+import Casadi.Viewable ( Viewable )
 
 import Dyno.View.JV ( JV, splitJV, catJV, splitJV', catJV' )
-import Dyno.View.Viewable ( Viewable )
 import Dyno.View.View ( View(..), J, JNone, JTuple(..), jfill )
 import Dyno.View.Fun ( SXFun, call, toSXFun, toMXFun, expandMXFun )
 import Dyno.View.JVec ( JVec(..), jreplicate )
@@ -119,7 +119,7 @@ dynStageConstraints' cijs taus dynFun (x0 :*: xzs' :*: us' :*: h :*: p :*: stage
 
     -- state derivatives, maybe these could be useful as outputs
     xdots :: Vec deg (J x MX)
-    xdots = fmap (`M.vs` (1/h)) $ interpolateXDots cijs (x0 TV.<| xs)
+    xdots = fmap (`M.ms` (1/h)) $ interpolateXDots cijs (x0 TV.<| xs)
 
     xs :: Vec deg (J x MX)
     xs = fmap (\(JTuple x _) -> x) xzs

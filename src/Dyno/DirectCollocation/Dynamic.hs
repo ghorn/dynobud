@@ -17,6 +17,7 @@ module Dyno.DirectCollocation.Dynamic
 
 import GHC.Generics ( Generic )
 
+import Casadi.Viewable ( Viewable )
 import Data.Proxy ( Proxy(..) )
 import Data.List ( mapAccumL )
 import Data.Tree ( Tree(..) )
@@ -34,16 +35,23 @@ import Linear.V
 import Accessors ( AccessorTree(..), Lookup(..), accessors )
 import PlotHo ( Plotter, addChannel )
 
-import Dyno.View.Unsafe.View ( unJ, unJ' )
-
+import Dyno.View.Unsafe ( unJ, unJ' )
 import Dyno.Vectorize ( Vectorize(..), Id(..), fill )
 import Dyno.View.JV ( JV, splitJV )
 import Dyno.View.View ( View(..), J )
+import Dyno.View.M ( M )
 import Dyno.View.JVec ( JVec(..) )
 import qualified Dyno.TypeVecs as TV
 import Dyno.TypeVecs ( Vec )
 import Dyno.DirectCollocation.Types
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots, mkTaus )
+
+unJ'' :: (View f, View g, Viewable a) => String -> M f g a -> a
+unJ'' msg x = case unJ' x of
+  Left msg' ->
+    error $
+    "Dyno.DirectCollocation.Dynamic: unJ'' " ++ msg ++ ":\n" ++ msg'
+  Right r -> r
 
 addCollocationChannel ::
   String -> (((DynPlotPoints Double, CollTrajMeta) -> IO ()) -> IO ()) -> Plotter ()
@@ -187,13 +195,13 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
                 , (a, V.Vector a)
                 )
         g (CollPoint x z u) (o,x',pathc,po,q,q') tau =
-          ( (t,unJ' "x" x)
-          , (t,unJ' "z" z)
-          , (t,unJ' "u" u)
-          , (t,unJ' "o" o)
-          , (t,unJ' "x'" x')
-          , (t,unJ' "h" pathc)
-          , (t,unJ' "po" po)
+          ( (t,unJ'' "x" x)
+          , (t,unJ'' "z" z)
+          , (t,unJ'' "u" u)
+          , (t,unJ'' "o" o)
+          , (t,unJ'' "x'" x')
+          , (t,unJ'' "h" pathc)
+          , (t,unJ'' "po" po)
           , (t,vectorize q)
           , (t,vectorize q')
           )

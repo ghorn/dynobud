@@ -38,8 +38,7 @@ import Casadi.Function
 import Casadi.CMatrix ( veccat )
 import qualified Casadi.CMatrix as CM
 
-import Dyno.View.Unsafe.View ( J(..), mkJ, unJ )
-
+import Dyno.View.Unsafe ( M(UnsafeM), J, mkJ, unJ )
 import Dyno.Vectorize ( Id, devectorize, fill )
 import Dyno.TypeVecs ( Vec )
 import Dyno.View.View ( View(..), JNone(..), jfill )
@@ -59,7 +58,7 @@ mxElementSym :: String -> IO MXElement
 mxElementSym name = mkJ <$> sym name
 
 mxElementToMX :: MXElement -> MX
-mxElementToMX (UnsafeJ x)
+mxElementToMX (UnsafeM x)
   | (1,1) == sizes' = x
   | otherwise = error $ "mxElementToMX: got non-scalar of size " ++ show sizes'
   where

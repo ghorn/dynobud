@@ -27,7 +27,7 @@ import Dyno.View.MapFun
 import Dyno.View.JV
 import Dyno.View.JVec
 import Dyno.View.View
-import Dyno.View.Unsafe.M ( mkM )
+import Dyno.View.Unsafe ( mkM )
 
 toHUnit :: IO (Maybe String) -> HUnit.Assertion
 toHUnit f = HUnit.assert $ do

@@ -12,14 +12,12 @@ import qualified Data.Vector as V
 
 import Casadi.CMatrix ( CMatrix, fromDVector )
 
-import Dyno.View.Unsafe.View ( unJ, mkJ )
-
+import Dyno.View.Unsafe ( unJ, mkJ )
 import Dyno.View.M ( M )
 import qualified Dyno.View.M as M
 import Dyno.Vectorize ( Id(..) )
-import Dyno.View.View ( View, J, v2d, fromDMatrix )
+import Dyno.View.View ( View, J, v2d )
 import Dyno.View.JV ( JV, catJV' )
-import Dyno.View.Viewable ( Viewable )
 
 data ScaleFuns x g a =
   ScaleFuns
@@ -42,7 +40,7 @@ data ScaleFuns x g a =
 
 scaledFG ::
   forall x p g a .
-  (View x, View g, CMatrix a, Viewable a)
+  (View x, View g, CMatrix a)
   => ScaleFuns x g a
   -> (J x a -> J p a -> (J (JV Id) a, J g a))
   -> J x a
@@ -60,7 +58,7 @@ allPositive = all (> 0) . fromMaybe [] . fmap V.toList
 -- Doesn't seem to be a bottleneck
 mkScaleFuns ::
   forall x g a .
-  (View x, View g, CMatrix a, Viewable a)
+  (View x, View g, CMatrix a)
   => Maybe (J x (V.Vector Double))
   -> Maybe (J g (V.Vector Double))
   -> Maybe Double
@@ -90,10 +88,10 @@ mkScaleFuns mx mg mf
               }
   where
     xdiaginv :: Maybe (M x x a)
-    xdiaginv = fmap (\scl -> M.diag (fromDMatrix (1.0 / (v2d scl)))) mx
+    xdiaginv = fmap (\scl -> M.diag (M.fromDMatrix (1.0 / (v2d scl)))) mx
 
     gdiag :: Maybe (M g g a)
-    gdiag = fmap (\scl -> M.diag (fromDMatrix (v2d scl))) mg
+    gdiag = fmap (\scl -> M.diag (M.fromDMatrix (v2d scl))) mg
 
     jacGBarToJacG' :: M g x a -> M g x a
     jacGBarToJacG' g0 = gg0x

@@ -25,11 +25,9 @@ import Dyno.View.JV ( JV, splitJV )
 import Dyno.View.M ( M )
 import qualified Dyno.View.M as M
 import Dyno.Nlp ( KKT(..), Nlp(..) )
-import Dyno.View.Unsafe.View ( mkJ, unJ )
-import Dyno.View.Unsafe.M ( unM )
+import Dyno.View.Unsafe ( mkJ, unJ, unM )
 import Dyno.Vectorize ( Id(..) )
 import Dyno.View.View ( View(..), J, JNone(..), v2d, d2v, jfill)
-import Dyno.View.Viewable ( Viewable )
 
 
 toSparse :: (View f, View g) => String -> M f g DMatrix -> [(Int,Int,Double)]
@@ -52,7 +50,7 @@ kktScalingInfo kkt =
   , showOne "hessF    " (kktHessF kkt)
   , showOne "hessLamG " (kktHessLambdaG kkt)
   , showOne "jacG     " (kktJacG kkt)
-  , showOne "gradF    " (M.col (kktGradF kkt))
+  , showOne "gradF    " (kktGradF kkt)
   ]
   where
     showOne name m =
@@ -100,7 +98,7 @@ toMatrixCoeffs (LogScaling hf hlg hl jg gf) = LogScaling (f hf) (f hlg) (f hl) (
 
 toLogScaling ::
   forall x g sdv a
-  . (View x, View g, View sdv, Viewable a, CM.CMatrix a)
+  . (View x, View g, View sdv, CM.CMatrix a)
   => KKT x g -> (J sdv a -> (J (JV Id) a, J x a, J g a)) -> J sdv a -> LogScaling (J (JV Id) a)
 toLogScaling kkt expand sdvs =
   LogScaling
@@ -115,7 +113,7 @@ toLogScaling kkt expand sdvs =
     hessFMatValues = toSparse "hessF" (kktHessF kkt)
     hessLambdaGMatValues = toSparse "hessLamG" (kktHessLambdaG kkt)
     hessLagMatValues = toSparse "hessLag" (kktHessLag kkt)
-    gradFMatValues = toSparse "gradF" (M.col (kktGradF kkt))
+    gradFMatValues = toSparse "gradF" (kktGradF kkt)
 
     objScale' :: J (JV Id) a
     x :: J x a

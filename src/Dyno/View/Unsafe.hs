@@ -10,8 +10,9 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE InstanceSigs #-}
 
-module Dyno.View.Unsafe.View
-       ( View(..), J(..)
+module Dyno.View.Unsafe
+       ( View(..), M(..), Viewable(..), J, JV(..)
+       , mkM, mkM', unM, unM'
        , mkJ, mkJ', unJ, unJ'
        ) where
 
@@ -24,58 +25,69 @@ import qualified Data.Vector as V
 import qualified Data.Binary as B
 import qualified Data.Serialize as S
 
+import Casadi.CMatrix ( CMatrix )
 import qualified Casadi.CMatrix as CM
 import Casadi.Overloading ( ArcTan2(..), Erf(..), Fmod(..), SymOrd(..) )
+import Casadi.Viewable ( Viewable(..) )
 
-import Dyno.View.Viewable ( Viewable(..) )
+import Dyno.Vectorize ( Vectorize(..), Id, devectorize, vlength )
 
-newtype J (f :: * -> *) (a :: *) = UnsafeJ { unsafeUnJ :: a } deriving (Eq, Generic)
+-- | Type safe matrix.
+newtype M (f :: * -> *) (g :: * -> *) (a :: *) =
+  UnsafeM { unsafeUnM :: a } deriving (Eq, Functor, Generic)
 
-instance (View f, B.Binary a, Viewable a) => B.Binary (J f a) where
-  put = B.put . unJ
+-- | Type safe column vector
+type J f = M f (JV Id)
+
+instance (View f, View g, Viewable a, B.Binary a) => B.Binary (M f g a) where
+  put = B.put . unM
   get = do
     x <- B.get
-    case mkJ' x of
+    case mkM' x of
       Right y -> return y
       Left msg -> fail msg
-instance (View f, S.Serialize a, Viewable a) => S.Serialize (J f a) where
-  put = S.put . unJ
+
+instance (View f, View g, Viewable a, S.Serialize a) => S.Serialize (M f g a) where
+  put = S.put . unM
   get = do
     x <- S.get
-    case mkJ' x of
+    case mkM' x of
       Right y -> return y
       Left msg -> fail msg
 
-instance Show a => Show (J f a) where
-  showsPrec p (UnsafeJ x) = showsPrec p x
+instance Show a => Show (M f g a) where
+  showsPrec p (UnsafeM x) = showsPrec p x
 
-over :: (View f, Viewable a, CM.CMatrix a) => (a -> a) -> J f a -> J f a
-over f (UnsafeJ x) = mkJ (f x)
+over :: (View f, View g, CMatrix a) => (a -> a) -> M f g a -> M f g a
+over f (UnsafeM x) = mkM (f x)
 
-over2 :: (View f, Viewable a, CM.CMatrix a) => (a -> a -> a) -> J f a -> J f a -> J f a
-over2 f (UnsafeJ x) (UnsafeJ y)= mkJ (f x y)
+over2 :: (View f, View g, CMatrix a) => (a -> a -> a) -> M f g a -> M f g a -> M f g a
+over2 f (UnsafeM x) (UnsafeM y)= mkM (f x y)
 
-instance (View f, Viewable a, CM.CMatrix a) => Num (J f a) where
+instance (View f, View g, CMatrix a) => Num (M f g a) where
   (+) = over2 (+)
   (-) = over2 (-)
   (*) = over2 (*)
   negate = over negate
   abs = over abs
   signum = over signum
-  fromInteger k = mkJ (fromInteger k * CM.ones (n, 1))
+  fromInteger k = mkM $ fromInteger k * CM.ones (nx,ny)
     where
-      n = size (Proxy :: Proxy f)
+      nx = size (Proxy :: Proxy f)
+      ny = size (Proxy :: Proxy g)
 
-instance (View f, Viewable a, CM.CMatrix a) => Fractional (J f a) where
+instance (View f, View g, CMatrix a) => Fractional (M f g a) where
   (/) = over2 (/)
-  fromRational x = mkJ (fromRational x * CM.ones (n, 1))
+  fromRational x = mkM $ fromRational x * CM.ones (nx, ny)
     where
-      n = size (Proxy :: Proxy f)
+      nx = size (Proxy :: Proxy f)
+      ny = size (Proxy :: Proxy g)
 
-instance (View f, Viewable a, CM.CMatrix a) => Floating (J f a) where
-  pi = mkJ (pi * CM.ones (n, 1))
+instance (View f, View g, CMatrix a) => Floating (M f g a) where
+  pi = mkM $ pi * CM.ones (nx,ny)
     where
-      n = size (Proxy :: Proxy f)
+      nx = size (Proxy :: Proxy f)
+      ny = size (Proxy :: Proxy g)
   (**) = over2 (**)
   exp   = over exp
   log   = over log
@@ -92,61 +104,82 @@ instance (View f, Viewable a, CM.CMatrix a) => Floating (J f a) where
   atanh = over atanh
   acosh = over acosh
 
-instance (View f, Viewable a, CM.CMatrix a) => ArcTan2 (J f a) where
-  arctan2 = over2 arctan2
 
-instance (View f, Viewable a, CM.CMatrix a) => Erf (J f a) where
-  erf = over erf
-  erfinv = over erfinv
-
-instance (View f, Viewable a, CM.CMatrix a) => Fmod (J f a) where
+instance (View f, View g, CMatrix a) => Fmod (M f g a) where
   fmod = over2 fmod
 
-instance (View f, Viewable a, CM.CMatrix a) => SymOrd (J f a) where
+instance (View f, View g, CMatrix a) => ArcTan2 (M f g a) where
+  arctan2 = over2 arctan2
+
+instance (View f, View g, CMatrix a) => SymOrd (M f g a) where
   leq = over2 leq
   geq = over2 geq
   eq  = over2 eq
 
-mkJ :: forall f a . (View f, Viewable a) => a -> J f a
-mkJ x = case mkJ' x of
-  Right x' -> x'
-  Left msg -> error msg
+instance (View f, View g, CMatrix a) => Erf (M f g a) where
+  erf = over erf
+  erfinv = over erfinv
 
-mkJ' :: forall f a . (View f, Viewable a) => a -> Either String (J f a)
-mkJ' x
-  | ny' == 1 && nx == nx' = Right (UnsafeJ x)
-  | ny' == 0 && nx == nx' = Right (UnsafeJ (vrecoverDimension x 0))
-  | otherwise = Left $ "mkJ length mismatch: typed size: " ++ show (nx,1::Int) ++
-                ", actual size: " ++ show (nx',ny')
+mkJ :: (View f, View g, Viewable a) => a -> M f g a
+mkJ = mkM
+
+mkJ' :: (View f, View g, Viewable a) => a -> Either String (M f g a)
+mkJ' = mkM'
+
+unJ :: (View f, View g, Viewable a) => M f g a -> a
+unJ = unM
+
+unJ' :: (View f, View g, Viewable a) => M f g a -> Either String a
+unJ' = unM'
+
+mkM' :: forall f g a
+        . (View f, View g, Viewable a)
+        => a -> Either String (M f g a)
+mkM' x
+  | nx == nx' && ny == ny' = Right (UnsafeM x)
+  | all (== 0) [nx,nx'] && ny' == 0 = Right zeros
+  | all (== 0) [ny,ny'] && nx' == 0 = Right zeros
+  | otherwise = Left $ "mkM' length mismatch: " ++
+                "typed size: " ++ show (nx,ny) ++
+                ", actual size: " ++ show (nx', ny')
   where
     nx = size (Proxy :: Proxy f)
+    ny = size (Proxy :: Proxy g)
+    nx' = vsize1 x
+    ny' = vsize2 x
+    zeros = mkM (vrecoverDimension x (nx, ny))
+
+unM' :: forall f g a
+        . (View f, View g, Viewable a)
+        => M f g a -> Either String a
+unM' (UnsafeM x)
+  | nx == nx' && ny == ny' = Right x
+  | otherwise = Left $ "unM' length mismatch: " ++
+                "typed size: " ++ show (nx, ny) ++
+                ", actual size: " ++ show (nx', ny')
+  where
+    nx = size (Proxy :: Proxy f)
+    ny = size (Proxy :: Proxy g)
     nx' = vsize1 x
     ny' = vsize2 x
 
-unJ :: forall f a . (View f, Viewable a) => J f a -> a
-unJ (UnsafeJ x)
-  | nx == nx' = x
-  | otherwise = error $ "unJ length mismatch: typed size: " ++ show nx ++
-                ", actual size: " ++ show nx'
-  where
-    nx = size (Proxy :: Proxy f)
-    nx' = vsize1 x
+mkM :: (View f, View g, Viewable a) => a -> M f g a
+mkM x = case mkM' x of
+  Right r -> r
+  Left msg -> error msg
 
-unJ' :: forall f a . (View f, Viewable a) => String -> J f a -> a
-unJ' msg (UnsafeJ x)
-  | nx == nx' = x
-  | otherwise = error $ "unJ length mismatch in \"" ++ msg ++ "\": typed size: " ++ show nx ++
-                ", actual size: " ++ show nx'
-  where
-    nx = size (Proxy :: Proxy f)
-    nx' = vsize1 x
+unM :: (View f, View g, Viewable a) => M f g a -> a
+unM x = case unM' x of
+  Right r -> r
+  Left msg -> error msg
+
 
 -- | Type-save "views" into vectors, which can access subvectors
 --   without splitting then concatenating everything.
 class View f where
   cat :: Viewable a => f a -> J f a
   default cat :: (GCat (Rep (f a)) a, Generic (f a), Viewable a) => f a -> J f a
-  cat = mkJ . vveccat . V.fromList . F.toList . gcat . from
+  cat = mkM . vveccat . V.fromList . F.toList . gcat . from
 
   size :: Proxy f -> Int
   default size :: (GSize (Rep (f ())), Generic (f ())) => Proxy f -> Int
@@ -170,12 +203,12 @@ class View f where
                   [ "split got " ++ show (length leftovers) ++ " leftover fields"
                   , "ns: " ++ show ns ++ "\n" ++ show (map vsize1 leftovers)
                   --, "x: " ++ show x'
-                  , "size1(x): " ++ show (vsize1 (unJ x'))
+                  , "size1(x): " ++ show (vsize1 (unM x'))
                   --, "leftovers: " ++ show leftovers
                   , "errors: " ++ show (reverse errors)
                   ]
     where
-      x = unJ x'
+      x = unM x'
       (ret,leftovers,errors) = gbuild [] xs
       xs = V.toList $ vvertsplit x (V.fromList ns)
       ns :: [Int]
@@ -243,7 +276,7 @@ instance GCat f a => GCat (M1 i d f) a where
 
 -- any field should just hold a view, no recursion here
 instance (View f, Viewable a) => GCat (Rec0 (J f a)) a where
-  gcat (K1 x) = Seq.singleton (unJ x)
+  gcat (K1 x) = Seq.singleton (unM x)
 
 instance GCat U1 a where
   gcat U1 = Seq.empty
@@ -285,7 +318,7 @@ instance (GBuild f a, Selector s) => GBuild (S1 s f) a where
 
 -- any field should just hold a view, no recursion here
 instance (View f, Viewable a) => GBuild (Rec0 (J f a)) a where
-  gbuild errs (x:xs) = (K1 (mkJ x), xs, errs)
+  gbuild errs (x:xs) = (K1 (mkM x), xs, errs)
   gbuild errs [] = error $ "GBuild (Rec0 (J f a)) a: empty list" ++ show (reverse errs)
 
 instance Viewable a => GBuild U1 a where
@@ -294,3 +327,18 @@ instance Viewable a => GBuild U1 a where
                       show (vsize1 x) ++ "\n" ++ show (reverse errs)
     | otherwise = (U1, xs, errs)
   gbuild errs [] = error $ "GBuild U1: got empty" ++ show (reverse errs)
+
+------------------------------- JV -----------------------------------
+-- | views into Vectorizable things
+newtype JV f a = JV { unJV :: f a } deriving (Functor, Generic, Generic1)
+
+instance Vectorize f => View (JV f) where
+  cat :: forall a . Viewable a => JV f a -> J (JV f) a
+  cat = mkM . vveccat . vectorize . unJV
+  size = const $ vlength (Proxy :: Proxy f)
+  sizes = const . Seq.singleton . (vlength (Proxy :: Proxy f) +)
+  split :: forall a . Viewable a => J (JV f) a -> JV f a
+  split = JV . devectorize . flip vvertsplit ks . unM
+    where
+      ks = V.fromList (take (n+1) [0..])
+      n = size (Proxy :: Proxy (JV f))

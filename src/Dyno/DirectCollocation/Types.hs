@@ -42,10 +42,10 @@ import Linear.V ( Dim(..) )
 import Data.Vector ( Vector )
 import Data.Serialize ( Serialize )
 
+import Casadi.Viewable ( Viewable )
 import Accessors ( Lookup )
 
 import Dyno.Ocp
-import Dyno.View.Viewable ( Viewable )
 import Dyno.View.View ( View(..), J, jfill )
 import Dyno.View.JVec ( JVec(..), jreplicate )
 import Dyno.View.Cov ( Cov )

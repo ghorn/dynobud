@@ -29,12 +29,9 @@ import qualified Casadi.Core.Classes.Map as C
 
 import Dyno.TypeVecs ( Dim )
 import qualified Dyno.TypeVecs as TV
-import Dyno.Vectorize ( Id )
 import Dyno.View.Fun
 import Dyno.View.HList
-import Dyno.View.JV ( JV )
 import Dyno.View.JVec ( JVec )
-import Dyno.View.Unsafe.View ( J(..) )
 import Dyno.View.M ( M )
 import Dyno.View.Scheme ( Scheme )
 import Dyno.View.View ( View )
@@ -45,10 +42,6 @@ class ParScheme f where
 -- normal
 instance (View f, View g) => ParScheme (M f g) where
   type Par (M f g) n = M f (JVec n g)
-
--- column is ok too
-instance View f => ParScheme (J f) where
-  type Par (J f) n = M f (JVec n (JV Id))
 
 -- multiple inputs/outputs
 instance (ParScheme f, ParScheme g) => ParScheme (f :*: g) where
@@ -80,18 +73,8 @@ class ParScheme' f0 f1 where
 instance (View f, View g) => ParScheme' (M f g) (M f (JVec n g)) where
   repeated _ _ = S.singleton True
 
--- column is ok too
-instance View f => ParScheme' (J f) (M f (JVec n (JV Id))) where
-  repeated _ _ = S.singleton True
-
 -- non-repeated
 instance View f => ParScheme' (M f g) (M f g) where
-  repeated _ _ = S.singleton False
-instance View f => ParScheme' (J f) (J f) where
-  repeated _ _ = S.singleton False
-instance View f => ParScheme' (J f) (M f (JV Id)) where
-  repeated _ _ = S.singleton False
-instance View f => ParScheme' (M f (JV Id)) (J f) where
   repeated _ _ = S.singleton False
 
 -- multiple inputs/output

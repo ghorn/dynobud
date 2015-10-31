@@ -25,7 +25,7 @@ import Text.Printf ( printf )
 import Casadi.MX ( MX )
 import qualified Casadi.GenericC as Gen
 
-import Dyno.View.Unsafe.View ( unJ, mkJ )
+import Dyno.View.Unsafe ( unJ, mkJ )
 
 import Dyno.Vectorize ( Vectorize(..), Id(..) )
 import Dyno.View.JV ( JV, catJV, catJV', splitJV, splitJV' )

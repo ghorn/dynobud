@@ -11,10 +11,10 @@ import GHC.Generics ( Generic, Generic1 )
 import Text.Printf ( printf )
 
 import Casadi.MX ( MX )
+import Casadi.Viewable ( Viewable )
 
 import Dyno.Vectorize ( Vectorize, Id(..), None(..), fill )
 import Dyno.View.View
-import Dyno.View.Viewable
 import Dyno.View.JV -- ( JV )
 import Dyno.Nlp
 import Dyno.NlpSolver

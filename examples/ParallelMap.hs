@@ -20,7 +20,7 @@ import qualified Dyno.TypeVecs as TV
 import Dyno.Vectorize ( Id(..) )
 import Dyno.View.Fun ( FunClass, Fun, SXFun, call, toSXFun, toMXFun, eval )
 import Dyno.View.MapFun ( mapFun )
-import Dyno.View.M ( M, col, uncol, hcat', hsplit' )
+import Dyno.View.M ( M, hcat', hsplit' )
 import Dyno.View.JV ( JV, catJV', splitJV' )
 import Dyno.View.JVec ( JVec(..) )
 import Dyno.View.View ( J )
@@ -39,7 +39,7 @@ f0' x = catJV' $ V3 (g (100000 :: Int) x0) x1 (2*x1)
 main :: IO ()
 main = do
   let dummyInput :: M (JV V2) (JVec N (JV Id)) DMatrix
-      dummyInput = hcat' $ fmap (\x -> col (catJV' (V2 x (2*x))))
+      dummyInput = hcat' $ fmap (\x -> catJV' (V2 x (2*x)))
                     (TV.tvlinspace 0 (2*pi))
 
   show dummyInput `seq` return ()
@@ -67,7 +67,7 @@ main = do
       naiveFun xs = hcat' ys
         where
           ys :: TV.Vec N (M (JV V3) (JV Id) MX)
-          ys = fmap (col . call f0 . uncol) xs'
+          ys = fmap (call f0) xs'
 
           xs' :: TV.Vec N (M (JV V2) (JV Id) MX)
           xs' = hsplit' xs

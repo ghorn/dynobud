@@ -16,11 +16,11 @@ import Data.Proxy ( Proxy(..) )
 import Linear.V ( Dim(..) )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
+import Casadi.Viewable ( Viewable(..) )
 
-import Dyno.View.Unsafe.View ( mkJ, unJ )
+import Dyno.View.Unsafe ( mkJ, unJ )
 
 import Dyno.TypeVecs ( Vec, unVec, reifyVector )
-import Dyno.View.Viewable ( Viewable(..) )
 import Dyno.View.View ( View(..), J )
 import Dyno.Vectorize ( devectorize )
 

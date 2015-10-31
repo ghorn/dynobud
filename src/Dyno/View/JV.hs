@@ -12,32 +12,12 @@ module Dyno.View.JV
        , catJV'
        ) where
 
-import GHC.Generics ( Generic, Generic1 )
-
-import qualified Data.Sequence as Seq
-import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
-import qualified Data.Vector as V
+import Casadi.Viewable ( Viewable )
 
-import Dyno.View.Unsafe.View ( mkJ, unJ )
-
+import Dyno.View.Unsafe ( JV(..), mkJ, unJ )
 import Dyno.View.View ( View(..), J )
-import Dyno.View.Viewable ( Viewable(..) )
-import Dyno.Vectorize ( Vectorize(..), Id, vlength, devectorize )
-
--- | views into Vectorizable things
-newtype JV f a = JV { unJV :: f a } deriving (Functor, Generic, Generic1)
-
-instance Vectorize f => View (JV f) where
-  cat :: forall a . Viewable a => JV f a -> J (JV f) a
-  cat = mkJ . vveccat . vectorize . unJV
-  size = const $ vlength (Proxy :: Proxy f)
-  sizes = const . Seq.singleton . (vlength (Proxy :: Proxy f) +)
-  split :: forall a . Viewable a => J (JV f) a -> JV f a
-  split = JV . devectorize . flip vvertsplit ks. unJ
-    where
-      ks = V.fromList (take (n+1) [0..])
-      n = size (Proxy :: Proxy (JV f))
+import Dyno.Vectorize ( Vectorize(..), Id, devectorize )
 
 splitJV :: Vectorize f => J (JV f) (Vector a) -> f a
 splitJV = devectorize . unJ

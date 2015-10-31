@@ -334,14 +334,14 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
                    :*: M (JV Id) (JV x)
                   ) MX
       stageFun (dt' :*: collStageRow :*: stageTimesRow :*: parm' :*: fixedParm') =
-        (M.row dc :*: M.row stageHs :*: M.row interpolatedX')
+        (M.trans dc :*: M.trans stageHs :*: M.trans interpolatedX')
         where
-          dt = M.unrow dt'
-          parm = M.unrow parm'
-          fixedParm = M.unrow fixedParm'
+          dt = M.trans dt'
+          parm = M.trans parm'
+          fixedParm = M.trans fixedParm'
 
-          stageTimes = M.unrow stageTimesRow
-          collStage = M.unrow collStageRow
+          stageTimes = M.trans stageTimesRow
+          collStage = M.trans collStageRow
           CollStage x0 xzus = split collStage
           dc :*: interpolatedX' =
             call dynamicsStageFun
@@ -404,29 +404,29 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
       mapStageFun Unrolled (dt', stages, times, parm', fixedParm') =
         (cat (JVec dcs), cat (JVec hs), cat (JVec xnexts))
         where
-          dt = M.row dt'
-          parm = M.row parm'
-          fixedParm = M.row fixedParm'
+          dt = M.trans dt'
+          parm = M.trans parm'
+          fixedParm = M.trans fixedParm'
 
           (dcs, hs, xnexts) =
             TV.tvunzip3 $ TV.tvzipWith f (unJVec (split stages)) (unJVec (split times))
-          f stage stageTimes = (M.unrow dc, M.unrow h, M.unrow xnext)
+          f stage stageTimes = (M.trans dc, M.trans h, M.trans xnext)
             where
               dc :*: h :*: xnext =
                 call stageFunMX
-                (dt :*: (M.row stage) :*: (M.row stageTimes) :*: parm :*: fixedParm)
+                (dt :*: (M.trans stage) :*: (M.trans stageTimes) :*: parm :*: fixedParm)
 --              dc :*: h :*: xnext =
 --                stageFun
---                (dt :*: (M.row stage) :*: (M.row stageTimes) :*: parm :*: fixedParm)
+--                (dt :*: (M.trans stage) :*: (M.trans stageTimes) :*: parm :*: fixedParm)
 
-      mapStageFun (Symbolic _) (x0', x1, x2, x3', x4') = (M.unrow y0, M.unrow y1, M.unrow y2)
+      mapStageFun (Symbolic _) (x0', x1, x2, x3', x4') = (M.trans y0, M.trans y1, M.trans y2)
         where
           x0 = jreplicate x0' :: J (JVec n (JV Id)) MX
           x3 = jreplicate x3' :: J (JVec n (JV p)) MX
           x4 = jreplicate x4' :: J (JVec n (JV fp)) MX
           y0 :*: y1 :*: y2 =
             call mapStageFunMX
-            (M.row x0 :*: M.row x1 :*: M.row x2 :*: M.row x3 :*: M.row x4)
+            (M.trans x0 :*: M.trans x1 :*: M.trans x2 :*: M.trans x3 :*: M.trans x4)
 
   let nlp :: Nlp (CollTraj x z u p n deg) (JV fp) (CollOcpConstraints x r c h n deg) MX
       nlp = Nlp {
@@ -859,7 +859,7 @@ toQuadratureFun n cijs interpolate' evalQuadDeriv (QuadratureStageIn collStage p
 
     -- state derivatives, maybe these could be useful as outputs
     xdots :: Vec deg (J x MX)
-    xdots = fmap (`M.vs` (1/h)) $ interpolateXDots cijs (x0 TV.<| xs)
+    xdots = fmap (`M.ms` (1/h)) $ interpolateXDots cijs (x0 TV.<| xs)
 
     quadratureIns :: Vec deg (QuadratureIn x z u p fp MX)
     quadratureIns = TV.tvzipWith3 (\x' (CollPoint x z u) t -> QuadratureIn x' x z u p fp t tf)
@@ -876,7 +876,7 @@ toQuadratureFun n cijs interpolate' evalQuadDeriv (QuadratureStageIn collStage p
 
     qs = fmap timesH qsOverH
       where
-        timesH q = M.uncol $ M.ms (M.col q) h
+        timesH q = M.ms q h
 
     qsOverH :: Vec deg (J q MX)
     qsOverH = cijInvFr !* qdots
@@ -915,7 +915,7 @@ toPathCFun cijs evalPathC (PathCStageIn collStage p fp stageTimes' h) = hs
 
     -- state derivatives, maybe these could be useful as outputs
     xdots :: Vec deg (J x MX)
-    xdots = fmap (`M.vs` (1/h)) $ interpolateXDots cijs (x0 TV.<| xs)
+    xdots = fmap (`M.ms` (1/h)) $ interpolateXDots cijs (x0 TV.<| xs)
 
     pathCIns :: Vec deg (PathCIn x z u p fp MX)
     pathCIns = TV.tvzipWith3 (\x' (CollPoint x z u) t -> PathCIn x' x z u p fp t)
@@ -1022,7 +1022,7 @@ toDynamicsStage interpolate' cijs dynFun (x0 :*: xzs' :*: us' :*: h :*: p :*: fp
 
     -- state derivatives, maybe these could be useful as outputs
     xdots :: Vec deg (J x MX)
-    xdots = fmap (`M.vs` (1/h)) $ interpolateXDots cijs (x0 TV.<| xs)
+    xdots = fmap (`M.ms` (1/h)) $ interpolateXDots cijs (x0 TV.<| xs)
 
     xs :: Vec deg (J x MX)
     xs = fmap (\(JTuple x _) -> x) xzs
@@ -1060,7 +1060,7 @@ outputFunction callInterpolate cijs taus dynFun (collStage :*: p :*: fp :*: h :*
 
     -- state derivatives, maybe these could be useful as outputs
     xdots :: Vec deg (J x MX)
-    xdots = fmap (`M.vs` (1/h)) $ interpolateXDots cijs (x0 TV.<| xs)
+    xdots = fmap (`M.ms` (1/h)) $ interpolateXDots cijs (x0 TV.<| xs)
 
     xs :: Vec deg (J x MX)
     xs = fmap ((\(CollPoint x _ _) -> x) . split) xzus
