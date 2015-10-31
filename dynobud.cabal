@@ -39,6 +39,7 @@ library
                        Dyno.DirectCollocation.ScaleFactors
                        Dyno.DirectCollocation.Types
                        Dyno.ExportCStruct
+                       Dyno.GoldenSectionSearch
                        Dyno.Integrate
                        Dyno.Linearize
                        Dyno.Random
