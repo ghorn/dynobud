@@ -143,6 +143,7 @@ mkScaleFuns mx mg mf
         where
           s :: a
           s = fromDVector (unM xscl)
+
     mulByGScale :: J g a -> J g a
     divByGScale :: J g a -> J g a
     (mulByGScale, divByGScale) = case mg of
