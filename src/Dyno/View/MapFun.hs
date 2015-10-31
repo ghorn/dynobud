@@ -87,6 +87,8 @@ instance View f => ParScheme' (J f) (M f (JVec n (JV Id))) where
 -- non-repeated
 instance View f => ParScheme' (M f g) (M f g) where
   repeated _ _ = S.singleton False
+instance View f => ParScheme' (J f) (J f) where
+  repeated _ _ = S.singleton False
 instance View f => ParScheme' (J f) (M f (JV Id)) where
   repeated _ _ = S.singleton False
 instance View f => ParScheme' (M f (JV Id)) (J f) where

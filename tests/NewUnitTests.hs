@@ -3,21 +3,24 @@
 module Main ( main ) where
 
 import qualified Data.Monoid as Mo
-import Test.Framework ( Test, ColorMode(..), RunnerOptions'(..), TestOptions'(..)
-                      , defaultMainWithOpts )
+import Test.Framework
+       ( Test, ColorMode(..), RunnerOptions'(..), TestOptions'(..)
+       , defaultMainWithOpts )
 
 import QuadratureTests ( quadratureTests )
 import VectorizeTests ( vectorizeTests )
 import ViewTests ( viewTests )
 import IntegrationTests ( integrationTests )
 import MapTests ( mapTests )
+import FittingTests ( fittingTests )
 
 main :: IO ()
 main = defaultMainWithOpts tests opts
 
 tests :: [Test]
 tests =
-  [ mapTests
+  [ fittingTests
+  , mapTests
   , quadratureTests
   , integrationTests
   , vectorizeTests

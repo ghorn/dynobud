@@ -39,6 +39,7 @@ library
                        Dyno.DirectCollocation.ScaleFactors
                        Dyno.DirectCollocation.Types
                        Dyno.ExportCStruct
+                       Dyno.Fitting
                        Dyno.GoldenSectionSearch
                        Dyno.Integrate
                        Dyno.Linearize
@@ -479,7 +480,8 @@ test-suite unit-tests
   type:                exitcode-stdio-1.0
   hs-source-dirs:      tests
   main-is:             NewUnitTests.hs
-  other-modules:       MapTests
+  other-modules:       FittingTests
+                       MapTests
                        QuadratureTests
                        IntegrationTests
                        VectorizeTests

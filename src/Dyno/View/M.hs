@@ -48,6 +48,7 @@ module Dyno.View.M
        , uncol
        , solve
        , solve'
+       , mfromDMatrix
        , toHMat
        , fromHMat
        , fromHMat'
@@ -380,3 +381,8 @@ rcond = HMat.rcond . toHMat
 
 rank :: (View f, View g) => M f g DMatrix -> Int
 rank = HMat.rank . toHMat
+
+-- todo(greg): merge this with fromDMatrix
+mfromDMatrix :: (CM.CMatrix a, Viewable a, View f, View g)
+               => M f g DMatrix -> M f g a
+mfromDMatrix = mkM . CM.fromDMatrix . unM
