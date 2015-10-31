@@ -26,7 +26,7 @@ import qualified Casadi.DMatrix as DMatrix
 import qualified Casadi.CMatrix as CM
 
 import Dyno.Vectorize ( Vectorize(..) )
-import Dyno.View.Unsafe ( View(..), J, mkJ, unJ )
+import Dyno.View.Unsafe ( View(..), J, mkM, unM )
 
 -- some helper types
 data JNone a = JNone deriving ( Eq, Generic, Generic1, Show, Functor, F.Foldable, T.Traversable )
@@ -40,20 +40,20 @@ instance (View f, View g, View h) => View (JTriple f g h)
 instance (View f0, View f1, View f2, View f3) => View (JQuad f0 f1 f2 f3)
 
 jfill :: forall a f . View f => a -> J f (Vector a)
-jfill x = mkJ (V.replicate n x)
+jfill x = mkM (V.replicate n x)
   where
     n = size (Proxy :: Proxy f)
 
 v2d :: View f => J f (V.Vector Double) -> J f DMatrix.DMatrix
-v2d = mkJ . CM.fromDVector . unJ
+v2d = mkM . CM.fromDVector . unM
 
 d2v :: View f => J f DMatrix.DMatrix -> J f (V.Vector Double)
-d2v = mkJ . DMatrix.dnonzeros . CM.densify . unJ
+d2v = mkM . DMatrix.dnonzeros . CM.densify . unM
 
 fmapJ :: View f => (a -> b) -> J f (Vector a) -> J f (Vector b)
-fmapJ f = mkJ . V.map f . unJ
+fmapJ f = mkM . V.map f . unM
 
 unzipJ :: View f => J f (Vector (a,b)) -> (J f (Vector a), J f (Vector b))
-unzipJ v = (mkJ x, mkJ y)
+unzipJ v = (mkM x, mkM y)
   where
-    (x,y) = V.unzip (unJ v)
+    (x,y) = V.unzip (unM v)

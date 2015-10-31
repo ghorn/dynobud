@@ -25,7 +25,7 @@ import Dyno.View.JV ( JV, splitJV )
 import Dyno.View.M ( M )
 import qualified Dyno.View.M as M
 import Dyno.Nlp ( KKT(..), Nlp(..) )
-import Dyno.View.Unsafe ( mkJ, unJ, unM )
+import Dyno.View.Unsafe ( mkM, unM )
 import Dyno.Vectorize ( Id(..) )
 import Dyno.View.View ( View(..), J, JNone(..), v2d, d2v, jfill)
 
@@ -129,8 +129,8 @@ toLogScaling kkt expand sdvs =
     nx = size (reproxy x)
     ng = size (reproxy g)
     xs,gs :: V.Vector (J (JV Id) a)
-    xs = fmap mkJ $ CM.vertsplit (unJ x) (V.fromList [0..nx])
-    gs = fmap mkJ $ CM.vertsplit (unJ g) (V.fromList [0..ng])
+    xs = fmap mkM $ CM.vertsplit (unM x) (V.fromList [0..nx])
+    gs = fmap mkM $ CM.vertsplit (unM g) (V.fromList [0..ng])
 
     gradFObjValues :: [J (JV Id) a]
     gradFObjValues = map (toSum xs (V.singleton objScale)) gradFMatValues
@@ -257,7 +257,7 @@ beforeAndAfter kkts expand scalingSol =
 --  putStrLn "finished! analyzing..."
 --  let --JTuple f0' g0' = split fg
 --      --Id _f0 = splitJV (d2v f0')
---      --_g0 = unJ $ d2v g0'
+--      --_g0 = unM $ d2v g0'
 --      --
 --      --dfgdx :: M
 --      --         (JTuple (JV Id) (CollOcpConstraints NCollStages CollDeg AcX AcX Bc PathC))
@@ -282,8 +282,8 @@ beforeAndAfter kkts expand scalingSol =
 ----        | (abs lambda) > 1e-15 = True
 ----        | otherwise = False
 --
---      activeX = V.map isActive (unJ (lambdaXOpt' sol))
---      activeG = V.map isActive (unJ (lambdaGOpt' sol))
+--      activeX = V.map isActive (unM (lambdaXOpt' sol))
+--      activeG = V.map isActive (unM (lambdaGOpt' sol))
 --      activeAll = activeX V.++ activeG
 --
 --      activeXIndices = map fst $ filter snd $ zip [(0::Int)..] (V.toList activeX)

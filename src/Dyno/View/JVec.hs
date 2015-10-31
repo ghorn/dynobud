@@ -18,7 +18,7 @@ import Data.Vector ( Vector )
 import qualified Data.Vector as V
 import Casadi.Viewable ( Viewable(..) )
 
-import Dyno.View.Unsafe ( mkJ, unJ )
+import Dyno.View.Unsafe ( mkM, unM )
 
 import Dyno.TypeVecs ( Vec, unVec, reifyVector )
 import Dyno.View.View ( View(..), J )
@@ -27,8 +27,8 @@ import Dyno.Vectorize ( devectorize )
 -- | vectors in View
 newtype JVec (n :: k) f a = JVec { unJVec :: Vec n (J f a) } deriving ( Show )
 instance (Dim n, View f) => View (JVec n f) where
-  cat = mkJ . vveccat . fmap unJ . unVec . unJVec
-  split = JVec . fmap mkJ . devectorize . flip vvertsplit ks . unJ
+  cat = mkM . vveccat . fmap unM . unVec . unJVec
+  split = JVec . fmap mkM . devectorize . flip vvertsplit ks . unM
     where
       ks = V.fromList (take (n+1) [0,m..])
       n = reflectDim (Proxy :: Proxy n)

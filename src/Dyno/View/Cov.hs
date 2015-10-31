@@ -29,7 +29,7 @@ import Casadi.DMatrix ( DMatrix )
 import Casadi.CMatrix ( CMatrix )
 import qualified Casadi.CMatrix as CM
 
-import Dyno.View.Unsafe ( M(UnsafeM), mkM, unJ, mkJ )
+import Dyno.View.Unsafe ( M(UnsafeM), mkM, unM )
 import Dyno.Vectorize ( Vectorize(..), vlength, devectorize )
 import Dyno.View.View ( View(..), J )
 import Dyno.View.JV ( JV )
@@ -37,8 +37,8 @@ import Dyno.View.M ( toHMat )
 
 newtype Cov (f :: * -> *) a = Cov a
 instance View f => View (Cov f) where
-  cat (Cov x) = mkJ x
-  split x = Cov (unJ x)
+  cat (Cov x) = mkM x
+  split x = Cov (unM x)
   size = const $ (n*n + n) `div` 2
     where
       n = size (Proxy :: Proxy f)
@@ -62,8 +62,8 @@ toMatrix :: forall f a . (View f, CMatrix a) => J (Cov f) a -> a
 toMatrix c = unsafePerformIO $ do
   let n = size (Proxy :: Proxy f)
   m <- CM.copy (CM.zerosSp (Sparsity.upper n))
-  --CM.setNZ m (CM.dense (unJ c)) slice'
-  CM.setNZ m (unJ c) slice' -- Joel says that "dense" isn't required here
+  --CM.setNZ m (CM.dense (unM c)) slice'
+  CM.setNZ m (unM c) slice' -- Joel says that "dense" isn't required here
   return (CM.triu2symm m)
 {-# NOINLINE toMatrix #-}
 
@@ -71,13 +71,13 @@ toHMatrix :: forall f . View f => J (Cov f) DMatrix -> Mat.Matrix Double
 toHMatrix m = toHMat (toMat m)
 
 toHMatrix' :: forall f . View f => J (Cov f) (Vector Double) -> Mat.Matrix Double
-toHMatrix' v = toHMatrix $ (mkJ (CM.fromDVector (unJ v)) :: J (Cov f) DMatrix)
+toHMatrix' v = toHMatrix $ (mkM (CM.fromDVector (unM v)) :: J (Cov f) DMatrix)
 
 diag :: (View f, CMatrix a) => J f a -> J (Cov f) a
-diag = fromMatrix . CM.diag . unJ
+diag = fromMatrix . CM.diag . unM
 
 diag' :: Vectorize f => f a -> a -> J (Cov (JV f)) (Vector a)
-diag' x offDiag = mkJ $ V.fromList $ concat $ zipWith f vx [0..]
+diag' x offDiag = mkM $ V.fromList $ concat $ zipWith f vx [0..]
   where
     f y k = replicate k offDiag ++ [y]
     vx = V.toList $ vectorize x
@@ -94,7 +94,7 @@ diag'' v0 = devectorize $ V.generate n (\k -> devectorize (V.generate n (\j -> g
 
 --data X a = X (J S a) (J S a) deriving (Generic, Show)
 --instance View X
---xx = X (mkJ 1) (mkJ 2) :: X DMatrix
+--xx = X (mkM 1) (mkM 2) :: X DMatrix
 --xx' = cat xx
 --
 --dd :: J (Cov X) DMatrix
@@ -110,5 +110,5 @@ fromMat :: (View f, CMatrix a) => M f f a -> J (Cov f) a
 fromMat (UnsafeM c) = fromMatrix c
 
 fromMatrix :: (View f, CMatrix a) => a -> J (Cov f) a
-fromMatrix x = mkJ $ CM.getNZ (CM.triu (CM.densify x)) slice'
---fromMatrix x = mkJ $ CM.getNZ (CM.triu x) slice'
+fromMatrix x = mkM $ CM.getNZ (CM.triu (CM.densify x)) slice'
+--fromMatrix x = mkM $ CM.getNZ (CM.triu x) slice'

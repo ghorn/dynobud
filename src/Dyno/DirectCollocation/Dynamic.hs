@@ -35,7 +35,7 @@ import Linear.V
 import Accessors ( AccessorTree(..), Lookup(..), accessors )
 import PlotHo ( Plotter, addChannel )
 
-import Dyno.View.Unsafe ( unJ, unJ' )
+import Dyno.View.Unsafe ( unM, unM' )
 import Dyno.Vectorize ( Vectorize(..), Id(..), fill )
 import Dyno.View.JV ( JV, splitJV )
 import Dyno.View.View ( View(..), J )
@@ -46,11 +46,11 @@ import Dyno.TypeVecs ( Vec )
 import Dyno.DirectCollocation.Types
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots, mkTaus )
 
-unJ'' :: (View f, View g, Viewable a) => String -> M f g a -> a
-unJ'' msg x = case unJ' x of
+unM'' :: (View f, View g, Viewable a) => String -> M f g a -> a
+unM'' msg x = case unM' x of
   Left msg' ->
     error $
-    "Dyno.DirectCollocation.Dynamic: unJ'' " ++ msg ++ ":\n" ++ msg'
+    "Dyno.DirectCollocation.Dynamic: unM'' " ++ msg ++ ":\n" ++ msg'
   Right r -> r
 
 addCollocationChannel ::
@@ -135,7 +135,7 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
     stages :: Vec n (CollStage (JV x) (JV z) (JV u) deg (Vector a))
     stages = fmap split (unJVec (split stages'))
 
-    xss = xss' `V.snoc` (V.singleton (tf, unJ xf))
+    xss = xss' `V.snoc` (V.singleton (tf, unM xf))
     -- assumes initial time is 0
     qss = V.singleton (0, vectorize (fill 0 :: Quadratures q qo a)) `V.cons` qss'
 
@@ -169,7 +169,7 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
         xzus0 = fmap split (unJVec (split xzus')) :: Vec deg (CollPoint (JV x) (JV z) (JV u) (Vector a))
 
         xs :: V.Vector (a, V.Vector a)
-        xs = (t0, unJ x0) `V.cons` xs' `V.snoc` (tnext, unJ (soXNext stageOutputs))
+        xs = (t0, unM x0) `V.cons` xs' `V.snoc` (tnext, unM (soXNext stageOutputs))
 
         qs :: V.Vector (a, V.Vector a)
         qs = qs' `V.snoc` (tnext, vectorize (soQNext stageOutputs))
@@ -195,13 +195,13 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
                 , (a, V.Vector a)
                 )
         g (CollPoint x z u) (o,x',pathc,po,q,q') tau =
-          ( (t,unJ'' "x" x)
-          , (t,unJ'' "z" z)
-          , (t,unJ'' "u" u)
-          , (t,unJ'' "o" o)
-          , (t,unJ'' "x'" x')
-          , (t,unJ'' "h" pathc)
-          , (t,unJ'' "po" po)
+          ( (t,unM'' "x" x)
+          , (t,unM'' "z" z)
+          , (t,unM'' "u" u)
+          , (t,unM'' "o" o)
+          , (t,unM'' "x'" x')
+          , (t,unM'' "h" pathc)
+          , (t,unM'' "po" po)
           , (t,vectorize q)
           , (t,vectorize q')
           )

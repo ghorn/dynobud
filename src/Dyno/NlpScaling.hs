@@ -12,7 +12,7 @@ import qualified Data.Vector as V
 
 import Casadi.CMatrix ( CMatrix, fromDVector )
 
-import Dyno.View.Unsafe ( unJ, mkJ )
+import Dyno.View.Unsafe ( mkM, unM )
 import Dyno.View.M ( M )
 import qualified Dyno.View.M as M
 import Dyno.Vectorize ( Id(..) )
@@ -65,8 +65,8 @@ mkScaleFuns ::
   -> ScaleFuns x g a
 mkScaleFuns mx mg mf
   | any (not . allPositive)
-    [ fmap unJ mx
-    , fmap unJ mg
+    [ fmap unM mx
+    , fmap unM mg
     , fmap V.singleton mf
     ] = error "all scaling factors must be positive"
   | otherwise =
@@ -117,8 +117,8 @@ mkScaleFuns mx mg mf
 
     (lamXToLamXBar', lamXBarToLamX') = case mf of
       Nothing -> (mulByXScale, divByXScale)
-      Just fscl -> ( \lamx -> mkJ ((unJ (mulByXScale lamx)) / fs)
-                   , \lamx -> mkJ ((unJ (divByXScale lamx)) * fs)
+      Just fscl -> ( \lamx -> mkM ((unM (mulByXScale lamx)) / fs)
+                   , \lamx -> mkM ((unM (divByXScale lamx)) * fs)
                    )
         where
           fs :: a
@@ -126,8 +126,8 @@ mkScaleFuns mx mg mf
     
     (lamGToLamGBar', lamGBarToLamG') = case mf of
       Nothing -> (mulByGScale, divByGScale)
-      Just fscl -> ( \lamg -> mkJ ((unJ (mulByGScale lamg)) / fs)
-                   , \lamg -> mkJ ((unJ (divByGScale lamg)) * fs)
+      Just fscl -> ( \lamg -> mkM ((unM (mulByGScale lamg)) / fs)
+                   , \lamg -> mkM ((unM (divByGScale lamg)) * fs)
                    )
         where
           fs :: a
@@ -137,30 +137,29 @@ mkScaleFuns mx mg mf
     divByXScale :: J x a -> J x a
     (mulByXScale, divByXScale) = case mx of
       Nothing -> (id, id)
-      Just xscl -> ( mkJ . (* s) . unJ
-                   , mkJ . (/ s) . unJ
+      Just xscl -> ( mkM . (* s) . unM
+                   , mkM . (/ s) . unM
                    )
         where
           s :: a
-          s = fromDVector (unJ xscl)
-
+          s = fromDVector (unM xscl)
     mulByGScale :: J g a -> J g a
     divByGScale :: J g a -> J g a
     (mulByGScale, divByGScale) = case mg of
       Nothing -> (id, id)
-      Just gscl -> ( mkJ . (* s) . unJ
-                   , mkJ . (/ s) . unJ
+      Just gscl -> ( mkM . (* s) . unM
+                   , mkM . (/ s) . unM
                    )
         where
           s :: a
-          s = fromDVector (unJ gscl)
+          s = fromDVector (unM gscl)
 
     mulByFScale :: J (JV Id) a -> J (JV Id) a
     divByFScale :: J (JV Id) a -> J (JV Id) a
     (mulByFScale, divByFScale) = case mf of
       Nothing -> (id, id)
-      Just fscl -> ( mkJ . (* s) . unJ
-                   , mkJ . (/ s) . unJ
+      Just fscl -> ( mkM . (* s) . unM
+                   , mkM . (/ s) . unM
                    )
         where
           s :: a

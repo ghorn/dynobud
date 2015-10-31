@@ -25,7 +25,7 @@ import Text.Printf ( printf )
 import Casadi.MX ( MX )
 import qualified Casadi.GenericC as Gen
 
-import Dyno.View.Unsafe ( unJ, mkJ )
+import Dyno.View.Unsafe ( mkM, unM )
 
 import Dyno.Vectorize ( Vectorize(..), Id(..) )
 import Dyno.View.JV ( JV, catJV, catJV', splitJV, splitJV' )
@@ -143,8 +143,8 @@ solveNlpHomotopyWith options userStep hp
           where
             setAlpha :: Double -> NlpSolver x p g ()
             setAlpha alpha = do
-              let p0'' = unJ p0'
-              let p = mkJ $ V.zipWith (+) p0'' (V.map (alpha*) (V.zipWith (-) (unJ pF') p0''))
+              let p0'' = unM p0'
+              let p = mkM $ V.zipWith (+) p0'' (V.map (alpha*) (V.zipWith (-) (unM pF') p0''))
               setP p
 
             tryStep :: Int -> Double -> Double
@@ -216,18 +216,18 @@ solveNlpV solverStuff fg bx bg x0 cb = do
                --obj' = sxCatJV (Id obj) :: J (JV Id) MX
                --g' = sxCatJV g :: J (JV g) MX
            in (obj, catJV' g)
-        , nlpBX = catJV bx -- mkJ $ vectorize (nlpBX nlp) :: J (JV x) (V.Vector Bounds)
-        , nlpBG = catJV bg -- mkJ $ vectorize (nlpBG nlp) :: J (JV g) (V.Vector Bounds)
-        , nlpX0 = catJV x0 -- mkJ $ vectorize (nlpX0 nlp) :: J (JV x) (V.Vector Double)
-        , nlpP  = cat JNone -- mkJ $ vectorize (nlpP  nlp) :: J (JV p) (V.Vector Double)
-        , nlpLamX0 = Nothing --fmap (mkJ . vectorize) (nlpLamX0 nlp)
+        , nlpBX = catJV bx
+        , nlpBG = catJV bg
+        , nlpX0 = catJV x0
+        , nlpP  = cat JNone -- mkM $ vectorize (nlpP  nlp) :: J (JV p) (V.Vector Double)
+        , nlpLamX0 = Nothing --fmap (mkM . vectorize) (nlpLamX0 nlp)
                               -- :: Maybe (J (JV x) (V.Vector Double))
-        , nlpLamG0 = Nothing -- fmap (mkJ . vectorize) (nlpLamG0 nlp)
+        , nlpLamG0 = Nothing -- fmap (mkM . vectorize) (nlpLamG0 nlp)
                               -- :: Maybe (J (JV g) (V.Vector Double))
         , nlpScaleF = Nothing -- nlpScaleF nlp
-        , nlpScaleX = Nothing -- fmap (mkJ . vectorize) (nlpScaleX nlp)
+        , nlpScaleX = Nothing -- fmap (mkM . vectorize) (nlpScaleX nlp)
                                -- :: Maybe (J (JV x) (V.Vector Double))
-        , nlpScaleG = Nothing -- fmap (mkJ . vectorize) (nlpScaleG nlp)
+        , nlpScaleG = Nothing -- fmap (mkM . vectorize) (nlpScaleG nlp)
                       -- :: Maybe (J (JV g) (V.Vector Double))
         }
 
@@ -242,11 +242,11 @@ solveNlpV solverStuff fg bx bg x0 cb = do
     Right _ -> Right $ (unId (splitJV (fOpt r1)), splitJV (xOpt r1))
 
 --  let r1 :: NlpOut x g Double
---      r1 = NlpOut { fOpt = V.head $ unJ (fOpt' r1')
---                  , xOpt = devectorize $ unJ (xOpt' r1')
---                  , gOpt = devectorize $ unJ (gOpt' r1')
---                  , lambdaXOpt = devectorize $ unJ $ lambdaXOpt' r1'
---                  , lambdaGOpt = devectorize $ unJ $ lambdaGOpt' r1'
+--      r1 = NlpOut { fOpt = V.head $ unM (fOpt' r1')
+--                  , xOpt = devectorize $ unM (xOpt' r1')
+--                  , gOpt = devectorize $ unM (gOpt' r1')
+--                  , lambdaXOpt = devectorize $ unM $ lambdaXOpt' r1'
+--                  , lambdaGOpt = devectorize $ unM $ lambdaGOpt' r1'
 --                  }
 --
 --  return (r0, r1)

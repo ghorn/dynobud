@@ -102,7 +102,7 @@ import Dyno.Vectorize ( Id(..) )
 import Dyno.View.JV ( JV )
 import Dyno.View.View ( View(..), J, fmapJ, d2v, v2d, jfill )
 import Dyno.View.M ( M )
-import Dyno.View.Unsafe ( unJ, mkJ, mkM )
+import Dyno.View.Unsafe ( mkM, unM )
 
 type VD a = J a (Vector Double)
 type VMD a = J a (Vector (Maybe Double))
@@ -128,7 +128,7 @@ setInput ::
   -> NlpSolver x p g ()
 setInput scaleFun getLen name x0 = do
   nlpState <- ask
-  let x = unJ $ scaleFun (isScale nlpState) $ mkJ $ CM.fromDVector (unJ x0)
+  let x = unM $ scaleFun (isScale nlpState) $ mkM $ CM.fromDVector (unM x0)
   let nActual = (CM.size1 x, CM.size2 x)
       nTypeLevel = (getLen nlpState, 1)
   when (nTypeLevel /= nActual) $ error $
@@ -181,7 +181,7 @@ getInput scaleFun name = do
   nlpState <- ask
   dmat <- liftIO $ C.ioInterfaceFunction_getInput__0 (isSolver nlpState) name
   let scale = scaleFun (isScale nlpState)
-  return (mkJ $ dnonzeros $ unJ $ scale (mkJ dmat))
+  return (mkM $ dnonzeros $ unM $ scale (mkM dmat))
 
 getX0 :: View x => NlpSolver x p g (VD x)
 getX0 = getInput xbarToX "x0"
@@ -215,7 +215,7 @@ getOutput scaleFun name = do
   nlpState <- ask
   dmat <- liftIO $ C.ioInterfaceFunction_getOutput__0 (isSolver nlpState) name
   let scale = scaleFun (isScale nlpState)
-  return (mkJ $ dnonzeros $ unJ $ scale (mkJ dmat))
+  return (mkM $ dnonzeros $ unM $ scale (mkM dmat))
 
 getF :: NlpSolver x p g (VD (JV Id))
 getF = getOutput fbarToF "f"
@@ -243,11 +243,11 @@ evalScaledGradF = do
   let solver = isSolver nlpState :: C.NlpSolver
   liftIO $ do
     gradF <- C.nlpSolver_gradF solver
-    result <- evalDMatrix' gradF (M.fromList [("x", unJ (v2d x0bar)), ("p", unJ (v2d pbar))])
+    result <- evalDMatrix' gradF (M.fromList [("x", unM (v2d x0bar)), ("p", unM (v2d pbar))])
     let mret = do
           grad <- M.lookup "grad" result
           f <- M.lookup "f" result
-          return (mkJ grad, mkJ f)
+          return (mkM grad, mkM f)
     case mret of
       Nothing -> error $ "evalScaledGradF: error looking up output\n"
                  ++ "fields available: " ++ show (M.keys result)
@@ -274,11 +274,11 @@ evalScaledJacG = do
     then return (M.zeros, M.zeros)
     else liftIO $ do
     jacG <- C.nlpSolver_jacG solver
-    result <- evalDMatrix' jacG (M.fromList [("x", unJ (v2d x0bar)), ("p", unJ (v2d pbar))])
+    result <- evalDMatrix' jacG (M.fromList [("x", unM (v2d x0bar)), ("p", unM (v2d pbar))])
     let mret = do
           jac <- M.lookup "jac" result
           g <- M.lookup "g" result
-          return (mkM jac, mkJ g)
+          return (mkM jac, mkM g)
     case mret of
       Nothing -> error $ "evalScaledJacG: error looking up output\n"
                  ++"fields available: " ++ show (M.keys result)
@@ -306,10 +306,10 @@ evalScaledHessLag = do
     hessLag <- C.nlpSolver_hessLag solver
     result <- evalDMatrix' hessLag $
               M.fromList
-              [ ("der_x", unJ (v2d x0bar))
-              , ("der_p", unJ (v2d pbar))
+              [ ("der_x", unM (v2d x0bar))
+              , ("der_p", unM (v2d pbar))
               , ("adj0_f", 1.0)
-              , ("adj0_g", unJ (v2d lamGbar))
+              , ("adj0_g", unM (v2d lamGbar))
               ]
     case M.lookup "jac" result of -- ????????????????
       Nothing -> error $ "evalScaledHessLag: error looking up hess lag output\n"
@@ -338,10 +338,10 @@ evalScaledHessF = do
     hessLag <- C.nlpSolver_hessLag solver
     result <- evalDMatrix' hessLag $
               M.fromList
-              [ ("der_x", unJ (v2d x0bar))
-              , ("der_p", unJ (v2d pbar))
+              [ ("der_x", unM (v2d x0bar))
+              , ("der_p", unM (v2d pbar))
               , ("adj0_f", 1.0)
-              , ("adj0_g", unJ (v2d lamGbar))
+              , ("adj0_g", unM (v2d lamGbar))
               ]
     case M.lookup "jac" result of -- ????????????????
       Nothing -> error $ "evalScaledHessF: error looking up hess lag output\n"
@@ -369,10 +369,10 @@ evalScaledHessLambdaG = do
     hessLag <- C.nlpSolver_hessLag solver
     result <- evalDMatrix' hessLag $
               M.fromList
-              [ ("der_x", unJ (v2d x0bar))
-              , ("der_p", unJ (v2d pbar))
+              [ ("der_x", unM (v2d x0bar))
+              , ("der_p", unM (v2d pbar))
               , ("adj0_f", 0.0)
-              , ("adj0_g", unJ (v2d lamGbar))
+              , ("adj0_g", unM (v2d lamGbar))
               ]
     case M.lookup "jac" result of -- ????????????????
       Nothing -> error $ "evalScaledHessLambdaG: error looking up hess lag output\n"
@@ -552,18 +552,18 @@ runNlpSolverWith ::
   -> NlpSolver x p g a
   -> IO a
 runNlpSolverWith runnerOptions solverStuff nlpFun scaleX scaleG scaleF callback' (NlpSolver nlpMonad) = do
-  inputsX <- mkJ <$> symV "x" (size (Proxy :: Proxy x))
-  inputsP <- mkJ <$> symV "p" (size (Proxy :: Proxy p))
+  inputsX <- mkM <$> symV "x" (size (Proxy :: Proxy x))
+  inputsP <- mkM <$> symV "p" (size (Proxy :: Proxy p))
 
   let scale :: forall sfa . CMatrix sfa => ScaleFuns x g sfa
       scale = mkScaleFuns scaleX scaleG scaleF
 
       (obj, g) = scaledFG scale nlpFun inputsX inputsP
 
-      inputsXMat = unJ inputsX
-      inputsPMat = unJ inputsP
-      objMat     = unJ obj
-      gMat       = unJ g
+      inputsXMat = unM inputsX
+      inputsPMat = unM inputsP
+      objMat     = unM obj
+      gMat       = unM g
 
   when (verbose runnerOptions) $ do
     putStrLn "************** initializing dynobud runNlpSolver ******************"
@@ -584,7 +584,7 @@ runNlpSolverWith runnerOptions solverStuff nlpFun scaleX scaleG scaleF callback'
 --  let eval 0 = error "finished"
 --      eval k = do
 --        putStrLn "setting input"
---        ioInterfaceFunction_setInput''' nlp (unJ nlpX0') (0::Int)
+--        ioInterfaceFunction_setInput''' nlp (unM nlpX0') (0::Int)
 --        putStrLn $ "evaluating " ++ show k
 --        C.function_evaluate nlp
 --        eval (k-1 :: Int)
@@ -605,7 +605,7 @@ runNlpSolverWith runnerOptions solverStuff nlpFun scaleX scaleG scaleF callback'
         callbackRet <- case callback' of
           Nothing -> return True
           Just callback -> do
-            xval <- fmap (d2v . xbarToX scale . mkJ . CM.densify) $
+            xval <- fmap (d2v . xbarToX scale . mkM . CM.densify) $
                     C.ioInterfaceFunction_getOutput__2 function' 0
             pval <- readIORef paramRef
             callback xval pval
@@ -638,7 +638,7 @@ runNlpSolverWith runnerOptions solverStuff nlpFun scaleX scaleG scaleF callback'
 --  let eval 0 = error "finished"
 --      eval k = do
 --        putStrLn "setting input"
---        ioInterfaceFunction_setInput''' jac_g (unJ nlpX0') (0::Int)
+--        ioInterfaceFunction_setInput''' jac_g (unM nlpX0') (0::Int)
 --        putStrLn $ "evaluating " ++ show k
 --        C.function_evaluate jac_g
 --        eval (k-1 :: Int)

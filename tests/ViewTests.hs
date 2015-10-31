@@ -34,7 +34,7 @@ import Casadi.MX ( MX )
 import Casadi.SX ( SX )
 import Casadi.Viewable ( Viewable )
 
-import Dyno.View.Unsafe ( M(UnsafeM), mkJ )
+import Dyno.View.Unsafe ( M(UnsafeM), mkM )
 import Dyno.TypeVecs ( Vec, Dim )
 import Dyno.Vectorize ( Vectorize(..), Id, fill )
 import Dyno.View.View ( J, View(..), JNone, JTuple, JTriple, JQuad )
@@ -291,7 +291,7 @@ prop_testSplitJ  =
             => Proxy f -> Proxy a -> Gen Property
     test _ _ = do
       UnsafeM xm0 <- arbitrary :: Gen (M (JV f) (JV Id) a)
-      let xj0 = mkJ xm0 :: J (JV f) a
+      let xj0 = mkM xm0 :: J (JV f) a
           xj1 = split xj0  :: JV f a
           xj2 = cat xj1 :: J (JV f) a
       return $ beEqual xj0 xj2

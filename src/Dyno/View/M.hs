@@ -63,7 +63,7 @@ import Casadi.CMatrix ( CMatrix )
 import Casadi.DMatrix ( DMatrix, dnonzeros, dsparsify )
 import qualified Casadi.CMatrix as CM
 
-import Dyno.View.Unsafe ( M(UnsafeM), mkM, mkM', unM, unJ, mkJ )
+import Dyno.View.Unsafe ( M(UnsafeM), mkM, mkM', unM )
 import Dyno.Vectorize ( Vectorize(..), Id, fill, devectorize )
 import Dyno.TypeVecs ( Vec, Dim(..) )
 import Dyno.View.View ( View(..), J, JTuple, JTriple, JQuad )
@@ -82,10 +82,10 @@ mm :: (View f, View h, CMatrix a) => M f g a -> M g h a -> M f h a
 mm (UnsafeM m0) (UnsafeM m1) = mkM (CM.mm m0 m1)
 
 ms :: (View f, View g, CMatrix a) => M f g a -> J (JV Id) a -> M f g a
-ms m0 m1 = mkM $ (unM m0) * (unJ m1)
+ms m0 m1 = mkM $ (unM m0) * (unM m1)
 
 sm :: (View f, View g, CMatrix a) => J (JV Id) a -> M f g a -> M f g a
-sm m0 m1 = mkM $ (unJ m0) * (unM m1)
+sm m0 m1 = mkM $ (unM m0) * (unM m1)
 
 trans :: (View f, View g, CMatrix a) => M f g a -> M g f a
 trans (UnsafeM m) = mkM (CM.trans m)
@@ -296,10 +296,10 @@ eye = mkM z
 diag :: forall f a . (View f, CMatrix a) => J f a -> M f f a
 diag x = mkM z
   where
-    z = CM.diag (unJ x)
+    z = CM.diag (unM x)
 
 takeDiag :: forall f a . (View f, CMatrix a) => M f f a -> J f a
-takeDiag m = mkJ $ CM.diag (unM m)
+takeDiag m = mkM $ CM.diag (unM m)
 
 ones :: forall f g a . (View f, View g, CMatrix a) => M f g a
 ones = mkM z

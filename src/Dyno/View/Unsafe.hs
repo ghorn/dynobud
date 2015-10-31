@@ -13,7 +13,6 @@
 module Dyno.View.Unsafe
        ( View(..), M(..), Viewable(..), J, JV(..)
        , mkM, mkM', unM, unM'
-       , mkJ, mkJ', unJ, unJ'
        ) where
 
 import GHC.Generics
@@ -119,18 +118,6 @@ instance (View f, View g, CMatrix a) => SymOrd (M f g a) where
 instance (View f, View g, CMatrix a) => Erf (M f g a) where
   erf = over erf
   erfinv = over erfinv
-
-mkJ :: (View f, View g, Viewable a) => a -> M f g a
-mkJ = mkM
-
-mkJ' :: (View f, View g, Viewable a) => a -> Either String (M f g a)
-mkJ' = mkM'
-
-unJ :: (View f, View g, Viewable a) => M f g a -> a
-unJ = unM
-
-unJ' :: (View f, View g, Viewable a) => M f g a -> Either String a
-unJ' = unM'
 
 mkM' :: forall f g a
         . (View f, View g, Viewable a)

@@ -17,7 +17,7 @@ import qualified Data.Foldable as F
 import Linear.V
 import Linear ( lerp )
 
-import Dyno.View.Unsafe ( unJ, mkJ )
+import Dyno.View.Unsafe ( mkM, unM )
 import Dyno.View.View ( View(..), J )
 import Dyno.View.JV ( JV )
 import Dyno.View.JVec
@@ -63,7 +63,7 @@ interp tz0 t = (tz, ret)
     (ts,xs) = TV.tvunzip txs
 
     ret :: J f (V.Vector Double)
-    ret = mkJ $ LP.interpolate ts (fmap unJ xs) t
+    ret = mkM $ LP.interpolate ts (fmap unM xs) t
 
 
 type Point x z u = CollPoint (JV x) (JV z) (JV u)
@@ -205,5 +205,5 @@ linterp :: View s
 -- if t is too big and there are others available
 linterp (_:others@((t1,_):_:_)) t
   | t > t1 = linterp others t
-linterp acc@((t0,x0):(t1,x1):_) t = (acc, mkJ (lerp ((t - t0) / (t1 - t0)) (unJ x0) (unJ x1)))
+linterp acc@((t0,x0):(t1,x1):_) t = (acc, mkM (lerp ((t - t0) / (t1 - t0)) (unM x0) (unM x1)))
 linterp _ _ = error "linear interpolation ran out of nodes"

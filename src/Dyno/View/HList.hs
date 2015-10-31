@@ -57,7 +57,7 @@ instance (Scheme f, Scheme g) => Scheme (f :*: g) where
       (px, py) = reproxy pxy
 
 --instance (View f, View g) => View (f :*: g) where
---  cat (x :*: y) = mkJ (vveccat (V.fromList [x', y']))
+--  cat (x :*: y) = mkM (vveccat (V.fromList [x', y']))
 --    where
 --      UnsafeJ x' = cat x
 --      UnsafeJ y' = cat y
@@ -70,7 +70,7 @@ instance (Scheme f, Scheme g) => Scheme (f :*: g) where
 --        Seq.EmptyR -> k0
 --        _ Seq.:> k1' -> k1'
 ----  split :: forall a . Viewable a => J S a -> S a
---  split = undefined -- S . unJ
+--  split = undefined -- S . unM
 --  
 --
 --
@@ -98,7 +98,7 @@ instance (Scheme f, Scheme g) => Scheme (f :*: g) where
 ----  hsplit = undefined
 --  hsizeList p = [size p]
 --    where
---  hfromList (x:xs) = (mkJ x, xs)
+--  hfromList (x:xs) = (mkM x, xs)
 --
 ----hsplit :: HSplit f g => M f g a -> HSplitT f g a
 ----hsplit m@(UnsafeM mat) = undefined

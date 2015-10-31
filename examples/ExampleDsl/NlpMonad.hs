@@ -38,7 +38,7 @@ import Casadi.Function
 import Casadi.CMatrix ( veccat )
 import qualified Casadi.CMatrix as CM
 
-import Dyno.View.Unsafe ( M(UnsafeM), J, mkJ, unJ )
+import Dyno.View.Unsafe ( M(UnsafeM), J, mkM, unM )
 import Dyno.Vectorize ( Id, devectorize, fill )
 import Dyno.TypeVecs ( Vec )
 import Dyno.View.View ( View(..), JNone(..), jfill )
@@ -55,7 +55,7 @@ import ExampleDsl.Types
 type MXElement = J (JV Id) MX
 
 mxElementSym :: String -> IO MXElement
-mxElementSym name = mkJ <$> sym name
+mxElementSym name = mkM <$> sym name
 
 mxElementToMX :: MXElement -> MX
 mxElementToMX (UnsafeM x)
@@ -181,14 +181,14 @@ buildNlp state = do
 
   mxfun <- mxFunction "nlp" (V.fromList [svector inputs]) (V.fromList [svector (V.singleton obj), svector (TV.unVec g)]) LM.empty
   let fg :: J (JVec nx (JV Id)) MX -> J JNone MX -> (J (JV Id) MX, J (JVec ng (JV Id)) MX)
-      fg x _ = (mkJ (ret V.! 0), mkJ (ret V.! 1))
+      fg x _ = (mkM (ret V.! 0), mkM (ret V.! 1))
         where
-          ret = callMX mxfun (V.singleton (unJ x))
+          ret = callMX mxfun (V.singleton (unM x))
                 (AlwaysInline False) (NeverInline False)
 
   return Nlp { nlpFG = fg
-             , nlpBX = mkJ (TV.unVec xbnd)
-             , nlpBG = mkJ (TV.unVec gbnd)
+             , nlpBX = mkM (TV.unVec xbnd)
+             , nlpBG = mkM (TV.unVec gbnd)
              , nlpX0 = jfill 0
              , nlpP = cat JNone
              , nlpScaleF = Nothing
@@ -221,10 +221,10 @@ reifyNlp nlpmonad cb0 x0map f = do
 --  TV.reifyDim np $ \(Proxy :: Proxy np) ->
     TV.reifyDim ng $ \(Proxy :: Proxy ng) -> do
       nlp0 <- buildNlp state :: IO (Nlp (JVec nx (JV Id)) JNone (JVec ng (JV Id)) MX)
-      let nlp = nlp0 { nlpX0 = mkJ x0 }
+      let nlp = nlp0 { nlpX0 = mkM x0 }
           cb = case cb0 of
             Nothing -> Nothing
-            Just cb' -> Just $ \x _ -> cb' (unJ x)
+            Just cb' -> Just $ \x _ -> cb' (unM x)
 
       f nlp cb state
 
@@ -246,7 +246,7 @@ solveStaticNlp solverStuff nlp x0' callback = reifyNlp nlp callback x0 foo
       IO (Either String String, Double, [(String,Double)])
     foo nlp' cb' state = do
       (ret,nlpOut) <- solveNlp solverStuff nlp' cb'
-      let fopt = V.head (unJ (fOpt nlpOut)) :: Double
-          xopt = F.toList $ unJ (xOpt nlpOut) :: [Double]
+      let fopt = V.head (unM (fOpt nlpOut)) :: Double
+          xopt = F.toList $ unM (xOpt nlpOut) :: [Double]
           xnames = map fst (F.toList (nlpX state)) :: [String]
       return (ret, fopt, zip xnames xopt)
