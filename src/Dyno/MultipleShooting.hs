@@ -21,15 +21,15 @@ import qualified Data.Foldable as F
 
 import Casadi.MX ( MX )
 
-import Dyno.TypeVecs
-import Dyno.View.View ( View(..) )
-import Dyno.View.View ( J, JNone(..), JTuple(..), jfill )
-import Dyno.View.JV ( JV, catJV, catJV', splitJV' )
-import Dyno.View.JVec ( JVec(..) )
-import Dyno.View.Fun ( MXFun, toMXFun, call )
-import Dyno.View.Scheme ( Scheme )
-import Dyno.Vectorize ( Vectorize, Id )
 import Dyno.Nlp ( Bounds, Nlp(..) )
+import Dyno.TypeVecs
+import Dyno.Vectorize ( Vectorize, Id )
+import Dyno.View.Fun ( MXFun, toMXFun, call )
+import Dyno.View.JV ( JV, catJV )
+import Dyno.View.JVec ( JVec(..) )
+import Dyno.View.M ( vcat, vsplit )
+import Dyno.View.Scheme ( Scheme )
+import Dyno.View.View ( View(..), J, JNone(..), JTuple(..), jfill )
 
 
 data IntegratorIn x u p a = IntegratorIn (J (JV x) a) (J (JV u) a) (J (JV p) a)
@@ -95,15 +95,15 @@ makeMsNlp ::
   => MsOcp x u p -> IO (Nlp (MsDvs x u p n) JNone (MsConstraints x n) MX)
 makeMsNlp msOcp = do
   let n = reflectDim (Proxy :: Proxy n)
-      integrate (IntegratorIn x0 u p) = IntegratorOut (catJV' (simulate nsteps ode x0' u' p' 0 dt))
+      integrate (IntegratorIn x0 u p) = IntegratorOut (vcat (simulate nsteps ode x0' u' p' 0 dt))
         where
           endTime = msEndTime msOcp
           dt = (realToFrac endTime) / fromIntegral n
           ode = msOde msOcp
           nsteps = fromMaybe 1 (msNumRk4Steps msOcp)
-          x0' = splitJV' x0
-          u' = splitJV' u
-          p' = splitJV' p
+          x0' = vsplit x0
+          u' = vsplit u
+          p' = vsplit p
   integrator <- toMXFun "my integrator" integrate
   let _ = integrator :: MXFun (IntegratorIn x u p) (IntegratorOut x) -- just for type signature
 
@@ -158,11 +158,11 @@ makeMsNlp msOcp = do
 
           lagrangeSum = F.sum $ fmap callLagrangeSum (unJVec (split xus))
             where
-              callLagrangeSum xu = msLagrangeSum msOcp (splitJV' x) (splitJV' u)
+              callLagrangeSum xu = msLagrangeSum msOcp (vsplit x) (vsplit u)
                 where
                   JTuple x u = split xu
 
-          mayer = msMayer msOcp (splitJV' xf)
+          mayer = msMayer msOcp (vsplit xf)
 
           f :: J (JV Id) MX
           f = mayer + lagrangeSum

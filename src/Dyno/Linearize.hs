@@ -29,11 +29,11 @@ toOdeSX ::
   -> JacOut (JTuple (JV x) (JV o)) (J JNone) SX
 toOdeSX ode jacIn = jacOut
   where
-    jacOut = JacOut (cat (JTuple (catJV' dx) (catJV' outputs))) (cat JNone)
+    jacOut = JacOut (cat (JTuple (vcat dx) (vcat outputs))) (cat JNone)
     JacIn xuwp sc = jacIn
     JQuad x u w p = split xuwp
     (dx, outputs) =
-      ode (splitJV' x) (splitJV' u) (splitJV' w) (splitJV' p) (splitJV' sc)
+      ode (vsplit x) (vsplit u) (vsplit w) (vsplit p) (vsplit sc)
 
 toErrorOdeSX ::
   ( Vectorize x, Vectorize e, Vectorize u, Vectorize w
@@ -43,12 +43,12 @@ toErrorOdeSX ::
   -> JacOut (JTuple (JV e) (JV o)) (J JNone) SX
 toErrorOdeSX errorOde jacIn = jacOut
   where
-    jacOut = JacOut (cat (JTuple (catJV' de) (catJV' outputs))) (cat JNone)
+    jacOut = JacOut (cat (JTuple (vcat de) (vcat outputs))) (cat JNone)
     JacIn euwp nominalInputs = jacIn
     JQuad e du w p = split euwp
-    Triple fs0 u0 sc = splitJV' nominalInputs
-    (de, outputs) = errorOde fs0 (splitJV' e) u0 (splitJV' du) (splitJV' w)
-                    (splitJV' p) sc
+    Triple fs0 u0 sc = vsplit nominalInputs
+    (de, outputs) = errorOde fs0 (vsplit e) u0 (vsplit du) (vsplit w)
+                    (vsplit p) sc
 
 newtype OdeJacobian x u w p sc o =
   OdeJacobian
@@ -112,11 +112,11 @@ evalOdeJacobian ::
         , J (JV o) DMatrix
         )
 evalOdeJacobian (OdeJacobian fj) x0 u0 p0 sc0 = do
-  let w  = catJV' (fill 0)
-      x  = catJV' (fmap realToFrac x0)
-      u  = catJV' (fmap realToFrac u0)
-      p  = catJV' (fmap realToFrac p0)
-      sc = catJV' (fmap realToFrac sc0)
+  let w  = vcat (fill 0)
+      x  = vcat (fmap realToFrac x0)
+      u  = vcat (fmap realToFrac u0)
+      p  = vcat (fmap realToFrac p0)
+      sc = vcat (fmap realToFrac sc0)
       jacIn = JacIn (cat (JQuad x u w p)) sc
   jacOut <- eval fj jacIn
   let Jac dxo_dxup xo' _ = jacOut
@@ -151,11 +151,11 @@ evalErrorOdeJacobian ::
         , J (JV o) DMatrix
         )
 evalErrorOdeJacobian (ErrorOdeJacobian fj) x0 u0 p0 sc0 = do
-  let e = catJV' (fill 0)
-      w = catJV' (fill 0)
-      du = catJV' (fill 0)
-      p  = catJV' (fmap realToFrac p0)
-      x0u0sc0 = catJV' $ fmap realToFrac $ Triple x0 u0 sc0
+  let e = vcat (fill 0)
+      w = vcat (fill 0)
+      du = vcat (fill 0)
+      p  = vcat (fmap realToFrac p0)
+      x0u0sc0 = vcat $ fmap realToFrac $ Triple x0 u0 sc0
       jacIn = JacIn (cat (JQuad e du w p)) x0u0sc0
   jacOut <- eval fj jacIn
   let Jac dxo_dxup xo' _ = jacOut

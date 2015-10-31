@@ -52,9 +52,9 @@ testFun0 ::
   -> HUnit.Assertion
 testFun0 theMapFun = toHUnit $ do
   let f :: J (JV V2) SX -> J (JV V3) SX
-      f x = catJV' $ V3 (10*x0) (100*x1) (1000*x1)
+      f x = vcat $ V3 (10*x0) (100*x1) (1000*x1)
         where
-          V2 x0 x1 = splitJV' x
+          V2 x0 x1 = vsplit x
 
   fun <- toSXFun "v2_in_v3_out" f :: IO (SXFun (J (JV V2)) (J (JV V3)))
   mapF <- theMapFun Proxy "map_v2_in_v3_out" fun M.empty
@@ -89,10 +89,10 @@ testFun1 theMapFun = toHUnit $ do
   let f :: (J (JV V2) :*: J (JV Id)) SX -> (J (JV V3) :*: J (JV Id)) SX
       f (x :*: y) = o0 :*: o1
         where
-          o0 = catJV' $ V3 (10*x0) (100*x1) (1000*x1)
-          o1 = catJV' $ Id (2*y0)
-          V2 x0 x1 = splitJV' x
-          Id y0 = splitJV' y
+          o0 = vcat $ V3 (10*x0) (100*x1) (1000*x1)
+          o1 = vcat $ Id (2*y0)
+          V2 x0 x1 = vsplit x
+          Id y0 = vsplit y
 
   fun <- toSXFun "v2id_in_v3id_out" f
   mapF <- theMapFun Proxy "map_v2id_in_v3id_out" fun M.empty
@@ -167,10 +167,10 @@ testFunNonRepeated = toHUnit $ do
   let f :: (J (JV V2) :*: J (JV Id)) SX -> (J (JV V3) :*: J (JV Id)) SX
       f (x :*: y) = o0 :*: o1
         where
-          o0 = catJV' $ V3 (10*x0) (100*x1) (1000*x1)
-          o1 = catJV' $ Id (2*y0)
-          V2 x0 x1 = splitJV' x
-          Id y0 = splitJV' y
+          o0 = vcat $ V3 (10*x0) (100*x1) (1000*x1)
+          o1 = vcat $ Id (2*y0)
+          V2 x0 x1 = vsplit x
+          Id y0 = vsplit y
 
   fun <- toSXFun "f" f
   mapF <- mapFun' (Proxy :: Proxy 5) "map_f" fun M.empty

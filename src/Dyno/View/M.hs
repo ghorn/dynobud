@@ -62,6 +62,7 @@ import Casadi.GenericC ( GenericType )
 import Casadi.CMatrix ( CMatrix )
 import Casadi.DMatrix ( DMatrix, dnonzeros, dsparsify )
 import qualified Casadi.CMatrix as CM
+import Casadi.Viewable ( Viewable(..) )
 
 import Dyno.View.Unsafe ( M(UnsafeM), mkM, mkM', unM )
 import Dyno.Vectorize ( Vectorize(..), Id, fill, devectorize )
@@ -92,18 +93,18 @@ trans (UnsafeM m) = mkM (CM.trans m)
 
 vsplit ::
   forall f g a .
-  (Vectorize f, View g, CMatrix a)
+  (Vectorize f, View g, Viewable a)
   => M (JV f) g a -> f (M (JV Id) g a)
-vsplit (UnsafeM x) = fmap mkM $ devectorize $ CM.vertsplit x nrs
+vsplit (UnsafeM x) = fmap mkM $ devectorize $ vvertsplit x nrs
   where
     nr = size (Proxy :: Proxy (JV f))
     nrs = V.fromList [0,1..nr]
 
 vcat ::
   forall f g a .
-  (Vectorize f, View g, CMatrix a)
+  (Vectorize f, View g, Viewable a)
   => f (M (JV Id) g a) -> M (JV f) g a
-vcat x = mkM $ CM.vertcat $ V.map unM (vectorize x)
+vcat x = mkM $ vvertcat $ V.map unM (vectorize x)
 
 hsplit ::
   forall f g a .

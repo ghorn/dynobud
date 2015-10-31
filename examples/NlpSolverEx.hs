@@ -16,6 +16,7 @@ import Casadi.Viewable ( Viewable )
 import Dyno.Vectorize ( Vectorize, Id(..), None(..), fill )
 import Dyno.View.View
 import Dyno.View.JV -- ( JV )
+import Dyno.View.M ( vcat, vsplit )
 import Dyno.Nlp
 import Dyno.NlpSolver
 import Dyno.NlpUtils
@@ -54,9 +55,9 @@ myNlp = Nlp { nlpFG = fg
     bg = G (Just 2, Nothing)
 
     fg :: J (JV X) MX -> J (JV None) MX -> (J (JV Id) MX, J (JV G) MX)
-    fg xy _ = (f, catJV' g)
+    fg xy _ = (f, vcat g)
       where
-        X x y = splitJV' xy
+        X x y = vsplit xy
         x' = 1e3*x
         y' = 1e-4*y
         f = x'**2 + y'**2 + 0.1*x' * y'

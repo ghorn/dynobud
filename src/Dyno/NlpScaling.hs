@@ -17,7 +17,7 @@ import Dyno.View.M ( M )
 import qualified Dyno.View.M as M
 import Dyno.Vectorize ( Id(..) )
 import Dyno.View.View ( View, J, v2d )
-import Dyno.View.JV ( JV, catJV' )
+import Dyno.View.JV ( JV )
 
 data ScaleFuns x g a =
   ScaleFuns
@@ -109,7 +109,7 @@ mkScaleFuns mx mg mf
     hessFBarToHessF' :: M x x a -> M x x a
     hessFBarToHessF' h0 = case mf of
       Nothing -> h1
-      Just fscl -> h1 `M.ms` (catJV' (Id (realToFrac fscl)))
+      Just fscl -> h1 `M.ms` (M.vcat (Id (realToFrac fscl)))
       where
         h1 = case xdiaginv of
           Nothing -> h0

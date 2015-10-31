@@ -40,9 +40,9 @@ import Casadi.SX ( SX )
 
 import Dyno.Integrate ( InitialTime(..), TimeStep(..), rk45 )
 import Dyno.View.View ( View(..), J, jfill, JTuple(..), v2d, d2v )
-import Dyno.View.M ( M )
+import Dyno.View.M ( M, vcat, vsplit )
 import qualified Dyno.View.M as M
-import Dyno.View.JV ( JV, splitJV, catJV, splitJV', catJV' )
+import Dyno.View.JV ( JV, splitJV, catJV )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.Fun
 import Dyno.View.MapFun
@@ -189,12 +189,12 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
         Radau -> TV.tvlast $ unJVec $ split xs
 
       dynamicsFunction :: DaeIn (JV x) (JV z) (JV u) (JV p) (JV fp) SX -> DaeOut (JV r) (JV o) SX
-      dynamicsFunction (DaeIn t parm fixedParm x' collPoint) = DaeOut (catJV' r) (catJV' o)
+      dynamicsFunction (DaeIn t parm fixedParm x' collPoint) = DaeOut (vcat r) (vcat o)
         where
           CollPoint x z u = split collPoint
           (r,o) = ocpDae ocp
-                  (splitJV' x') (splitJV' x) (splitJV' z) (splitJV' u)
-                  (splitJV' parm) (splitJV' fixedParm) (unId (splitJV' t))
+                  (vsplit x') (vsplit x) (vsplit z) (vsplit u)
+                  (vsplit parm) (vsplit fixedParm) (unId (vsplit t))
 
   interpolateFun <- toMXFun "interpolate (JV x)" interpolate' >>= expandMXFun
   interpolateQFun <- toMXFun "interpolate (JV q)" interpolate' >>= expandMXFun
@@ -220,9 +220,9 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
           DaeOut _ o = dynamicsFunction daeIn
 
           quad :: J (JV q) SX
-          quad = catJV' $ ocpQuadratures ocp
-                 (splitJV' x) (splitJV' z) (splitJV' u) (splitJV' p) (splitJV' fp) (splitJV' o)
-                 (unId (splitJV' t)) (unId (splitJV' tf))
+          quad = vcat $ ocpQuadratures ocp
+                 (vsplit x) (vsplit z) (vsplit u) (vsplit p) (vsplit fp) (vsplit o)
+                 (unId (vsplit t)) (unId (vsplit tf))
 
   let quadOutFun :: QuadratureIn (JV x) (JV z) (JV u) (JV p) (JV fp) SX -> J (JV qo) SX
       quadOutFun (QuadratureIn x' x z u p fp t tf) = quad
@@ -231,9 +231,9 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
           DaeOut _ o = dynamicsFunction daeIn
 
           quad :: J (JV qo) SX
-          quad = catJV' $ ocpQuadratureOutputs ocp
-                 (splitJV' x) (splitJV' z) (splitJV' u) (splitJV' p) (splitJV' fp) (splitJV' o)
-                 (unId (splitJV' t)) (unId (splitJV' tf))
+          quad = vcat $ ocpQuadratureOutputs ocp
+                 (vsplit x) (vsplit z) (vsplit u) (vsplit p) (vsplit fp) (vsplit o)
+                 (unId (vsplit t)) (unId (vsplit tf))
 
   let lagFun :: QuadratureIn (JV x) (JV z) (JV u) (JV p) (JV fp) SX -> J (JV Id) SX
       lagFun (QuadratureIn x' x z u p fp t tf) = lag
@@ -242,9 +242,9 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
           DaeOut _ o = dynamicsFunction daeIn
 
           lag :: J (JV Id) SX
-          lag = catJV' $ Id $ ocpLagrange ocp
-                (splitJV' x) (splitJV' z) (splitJV' u) (splitJV' p) (splitJV' fp) (splitJV' o)
-                (unId (splitJV' t)) (unId (splitJV' tf))
+          lag = vcat $ Id $ ocpLagrange ocp
+                (vsplit x) (vsplit z) (vsplit u) (vsplit p) (vsplit fp) (vsplit o)
+                (unId (vsplit t)) (unId (vsplit tf))
 
   let pathCFun :: PathCIn (JV x) (JV z) (JV u) (JV p) (JV fp) SX -> J (JV h) SX
       pathCFun (PathCIn x' x z u p fp t) = h
@@ -253,9 +253,9 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
           DaeOut _ o = dynamicsFunction daeIn
 
           h :: J (JV h) SX
-          h = catJV' $ ocpPathC ocp
-              (splitJV' x) (splitJV' z) (splitJV' u) (splitJV' p) (splitJV' fp) (splitJV' o)
-              (unId (splitJV' t))
+          h = vcat $ ocpPathC ocp
+              (vsplit x) (vsplit z) (vsplit u) (vsplit p) (vsplit fp) (vsplit o)
+              (unId (vsplit t))
 
   quadFunSX <- toSXFun "quadFun" quadFun
   quadOutFunSX <- toSXFun "quadOutFun" quadOutFun
@@ -266,10 +266,10 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
         QuadraturePlottingIn (JV x) (JV z) (JV u) (JV p) (JV o) (JV q) (JV qo) (JV fp) SX
         -> J (JV po) SX
       quadraturePlottingFun (QuadraturePlottingIn x0 xF x z u p o q qo fp t tf) =
-        catJV' $ ocpPlotOutputs ocp (splitJV' x0, splitJV' xF)
-        (splitJV' x) (splitJV' z) (splitJV' u) (splitJV' p)
-        (splitJV' o) (splitJV' q) (splitJV' qo) (splitJV' fp)
-        (unId (splitJV' t)) (unId (splitJV' tf))
+        vcat $ ocpPlotOutputs ocp (vsplit x0, vsplit xF)
+        (vsplit x) (vsplit z) (vsplit u) (vsplit p)
+        (vsplit o) (vsplit q) (vsplit qo) (vsplit fp)
+        (unId (vsplit t)) (unId (vsplit tf))
   quadPlotFunSX <- toSXFun "quadPlotFun" quadraturePlottingFun
 
   let -- later we could use the intermediate points as outputs, or in path cosntraints
@@ -298,9 +298,9 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
   pathCStageFunMX <- toMXFun "pathCStageFun" pathCStageFun
 
 
-  bcFun <- toSXFun "bc" $ \(x0:*:x1:*:x2:*:x3:*:x4:*:x5) -> catJV' $ ocpBc ocp (splitJV' x0) (splitJV' x1) (splitJV' x2) (splitJV' x3) (splitJV' x4) (unId (splitJV' x5))
+  bcFun <- toSXFun "bc" $ \(x0:*:x1:*:x2:*:x3:*:x4:*:x5) -> vcat $ ocpBc ocp (vsplit x0) (vsplit x1) (vsplit x2) (vsplit x3) (vsplit x4) (unId (vsplit x5))
   mayerFun <- toSXFun "mayer" $ \(x0:*:x1:*:x2:*:x3:*:x4:*:x5) ->
-    catJV' $ Id $ ocpMayer ocp (unId (splitJV' x0)) (splitJV' x1) (splitJV' x2) (splitJV' x3) (splitJV' x4) (splitJV' x5)
+    vcat $ Id $ ocpMayer ocp (unId (vsplit x0)) (vsplit x1) (vsplit x2) (vsplit x3) (vsplit x4) (vsplit x5)
 
   dynFun <- toSXFun "dynamics" dynamicsFunction
 

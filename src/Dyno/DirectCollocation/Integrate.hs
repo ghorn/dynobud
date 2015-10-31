@@ -21,11 +21,12 @@ import Casadi.SX ( SX )
 import Casadi.MX ( MX )
 import Casadi.Viewable ( Viewable )
 
-import Dyno.View.JV ( JV, splitJV, catJV, splitJV', catJV' )
+import Dyno.View.JV ( JV, splitJV, catJV )
 import Dyno.View.View ( View(..), J, JNone, JTuple(..), jfill )
 import Dyno.View.Fun ( SXFun, call, toSXFun, toMXFun, expandMXFun )
 import Dyno.View.JVec ( JVec(..), jreplicate )
 import Dyno.View.HList ( (:*:)(..) )
+import Dyno.View.M ( vcat, vsplit )
 import qualified Dyno.View.M as M
 import Dyno.Vectorize ( Vectorize(..), Id(..), vzipWith )
 import Dyno.TypeVecs ( Vec )
@@ -158,9 +159,9 @@ withIntegrator _ roots initialX dae solver userFun = do
 
   dynFun <- toSXFun "dynamics" $ dynamicsFunction' $
             \x0 x1 x2 x3 x4 x5 ->
-            let r = dae (splitJV' x0) (splitJV' x1) (splitJV' x2) (splitJV' x3)
-                    (splitJV' x4) (unId (splitJV' x5))
-            in catJV' r
+            let r = dae (vsplit x0) (vsplit x1) (vsplit x2) (vsplit x3)
+                    (vsplit x4) (unId (vsplit x5))
+            in vcat r
 
   dynStageConFun <- toMXFun "dynamicsStageCon" (dynStageConstraints' cijs taus dynFun)
 --  let callDynStageConFun = call dynStageConFun

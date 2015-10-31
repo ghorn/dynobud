@@ -166,7 +166,7 @@ unM x = case unM' x of
 class View f where
   cat :: Viewable a => f a -> J f a
   default cat :: (GCat (Rep (f a)) a, Generic (f a), Viewable a) => f a -> J f a
-  cat = mkM . vveccat . V.fromList . F.toList . gcat . from
+  cat = mkM . vvertcat . V.fromList . F.toList . gcat . from
 
   size :: Proxy f -> Int
   default size :: (GSize (Rep (f ())), Generic (f ())) => Proxy f -> Int
@@ -321,7 +321,7 @@ newtype JV f a = JV { unJV :: f a } deriving (Functor, Generic, Generic1)
 
 instance Vectorize f => View (JV f) where
   cat :: forall a . Viewable a => JV f a -> J (JV f) a
-  cat = mkM . vveccat . vectorize . unJV
+  cat = mkM . vvertcat . vectorize . unJV
   size = const $ vlength (Proxy :: Proxy f)
   sizes = const . Seq.singleton . (vlength (Proxy :: Proxy f) +)
   split :: forall a . Viewable a => J (JV f) a -> JV f a

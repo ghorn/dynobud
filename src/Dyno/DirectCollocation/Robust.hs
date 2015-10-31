@@ -29,11 +29,11 @@ import Casadi.Viewable ( Viewable )
 import Dyno.View.Unsafe ( mkM )
 
 import Dyno.View.View ( View(..), J, JNone(..), JTuple(..) )
-import Dyno.View.JV ( JV, catJV', splitJV' )
+import Dyno.View.JV ( JV )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.Cov ( Cov, toMat, fromMat )
 import Dyno.View.Fun
-import Dyno.View.M ( M )
+import Dyno.View.M ( M, vcat, vsplit )
 import qualified Dyno.View.M as M
 import Dyno.View.JVec ( JVec(..) )
 import Dyno.View.FunJac
@@ -85,9 +85,9 @@ mkComputeSensitivities roots covDae = do
   errorDynFun <- toSXFun "error dynamics" $ errorDynamicsFunction $
             \x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 ->
             let r = covDae
-                    (splitJV' x0) (splitJV' x1) (splitJV' x2) (splitJV' x3) (splitJV' x4)
-                    (unId (splitJV' x5)) (splitJV' x6) (splitJV' x7) (splitJV' x8) (splitJV' x9)
-            in catJV' r
+                    (vsplit x0) (vsplit x1) (vsplit x2) (vsplit x3) (vsplit x4)
+                    (unId (vsplit x5)) (vsplit x6) (vsplit x7) (vsplit x8) (vsplit x9)
+            in vcat r
 
   edscf <- toMXFun "errorDynamicsStageCon" (errorDynStageConstraints cijs taus errorDynFun)
   errorDynStageConFunJac <- toFunJac edscf
@@ -376,7 +376,7 @@ mkRobustifyFunction ::
   -> IO (J (JV shr) MX -> J (JV p) MX -> J (JV x) MX -> J (Cov (JV sx)) MX -> J (JV shr) MX)
 mkRobustifyFunction project robustifyPathC = do
   proj <- toSXFun "errorSpaceProjection" $
-          \(JacIn x0 x1) -> JacOut (catJV' (project (splitJV' x1) (splitJV' x0))) (cat JNone)
+          \(JacIn x0 x1) -> JacOut (vcat (project (vsplit x1) (vsplit x0))) (cat JNone)
   let _ = proj :: SXFun
                   (JacIn (JV sx) (J (JV x)))
                   (JacOut (JV x) (J JNone))
@@ -393,9 +393,9 @@ mkRobustifyFunction project robustifyPathC = do
                                (J (JV x))
                                (M.M (JV x) (JV sx))
 
-  let rpc (JacIn xe parm) = JacOut (catJV' lol) (cat JNone)
+  let rpc (JacIn xe parm) = JacOut (vcat lol) (cat JNone)
         where
-          lol = robustifyPathC (splitJV' x) (splitJV' e) (splitJV' parm)
+          lol = robustifyPathC (vsplit x) (vsplit e) (vsplit parm)
           JTuple x e = split xe
   robustH <- toSXFun "robust constraint" rpc
   let _ = robustH :: SXFun
@@ -424,7 +424,7 @@ mkRobustifyFunction project robustifyPathC = do
   let gogo :: J (JV shr) MX -> J (JV p) MX -> J (JV x) MX -> J (Cov (JV sx)) MX -> J (JV shr) MX
       gogo gammas' theta x pe' = rcs'
           where
-            gammas = splitJV' gammas' :: shr (J (JV Id) MX)
+            gammas = vsplit gammas' :: shr (J (JV Id) MX)
 
             jHx :: M (JV shr) (JV x) MX
             jHe :: M (JV shr) (JV sx) MX
@@ -452,10 +452,10 @@ mkRobustifyFunction project robustifyPathC = do
             jHes :: shr (M.M (JV Id) (JV sx) MX)
             jHes = M.vsplit jHe
 
-            shr' = splitJV' h0vec :: shr (J (JV Id) MX)
+            shr' = vsplit h0vec :: shr (J (JV Id) MX)
 
             rcs' :: J (JV shr) MX
-            rcs' = catJV' rcs
+            rcs' = vcat rcs
 
             rcs :: shr (J (JV Id) MX)
             rcs = vzipWith4 robustify gammas shr' jHxs jHes

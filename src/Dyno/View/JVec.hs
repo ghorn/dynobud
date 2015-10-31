@@ -27,7 +27,7 @@ import Dyno.Vectorize ( devectorize )
 -- | vectors in View
 newtype JVec (n :: k) f a = JVec { unJVec :: Vec n (J f a) } deriving ( Show )
 instance (Dim n, View f) => View (JVec n f) where
-  cat = mkM . vveccat . fmap unM . unVec . unJVec
+  cat = mkM . vvertcat . fmap unM . unVec . unJVec
   split = JVec . fmap mkM . devectorize . flip vvertsplit ks . unM
     where
       ks = V.fromList (take (n+1) [0,m..])

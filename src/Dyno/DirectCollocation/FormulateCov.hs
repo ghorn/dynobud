@@ -19,9 +19,10 @@ import Linear.V
 import Casadi.DMatrix ( DMatrix )
 import Casadi.MX ( MX )
 
+import Dyno.View.M ( vcat, vsplit )
 import Dyno.View.View ( View(..), J, jfill, v2d, d2v )
 import Dyno.View.Cov ( Cov )
-import Dyno.View.JV ( JV, catJV, catJV', splitJV' )
+import Dyno.View.JV ( JV, catJV )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.Fun
 import Dyno.View.JVec( JVec(..), jreplicate )
@@ -100,11 +101,11 @@ makeCollCovProblem dirCollOpts ocp ocpInputs ocpCov guess = do
                         (computeSensitivities) (ocpCovSq ocpCov)
 
   sbcFun <- toSXFun "sbc" $ \(x0:*:x1) -> ocpCovSbc ocpCov x0 x1
-  shFun <- toSXFun "sh" $ \(x0:*:x1) -> ocpCovSh ocpCov (splitJV' x0) x1
+  shFun <- toSXFun "sh" $ \(x0:*:x1) -> ocpCovSh ocpCov (vsplit x0) x1
   mayerFun <- toSXFun "cov mayer" $ \(x0:*:x1:*:x2:*:x3:*:x4) ->
-    catJV' $ Id $ ocpCovMayer ocpCov (unId (splitJV' x0)) (splitJV' x1) (splitJV' x2) x3 x4
+    vcat $ Id $ ocpCovMayer ocpCov (unId (vsplit x0)) (vsplit x1) (vsplit x2) x3 x4
   lagrangeFun <- toSXFun "cov lagrange" $ \(x0:*:x1:*:x2:*:x3) ->
-    catJV' $ Id $ ocpCovLagrange ocpCov (unId (splitJV' x0)) (splitJV' x1) x2 (unId (splitJV' x3))
+    vcat $ Id $ ocpCovLagrange ocpCov (unId (vsplit x0)) (vsplit x1) x2 (unId (vsplit x3))
 
   cp0 <- makeCollProblem dirCollOpts ocp ocpInputs guess
 
@@ -114,7 +115,7 @@ makeCollCovProblem dirCollOpts ocp ocpInputs ocpCov guess = do
       gammas' = ocpCovGammas ocpCov :: shr Double
 
       gammas :: J (JV shr) MX
-      gammas = catJV' (fmap realToFrac gammas')
+      gammas = vcat (fmap realToFrac gammas')
 
       rpathCUb :: shr Bounds
       rpathCUb = fill (Nothing, Just 0)

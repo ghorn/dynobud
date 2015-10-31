@@ -25,10 +25,10 @@ import Text.Printf ( printf )
 import Casadi.MX ( MX )
 import qualified Casadi.GenericC as Gen
 
+import Dyno.View.M ( vcat, vsplit )
 import Dyno.View.Unsafe ( mkM, unM )
-
 import Dyno.Vectorize ( Vectorize(..), Id(..) )
-import Dyno.View.JV ( JV, catJV, catJV', splitJV, splitJV' )
+import Dyno.View.JV ( JV, catJV, splitJV )
 import Dyno.View.View ( View(..), J, JNone(..), unzipJ )
 import Dyno.Nlp ( Nlp(..), NlpOut(..), Bounds )
 import Dyno.Solvers ( Solver )
@@ -211,11 +211,11 @@ solveNlpV solverStuff fg bx bg x0 cb = do
         Nlp
         { nlpFG = \x' _ ->
            let _ = x' :: J (JV x) MX
-               x = splitJV' x' :: x (J (JV Id) MX)
+               x = vsplit x' :: x (J (JV Id) MX)
                (obj,g) = fg x :: (J (JV Id) MX, g (J (JV Id) MX))
                --obj' = sxCatJV (Id obj) :: J (JV Id) MX
                --g' = sxCatJV g :: J (JV g) MX
-           in (obj, catJV' g)
+           in (obj, vcat g)
         , nlpBX = catJV bx
         , nlpBG = catJV bg
         , nlpX0 = catJV x0

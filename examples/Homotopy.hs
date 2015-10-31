@@ -13,7 +13,8 @@ import Text.Printf ( printf )
 import Casadi.MX ( MX )
 
 import Dyno.View.View ( J )
-import Dyno.View.JV ( JV, catJV, catJV', splitJV, splitJV' )
+import Dyno.View.JV ( JV, catJV, splitJV )
+import Dyno.View.M ( vcat, vsplit )
 import Dyno.Vectorize ( Vectorize, Id )
 import Dyno.Nlp ( Nlp(..), Bounds )
 import Dyno.NlpUtils ( HomotopyParams(..), solveNlpHomotopy )
@@ -58,10 +59,10 @@ myNlp = Nlp { nlpFG = fg
     bg = catJV (G (Nothing, Just 0))
 
     fg :: J (JV X) MX -> J (JV P) MX -> (J (JV Id) MX, J (JV G) MX)
-    fg xy pxy = (f, catJV' g)
+    fg xy pxy = (f, vcat g)
       where
-        X  x  y = splitJV'  xy
-        P px  _ = splitJV' pxy
+        X  x  y = vsplit  xy
+        P px  _ = vsplit pxy
         f = (1-x)**2 + 100*(y - x**2)**2
 --        g = G x
 --        f = (x - px)**2 + (y - py)**2

@@ -28,8 +28,8 @@ import qualified Dyno.TypeVecs as TV
 import Dyno.View.Fun ( Fun, SXFun, call, toSXFun )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.JVec ( JVec(..) )
-import Dyno.View.JV ( JV, catJV, catJV', splitJV, splitJV' )
-import Dyno.View.M ( M, fromDMatrix, hcat', sumRows, trans )
+import Dyno.View.JV ( JV, catJV, splitJV )
+import Dyno.View.M ( M, fromDMatrix, hcat', sumRows, trans, vcat, vsplit )
 import Dyno.View.MapFun ( mapFun' )
 import Dyno.View.View ( J, View(..), JTuple(..), jfill, v2d)
 
@@ -73,7 +73,7 @@ l1Fit ::
 l1Fit solver fitModel qConstraints qbnds gbnds mapOpts featuresData = do
   let fitModel' (q :*: x :*: y :*: s) = f - y + s
         where
-          f = catJV' $ Id (fitModel (splitJV' q) (splitJV' x))
+          f = vcat $ Id (fitModel (vsplit q) (vsplit x))
 
   fitModelFun <- toSXFun "fit_model" fitModel'
                  :: IO (SXFun
@@ -119,7 +119,7 @@ l1Fit solver fitModel qConstraints qbnds gbnds mapOpts featuresData = do
           f = sumRows s'
 
           g :: GSlacks g n MX
-          g = GSlacks (catJV' (qConstraints (splitJV' q))) gs0 gs1
+          g = GSlacks (vcat (qConstraints (vsplit q))) gs0 gs1
 
   let nlp :: Nlp (L1X q n) (JV None) (GSlacks g n) MX
       nlp =
@@ -172,7 +172,7 @@ l2Fit solver fitModel qConstraints qbnds gbnds mapOpts featuresData = do
   let fitModel' (q :*: x :*: y) = err * err
         where
           err = f - y
-          f = catJV' $ Id (fitModel (splitJV' q) (splitJV' x))
+          f = vcat $ Id (fitModel (vsplit q) (vsplit x))
   fitModelFun <- toSXFun "fit_model" fitModel'
                  :: IO (SXFun (J (JV q) :*: J (JV x) :*: J (JV Id)) (J (JV Id)))
 
@@ -205,7 +205,7 @@ l2Fit solver fitModel qConstraints qbnds gbnds mapOpts featuresData = do
 
           -- nonlinear parameter constraints
           g :: J (JV g) MX
-          g = catJV' (qConstraints (splitJV' q))
+          g = vcat (qConstraints (vsplit q))
 
   let nlp :: Nlp (JV q) (JV None) (JV g) MX
       nlp =
@@ -258,7 +258,7 @@ lInfFit ::
 lInfFit solver fitModel qConstraints qbnds gbnds mapOpts featuresData = do
   let fitModel' (q :*: x :*: y :*: s) = f - y + s
         where
-          f = catJV' $ Id (fitModel (splitJV' q) (splitJV' x))
+          f = vcat $ Id (fitModel (vsplit q) (vsplit x))
 
   fitModelFun <- toSXFun "fit_model" fitModel'
                  :: IO (SXFun
@@ -300,7 +300,7 @@ lInfFit solver fitModel qConstraints qbnds gbnds mapOpts featuresData = do
           gs1 = trans $ call mapFitModel (q :*: xs :*: ys :*: s)
 
           g :: GSlacks g n MX
-          g = GSlacks (catJV' (qConstraints (splitJV' q))) gs0 gs1
+          g = GSlacks (vcat (qConstraints (vsplit q))) gs0 gs1
 
   let nlp :: Nlp (JTuple (JV q) (JV Id)) (JV None) (GSlacks g n) MX
       nlp =
