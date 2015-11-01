@@ -11,7 +11,7 @@
 {-# LANGUAGE InstanceSigs #-}
 
 module Dyno.View.Unsafe
-       ( View(..), Viewable(..), M(..), J, S, JV(..)
+       ( View(..), Viewable(..), M(..), J, S, JV
        , mkM, mkM', unM, unM'
        ) where
 
