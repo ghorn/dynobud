@@ -570,12 +570,47 @@ test_blockSplit = HUnit.assertEqual "" x y
     x = blockcatBlocks
     y = blockSplit blockCountUp
 
+----------------- sumRows/sumCols ---------------
+sumInput :: M (JV V2) (JV V3) DMatrix
+sumInput = countUp
+
+-- make sure the countUp is doing what I expect
+test_sumInput :: HUnit.Assertion
+test_sumInput = HUnit.assertEqual "" x sumInput
+  where
+    x :: M (JV V2) (JV V3) DMatrix
+    x = vcat (V2 r0 r1)
+
+    r0, r1 :: M (JV Id) (JV V3) DMatrix
+    r0 = hcat $ V3 0 1 2
+    r1 = hcat $ V3 3 4 5
+
+test_sumRows :: HUnit.Assertion
+test_sumRows = HUnit.assertEqual "" x y
+  where
+    x :: M (JV Id) (JV V3) DMatrix
+    x = hcat (V3 3 5 7)
+
+    y :: M (JV Id) (JV V3) DMatrix
+    y = sumRows sumInput
+
+test_sumCols :: HUnit.Assertion
+test_sumCols = HUnit.assertEqual "" x y
+  where
+    x :: M (JV V2) (JV Id) DMatrix
+    x = vcat (V2 3 12)
+
+    y :: M (JV V2) (JV Id) DMatrix
+    y = sumCols sumInput
+
 viewTests :: Test
 viewTests =
   testGroup "view tests"
   [ testCase "blockcat scalars" test_blockcatScalars
   , testCase "blockcat blocks" test_blockcatBlocks
   , testCase "blocksplit" test_blockSplit
+  , testCase "sumRows" test_sumRows
+  , testCase "sumCols" test_sumCols
   , prop_VSplitVCat
   , prop_HSplitHCat
   , prop_VSplitVCat'

@@ -380,5 +380,5 @@ blockSplit (UnsafeM m) = CM.blocksplit m vsizes hsizes
 sumRows :: (View f, View g, CMatrix a) => M f g a -> M (JV Id) g a
 sumRows (UnsafeM x) = mkM (CM.sumRows x)
 
-sumCols :: (View f, View g, CMatrix a) => M f g a -> M g (JV Id) a
+sumCols :: (View f, View g, CMatrix a) => M f g a -> M f (JV Id) a
 sumCols (UnsafeM x) = mkM (CM.sumCols x)
