@@ -40,12 +40,14 @@ import Dyno.DirectCollocation.Formulate
 data CollCovProblem ocp n deg sx sw sh shr sc =
   CollCovProblem
   { ccpNlp :: Nlp
-              (CollTrajCov sx ocp n deg)
+              (CollTrajCov sx (X ocp) (Z ocp) (U ocp) (P ocp) n deg)
               (JV None)
               (CollOcpCovConstraints ocp n deg sh shr sc) MX
-  , ccpPlotPoints :: J (CollTrajCov sx ocp n deg) (Vector Double) -> IO (DynPlotPoints Double)
+  , ccpPlotPoints :: J (CollTrajCov sx (X ocp) (Z ocp) (U ocp) (P ocp) n deg)
+                     (Vector Double)
+                     -> IO (DynPlotPoints Double)
   , ccpOutputs ::
-       J (CollTrajCov sx ocp n deg) (Vector Double)
+       J (CollTrajCov sx (X ocp) (Z ocp) (U ocp) (P ocp) n deg) (Vector Double)
        -> IO ( Vec n (StageOutputs (X ocp) (O ocp) (H ocp) (Q ocp) (QO ocp) (PO ocp) deg Double)
              , Vec n (J (Cov (JV sx)) (Vector Double))
              , J (Cov (JV sx)) (Vector Double)
@@ -123,7 +125,7 @@ makeCollCovProblem dirCollOpts ocp ocpInputs ocpCov guess = do
       robustPathCUb = catJV rpathCUb
 
       -- the NLP
-      fg :: J (CollTrajCov sx ocp n deg) MX
+      fg :: J (CollTrajCov sx x z u p n deg) MX
             -> J (JV fp) MX
             -> (J (JV Id) MX, J (CollOcpCovConstraints ocp n deg sh shr sc) MX)
       fg = getFgCov taus
@@ -138,12 +140,13 @@ makeCollCovProblem dirCollOpts ocp ocpInputs ocpCov guess = do
 
   computeCovariancesFun' <- toMXFun "compute covariances" (\(x :*: y) -> computeCovariances x y)
   -- callbacks
-  let getPlotPoints :: J (CollTrajCov sx ocp n deg) (Vector Double) -> IO (DynPlotPoints Double)
+  let getPlotPoints :: J (CollTrajCov sx x z u p n deg) (Vector Double)
+                       -> IO (DynPlotPoints Double)
       getPlotPoints collTrajCov = do
         let CollTrajCov _ collTraj = split collTrajCov
         cpPlotPoints cp0 collTraj (catJV None)
 
-      getOutputs :: J (CollTrajCov sx ocp n deg) (Vector Double)
+      getOutputs :: J (CollTrajCov sx x z u p n deg) (Vector Double)
                     -> IO ( Vec n (StageOutputs x o h q qo po deg Double)
                           , Vec n (J (Cov (JV sx)) (Vector Double))
                           , J (Cov (JV sx)) (Vector Double)
@@ -235,9 +238,10 @@ getFgCov ::
    -- mayerFun
   -> SXFun
       (J (JV Id) :*: J (JV x) :*: J (JV x) :*: J (Cov (JV sx)) :*: J (Cov (JV sx))) (J (JV Id))
-  -> (J (CollTraj' ocp n deg) MX -> J (JV fp) MX -> (J (JV Id) MX, J (CollOcpConstraints' ocp n deg) MX)
+  -> (J (CollTraj x z u p n deg) MX -> J (JV fp) MX
+      -> (J (JV Id) MX, J (CollOcpConstraints' ocp n deg) MX)
      )
-  -> J (CollTrajCov sx ocp n deg) MX
+  -> J (CollTrajCov sx x z u p n deg) MX
   -> J (JV fp) MX
   -> (J (JV Id) MX, J (CollOcpCovConstraints ocp n deg sh shr sc) MX)
 getFgCov

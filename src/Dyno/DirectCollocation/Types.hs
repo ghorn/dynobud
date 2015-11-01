@@ -67,8 +67,8 @@ data CollTraj x z u p n deg a =
   } deriving (Eq, Generic, Show)
 
 -- design variables
-data CollTrajCov sx ocp n deg a =
-  CollTrajCov (J (Cov (JV sx)) a) (J (CollTraj' ocp n deg) a)
+data CollTrajCov sx x z u p n deg a =
+  CollTrajCov (J (Cov (JV sx)) a) (J (CollTraj x z u p n deg) a)
   deriving (Eq, Generic, Show)
 
 data CollStage x z u deg a =
@@ -109,10 +109,9 @@ instance (View x, View z, View u, Dim deg) => View (CollStage x z u deg)
 instance ( Vectorize x, Vectorize z, Vectorize u, Vectorize p
          , Dim n, Dim deg
          ) =>  View (CollTraj x z u p n deg)
-instance ( Vectorize (X ocp), Vectorize (Z ocp), Vectorize (U ocp), Vectorize (P ocp)
-         , Vectorize sx
+instance ( Vectorize sx, Vectorize x, Vectorize z, Vectorize u, Vectorize p
          , Dim n, Dim deg
-         ) => View (CollTrajCov sx ocp n deg)
+         ) => View (CollTrajCov sx x z u p n deg)
 
 instance (Vectorize x, Vectorize r, Dim deg) => View (CollStageConstraints x deg r)
 instance ( Vectorize x, Vectorize r, Vectorize c, Vectorize h
