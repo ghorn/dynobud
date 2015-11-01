@@ -356,12 +356,26 @@ fromDMatrix :: (CM.CMatrix a, View f, View g)
                => M f g DMatrix -> M f g a
 fromDMatrix = mkM . CM.fromDMatrix . unM
 
+-- | Break a typed matrix into a list of its elements given by the
+-- sizes of the View constructor.
+-- For example:
+-- > data F a = F (J (JV V2) a) (J (JV V3) a)
+-- > data G a = G (J (JV V4) a) (J (JV V5) a) (J (JV V6) a)
+-- > x :: M F G DMatrix
+-- > x = ...
+-- >
+-- > y :: Vector (Vector DMatrix)
+-- > y = blockSplit x
+--
+-- > -- y is a 2x3 group with DMatrix dimensions:
+-- > --   [ [ (2,4), (2,5), (2,6) ]
+-- > --   , [ (3,4), (3,5), (3,6) ]
+-- > --   ]
 blockSplit :: forall f g a . (View f, View g, CMatrix a) => M f g a -> Vector (Vector a)
-blockSplit (UnsafeM m) = fmap (flip CM.horzsplit hsizes) ms'
+blockSplit (UnsafeM m) = CM.blocksplit m vsizes hsizes
   where
     vsizes = V.fromList $ 0 : (F.toList (sizes 0 (Proxy :: Proxy f)))
     hsizes = V.fromList $ 0 : (F.toList (sizes 0 (Proxy :: Proxy g)))
-    ms' = CM.vertsplit m vsizes
 
 sumRows :: (View f, View g, CMatrix a) => M f g a -> M (JV Id) g a
 sumRows (UnsafeM x) = mkM (CM.sumRows x)

@@ -11,24 +11,28 @@ module ViewTests
        , viewTests
        ) where
 
-import GHC.Generics ( Generic1 )
+import GHC.Generics ( Generic, Generic1 )
 
 import qualified Data.Map as M
 import Data.Proxy ( Proxy(..) )
 import qualified Data.Binary as B
 import qualified Data.Serialize as S
 import qualified Data.Traversable as T
+import Linear ( V1(..), V2(..), V3(..), V4(..) )
 import qualified Numeric.LinearAlgebra as Mat
+import Data.Vector ( Vector )
 import qualified Data.Vector as V
-import GHC.Generics ( Generic )
 import System.IO.Unsafe ( unsafePerformIO )
+import qualified Test.HUnit.Base as HUnit
 import Test.QuickCheck
 import Test.Framework ( Test, testGroup )
+import Test.Framework.Providers.HUnit ( testCase )
 import Test.Framework.Providers.QuickCheck2 ( testProperty )
 
 import Casadi.Function ( evalDMatrix )
 import Casadi.MXFunction ( mxFunction )
 import Casadi.CMatrix ( CMatrix )
+import qualified Casadi.CMatrix as CM
 import Casadi.DMatrix ( DMatrix )
 import Casadi.MX ( MX )
 import Casadi.SX ( SX )
@@ -478,10 +482,101 @@ prop_hsplitQuad =
       return (beEqual m0 m1)
 
 
+---------- this next part is to test blockcat/blocksplit -----------
+data BV a = BV (J (JV V3) a) (J (JV V1) a) (J (JV V2) a) (J (JV V1) a)
+          deriving Generic
+data BH a = BH (J (JV V2) a) (J (JV V4) a) deriving Generic
+instance View BV
+instance View BH
+
+blockcat' :: [[DMatrix]] -> DMatrix
+blockcat' = CM.blockcat . V.fromList . map V.fromList
+
+blockcatScalars :: Num a => [[a]]
+blockcatScalars =
+  [ [ 0,  1,     2,  3,  4,  5]
+  , [ 6,  7,     8,  9, 10, 11]
+  , [12, 13,    14, 15, 16, 17]
+
+  , [18, 19,    20, 21, 22, 23]
+
+  , [24, 25,    26, 27, 28, 29]
+  , [30, 31,    32, 33, 34, 35]
+
+  , [36, 37,    38, 39, 40, 41]
+  ]
+
+blockcatBlocks :: Vector (Vector DMatrix)
+blockcatBlocks = V.fromList $ map V.fromList
+  [ [x00, x01]
+  , [x10, x11]
+  , [x20, x21]
+  , [x30, x31]
+  ]
+  where
+    x00 = blockcat'
+      [ [ 0,  1]
+      , [ 6,  7]
+      , [12, 13]
+      ]
+
+    x01 = blockcat'
+      [ [ 2,  3,  4,  5]
+      , [ 8,  9, 10, 11]
+      , [14, 15, 16, 17]
+      ]
+
+    x10 = blockcat' [[18, 19]]
+    x11 = blockcat' [[20, 21, 22, 23]]
+
+    x20 = blockcat'
+      [ [24, 25]
+      , [30, 31]
+      ]
+
+    x21 = blockcat'
+      [ [26, 27, 28, 29]
+      , [32, 33, 34, 35]
+      ]
+
+    x30 = blockcat' [[36, 37]]
+    x31 = blockcat' [[38, 39, 40, 41]]
+
+blockCountUp :: M BV BH DMatrix
+blockCountUp = countUp
+
+test_blockcatScalars :: HUnit.Assertion
+test_blockcatScalars = HUnit.assertEqual "" x y
+  where
+    x :: M BV BH DMatrix
+    x = blockCountUp
+
+    y :: M BV BH DMatrix
+    y = mkM $ blockcat' blockcatScalars
+
+test_blockcatBlocks :: HUnit.Assertion
+test_blockcatBlocks = HUnit.assertEqual "" x y
+  where
+    x :: M BV BH DMatrix
+    x = blockCountUp
+
+    y :: M BV BH DMatrix
+    y = mkM $ CM.blockcat blockcatBlocks
+
+test_blockSplit :: HUnit.Assertion
+test_blockSplit = HUnit.assertEqual "" x y
+  where
+    x, y :: V.Vector (V.Vector DMatrix)
+    x = blockcatBlocks
+    y = blockSplit blockCountUp
+
 viewTests :: Test
 viewTests =
   testGroup "view tests"
-  [ prop_VSplitVCat
+  [ testCase "blockcat scalars" test_blockcatScalars
+  , testCase "blockcat blocks" test_blockcatBlocks
+  , testCase "blocksplit" test_blockSplit
+  , prop_VSplitVCat
   , prop_HSplitHCat
   , prop_VSplitVCat'
   , prop_HSplitHCat'

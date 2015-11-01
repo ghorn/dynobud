@@ -6,7 +6,7 @@ module MapTests
        ( mapTests
        ) where
 
-import Casadi.CMatrix ( trans, vertcat, fromDVector )
+import qualified Casadi.CMatrix as CM
 import Casadi.DMatrix ( DMatrix )
 import Casadi.Option ( Opt )
 import Casadi.SX ( SX )
@@ -35,11 +35,8 @@ toHUnit f = HUnit.assert $ do
     Just msg -> return (HUnit.assertString msg)
     Nothing -> return (HUnit.assertBool "LGTM" True)
 
-blockCat :: [[Double]] -> DMatrix
-blockCat x0 = vertcat (V.fromList x1)
-  where
-    x1 :: [DMatrix]
-    x1 = map (trans . fromDVector . V.fromList) x0
+blockcat' :: [[DMatrix]] -> DMatrix
+blockcat' = CM.blockcat . fmap V.fromList . V.fromList
 
 testFun0 ::
   (Proxy 4 -> String -> SXFun (J (JV V2)) (J (JV V3)) -> M.Map String Opt
@@ -59,12 +56,13 @@ testFun0 theMapFun = toHUnit $ do
   mapF <- theMapFun Proxy "map_v2_in_v3_out" fun M.empty
 
   let input :: M (JV V2) (JVec 4 (JV Id)) DMatrix
-      input = mkM $ blockCat [ [1, 3, 5, 7]
-                             , [2, 4, 6, 8]
-                             ]
+      input = mkM $ blockcat'
+              [ [1, 3, 5, 7]
+              , [2, 4, 6, 8]
+              ]
 
   out <- eval mapF input :: IO (M (JV V3) (JVec 4 (JV Id)) DMatrix)
-  let expectedOut = mkM $ blockCat
+  let expectedOut = mkM $ blockcat'
                     [ [  10,   30,   50,   70]
                     , [ 200,  400,  600,  800]
                     , [2000, 4000, 6000, 8000]
@@ -97,20 +95,22 @@ testFun1 theMapFun = toHUnit $ do
   mapF <- theMapFun Proxy "map_v2id_in_v3id_out" fun M.empty
 
   let input0 :: M (JV V2) (JVec 4 (JV Id)) DMatrix
-      input0 = mkM $ blockCat [ [1, 3, 5, 7]
-                              , [2, 4, 6, 8]
-                              ]
+      input0 = mkM $ blockcat'
+               [ [1, 3, 5, 7]
+               , [2, 4, 6, 8]
+               ]
       input1 :: M (JV Id) (JVec 4 (JV Id)) DMatrix
-      input1 = mkM $ blockCat [ [1, 2, 3, 4]
-                              ]
+      input1 = mkM $ blockcat'
+               [ [1, 2, 3, 4]
+               ]
 
   out0 :*: out1 <- eval mapF (input0 :*: input1)
-  let expectedOut0 = mkM $ blockCat
+  let expectedOut0 = mkM $ blockcat'
                      [ [  10,   30,   50,   70]
                      , [ 200,  400,  600,  800]
                      , [2000, 4000, 6000, 8000]
                      ]
-      expectedOut1 = mkM $ blockCat [[2, 4, 6, 8]]
+      expectedOut1 = mkM $ blockcat' [[2, 4, 6, 8]]
 
       msg0 = printf "output 0\nexpected: %s\nactual: %s" (show expectedOut0) (show out0)
       msg1 = printf "output 1\nexpected: %s\nactual: %s" (show expectedOut1) (show out1)
@@ -146,12 +146,13 @@ testFun2 theMapFun = toHUnit $ do
   mapF <- theMapFun Proxy "map_f" fun M.empty
 
   let input :: M (JV V2) (JVec 2 (JV V3)) DMatrix
-      input = mkM $ blockCat [ [1, 3, 5, 10, 12, 14]
-                             , [2, 4, 6, 11, 13, 15]
-                             ]
+      input = mkM $ blockcat'
+              [ [1, 3, 5, 10, 12, 14]
+              , [2, 4, 6, 11, 13, 15]
+              ]
 
   out <- eval mapF input
-  let expectedOut = mkM $ blockCat
+  let expectedOut = mkM $ blockcat'
                     [ [1, 6, 15, 8, 10, 24, 42, 8]
                     , [2, 8, 18, 9, 11, 26, 45, 9]
                     , [4, 15, 30, 10, 40, 60, 84, 10]
@@ -175,22 +176,24 @@ testFunNonRepeated = toHUnit $ do
   mapF <- mapFun' (Proxy :: Proxy 5) "map_f" fun M.empty
 
   let input0 :: M (JV V2) (JV Id) DMatrix
-      input0 = mkM $ blockCat [ [1]
-                              , [2]
-                              ]
+      input0 = mkM $ blockcat'
+               [ [1]
+               , [2]
+               ]
       input1 :: M (JV Id) (JVec 5 (JV Id)) DMatrix
-      input1 = mkM $ blockCat [ [1, 2, 3, 4, 5]
-                              ]
+      input1 = mkM $ blockcat'
+               [ [1, 2, 3, 4, 5]
+               ]
 
   out0 :*: out1 <- eval mapF (input0 :*: input1)
   let expectedOut0 ::M (JV V3) (JV Id) DMatrix
-      expectedOut0 = mkM $ blockCat
+      expectedOut0 = mkM $ blockcat'
                      [ [   50]
                      , [ 1000]
                      , [10000]
                      ]
       expectedOut1 ::M (JV Id) (JVec 5 (JV Id)) DMatrix
-      expectedOut1 = mkM $ blockCat [[2, 4, 6, 8 ,10]]
+      expectedOut1 = mkM $ blockcat' [[2, 4, 6, 8 ,10]]
 
       msg0 = printf "output 0\nexpected: %s\nactual: %s" (show expectedOut0) (show out0)
       msg1 = printf "output 1\nexpected: %s\nactual: %s" (show expectedOut1) (show out1)
