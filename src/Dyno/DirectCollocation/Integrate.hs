@@ -3,6 +3,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE PolyKinds #-}
 
 module Dyno.DirectCollocation.Integrate
        ( withIntegrator
@@ -138,14 +139,15 @@ dynamicsFunction' dae (t :*: parm :*: x' :*: collPoint) = dae x' x z u parm t
 withIntegrator ::
   forall x z u p r deg n b .
   (Dim n, Dim deg, Vectorize x, Vectorize p, Vectorize u, Vectorize z, Vectorize r)
-  => Proxy (n, deg)
+  => Proxy n
+  -> Proxy deg
   -> QuadratureRoots
   -> x Double
   -> (x Sxe -> x Sxe -> z Sxe -> u Sxe -> p Sxe -> Sxe -> r Sxe)
   -> Solver
   -> ((x Double -> Either (u Double) (Vec n (Vec deg (u Double))) -> p Double -> Double -> IO (x Double)) -> IO b)
   -> IO b
-withIntegrator _ roots initialX dae solver userFun = do
+withIntegrator _ _ roots initialX dae solver userFun = do
   let -- the collocation points
       taus :: Vec deg Double
       taus = mkTaus roots
