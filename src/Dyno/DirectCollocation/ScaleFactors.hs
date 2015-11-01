@@ -24,8 +24,7 @@ import Text.Printf ( printf )
 import Dyno.DirectCollocation.Types
 import Dyno.Nlp ( Bounds )
 import Dyno.Vectorize ( Vectorize(..), Id(..), fill )
-import Dyno.View.View ( View(..) )
-import Dyno.View.JV ( splitJV )
+import Dyno.View.View ( View(..), splitJV )
 import Dyno.View.JVec ( unJVec )
 import Dyno.TypeVecs ( Dim )
 import Dyno.Ocp

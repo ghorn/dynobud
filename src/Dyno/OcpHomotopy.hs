@@ -14,8 +14,7 @@ import Casadi.MX ( MX )
 
 import Dyno.Ocp
 import Dyno.Vectorize ( Vectorize )
-import Dyno.View.View ( J )
-import Dyno.View.JV ( JV, catJV )
+import Dyno.View.View ( J, JV, catJV )
 import Dyno.TypeVecs ( Dim )
 import Dyno.Solvers ( Solver )
 import Dyno.Nlp ( Nlp(..), NlpOut(..) )

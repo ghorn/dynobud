@@ -46,10 +46,9 @@ import Casadi.Viewable ( Viewable )
 import Accessors ( Lookup )
 
 import Dyno.Ocp
-import Dyno.View.View ( View(..), J, jfill )
+import Dyno.View.View ( View(..), J, JV, splitJV, catJV, jfill )
 import Dyno.View.JVec ( JVec(..), jreplicate )
 import Dyno.View.Cov ( Cov )
-import Dyno.View.JV ( JV, splitJV, catJV )
 import Dyno.Vectorize ( Vectorize(..), Id(..) )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV

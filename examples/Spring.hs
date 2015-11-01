@@ -12,8 +12,7 @@ import Data.Vector ( Vector )
 
 import Accessors ( Lookup )
 
-import Dyno.View.View ( J, jfill )
-import Dyno.View.JV ( catJV )
+import Dyno.View.View ( J, jfill, catJV )
 import Dyno.Nlp ( Bounds )
 import Dyno.Ocp
 import Dyno.Vectorize ( Vectorize, None(..), fill )

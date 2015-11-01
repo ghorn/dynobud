@@ -17,7 +17,6 @@ import qualified Data.Vector as V
 
 import Casadi.MX ( MX )
 import Dyno.View.View
-import Dyno.View.JV ( JV, catJV )
 import Dyno.View.M ( vcat, vsplit )
 import Dyno.Vectorize
 import Dyno.Nlp

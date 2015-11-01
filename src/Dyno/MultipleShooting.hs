@@ -25,11 +25,10 @@ import Dyno.Nlp ( Bounds, Nlp(..) )
 import Dyno.TypeVecs
 import Dyno.Vectorize ( Vectorize, Id )
 import Dyno.View.Fun ( MXFun, toMXFun, call )
-import Dyno.View.JV ( JV, catJV )
 import Dyno.View.JVec ( JVec(..) )
 import Dyno.View.M ( vcat, vsplit )
 import Dyno.View.Scheme ( Scheme )
-import Dyno.View.View ( View(..), J, JNone(..), JTuple(..), jfill )
+import Dyno.View.View ( View(..), J, JV, JNone(..), JTuple(..), jfill, catJV )
 
 
 data IntegratorIn x u p a = IntegratorIn (J (JV x) a) (J (JV u) a) (J (JV p) a)

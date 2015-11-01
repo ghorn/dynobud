@@ -31,8 +31,7 @@ import qualified Casadi.CMatrix as CM
 
 import Dyno.View.Unsafe ( M(UnsafeM), mkM, unM )
 import Dyno.Vectorize ( Vectorize(..), vlength, devectorize )
-import Dyno.View.View ( View(..), J )
-import Dyno.View.JV ( JV )
+import Dyno.View.View ( View(..), J, JV )
 import Dyno.View.M ( toHMat )
 
 newtype Cov (f :: * -> *) a = Cov a

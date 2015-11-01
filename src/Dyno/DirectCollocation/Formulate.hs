@@ -39,10 +39,9 @@ import Casadi.Option ( Opt(..) )
 import Casadi.SX ( SX )
 
 import Dyno.Integrate ( InitialTime(..), TimeStep(..), rk45 )
-import Dyno.View.View ( View(..), J, jfill, JTuple(..), v2d, d2v )
+import Dyno.View.View ( View(..), JTuple(..), J, JV, splitJV, catJV, jfill, v2d, d2v )
 import Dyno.View.M ( M, vcat, vsplit )
 import qualified Dyno.View.M as M
-import Dyno.View.JV ( JV, splitJV, catJV )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.Fun
 import Dyno.View.MapFun

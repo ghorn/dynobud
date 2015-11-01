@@ -24,7 +24,6 @@ import Dyno.View.Fun
 import Dyno.View.HList
 import Dyno.View.M ( M, hcat, hsplit, vcat, vsplit )
 import Dyno.View.MapFun
-import Dyno.View.JV
 import Dyno.View.JVec
 import Dyno.View.View
 import Dyno.View.Unsafe ( mkM )

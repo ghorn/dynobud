@@ -15,7 +15,6 @@ import Dyno.View.View
 import Dyno.View.M
 import Dyno.View.Fun
 import Dyno.View.FunJac
-import Dyno.View.JV
 
 import Casadi.SX ( SX )
 import Casadi.DMatrix ( DMatrix )

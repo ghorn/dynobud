@@ -49,7 +49,6 @@ library
                        Dyno.View.Fun
                        Dyno.View.FunJac
                        Dyno.View.HList
-                       Dyno.View.JV
                        Dyno.View.JVec
                        Dyno.View.M
                        Dyno.View.MapFun

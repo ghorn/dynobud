@@ -9,7 +9,6 @@ import Data.Vector ( Vector )
 
 import Dyno.Vectorize
 import Dyno.View.View
-import Dyno.View.JV ( catJV )
 import Dyno.Solvers
 --import Dyno.Sqp.Sqp
 --import Dyno.Sqp.LineSearch

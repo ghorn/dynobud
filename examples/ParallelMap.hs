@@ -21,9 +21,8 @@ import Dyno.Vectorize ( Id(..) )
 import Dyno.View.Fun ( FunClass, Fun, SXFun, call, toSXFun, toMXFun, eval )
 import Dyno.View.MapFun ( mapFun )
 import Dyno.View.M ( M, hcat', hsplit', vcat, vsplit )
-import Dyno.View.JV ( JV )
 import Dyno.View.JVec ( JVec(..) )
-import Dyno.View.View ( J )
+import Dyno.View.View ( J, JV )
 
 type N = 300
 

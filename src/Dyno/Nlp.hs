@@ -18,8 +18,7 @@ import Data.Serialize ( Serialize )
 import Casadi.Viewable ( Viewable )
 
 import Dyno.Vectorize ( Id )
-import Dyno.View.View ( View(..), J )
-import Dyno.View.JV ( JV )
+import Dyno.View.View ( View(..), J, JV )
 import Dyno.View.M ( M )
 
 type Bounds = (Maybe Double, Maybe Double)

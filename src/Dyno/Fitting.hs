@@ -28,10 +28,9 @@ import qualified Dyno.TypeVecs as TV
 import Dyno.View.Fun ( Fun, SXFun, call, toSXFun )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.JVec ( JVec(..) )
-import Dyno.View.JV ( JV, catJV, splitJV )
 import Dyno.View.M ( M, fromDMatrix, hcat', sumRows, trans, vcat, vsplit )
 import Dyno.View.MapFun ( mapFun' )
-import Dyno.View.View ( J, View(..), JTuple(..), jfill, v2d)
+import Dyno.View.View ( J, View(..), JTuple(..), JV, catJV, splitJV, jfill, v2d)
 
 data L1X q n a =
   L1X (J (JV q) a) (J (JVec n (JV Id)) a)

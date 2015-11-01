@@ -41,8 +41,7 @@ import qualified Casadi.CMatrix as CM
 import Dyno.View.Unsafe ( M(UnsafeM), J, mkM, unM )
 import Dyno.Vectorize ( Id, devectorize, fill )
 import Dyno.TypeVecs ( Vec )
-import Dyno.View.View ( View(..), JNone(..), jfill )
-import Dyno.View.JV ( JV )
+import Dyno.View.View ( View(..), JNone(..), JV, jfill )
 import Dyno.View.JVec ( JVec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.Solvers ( Solver )

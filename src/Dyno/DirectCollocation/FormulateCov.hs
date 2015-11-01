@@ -20,9 +20,8 @@ import Casadi.DMatrix ( DMatrix )
 import Casadi.MX ( MX )
 
 import Dyno.View.M ( vcat, vsplit )
-import Dyno.View.View ( View(..), J, jfill, v2d, d2v )
+import Dyno.View.View ( View(..), J, JV, catJV, jfill, v2d, d2v )
 import Dyno.View.Cov ( Cov )
-import Dyno.View.JV ( JV, catJV )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.Fun
 import Dyno.View.JVec( JVec(..), jreplicate )

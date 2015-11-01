@@ -18,8 +18,7 @@ import Linear.V
 import Linear ( lerp )
 
 import Dyno.View.Unsafe ( mkM, unM )
-import Dyno.View.View ( View(..), J )
-import Dyno.View.JV ( JV )
+import Dyno.View.View ( View(..), J, JV )
 import Dyno.View.JVec
 import Dyno.TypeVecs ( Vec )
 import Dyno.Vectorize ( Vectorize )

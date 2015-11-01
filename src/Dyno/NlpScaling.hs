@@ -16,8 +16,7 @@ import Dyno.View.Unsafe ( mkM, unM )
 import Dyno.View.M ( M )
 import qualified Dyno.View.M as M
 import Dyno.Vectorize ( Id(..) )
-import Dyno.View.View ( View, J, v2d )
-import Dyno.View.JV ( JV )
+import Dyno.View.View ( View, J, JV, v2d )
 
 data ScaleFuns x g a =
   ScaleFuns

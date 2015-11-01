@@ -31,8 +31,7 @@ import Dyno.DirectCollocation.Types
 import Dyno.Ocp ( OcpPhase(..), OcpPhaseInputs(..) )
 import Dyno.Nlp ( Bounds )
 import Dyno.Vectorize ( Vectorize, Id(..) )
-import Dyno.View.View ( View(..), J )
-import Dyno.View.JV ( JV, splitJV )
+import Dyno.View.View ( View(..), J, JV, splitJV )
 import Dyno.View.JVec ( unJVec )
 import Dyno.TypeVecs ( Dim )
 

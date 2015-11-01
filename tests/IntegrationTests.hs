@@ -26,8 +26,7 @@ import Test.Framework.Providers.HUnit ( testCase )
 import Linear ( Additive )
 
 import Dyno.Vectorize ( Vectorize(..), None(..), devectorize, fill )
-import Dyno.View.View ( View(..), J )
-import Dyno.View.JV ( splitJV )
+import Dyno.View.View ( View(..), J, splitJV )
 import Dyno.TypeVecs ( Dim )
 import Dyno.Solvers
 import Dyno.Nlp ( NlpOut(..) )

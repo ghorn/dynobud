@@ -37,8 +37,7 @@ import PlotHo ( Plotter, addChannel )
 
 import Dyno.View.Unsafe ( unM, unM' )
 import Dyno.Vectorize ( Vectorize(..), Id(..), fill )
-import Dyno.View.JV ( JV, splitJV )
-import Dyno.View.View ( View(..), J )
+import Dyno.View.View ( View(..), J, JV, splitJV )
 import Dyno.View.M ( M )
 import Dyno.View.JVec ( JVec(..) )
 import qualified Dyno.TypeVecs as TV

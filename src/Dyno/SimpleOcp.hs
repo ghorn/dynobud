@@ -30,7 +30,6 @@ import Dyno.DirectCollocation.Types
 import Dyno.DirectCollocation.Quadratures
 import Dyno.Vectorize ( Vectorize(..), Tuple(..), Id, None(..), fill, vzipWith )
 import Dyno.View.View -- ( View(..) )
-import Dyno.View.JV
 import Dyno.View.JVec
 
 -- | scalar symbolic type

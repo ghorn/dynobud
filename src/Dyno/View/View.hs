@@ -6,12 +6,13 @@
 {-# LANGUAGE DeriveTraversable #-}
 
 module Dyno.View.View
-       ( View(..)
+       ( View(..), JV
        , J
        , JNone(..), JTuple(..), JTriple(..), JQuad(..)
        , jfill
        , v2d, d2v
        , fmapJ, unzipJ
+       , splitJV, catJV
        ) where
 
 import GHC.Generics ( Generic, Generic1 )
@@ -25,8 +26,8 @@ import qualified Data.Vector as V
 import qualified Casadi.DMatrix as DMatrix
 import qualified Casadi.CMatrix as CM
 
-import Dyno.Vectorize ( Vectorize(..) )
-import Dyno.View.Unsafe ( View(..), J, mkM, unM )
+import Dyno.Vectorize ( Vectorize(..), devectorize )
+import Dyno.View.Unsafe ( View(..), J, JV, mkM, unM )
 
 -- some helper types
 data JNone a = JNone deriving ( Eq, Generic, Generic1, Show, Functor, F.Foldable, T.Traversable )
@@ -57,3 +58,9 @@ unzipJ :: View f => J f (Vector (a,b)) -> (J f (Vector a), J f (Vector b))
 unzipJ v = (mkM x, mkM y)
   where
     (x,y) = V.unzip (unM v)
+
+splitJV :: Vectorize f => J (JV f) (Vector a) -> f a
+splitJV = devectorize . unM
+
+catJV :: Vectorize f => f a -> J (JV f) (Vector a)
+catJV = mkM . vectorize

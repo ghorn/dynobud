@@ -21,8 +21,7 @@ import qualified Data.Map as M
 import Control.Lens
 
 import Casadi.MX ( MX )
-import Dyno.View.View ( J )
-import Dyno.View.JV ( JV )
+import Dyno.View.View ( J, JV )
 import Dyno.Vectorize ( Id )
 
 data Constraint a = Eq2 a a

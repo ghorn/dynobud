@@ -15,7 +15,6 @@ import Casadi.Viewable ( Viewable )
 
 import Dyno.Vectorize ( Vectorize, Id(..), None(..), fill )
 import Dyno.View.View
-import Dyno.View.JV -- ( JV )
 import Dyno.View.M ( vcat, vsplit )
 import Dyno.Nlp
 import Dyno.NlpSolver

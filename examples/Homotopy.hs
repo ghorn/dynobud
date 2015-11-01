@@ -12,8 +12,7 @@ import Text.Printf ( printf )
 
 import Casadi.MX ( MX )
 
-import Dyno.View.View ( J )
-import Dyno.View.JV ( JV, catJV, splitJV )
+import Dyno.View.View ( J, JV, catJV, splitJV )
 import Dyno.View.M ( vcat, vsplit )
 import Dyno.Vectorize ( Vectorize, Id )
 import Dyno.Nlp ( Nlp(..), Bounds )

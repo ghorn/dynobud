@@ -23,7 +23,6 @@ import Control.Lens
 import Casadi.MX ( MX )
 
 import Dyno.View.View
-import Dyno.View.JV
 import Dyno.View.JVec
 import Dyno.Nlp
 import Dyno.NlpUtils

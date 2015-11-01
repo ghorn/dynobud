@@ -21,13 +21,12 @@ import Casadi.DMatrix ( DMatrix, dnonzeros )
 import Casadi.MX ( MX )
 import Casadi.Sparsity ( getRow, getCol )
 
-import Dyno.View.JV ( JV, splitJV )
 import Dyno.View.M ( M )
 import qualified Dyno.View.M as M
 import Dyno.Nlp ( KKT(..), Nlp(..) )
 import Dyno.View.Unsafe ( mkM, unM )
 import Dyno.Vectorize ( Id(..) )
-import Dyno.View.View ( View(..), J, JNone(..), v2d, d2v, jfill)
+import Dyno.View.View ( View(..), J, JV, JNone(..), v2d, d2v, jfill, splitJV )
 
 
 toSparse :: (View f, View g) => String -> M f g DMatrix -> [(Int,Int,Double)]

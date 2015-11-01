@@ -29,8 +29,7 @@ import Accessors
 
 import Dyno.Integrate
 import Dyno.Vectorize ( Vectorize(..), Id(..), None(..), fill )
-import Dyno.View.View ( View(..), J )
-import Dyno.View.JV ( splitJV )
+import Dyno.View.View ( View(..), J, splitJV )
 import Dyno.TypeVecs ( Vec, Dim )
 import qualified Dyno.TypeVecs as TV
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots, collocationTimes )

@@ -28,8 +28,7 @@ import qualified Casadi.GenericC as Gen
 import Dyno.View.M ( vcat, vsplit )
 import Dyno.View.Unsafe ( mkM, unM )
 import Dyno.Vectorize ( Vectorize(..), Id(..) )
-import Dyno.View.JV ( JV, catJV, splitJV )
-import Dyno.View.View ( View(..), J, JNone(..), unzipJ )
+import Dyno.View.View ( View(..), J, JV, JNone(..), catJV, splitJV, unzipJ )
 import Dyno.Nlp ( Nlp(..), NlpOut(..), Bounds )
 import Dyno.Solvers ( Solver )
 import Dyno.NlpSolver

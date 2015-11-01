@@ -18,8 +18,7 @@ import Test.Framework.Providers.HUnit ( testCase )
 import Text.Printf ( printf )
 
 import Dyno.Vectorize ( Vectorize(..), None(..), Id(..) )
-import Dyno.View.View ( View(..), J )
-import Dyno.View.JV ( splitJV )
+import Dyno.View.View ( View(..), J, splitJV )
 import Dyno.Solvers
 import Dyno.Nlp ( NlpOut(..), Bounds )
 import Dyno.NlpUtils

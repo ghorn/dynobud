@@ -28,8 +28,7 @@ import Casadi.Viewable ( Viewable )
 
 import Dyno.View.Unsafe ( mkM )
 
-import Dyno.View.View ( View(..), J, JNone(..), JTuple(..) )
-import Dyno.View.JV ( JV )
+import Dyno.View.View ( View(..), J, JV, JNone(..), JTuple(..) )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.Cov ( Cov, toMat, fromMat )
 import Dyno.View.Fun
