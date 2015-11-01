@@ -7,7 +7,7 @@
 
 module Dyno.View.View
        ( View(..), JV
-       , J
+       , J, S
        , JNone(..), JTuple(..), JTriple(..), JQuad(..)
        , jfill
        , v2d, d2v
@@ -27,7 +27,7 @@ import qualified Casadi.DMatrix as DMatrix
 import qualified Casadi.CMatrix as CM
 
 import Dyno.Vectorize ( Vectorize(..), devectorize )
-import Dyno.View.Unsafe ( View(..), J, JV, mkM, unM )
+import Dyno.View.Unsafe ( View(..), J, S, JV, mkM, unM )
 
 -- some helper types
 data JNone a = JNone deriving ( Eq, Generic, Generic1, Show, Functor, F.Foldable, T.Traversable )

@@ -11,11 +11,11 @@
 {-# LANGUAGE InstanceSigs #-}
 
 module Dyno.View.Unsafe
-       ( View(..), M(..), Viewable(..), J, JV(..)
+       ( View(..), Viewable(..), M(..), J, S, JV(..)
        , mkM, mkM', unM, unM'
        ) where
 
-import GHC.Generics
+import GHC.Generics hiding ( S )
 
 import qualified Data.Foldable as F
 import qualified Data.Sequence as Seq
@@ -31,12 +31,15 @@ import Casadi.Viewable ( Viewable(..) )
 
 import Dyno.Vectorize ( Vectorize(..), Id, devectorize, vlength )
 
--- | Type safe matrix.
+-- | Matrix with dimensions encoded as Views.
 newtype M (f :: * -> *) (g :: * -> *) (a :: *) =
   UnsafeM { unsafeUnM :: a } deriving (Eq, Functor, Generic)
 
--- | Type safe column vector
+-- | Type alias for a column vector view.
 type J f = M f (JV Id)
+
+-- | Type alias for a scalar view.
+type S = M (JV Id) (JV Id)
 
 instance (View f, View g, Viewable a, B.Binary a) => B.Binary (M f g a) where
   put = B.put . unM

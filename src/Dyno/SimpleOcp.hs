@@ -7,7 +7,7 @@
 
 module Dyno.SimpleOcp
        ( SimpleOcp(..)
-       , S
+       , Se
        , solveOcp
        ) where
 
@@ -33,12 +33,12 @@ import Dyno.View.View -- ( View(..) )
 import Dyno.View.JVec
 
 -- | scalar symbolic type
-newtype S = S {unS :: J (JV Id) SX} deriving (Num, Fractional, Floating)
+newtype Se = Se {unSe :: J (JV Id) SX} deriving (Num, Fractional, Floating)
 
 data SimpleOcp x u =
   SimpleOcp
-  { ode :: x S -> u S -> x S
-  , objective :: x S -> u S -> S
+  { ode :: x Se -> u Se -> x Se
+  , objective :: x Se -> u Se -> Se
   , xBounds :: x (Double, Double)
   , uBounds :: u (Double, Double)
   , xInitial :: x Double
@@ -59,12 +59,12 @@ toOcp :: (Vectorize x, Vectorize u)
 toOcp simple =
   OcpPhase
   { ocpMayer = \_ _ _ _ _ _ -> 0
-  , ocpLagrange = \(Tuple x u) _ u' _ _ _ _ _ -> 1e-9 * (u' `dot` u')  + unS (objective simple (fmap S x) (fmap S u))
+  , ocpLagrange = \(Tuple x u) _ u' _ _ _ _ _ -> 1e-9 * (u' `dot` u')  + unSe (objective simple (fmap Se x) (fmap Se u))
   , ocpQuadratures = \_ _ _ _ _ _ _ _ -> None
   , ocpQuadratureOutputs = \_ _ _ _ _ _ _ _ -> None
   , ocpDae = \(Tuple xd ud) (Tuple x u) _ u' _ _ _ ->
      let r = Tuple (xd `vminus` x') (ud `vminus` u')
-         x' = fmap unS $ ode simple (fmap S x) (fmap S u)
+         x' = fmap unSe $ ode simple (fmap Se x) (fmap Se u)
      in (r, None)
   , ocpBc = \(Tuple x0 _) (Tuple xf _) _ _ _ _ ->SimpleBc x0 xf
   , ocpPathC = \_ _ _ _ _ _ _ -> None

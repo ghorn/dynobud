@@ -10,7 +10,7 @@ module Dyno.Linearize
        , evalErrorOdeJacobian
        ) where
 
-import Dyno.Vectorize ( Vectorize(..), Id, Triple(..), fill )
+import Dyno.Vectorize ( Vectorize(..), Triple(..), fill )
 import Dyno.View.View
 import Dyno.View.M
 import Dyno.View.Fun
@@ -19,11 +19,10 @@ import Dyno.View.FunJac
 import Casadi.SX ( SX )
 import Casadi.DMatrix ( DMatrix )
 
-type S = J (JV Id) SX
-
 toOdeSX ::
   (Vectorize x, Vectorize u, Vectorize w, Vectorize p, Vectorize sc, Vectorize o)
-  => (x S -> u S -> w S -> p S -> sc S -> (x S, o S))
+  => (x (S SX) -> u (S SX) -> w (S SX) -> p (S SX) -> sc (S SX)
+      -> (x (S SX), o (S SX)))
   -> JacIn (JQuad (JV x) (JV u) (JV w) (JV p)) (J (JV sc)) SX
   -> JacOut (JTuple (JV x) (JV o)) (J JNone) SX
 toOdeSX ode jacIn = jacOut
@@ -37,7 +36,8 @@ toOdeSX ode jacIn = jacOut
 toErrorOdeSX ::
   ( Vectorize x, Vectorize e, Vectorize u, Vectorize w
   , Vectorize p, Vectorize sc, Vectorize o)
-  => (x S -> e S -> u S -> u S -> w S -> p S -> sc S -> (e S, o S))
+  => (x (S SX) -> e (S SX) -> u (S SX) -> u (S SX) -> w (S SX) -> p (S SX)
+      -> sc (S SX) -> (e (S SX), o (S SX)))
   -> JacIn (JQuad (JV e) (JV u) (JV w) (JV p)) (J (JV (Triple x u sc))) SX
   -> JacOut (JTuple (JV e) (JV o)) (J JNone) SX
 toErrorOdeSX errorOde jacIn = jacOut
@@ -74,7 +74,9 @@ newtype ErrorOdeJacobian x e u w p sc o =
 makeOdeJacobian ::
   forall x u w p sc o
   . (Vectorize x, Vectorize u, Vectorize w, Vectorize p, Vectorize sc, Vectorize o)
-  => (x S -> u S -> w S -> p S -> sc S -> (x S, o S)) -> IO (OdeJacobian x u w p sc o)
+  => (x (S SX) -> u (S SX) -> w (S SX) -> p (S SX) -> sc (S SX)
+      -> (x (S SX), o (S SX)))
+  -> IO (OdeJacobian x u w p sc o)
 makeOdeJacobian ode = do
   f <- toSXFun "odeSX" (toOdeSX ode)
   fmap OdeJacobian (toFunJac f)
@@ -82,7 +84,8 @@ makeOdeJacobian ode = do
 makeErrorOdeJacobian ::
   ( Vectorize x, Vectorize e, Vectorize u, Vectorize w
   , Vectorize p, Vectorize sc, Vectorize o)
-  => (x S -> e S -> u S -> u S -> w S -> p S -> sc S -> (e S, o S))
+  => (x (S SX) -> e (S SX) -> u (S SX) -> u (S SX) -> w (S SX) -> p (S SX)
+      -> sc (S SX) -> (e (S SX), o (S SX)))
   -> IO (ErrorOdeJacobian x e u w p sc o)
 makeErrorOdeJacobian errorOde = do
   f <- toSXFun "errorOdeSX" (toErrorOdeSX errorOde)
