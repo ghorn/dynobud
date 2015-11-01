@@ -10,7 +10,6 @@ module Dyno.View.Cov
        , toHMatrix
        , toHMatrix'
        , fromMatrix
-       , diag
        , diag'
        , diag''
        , nOfVecLen
@@ -71,9 +70,6 @@ toHMatrix m = toHMat (toMat m)
 
 toHMatrix' :: forall f . View f => J (Cov f) (Vector Double) -> Mat.Matrix Double
 toHMatrix' v = toHMatrix $ (mkM (CM.fromDVector (unM v)) :: J (Cov f) DMatrix)
-
-diag :: (View f, CMatrix a) => J f a -> J (Cov f) a
-diag = fromMatrix . CM.diag . unM
 
 diag' :: Vectorize f => f a -> a -> J (Cov (JV f)) (Vector a)
 diag' x offDiag = mkM $ V.fromList $ concat $ zipWith f vx [0..]

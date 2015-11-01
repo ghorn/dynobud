@@ -34,25 +34,25 @@ instance (View f0, View f1, View f2) => Scheme (JTriple f0 f1 f2)
 instance (View f0, View f1) => Scheme (JTuple f0 f1)
 
 class FunctionIO (f :: * -> *) where
-  fromMat :: CMatrix a => a -> Either String (f a)
+  fromFioMat :: CMatrix a => a -> Either String (f a)
   toFioMat :: f a -> a
-  matSizes :: Proxy f -> (Int,Int)
+  fioMatSizes :: Proxy f -> (Int,Int)
 
 instance (View f, View g) => Scheme (M.M f g) where
   numFields = const 1
   fromVector v = case V.toList v of
-    [m] -> case fromMat m of
+    [m] -> case fromFioMat m of
             Left err -> error $ "Scheme fromVector M error: " ++ err
             Right m' -> m'
     _ -> error $ "Scheme fromVector (M f g) length mismatch, should be 1 but got: "
          ++ show (V.length v)
   toVector = V.singleton . toFioMat
-  sizeList p = [matSizes p]
+  sizeList p = [fioMatSizes p]
 
 instance (View f, View g) => FunctionIO (M.M f g) where
   toFioMat = unsafeUnM
-  fromMat = mkM'
-  matSizes = const (size (Proxy :: Proxy f), size (Proxy :: Proxy g))
+  fromFioMat = mkM'
+  fioMatSizes = const (size (Proxy :: Proxy f), size (Proxy :: Proxy g))
 
 class Scheme (f :: * -> *) where
   numFields :: Proxy f -> Int
@@ -131,7 +131,7 @@ instance GSizeList f => GSizeList (M1 i d f) where
       reproxy :: Proxy (M1 i d f p) -> Proxy (f p)
       reproxy = const Proxy
 instance FunctionIO f => GSizeList (Rec0 (f p)) where
-  gsizeList = Seq.singleton . matSizes . reproxy
+  gsizeList = Seq.singleton . fioMatSizes . reproxy
     where
       reproxy :: Proxy (Rec0 (f p) q) -> Proxy f
       reproxy = const Proxy
@@ -179,10 +179,10 @@ instance GFromVector f a => GFromVector (S1 s f) a where
 instance FunctionIO f => GFromVector (Rec0 (f a)) a where
   gfromVector name ms = const (K1 j)
     where
-      j = case fromMat m of
+      j = case fromFioMat m of
         Right j' -> j'
         Left err ->
-          error $ "\"" ++ name ++ "\" GFromVector fromMat error: " ++ err
+          error $ "\"" ++ name ++ "\" GFromVector fromFioMat error: " ++ err
       m = case V.toList ms of
         [m'] -> m'
         _ -> error $ "\"" ++ name ++ "\" GFromVector Rec0 length error, " ++
