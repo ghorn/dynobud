@@ -28,12 +28,12 @@ import Dyno.Nlp
 import Dyno.DirectCollocation.Formulate
 import Dyno.DirectCollocation.Types
 import Dyno.DirectCollocation.Quadratures
-import Dyno.Vectorize ( Vectorize(..), Tuple(..), Id, None(..), fill, vzipWith )
+import Dyno.Vectorize ( Vectorize(..), Tuple(..), None(..), fill, vzipWith )
 import Dyno.View.View -- ( View(..) )
 import Dyno.View.JVec
 
 -- | scalar symbolic type
-newtype Se = Se {unSe :: J (JV Id) SX} deriving (Num, Fractional, Floating)
+newtype Se = Se {unSe :: S SX} deriving (Num, Fractional, Floating)
 
 data SimpleOcp x u =
   SimpleOcp

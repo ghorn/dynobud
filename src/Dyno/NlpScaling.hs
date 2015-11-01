@@ -16,12 +16,12 @@ import Dyno.View.Unsafe ( mkM, unM )
 import Dyno.View.M ( M )
 import qualified Dyno.View.M as M
 import Dyno.Vectorize ( Id(..) )
-import Dyno.View.View ( View, J, JV, v2d )
+import Dyno.View.View ( View, J, S, v2d )
 
 data ScaleFuns x g a =
   ScaleFuns
-  { fToFBar :: J (JV Id) a -> J (JV Id) a
-  , fbarToF :: J (JV Id) a -> J (JV Id) a
+  { fToFBar :: S a -> S a
+  , fbarToF :: S a -> S a
   , xToXBar :: J x a -> J x a
   , xbarToX :: J x a -> J x a
   , gToGBar :: J g a -> J g a
@@ -41,10 +41,10 @@ scaledFG ::
   forall x p g a .
   (View x, View g, CMatrix a)
   => ScaleFuns x g a
-  -> (J x a -> J p a -> (J (JV Id) a, J g a))
+  -> (J x a -> J p a -> (S a, J g a))
   -> J x a
   -> J p a
-  -> (J (JV Id) a, J g a)
+  -> (S a, J g a)
 scaledFG scaleFuns fg x p = (fToFBar scaleFuns f, gToGBar scaleFuns g)
   where
     (f, g) = fg (xbarToX scaleFuns x) p
@@ -154,8 +154,8 @@ mkScaleFuns mx mg mf
           s :: a
           s = fromDVector (unM gscl)
 
-    mulByFScale :: J (JV Id) a -> J (JV Id) a
-    divByFScale :: J (JV Id) a -> J (JV Id) a
+    mulByFScale :: S a -> S a
+    divByFScale :: S a -> S a
     (mulByFScale, divByFScale) = case mf of
       Nothing -> (id, id)
       Just fscl -> ( mkM . (* s) . unM

@@ -38,10 +38,10 @@ import Casadi.Function
 import Casadi.CMatrix ( veccat )
 import qualified Casadi.CMatrix as CM
 
-import Dyno.View.Unsafe ( M(UnsafeM), J, mkM, unM )
+import Dyno.View.Unsafe ( M(UnsafeM), mkM, unM )
 import Dyno.Vectorize ( Id, devectorize, fill )
 import Dyno.TypeVecs ( Vec )
-import Dyno.View.View ( View(..), JNone(..), JV, jfill )
+import Dyno.View.View ( View(..), JNone(..), J, S, JV, jfill )
 import Dyno.View.JVec ( JVec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.Solvers ( Solver )
@@ -51,7 +51,7 @@ import Dyno.Nlp ( Nlp(..), NlpOut(..), Bounds)
 import ExampleDsl.LogsAndErrors
 import ExampleDsl.Types
 
-type MXElement = J (JV Id) MX
+type MXElement = S MX
 
 mxElementSym :: String -> IO MXElement
 mxElementSym name = mkM <$> sym name
@@ -179,7 +179,7 @@ buildNlp state = do
       svector = veccat . fmap mxElementToMX
 
   mxfun <- mxFunction "nlp" (V.fromList [svector inputs]) (V.fromList [svector (V.singleton obj), svector (TV.unVec g)]) LM.empty
-  let fg :: J (JVec nx (JV Id)) MX -> J JNone MX -> (J (JV Id) MX, J (JVec ng (JV Id)) MX)
+  let fg :: J (JVec nx (JV Id)) MX -> J JNone MX -> (S MX, J (JVec ng (JV Id)) MX)
       fg x _ = (mkM (ret V.! 0), mkM (ret V.! 1))
         where
           ret = callMX mxfun (V.singleton (unM x))

@@ -54,7 +54,7 @@ myNlp = Nlp { nlpFG = fg
     bg :: J (JV G) (Vector Bounds)
     bg = catJV $ G (Just (-10), Just 10)
 
-    fg :: J (JV X) MX -> J JNone MX -> (J (JV Id) MX, J (JV G) MX)
+    fg :: J (JV X) MX -> J JNone MX -> (S MX, J (JV G) MX)
     fg xy _ = (f, vcat g)
       where
         f = (1-x)**2 + 100*(y - x**2)**2

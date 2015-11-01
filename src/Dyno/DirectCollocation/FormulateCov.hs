@@ -20,7 +20,7 @@ import Casadi.DMatrix ( DMatrix )
 import Casadi.MX ( MX )
 
 import Dyno.View.M ( vcat, vsplit )
-import Dyno.View.View ( View(..), J, JV, catJV, jfill, v2d, d2v )
+import Dyno.View.View ( View(..), J, S, JV, catJV, jfill, v2d, d2v )
 import Dyno.View.Cov ( Cov )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.Fun
@@ -127,15 +127,15 @@ makeCollCovProblem dirCollOpts ocp ocpInputs ocpCov guess = do
       -- the NLP
       fg :: J (CollTrajCov sx x z u p n deg) MX
             -> J (JV fp) MX
-            -> (J (JV Id) MX, J (CollOcpCovConstraints ocp n deg sh shr sc) MX)
+            -> (S MX, J (CollOcpCovConstraints ocp n deg sh shr sc) MX)
       fg = getFgCov taus
         computeCovariances
         gammas
         (robustify :: (J (JV shr) MX -> J (JV p) MX -> J (JV x) MX -> J (Cov (JV sx)) MX -> J (JV shr) MX))
         (sbcFun :: SXFun (J (Cov (JV sx)) :*: J (Cov (JV sx))) (J sc))
         (shFun :: SXFun (J (JV x) :*: J (Cov (JV sx))) (J sh))
-        (lagrangeFun :: SXFun (J (JV Id) :*: J (JV x) :*: J (Cov (JV sx)) :*: J (JV Id)) (J (JV Id)))
-        (mayerFun :: SXFun (J (JV Id) :*: (J (JV x) :*: (J (JV x) :*: (J (Cov (JV sx)) :*: J (Cov (JV sx)))))) (J (JV Id)))
+        (lagrangeFun :: SXFun (S :*: J (JV x) :*: J (Cov (JV sx)) :*: S) S)
+        (mayerFun :: SXFun (S :*: (J (JV x) :*: (J (JV x) :*: (J (Cov (JV sx)) :*: J (Cov (JV sx)))))) S)
         (nlpFG nlp0)
 
   computeCovariancesFun' <- toMXFun "compute covariances" (\(x :*: y) -> computeCovariances x y)
@@ -234,16 +234,16 @@ getFgCov ::
   -> SXFun (J (JV x) :*: J (Cov (JV sx))) (J sh)
    -- lagrangeFun
   -> SXFun
-      (J (JV Id) :*: J (JV x) :*: J (Cov (JV sx)) :*: J (JV Id)) (J (JV Id))
+      (S :*: J (JV x) :*: J (Cov (JV sx)) :*: S) S
    -- mayerFun
   -> SXFun
-      (J (JV Id) :*: J (JV x) :*: J (JV x) :*: J (Cov (JV sx)) :*: J (Cov (JV sx))) (J (JV Id))
+      (S :*: J (JV x) :*: J (JV x) :*: J (Cov (JV sx)) :*: J (Cov (JV sx))) S
   -> (J (CollTraj x z u p n deg) MX -> J (JV fp) MX
-      -> (J (JV Id) MX, J (CollOcpConstraints' ocp n deg) MX)
+      -> (S MX, J (CollOcpConstraints' ocp n deg) MX)
      )
   -> J (CollTrajCov sx x z u p n deg) MX
   -> J (JV fp) MX
-  -> (J (JV Id) MX, J (CollOcpCovConstraints ocp n deg sh shr sc) MX)
+  -> (S MX, J (CollOcpCovConstraints ocp n deg sh shr sc) MX)
 getFgCov
   taus computeCovariances
   gammas robustify sbcFun shFun lagrangeFun mayerFun
@@ -271,7 +271,7 @@ getFgCov
     n = reflectDim (Proxy :: Proxy n)
 
     -- times at each collocation point
-    t0s :: Vec n (J (JV Id) MX)
+    t0s :: Vec n (S MX)
     (t0s, _) = TV.tvunzip $ timesFromTaus 0 (fmap realToFrac taus) dt
 
     -- initial point at each stage

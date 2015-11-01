@@ -28,16 +28,15 @@ import GHC.Generics ( Generic )
 import Data.Serialize ( Serialize )
 import Data.Vector ( Vector )
 
-import Dyno.View.View ( J, JV )
+import Dyno.View.View ( J, S, JV )
 import Dyno.View.Cov ( Cov )
 import Dyno.Nlp ( Bounds )
-import Dyno.Vectorize ( Id )
 
 import Casadi.SX ( SX )
 import Casadi.DMatrix ( DMatrix )
 
 type Sx a = J a SX
-type Sxe = J (JV Id) SX
+type Sxe = S SX
 
 -- | differential state
 type family X a :: * -> *

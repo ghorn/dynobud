@@ -74,7 +74,7 @@ testFun0 theMapFun = toHUnit $ do
     else Just $ printf "expected: %s\nactual: %s" (show expectedOut) (show out)
 
 testFun1 ::
-  (Proxy 4 -> String -> SXFun (J (JV V2) :*: J (JV Id)) (J (JV V3) :*: J (JV Id))
+  (Proxy 4 -> String -> SXFun (J (JV V2) :*: S) (J (JV V3) :*: S)
    -> M.Map String Opt
    -> IO (Fun
           (M (JV V2) (JVec 4 (JV Id)) :*: M (JV Id) (JVec 4 (JV Id)))
@@ -83,7 +83,7 @@ testFun1 ::
   )
   -> HUnit.Assertion
 testFun1 theMapFun = toHUnit $ do
-  let f :: (J (JV V2) :*: J (JV Id)) SX -> (J (JV V3) :*: J (JV Id)) SX
+  let f :: (J (JV V2) :*: S) SX -> (J (JV V3) :*: S) SX
       f (x :*: y) = o0 :*: o1
         where
           o0 = vcat $ V3 (10*x0) (100*x1) (1000*x1)
@@ -164,7 +164,7 @@ testFun2 theMapFun = toHUnit $ do
 
 testFunNonRepeated :: HUnit.Assertion
 testFunNonRepeated = toHUnit $ do
-  let f :: (J (JV V2) :*: J (JV Id)) SX -> (J (JV V3) :*: J (JV Id)) SX
+  let f :: (J (JV V2) :*: S) SX -> (J (JV V3) :*: S) SX
       f (x :*: y) = o0 :*: o1
         where
           o0 = vcat $ V3 (10*x0) (100*x1) (1000*x1)

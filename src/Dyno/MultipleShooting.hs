@@ -23,12 +23,12 @@ import Casadi.MX ( MX )
 
 import Dyno.Nlp ( Bounds, Nlp(..) )
 import Dyno.TypeVecs
-import Dyno.Vectorize ( Vectorize, Id )
+import Dyno.Vectorize ( Vectorize )
 import Dyno.View.Fun ( MXFun, toMXFun, call )
 import Dyno.View.JVec ( JVec(..) )
 import Dyno.View.M ( vcat, vsplit )
 import Dyno.View.Scheme ( Scheme )
-import Dyno.View.View ( View(..), J, JV, JNone(..), JTuple(..), jfill, catJV )
+import Dyno.View.View ( View(..), J, S, JV, JNone(..), JTuple(..), jfill, catJV )
 
 
 data IntegratorIn x u p a = IntegratorIn (J (JV x) a) (J (JV u) a) (J (JV p) a)
@@ -43,9 +43,9 @@ type Ode x u p a = x a -> u a -> p a -> a -> x a
 -- problem specification
 data MsOcp x u p =
   MsOcp
-  { msOde :: Ode x u p (J (JV Id) MX)
-  , msMayer :: x (J (JV Id) MX) -> J (JV Id) MX
-  , msLagrangeSum :: x (J (JV Id) MX) -> u (J (JV Id) MX) -> J (JV Id) MX
+  { msOde :: Ode x u p (S MX)
+  , msMayer :: x (S MX) -> S MX
+  , msLagrangeSum :: x (S MX) -> u (S MX) -> S MX
   , msX0 :: x (Maybe Double)
   , msXF :: x (Maybe Double)
   , msXBnds :: x Bounds
@@ -145,7 +145,7 @@ makeMsNlp msOcp = do
       bg :: J (MsConstraints x n) (Vector Bounds)
       bg = cat MsConstraints { gContinuity = jfill (Just 0, Just 0) }
 
-      fg :: J (MsDvs x u p n) MX -> J JNone MX -> (J (JV Id) MX, J (MsConstraints x n) MX)
+      fg :: J (MsDvs x u p n) MX -> J JNone MX -> (S MX, J (MsConstraints x n) MX)
       fg dvs _ = (f, cat g)
         where
           MsDvs xus xf p = split dvs
@@ -163,7 +163,7 @@ makeMsNlp msOcp = do
 
           mayer = msMayer msOcp (vsplit xf)
 
-          f :: J (JV Id) MX
+          f :: S MX
           f = mayer + lagrangeSum
 
 

@@ -53,7 +53,7 @@ myNlp = Nlp { nlpFG = fg
     bg :: G Bounds
     bg = G (Just 2, Nothing)
 
-    fg :: J (JV X) MX -> J (JV None) MX -> (J (JV Id) MX, J (JV G) MX)
+    fg :: J (JV X) MX -> J (JV None) MX -> (S MX, J (JV G) MX)
     fg xy _ = (f, vcat g)
       where
         X x y = vsplit xy
@@ -97,10 +97,10 @@ runMe = do
   kkts <- computeKKTs
   return ((unId (splitJV f), splitJV x, splitJV g), kkts)
 
-data Sdv a = Sdv (J (JV Id) a) (J (JV X) a) (J (JV G) a) deriving (Generic)
+data Sdv a = Sdv (S a) (J (JV X) a) (J (JV G) a) deriving (Generic)
 instance View Sdv
 
-expand :: Viewable a => J Sdv a -> (J (JV Id) a, J (JV X) a, J (JV G) a)
+expand :: Viewable a => J Sdv a -> (S a, J (JV X) a, J (JV G) a)
 expand sdv = (f, x, g)
   where
     Sdv f x g = split sdv

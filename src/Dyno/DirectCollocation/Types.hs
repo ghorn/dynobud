@@ -46,7 +46,7 @@ import Casadi.Viewable ( Viewable )
 import Accessors ( Lookup )
 
 import Dyno.Ocp
-import Dyno.View.View ( View(..), J, JV, splitJV, catJV, jfill )
+import Dyno.View.View ( View(..), J, S, JV, splitJV, catJV, jfill )
 import Dyno.View.JVec ( JVec(..), jreplicate )
 import Dyno.View.Cov ( Cov )
 import Dyno.Vectorize ( Vectorize(..), Id(..) )
@@ -60,7 +60,7 @@ type CollTraj' ocp n deg = CollTraj (X ocp) (Z ocp) (U ocp) (P ocp) n deg
 -- design variables
 data CollTraj x z u p n deg a =
   CollTraj
-  { ctTf :: J (JV Id) a
+  { ctTf :: S a
   , ctP :: J (JV p) a
   , ctStages :: J (JVec n (CollStage (JV x) (JV z) (JV u) deg)) a
   , ctXf :: J (JV x) a
@@ -264,7 +264,7 @@ fmapCollTraj' ::
 fmapCollTraj' fx' fx fz fu fp ft (CollTraj tf1 p stages1 xf) =
   CollTraj tf2 (fj fp p) stages2 (fj fx' xf)
   where
-    tf2 :: J (JV Id) (Vector b)
+    tf2 :: S (Vector b)
     tf2 = catJV $ fmap ft (splitJV tf1)
     stages2 = cat $ fmapJVec (fmapStage fx' fx fz fu) (split stages1)
 

@@ -28,7 +28,7 @@ import Casadi.Viewable ( Viewable )
 
 import Dyno.View.Unsafe ( mkM )
 
-import Dyno.View.View ( View(..), J, JV, JNone(..), JTuple(..) )
+import Dyno.View.View ( View(..), J, S, JV, JNone(..), JTuple(..) )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.Cov ( Cov, toMat, fromMat )
 import Dyno.View.Fun
@@ -60,7 +60,7 @@ data CovarianceSensitivities xe we n a =
   } deriving (Eq, Show, Generic, Generic1)
 instance (View xe, View we, Dim n) => Scheme (CovarianceSensitivities xe we n)
 
-type Sxe = J (JV Id) SX
+type Sxe = S SX
 
 mkComputeSensitivities ::
   forall x z u p sx sz sw sr deg n .
@@ -94,7 +94,7 @@ mkComputeSensitivities roots covDae = do
   sensitivityStageFun' <- toMXFun "sensitivity stage function" $
                           sensitivityStageFunction (call errorDynStageConFunJac)
   let sensitivityStageFun = sensitivityStageFun'
-  let sens :: J (JV Id) MX
+  let sens :: S MX
               -> J (JV p) MX
               -> J (JVec deg (JV Id)) MX
               -> J (JV x) MX
@@ -118,11 +118,11 @@ mkComputeSensitivities roots covDae = do
           n = reflectDim (Proxy :: Proxy n)
 
           -- initial time at each collocation stage
-          t0s :: Vec n (J (JV Id) MX)
+          t0s :: Vec n (S MX)
           t0s = TV.mkVec' $ take n [dt * fromIntegral k | k <- [(0::Int)..]]
 
           -- times at each collocation point
-          times :: Vec n (Vec deg (J (JV Id) MX))
+          times :: Vec n (Vec deg (S MX))
           times = fmap (\t0 -> fmap (\tau -> t0 + realToFrac tau * dt) taus) t0s
 
           times' :: Vec n (J (JVec deg (JV Id)) MX)
@@ -144,7 +144,7 @@ mkComputeCovariances ::
   , Vectorize x, Vectorize z, Vectorize u, Vectorize p
   , Vectorize sx, Vectorize sw
   )
-  => (M (JV sx) (JV sx) MX -> M (JV sx) (JV sw) MX -> J (Cov (JV sw)) MX -> J (JV Id) MX
+  => (M (JV sx) (JV sx) MX -> M (JV sx) (JV sw) MX -> J (Cov (JV sw)) MX -> S MX
       -> M (JV sx) (JV sx) MX)
   -> (J (CollTraj x z u p n deg) MX -> CovarianceSensitivities (JV sx) (JV sw) n MX)
   -> J (Cov (JV sw)) DMatrix
@@ -214,9 +214,9 @@ interpolateXDots cjks xs = TV.tvtail $ interpolateXDots' cjks xs
 errorDynamicsFunction ::
   forall x z u p r sx sz sw a .
   (View x, View z, View u, View r, View sx, View sz, View sw, Viewable a)
-  => (J x a -> J x a -> J z a -> J u a -> J p a -> J (JV Id) a
+  => (J x a -> J x a -> J z a -> J u a -> J p a -> S a
       -> J sx a -> J sx a -> J sz a -> J sw a -> J r a)
-  -> (J (JV Id) :*: J p :*: J x :*: J (CollPoint x z u) :*: J sx :*: J sx :*: J sz :*: J sw) a
+  -> (S :*: J p :*: J x :*: J (CollPoint x z u) :*: J sx :*: J sx :*: J sz :*: J sw) a
   -> J r a
 errorDynamicsFunction dae (t :*: parm :*: x' :*: collPoint :*: sx' :*: sx :*: sz :*: sw) =
   r
@@ -226,7 +226,7 @@ errorDynamicsFunction dae (t :*: parm :*: x' :*: collPoint :*: sx' :*: sx :*: sz
 
 
 data ErrorIn0 x z u p deg a =
-  ErrorIn0 (J x a) (J (JVec deg (CollPoint x z u)) a) (J (JV Id) a) (J p a) (J (JVec deg (JV Id)) a)
+  ErrorIn0 (J x a) (J (JVec deg (CollPoint x z u)) a) (S a) (J p a) (J (JVec deg (JV Id)) a)
   deriving Generic
 data ErrorInD sx sw sz deg a =
   ErrorInD (J sx a) (J sw a) (J (JVec deg (JTuple sx sz)) a)
@@ -246,7 +246,7 @@ errorDynStageConstraints ::
    View sr, View sw, View sz, View sx)
   => Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
   -> Vec deg Double
-  -> SXFun (J (JV Id) :*: J p :*: J x :*: J (CollPoint x z u) :*: J sx :*: J sx :*: J sz :*: J sw)
+  -> SXFun (S :*: J p :*: J x :*: J (CollPoint x z u) :*: J sx :*: J sx :*: J sz :*: J sw)
            (J sr)
   -> JacIn (ErrorInD sx sw sz deg) (ErrorIn0 x z u p deg) MX
   -> JacOut (ErrorOut sr sx deg) (J JNone) MX
@@ -280,7 +280,7 @@ errorDynStageConstraints cijs taus dynFun
 
     applyDae
       :: J sx MX -> J sx MX -> J sz MX
-         -> J x MX -> J (CollPoint x z u) MX -> J (JV Id) MX
+         -> J x MX -> J (CollPoint x z u) MX -> S MX
          -> J sr MX
     applyDae sx' sx sz x' xzu t =
       call dynFun
@@ -298,7 +298,7 @@ errorDynStageConstraints cijs taus dynFun
 
 
 continuousToDiscreetNoiseApprox :: (View sx, View sw)
-       => M sx sx MX -> M sx sw MX -> J (Cov sw) MX -> J (JV Id) MX -> M sx sx MX
+       => M sx sx MX -> M sx sw MX -> J (Cov sw) MX -> S MX -> M sx sx MX
 continuousToDiscreetNoiseApprox _dsx1_dsx0 dsx1_dsw0 qs h = qd
   where
     -- Qs' = G * Qs * G.T
@@ -312,8 +312,8 @@ continuousToDiscreetNoiseApprox _dsx1_dsx0 dsx1_dsw0 qs h = qd
 propOneCov ::
   forall sx sw
   . (View sx, View sw)
-  => (M sx sx MX -> M sx sw MX -> J (Cov sw) MX -> J (JV Id) MX -> M sx sx MX)
-  -> (M sx sx :*: M sx sw :*: J (Cov sx) :*: J (Cov sw) :*: J (JV Id)) MX
+  => (M sx sx MX -> M sx sw MX -> J (Cov sw) MX -> S MX -> M sx sx MX)
+  -> (M sx sx :*: M sx sw :*: J (Cov sx) :*: J (Cov sw) :*: S) MX
   -> J (Cov sx) MX
 propOneCov c2d (dsx1_dsx0 :*: dsx1_dsw0 :*: p0 :*: qs :*: h) = fromMat p1
   where
@@ -328,7 +328,7 @@ sensitivityStageFunction ::
   . (Dim deg, View x, View z, View u, View p, View sx, View sz, View sw, View sr)
   => (JacIn (ErrorInD sx sw sz deg) (ErrorIn0 x z u p deg) MX
       -> Jac (ErrorInD sx sw sz deg) (ErrorOut sr sx deg) (J JNone) MX)
-  -> (J (JV Id) :*: J p :*: J (JVec deg (JV Id)) :*: J x :*: J (JVec deg (CollPoint x z u))) MX
+  -> (S :*: J p :*: J (JVec deg (JV Id)) :*: J x :*: J (JVec deg (CollPoint x z u))) MX
   -> (M sx sx :*: M sx sw) MX
 sensitivityStageFunction dynStageConJac
   (dt :*: parm :*: stageTimes :*: x0' :*: xzus') = dsx1_dsx0 :*: dsx1_dsw0
@@ -423,7 +423,7 @@ mkRobustifyFunction project robustifyPathC = do
   let gogo :: J (JV shr) MX -> J (JV p) MX -> J (JV x) MX -> J (Cov (JV sx)) MX -> J (JV shr) MX
       gogo gammas' theta x pe' = rcs'
           where
-            gammas = vsplit gammas' :: shr (J (JV Id) MX)
+            gammas = vsplit gammas' :: shr (S MX)
 
             jHx :: M (JV shr) (JV x) MX
             jHe :: M (JV shr) (JV sx) MX
@@ -451,27 +451,26 @@ mkRobustifyFunction project robustifyPathC = do
             jHes :: shr (M.M (JV Id) (JV sx) MX)
             jHes = M.vsplit jHe
 
-            shr' = vsplit h0vec :: shr (J (JV Id) MX)
+            shr' = vsplit h0vec :: shr (S MX)
 
             rcs' :: J (JV shr) MX
             rcs' = vcat rcs
 
-            rcs :: shr (J (JV Id) MX)
+            rcs :: shr (S MX)
             rcs = vzipWith4 robustify gammas shr' jHxs jHes
 
-            robustify :: J (JV Id) MX
-                         -> J (JV Id) MX
+            robustify :: S MX
+                         -> S MX
                          -> M.M (JV Id) (JV x) MX
                          -> M.M (JV Id) (JV sx) MX
-                         -> J (JV Id) MX
+                         -> S MX
             robustify gamma h0 gHx gHe = h0 + gamma * sqrt sigma2
               where
-                sigma2 :: M.M (JV Id) (JV Id) MX
+                sigma2 :: S MX
                 sigma2 =
                   gHx `M.mm` fpef `M.mm` (M.trans gHx) +
                   2 * gHx `M.mm` fpe `M.mm` (M.trans gHe) +
                   gHe `M.mm` pe `M.mm` (M.trans gHe)
-                  :: M.M (JV Id) (JV Id) MX
 
   retFun <- toMXFun "robust constraint violations"
             (\(x0 :*: x1 :*: x2 :*: x3) -> gogo x0 x1 x2 x3) -- >>= expandMXFun

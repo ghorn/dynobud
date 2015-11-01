@@ -99,7 +99,7 @@ import Dyno.NlpScaling ( ScaleFuns(..), scaledFG, mkScaleFuns )
 import Dyno.SolverInternal ( SolverInternal(..) )
 import Dyno.Solvers ( Solver(..), getSolverInternal )
 import Dyno.Vectorize ( Id(..) )
-import Dyno.View.View ( View(..), J, JV, fmapJ, d2v, v2d, jfill )
+import Dyno.View.View ( View(..), J, S, JV, fmapJ, d2v, v2d, jfill )
 import Dyno.View.M ( M )
 import Dyno.View.Unsafe ( mkM, unM )
 
@@ -233,7 +233,7 @@ getLamG = getOutput lamGBarToLamG "lam_g"
 
 
 evalScaledGradF :: forall x p g . (View x, View g, View p)
-                   => NlpSolver x p g (J x DMatrix, J (JV Id) DMatrix)
+                   => NlpSolver x p g (J x DMatrix, S DMatrix)
 evalScaledGradF = do
   x0bar <- getInput (const id) "x0" :: NlpSolver x p g (J x (Vector Double))
   pbar <- getInput (const id) "p" :: NlpSolver x p g (J p (Vector Double))
@@ -253,7 +253,7 @@ evalScaledGradF = do
       Just r -> return r
 
 evalGradF :: forall x p g . (View x, View g, View p)
-             => NlpSolver x p g (J x DMatrix, J (JV Id) DMatrix)
+             => NlpSolver x p g (J x DMatrix, S DMatrix)
 evalGradF = do
   nlpState <- ask
   let scale = isScale nlpState
@@ -529,7 +529,7 @@ runNlpSolver ::
   forall x p g a .
   (View x, View p, View g)
   => Solver
-  -> (J x MX -> J p MX -> (J (JV Id) MX, J g MX))
+  -> (J x MX -> J p MX -> (S MX, J g MX))
   -> Maybe (J x (Vector Double))
   -> Maybe (J g (Vector Double))
   -> Maybe Double
@@ -543,7 +543,7 @@ runNlpSolverWith ::
   (View x, View p, View g)
   => RunNlpOptions
   -> Solver
-  -> (J x MX -> J p MX -> (J (JV Id) MX, J g MX))
+  -> (J x MX -> J p MX -> (S MX, J g MX))
   -> Maybe (J x (Vector Double))
   -> Maybe (J g (Vector Double))
   -> Maybe Double

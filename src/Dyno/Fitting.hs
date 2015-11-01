@@ -30,7 +30,7 @@ import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.JVec ( JVec(..) )
 import Dyno.View.M ( M, fromDMatrix, hcat', sumRows, trans, vcat, vsplit )
 import Dyno.View.MapFun ( mapFun' )
-import Dyno.View.View ( J, View(..), JTuple(..), JV, catJV, splitJV, jfill, v2d)
+import Dyno.View.View ( J, S, View(..), JTuple(..), JV, catJV, splitJV, jfill, v2d)
 
 data L1X q n a =
   L1X (J (JV q) a) (J (JVec n (JV Id)) a)
@@ -76,8 +76,8 @@ l1Fit solver fitModel qConstraints qbnds gbnds mapOpts featuresData = do
 
   fitModelFun <- toSXFun "fit_model" fitModel'
                  :: IO (SXFun
-                        (J (JV q) :*: J (JV x) :*: J (JV Id) :*: J (JV Id))
-                        (J (JV Id))
+                        (J (JV q) :*: J (JV x) :*: S :*: S)
+                        S
                        )
 
   mapFitModel <- mapFun' (Proxy :: Proxy n) "map_fit_model" fitModelFun mapOpts
@@ -93,7 +93,7 @@ l1Fit solver fitModel qConstraints qbnds gbnds mapOpts featuresData = do
       fitData :: Vec n Double
       (fitFeatures, fitData) = TV.tvunzip featuresData
 
-  let fg :: J (L1X q n) MX -> J (JV None) MX -> (J (JV Id) MX, J (GSlacks g n) MX)
+  let fg :: J (L1X q n) MX -> J (JV None) MX -> (S MX, J (GSlacks g n) MX)
       fg dvs _ = (f, cat g)
         where
           q :: J (JV q) MX
@@ -173,7 +173,7 @@ l2Fit solver fitModel qConstraints qbnds gbnds mapOpts featuresData = do
           err = f - y
           f = vcat $ Id (fitModel (vsplit q) (vsplit x))
   fitModelFun <- toSXFun "fit_model" fitModel'
-                 :: IO (SXFun (J (JV q) :*: J (JV x) :*: J (JV Id)) (J (JV Id)))
+                 :: IO (SXFun (J (JV q) :*: J (JV x) :*: S) S)
 
   mapFitModel <- mapFun' (Proxy :: Proxy n) "map_fit_model" fitModelFun mapOpts
                  :: IO (Fun
@@ -181,13 +181,13 @@ l2Fit solver fitModel qConstraints qbnds gbnds mapOpts featuresData = do
                          :*: M (JV x) (JVec n (JV Id))
                          :*: M (JV Id) (JVec n (JV Id))
                         )
-                        (J (JV Id))
+                        S
                        )
   let fitFeatures :: Vec n (x Double)
       fitData :: Vec n Double
       (fitFeatures, fitData) = TV.tvunzip featuresData
 
-  let fg :: J (JV q) MX -> J (JV None) MX -> (J (JV Id) MX, J (JV g) MX)
+  let fg :: J (JV q) MX -> J (JV None) MX -> (S MX, J (JV g) MX)
       fg q _ = (0.5 * f, g)
         where
           -- fit data
@@ -199,7 +199,7 @@ l2Fit solver fitModel qConstraints qbnds gbnds mapOpts featuresData = do
           xs = fromDMatrix $ hcat' $ fmap (v2d . catJV) fitFeatures
 
           -- objective function
-          f :: J (JV Id) MX
+          f :: S MX
           f = call mapFitModel (q :*: xs :*: ys)
 
           -- nonlinear parameter constraints
@@ -261,8 +261,8 @@ lInfFit solver fitModel qConstraints qbnds gbnds mapOpts featuresData = do
 
   fitModelFun <- toSXFun "fit_model" fitModel'
                  :: IO (SXFun
-                        (J (JV q) :*: J (JV x) :*: J (JV Id) :*: J (JV Id))
-                        (J (JV Id))
+                        (J (JV q) :*: J (JV x) :*: S :*: S)
+                        S
                        )
 
   mapFitModel <- mapFun' (Proxy :: Proxy n) "map_fit_model" fitModelFun mapOpts
@@ -270,7 +270,7 @@ lInfFit solver fitModel qConstraints qbnds gbnds mapOpts featuresData = do
                         (J (JV q)
                          :*: M (JV x) (JVec n (JV Id))
                          :*: M (JV Id) (JVec n (JV Id))
-                         :*: J (JV Id)
+                         :*: S
                         )
                         (M (JV Id) (JVec n (JV Id)))
                        )
@@ -279,11 +279,11 @@ lInfFit solver fitModel qConstraints qbnds gbnds mapOpts featuresData = do
       (fitFeatures, fitData) = TV.tvunzip featuresData
 
   let fg :: J (JTuple (JV q) (JV Id)) MX -> J (JV None) MX
-            -> (J (JV Id) MX, J (GSlacks g n) MX)
+            -> (S MX, J (GSlacks g n) MX)
       fg dvs _ = (s, cat g)
         where
           q :: J (JV q) MX
-          s :: J (JV Id) MX
+          s :: S MX
           JTuple q s = split dvs
 
           ys :: M (JV Id) (JVec n (JV Id)) MX

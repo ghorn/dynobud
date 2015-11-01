@@ -26,7 +26,7 @@ import qualified Dyno.View.M as M
 import Dyno.Nlp ( KKT(..), Nlp(..) )
 import Dyno.View.Unsafe ( mkM, unM )
 import Dyno.Vectorize ( Id(..) )
-import Dyno.View.View ( View(..), J, JV, JNone(..), v2d, d2v, jfill, splitJV )
+import Dyno.View.View ( View(..), J, S, JNone(..), v2d, d2v, jfill, splitJV )
 
 
 toSparse :: (View f, View g) => String -> M f g DMatrix -> [(Int,Int,Double)]
@@ -98,7 +98,7 @@ toMatrixCoeffs (LogScaling hf hlg hl jg gf) = LogScaling (f hf) (f hlg) (f hl) (
 toLogScaling ::
   forall x g sdv a
   . (View x, View g, View sdv, CM.CMatrix a)
-  => KKT x g -> (J sdv a -> (J (JV Id) a, J x a, J g a)) -> J sdv a -> LogScaling (J (JV Id) a)
+  => KKT x g -> (J sdv a -> (S a, J x a, J g a)) -> J sdv a -> LogScaling (S a)
 toLogScaling kkt expand sdvs =
   LogScaling
   { lsJacG = jacGObjValues
@@ -114,7 +114,7 @@ toLogScaling kkt expand sdvs =
     hessLagMatValues = toSparse "hessLag" (kktHessLag kkt)
     gradFMatValues = toSparse "gradF" (kktGradF kkt)
 
-    objScale' :: J (JV Id) a
+    objScale' :: S a
     x :: J x a
     g' :: J g a
     (objScale', x, g') = expand sdvs
@@ -127,23 +127,23 @@ toLogScaling kkt expand sdvs =
 
     nx = size (reproxy x)
     ng = size (reproxy g)
-    xs,gs :: V.Vector (J (JV Id) a)
+    xs,gs :: V.Vector (S a)
     xs = fmap mkM $ CM.vertsplit (unM x) (V.fromList [0..nx])
     gs = fmap mkM $ CM.vertsplit (unM g) (V.fromList [0..ng])
 
-    gradFObjValues :: [J (JV Id) a]
+    gradFObjValues :: [S a]
     gradFObjValues = map (toSum xs (V.singleton objScale)) gradFMatValues
 
-    jacGObjValues :: [J (JV Id) a]
+    jacGObjValues :: [S a]
     jacGObjValues = map (toSum gs xs) jacGMatValues
 
-    hessFObjValues :: [J (JV Id) a]
+    hessFObjValues :: [S a]
     hessFObjValues = map ((+ objScale) . toSum xs xs) hessFMatValues
 
-    hessLambdaGObjValues :: [J (JV Id) a]
+    hessLambdaGObjValues :: [S a]
     hessLambdaGObjValues = map ((+ objScale) . toSum xs xs) hessLambdaGMatValues
 
-    hessLagObjValues :: [J (JV Id) a]
+    hessLagObjValues :: [S a]
     hessLagObjValues = map ((+ objScale) . toSum xs xs) hessLagMatValues
 
 
@@ -169,7 +169,7 @@ toSum rowVec colVec (rowi,colj,value)
 scalingNlp ::
  forall x g sdv
  . (View x, View g, View sdv)
- => KKT x g -> (J sdv MX -> (J (JV Id) MX, J x MX, J g MX))
+ => KKT x g -> (J sdv MX -> (S MX, J x MX, J g MX))
  -> Nlp sdv JNone JNone MX
 scalingNlp kkt expand =
   Nlp
@@ -185,7 +185,7 @@ scalingNlp kkt expand =
   , nlpFG = fg
   }
   where
-    fg :: J sdv MX -> J JNone MX -> (J (JV Id) MX, J JNone MX)
+    fg :: J sdv MX -> J JNone MX -> (S MX, J JNone MX)
     fg sdvs _ = (obj, cat JNone)
       where
         obj = toObjective $ toLogScaling kkt expand sdvs
@@ -194,7 +194,7 @@ scalingNlp kkt expand =
 beforeAndAfter
   :: (View x, View g, View sdv)
      => KKT x g
-     -> (J sdv DMatrix -> (J (JV Id) DMatrix, J x DMatrix, J g DMatrix))
+     -> (J sdv DMatrix -> (S DMatrix, J x DMatrix, J g DMatrix))
      -> J sdv (V.Vector Double)
      -> String
 beforeAndAfter kkts expand scalingSol =

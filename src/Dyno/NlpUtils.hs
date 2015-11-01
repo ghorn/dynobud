@@ -28,7 +28,7 @@ import qualified Casadi.GenericC as Gen
 import Dyno.View.M ( vcat, vsplit )
 import Dyno.View.Unsafe ( mkM, unM )
 import Dyno.Vectorize ( Vectorize(..), Id(..) )
-import Dyno.View.View ( View(..), J, JV, JNone(..), catJV, splitJV, unzipJ )
+import Dyno.View.View ( View(..), J, S, JV, JNone(..), catJV, splitJV, unzipJ )
 import Dyno.Nlp ( Nlp(..), NlpOut(..), Bounds )
 import Dyno.Solvers ( Solver )
 import Dyno.NlpSolver
@@ -86,7 +86,7 @@ solveNlpHomotopyWith options userStep hp
   solverStuff nlp pFs callback callbackP = do
   when ((reduction hp) >= 1) $ error $ "homotopy reduction factor " ++ show (reduction hp) ++ " >= 1"
   when ((increase hp)  <= 1) $ error $ "homotopy increase factor "  ++ show (increase hp)  ++ " <= 1"
-  let fg :: J x MX -> J p MX -> (J (JV Id) MX, J g MX)
+  let fg :: J x MX -> J p MX -> (S MX, J g MX)
       fg x p = nlpFG nlp x p
 
   runNlpSolverWith options solverStuff fg (nlpScaleX nlp) (nlpScaleG nlp) (nlpScaleF nlp) callback $ do
@@ -210,9 +210,9 @@ solveNlpV solverStuff fg bx bg x0 cb = do
         Nlp
         { nlpFG = \x' _ ->
            let _ = x' :: J (JV x) MX
-               x = vsplit x' :: x (J (JV Id) MX)
-               (obj,g) = fg x :: (J (JV Id) MX, g (J (JV Id) MX))
-               --obj' = sxCatJV (Id obj) :: J (JV Id) MX
+               x = vsplit x' :: x (S MX)
+               (obj,g) = fg x :: (S MX, g (S MX))
+               --obj' = sxCatJV (Id obj) :: S MX
                --g' = sxCatJV g :: J (JV g) MX
            in (obj, vcat g)
         , nlpBX = catJV bx

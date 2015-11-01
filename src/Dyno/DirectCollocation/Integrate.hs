@@ -22,7 +22,7 @@ import Casadi.SX ( SX )
 import Casadi.MX ( MX )
 import Casadi.Viewable ( Viewable )
 
-import Dyno.View.View ( View(..), J, JV, JNone, JTuple(..), splitJV, catJV, jfill )
+import Dyno.View.View ( View(..), J, S, JV, JNone, JTuple(..), splitJV, catJV, jfill )
 import Dyno.View.Fun ( SXFun, call, toSXFun, toMXFun, expandMXFun )
 import Dyno.View.JVec ( JVec(..), jreplicate )
 import Dyno.View.HList ( (:*:)(..) )
@@ -38,7 +38,7 @@ import Dyno.NlpSolver ( runNlpSolver, liftIO, solve
 import Dyno.DirectCollocation.Types ( CollStage(..), CollPoint(..) )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots, mkTaus, interpolate, timesFromTaus )
 
-type Sxe = J (JV Id) SX
+type Sxe = S SX
 
 data IntegratorX x z n deg a =
   IntegratorX
@@ -47,7 +47,7 @@ data IntegratorX x z n deg a =
   } deriving (Generic)
 data IntegratorP u p n deg a =
   IntegratorP
-  { ipTf :: J (JV Id) a
+  { ipTf :: S a
   , ipParm :: J (JV p) a
   , ipU :: J (JVec n (JVec deg (JV u))) a
   } deriving (Generic)
@@ -93,8 +93,8 @@ interpolateXDots cjks xs = TV.tvtail $ interpolateXDots' cjks xs
 dynStageConstraints' ::
   forall x z u p r deg . (Dim deg, View x, View z, View u, View p, View r)
   => Vec (TV.Succ deg) (Vec (TV.Succ deg) Double) -> Vec deg Double
-  -> SXFun (J (JV Id) :*: J p :*: J x :*: J (CollPoint x z u)) (J r)
-  -> (J x :*: J (JVec deg (JTuple x z)) :*: J (JVec deg u) :*: J (JV Id) :*: J p :*: J (JVec deg (JV Id))) MX
+  -> SXFun (S :*: J p :*: J x :*: J (CollPoint x z u)) (J r)
+  -> (J x :*: J (JVec deg (JTuple x z)) :*: J (JVec deg u) :*: S :*: J p :*: J (JVec deg (JV Id))) MX
   -> (J (JVec deg r) :*: J x) MX
 dynStageConstraints' cijs taus dynFun (x0 :*: xzs' :*: us' :*: h :*: p :*: stageTimes') =
   cat (JVec dynConstrs) :*: xnext
@@ -112,7 +112,7 @@ dynStageConstraints' cijs taus dynFun (x0 :*: xzs' :*: us' :*: h :*: p :*: stage
     dynConstrs :: Vec deg (J r MX)
     dynConstrs = TV.tvzipWith4 applyDae xdots xzs us stageTimes
 
-    applyDae :: J x MX -> JTuple x z MX -> J u MX -> J (JV Id) MX -> J r MX
+    applyDae :: J x MX -> JTuple x z MX -> J u MX -> S MX -> J r MX
     applyDae x' (JTuple x z) u t = r
       where
         r = call dynFun (t :*: p :*: x' :*: collPoint)
@@ -129,8 +129,8 @@ dynStageConstraints' cijs taus dynFun (x0 :*: xzs' :*: us' :*: h :*: p :*: stage
 -- dynamics residual and outputs
 dynamicsFunction' ::
   forall x z u p r a . (View x, View z, View u, View r, Viewable a)
-  => (J x a -> J x a -> J z a -> J u a -> J p a -> J (JV Id) a -> J r a)
-  -> (J (JV Id) :*: J p :*: J x :*: J (CollPoint x z u)) a
+  => (J x a -> J x a -> J z a -> J u a -> J p a -> S a -> J r a)
+  -> (S :*: J p :*: J x :*: J (CollPoint x z u)) a
   -> J r a
 dynamicsFunction' dae (t :*: parm :*: x' :*: collPoint) = dae x' x z u parm t
   where
@@ -170,7 +170,7 @@ withIntegrator _ _ roots initialX dae solver userFun = do
 
   let fg :: J (IntegratorX x z n deg) MX
             -> J (IntegratorP u p n deg) MX
-            -> (J (JV Id) MX, J (IntegratorG x r n deg) MX)
+            -> (S MX, J (IntegratorG x r n deg) MX)
       fg = getFgIntegrator taus callDynStageConFun
 
       scaleX = Nothing
@@ -259,10 +259,10 @@ getFgIntegrator ::
   forall x z u p r n deg .
   (Dim deg, Dim n, Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize r)
   => Vec deg Double
-  -> ((J (JV x) :*: J (JVec deg (JTuple (JV x) (JV z))) :*: J (JVec deg (JV u)) :*: J (JV Id) :*: J (JV p) :*: J (JVec deg (JV Id))) MX -> (J (JVec deg (JV r)) :*: J (JV x)) MX)
+  -> ((J (JV x) :*: J (JVec deg (JTuple (JV x) (JV z))) :*: J (JVec deg (JV u)) :*: S :*: J (JV p) :*: J (JVec deg (JV Id))) MX -> (J (JVec deg (JV r)) :*: J (JV x)) MX)
   -> J (IntegratorX x z n deg) MX
   -> J (IntegratorP u p n deg) MX
-  -> (J (JV Id) MX, J (IntegratorG x r n deg) MX)
+  -> (S MX, J (IntegratorG x r n deg) MX)
 getFgIntegrator taus stageFun ix' ip' = (0, cat g)
   where
     ix = split ix'
@@ -284,7 +284,7 @@ getFgIntegrator taus stageFun ix' ip' = (0, cat g)
     n = reflectDim (Proxy :: Proxy n)
 
     -- times at each collocation point
-    times :: Vec n (Vec deg (J (JV Id) MX))
+    times :: Vec n (Vec deg (S MX))
     times = fmap snd $ timesFromTaus 0 (fmap realToFrac taus) dt
 
     times' :: Vec n (J (JVec deg (JV Id)) MX)

@@ -12,9 +12,8 @@ import Text.Printf ( printf )
 
 import Casadi.MX ( MX )
 
-import Dyno.View.View ( J, JV, catJV, splitJV )
-import Dyno.View.M ( vcat, vsplit )
-import Dyno.Vectorize ( Vectorize, Id )
+import Dyno.View
+import Dyno.Vectorize ( Vectorize )
 import Dyno.Nlp ( Nlp(..), Bounds )
 import Dyno.NlpUtils ( HomotopyParams(..), solveNlpHomotopy )
 import Dyno.Solvers
@@ -29,7 +28,7 @@ hp = HomotopyParams
 
 data P a = P a a deriving (Functor, Generic, Generic1, Show)
 data X a = X a a deriving (Functor, Generic, Generic1, Show)
-data G a = G a -- (J (JV Id) a)
+data G a = G a -- (S a)
          deriving (Functor, Generic, Generic1, Show)
 
 instance Vectorize X
@@ -57,7 +56,7 @@ myNlp = Nlp { nlpFG = fg
     bg :: J (JV G) (Vector Bounds)
     bg = catJV (G (Nothing, Just 0))
 
-    fg :: J (JV X) MX -> J (JV P) MX -> (J (JV Id) MX, J (JV G) MX)
+    fg :: J (JV X) MX -> J (JV P) MX -> (S MX, J (JV G) MX)
     fg xy pxy = (f, vcat g)
       where
         X  x  y = vsplit  xy

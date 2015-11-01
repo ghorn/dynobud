@@ -67,7 +67,7 @@ import Casadi.Viewable ( Viewable(..) )
 import Dyno.View.Unsafe ( M(UnsafeM), mkM, mkM', unM )
 import Dyno.Vectorize ( Vectorize(..), Id, fill, devectorize )
 import Dyno.TypeVecs ( Vec, Dim(..) )
-import Dyno.View.View ( View(..), J, JV, JTuple, JTriple, JQuad )
+import Dyno.View.View ( View(..), J, S, JV, JTuple, JTriple, JQuad )
 import Dyno.View.JVec ( JVec )
 
 
@@ -81,10 +81,10 @@ dense (UnsafeM m) = mkM (CM.densify m)
 mm :: (View f, View h, CMatrix a) => M f g a -> M g h a -> M f h a
 mm (UnsafeM m0) (UnsafeM m1) = mkM (CM.mm m0 m1)
 
-ms :: (View f, View g, CMatrix a) => M f g a -> J (JV Id) a -> M f g a
+ms :: (View f, View g, CMatrix a) => M f g a -> S a -> M f g a
 ms m0 m1 = mkM $ (unM m0) * (unM m1)
 
-sm :: (View f, View g, CMatrix a) => J (JV Id) a -> M f g a -> M f g a
+sm :: (View f, View g, CMatrix a) => S a -> M f g a -> M f g a
 sm m0 m1 = mkM $ (unM m0) * (unM m1)
 
 trans :: (View f, View g, CMatrix a) => M f g a -> M g f a

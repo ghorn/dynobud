@@ -21,8 +21,7 @@ import qualified Data.Map as M
 import Control.Lens
 
 import Casadi.MX ( MX )
-import Dyno.View.View ( J, JV )
-import Dyno.Vectorize ( Id )
+import Dyno.View.View ( S )
 
 data Constraint a = Eq2 a a
                   | Ineq2 a a
@@ -31,7 +30,7 @@ data Constraint a = Eq2 a a
 data Objective a = ObjectiveUnset | Objective a
 data HomotopyParam a = HomotopyParamUnset | HomotopyParam a
 
-type MXElement = J (JV Id) MX
+type MXElement = S MX
 
 data NlpMonadState =
   NlpMonadState

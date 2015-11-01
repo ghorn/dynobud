@@ -17,8 +17,7 @@ import Data.Binary ( Binary )
 import Data.Serialize ( Serialize )
 import Casadi.Viewable ( Viewable )
 
-import Dyno.Vectorize ( Id )
-import Dyno.View.View ( View(..), J, JV )
+import Dyno.View.View ( View(..), J, S )
 import Dyno.View.M ( M )
 
 type Bounds = (Maybe Double, Maybe Double)
@@ -35,7 +34,7 @@ type Bounds = (Maybe Double, Maybe Double)
 --
 data Nlp x p g a =
   Nlp
-  { nlpFG :: J x a -> J p a -> (J (JV Id) a, J g a)
+  { nlpFG :: J x a -> J p a -> (S a, J g a)
   , nlpBX :: J x (V.Vector Bounds)
   , nlpBG :: J g (V.Vector Bounds)
   , nlpX0 :: J x (V.Vector Double)
@@ -50,7 +49,7 @@ data Nlp x p g a =
 -- | NLP output
 data NlpOut x g a =
   NlpOut
-  { fOpt :: J (JV Id) a
+  { fOpt :: S a
   , xOpt :: J x a
   , gOpt :: J g a
   , lambdaXOpt :: J x a
@@ -69,7 +68,7 @@ data KKT x g =
   , kktJacG :: M g x DMatrix
   , kktG :: J g DMatrix
   , kktGradF :: J x DMatrix
-  , kktF :: J (JV Id) DMatrix
+  , kktF :: S DMatrix
   } deriving (Generic, Eq, Show)
 instance (View x, View g) => Binary (KKT x g)
 instance (View x, View g) => Serialize (KKT x g)
