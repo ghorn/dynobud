@@ -20,8 +20,10 @@ import qualified Data.Vector as V
 import Linear
 import Linear.V
 
+import qualified Test.HUnit.Base as HUnit
 import Test.QuickCheck
 import Test.Framework ( Test, testGroup )
+import Test.Framework.Providers.HUnit ( testCase )
 import Test.Framework.Providers.QuickCheck2 ( testProperty )
 
 import Dyno.Vectorize
@@ -170,9 +172,36 @@ transposeUnTranspose _ _ = x0 == x2
 prop_transpose :: Dims -> Dims -> Bool
 prop_transpose (Dims _ n) (Dims _ m) = transposeUnTranspose n m
 
+test_vdiag :: HUnit.Assertion
+test_vdiag = HUnit.assertEqual "" x y
+  where
+    x :: V3 (V3 Int)
+    x = V3
+        (V3 7 0 0)
+        (V3 0 8 0)
+        (V3 0 0 9)
+
+    y :: V3 (V3 Int)
+    y = vdiag (V3 7 8 9)
+
+test_vdiag' :: HUnit.Assertion
+test_vdiag' = HUnit.assertEqual "" x y
+  where
+    x :: V3 (V3 Int)
+    x = V3
+        (V3 7 3 3)
+        (V3 3 8 3)
+        (V3 3 3 9)
+
+    y :: V3 (V3 Int)
+    y = vdiag' (V3 7 8 9) 3
+
+
 vectorizeTests :: Test
 vectorizeTests =
   testGroup "vectorize tests"
   [ testProperty "vec . devec" prop_vecThenDevec
   , testProperty "transposeUnTranspose" prop_transpose
+  , testCase "vdiag" test_vdiag
+  , testCase "vdiag'" test_vdiag'
   ]

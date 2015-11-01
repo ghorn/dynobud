@@ -28,6 +28,8 @@ module Dyno.Vectorize
        , vzipWith
        , vzipWith3
        , vzipWith4
+       , vdiag
+       , vdiag'
        , GVectorize(..)
        ) where
 
@@ -128,6 +130,22 @@ vzipWith3 f x y z = devectorize $ V.zipWith3 f (vectorize x) (vectorize y) (vect
 vzipWith4 :: Vectorize f => (a -> b -> c -> d -> e) -> f a -> f b -> f c -> f d -> f e
 vzipWith4 f x y z w =
   devectorize $ V.zipWith4 f (vectorize x) (vectorize y) (vectorize z) (vectorize w)
+
+-- | Make a diagonal "matrix" from a "vector".
+-- Off-diagonal elements will be 0, thus the Num constraint.
+vdiag :: forall f a . (Vectorize f, Num a) => f a -> f (f a)
+vdiag = flip vdiag' 0
+
+-- | Make a diagonal "matrix" from a "vector" with a given off-diagonal value.
+vdiag' :: forall f a . Vectorize f => f a -> a -> f (f a)
+vdiag' v0 offDiag =
+  devectorize $ V.generate n (\k -> devectorize (V.generate n (\j -> gen j k)))
+  where
+    v = vectorize v0
+    n = vlength (Proxy :: Proxy f)
+    gen j k
+      | j /= k = offDiag
+      | otherwise = v V.! k
 
 -- this could me more efficient as a class method, but this is safer
 vlength :: Vectorize f => Proxy f -> Int
