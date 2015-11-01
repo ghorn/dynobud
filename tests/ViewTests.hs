@@ -609,6 +609,7 @@ viewTests =
   [ testCase "blockcat scalars" test_blockcatScalars
   , testCase "blockcat blocks" test_blockcatBlocks
   , testCase "blocksplit" test_blockSplit
+  , testCase "sumInput" test_sumInput
   , testCase "sumRows" test_sumRows
   , testCase "sumCols" test_sumCols
   , prop_VSplitVCat
