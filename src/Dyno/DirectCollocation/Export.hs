@@ -18,6 +18,7 @@ module Dyno.DirectCollocation.Export
        , write
        ) where
 
+import Control.Lens ( (^.) )
 import Control.Monad ( unless )
 import Data.List ( unzip6, intercalate )
 import Data.Proxy ( Proxy(..) )
@@ -28,7 +29,7 @@ import Control.Monad.State.Lazy ( State )
 import qualified Control.Monad.State.Lazy as State
 import qualified Data.Set as S
 
-import Accessors ( Lookup, Getter(..), flatten, flatten', accessors )
+import Accessors ( Lookup, Field(..), flatten, flatten', accessors )
 
 import Dyno.Nlp ( NlpOut(..) )
 import Dyno.TypeVecs ( Vec )
@@ -248,13 +249,13 @@ runPythonExporter action = reverse pythonOut
 npArray :: String -> String
 npArray str = "numpy.array(" ++ str ++ ")"
 
-toDub :: Getter (xzu Double) -> xzu Double -> Double
-toDub (GetDouble f) = f
-toDub (GetFloat f) = realToFrac . f
-toDub (GetInt f) = realToFrac . f
-toDub (GetBool f) = fromIntegral . fromEnum . f
-toDub (GetString _) = const (read "NaN")
-toDub GetSorry = const (read "NaN")
+toDub :: Field (xzu Double) -> xzu Double -> Double
+toDub (FieldDouble f) = (^. f)
+toDub (FieldFloat f) = realToFrac . (^. f)
+toDub (FieldInt f) = realToFrac . (^. f)
+toDub (FieldBool f) = fromIntegral . fromEnum . (^. f)
+toDub (FieldString _) = const (read "NaN")
+toDub FieldSorry = const (read "NaN")
 
 
 pythonParam :: forall p . (Vectorize p, Lookup (p Double))
@@ -265,7 +266,7 @@ pythonParam pyRetName topNames p = mapM_ pyParam at'
     pyParam (name, get) = putVal pyRetName (topNames ++ name) (show (get p))
 
     at' :: [([String], p Double -> Double)]
-    at' = map (\(fn,g,_) -> (fn, toDub g)) $ flatten' $ accessors (fill (0 :: Double))
+    at' = map (\(fn, f) -> (fn, toDub f)) $ flatten' accessors
 
 pythonTraj :: forall x . (Vectorize x, Lookup (x Double))
               => String -> [String] -> [x Double] -> State PythonExporter ()
@@ -275,7 +276,7 @@ pythonTraj pyRetName topNames xs = mapM_ pyArray at'
     pyArray (name, get) = putVal pyRetName (topNames ++ name) (npArray (show (map get xs)))
 
     at' :: [([String], x Double -> Double)]
-    at' = map (\(fn,g,_) -> (fn, toDub g)) $ flatten' $ accessors (fill (0 :: Double))
+    at' = map (\(fn, f) -> (fn, toDub f)) $ flatten' accessors
 
 
 matlabParam :: forall p . (Vectorize p, Lookup (p Double)) => String -> p Double -> [String]
@@ -285,7 +286,7 @@ matlabParam topName p = map (uncurry mlParam) at
     mlParam name get = topName ++ "." ++ name ++ " = " ++ show (get p) ++ ";"
 
     at :: [(String, p Double -> Double)]
-    at = map (\(fn,g,_) -> (fn, toDub g)) $ flatten $ accessors (fill (0 :: Double))
+    at = map (\(fn, f) -> (fn, toDub f)) $ flatten accessors
 
 matlabTraj :: forall x . (Vectorize x, Lookup (x Double)) => String -> [x Double] -> [String]
 matlabTraj topName xs = map (uncurry mlArray) at
@@ -295,7 +296,7 @@ matlabTraj topName xs = map (uncurry mlArray) at
       topName ++ "." ++ name ++ " = " ++ show (map get xs) ++ ";"
 
     at :: [(String, x Double -> Double)]
-    at = map (\(fn,g,_) -> (fn, toDub g)) $ flatten $ accessors (fill (0 :: Double))
+    at = map (\(fn, f) -> (fn, toDub f)) $ flatten accessors
 
 data PythonExporter = PythonExporter (S.Set [String], [String])
 

@@ -230,7 +230,7 @@ namesFromAccTree :: AccessorTree a -> NameTree
 namesFromAccTree x = (\(_,(_,y)) -> y) $ namesFromAccTree' 0 ("",x)
 
 namesFromAccTree' :: Int -> (String, AccessorTree a) -> (Int, (String, NameTree))
-namesFromAccTree' k (nm, ATGetter _) = (k+1, (nm, NameTreeLeaf k))
+namesFromAccTree' k (nm, Field _) = (k+1, (nm, NameTreeLeaf k))
 namesFromAccTree' k0 (nm, Data names ats) = (k, (nm, NameTreeNode names children))
   where
     (k, children) = mapAccumL namesFromAccTree' k0 ats
@@ -274,14 +274,14 @@ toMeta :: forall x z u p o q qo po h .
           => MetaProxy x z u p o q qo po h -> CollTrajMeta
 toMeta _ =
   CollTrajMeta
-  { ctmX = namesFromAccTree $ accessors (fill () :: x ())
-  , ctmZ = namesFromAccTree $ accessors (fill () :: z ())
-  , ctmU = namesFromAccTree $ accessors (fill () :: u ())
-  , ctmP = namesFromAccTree $ accessors (fill () :: p ())
-  , ctmO = namesFromAccTree $ accessors (fill () :: o ())
-  , ctmQ = namesFromAccTree $ accessors (fill () :: Quadratures q qo ())
-  , ctmH = namesFromAccTree $ accessors (fill () :: h ())
-  , ctmPo = namesFromAccTree $ accessors (fill () :: po ())
+  { ctmX  = namesFromAccTree (accessors :: AccessorTree (x ()))
+  , ctmZ  = namesFromAccTree (accessors :: AccessorTree (z ()))
+  , ctmU  = namesFromAccTree (accessors :: AccessorTree (u ()))
+  , ctmP  = namesFromAccTree (accessors :: AccessorTree (p ()))
+  , ctmO  = namesFromAccTree (accessors :: AccessorTree (o ()))
+  , ctmQ  = namesFromAccTree (accessors :: AccessorTree (Quadratures q qo ()))
+  , ctmH  = namesFromAccTree (accessors :: AccessorTree (h ()))
+  , ctmPo = namesFromAccTree (accessors :: AccessorTree (po ()))
   }
 
 --unzip8 :: Vector (a, b, c, d, e, f, g, h)

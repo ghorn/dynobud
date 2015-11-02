@@ -82,17 +82,15 @@ instance (Dim n, S.Serialize a) => S.Serialize (Vec n a) where
       Left msg -> fail msg
 
 instance (Lookup a, Dim n) => Lookup (Vec n a) where
-  toAccessorTree vec get set = Data ("Vec " ++ show n, "Vec " ++ show n) $ map child (take n [0..])
+  toAccessorTree lens0 =
+    Data ("Vec " ++ show n, "Vec " ++ show n) $ map child (take n [0..])
     where
       n = reflectDim (Proxy :: Proxy n)
-      child k = ("v" ++ show k, toAccessorTree (getK vec) (getK . get) setK)
+      child k = ("v" ++ show k, toAccessorTree (lens0 . lensK))
         where
-          setK vk new = set (devectorize (v V.// [(k,vk)])) new
+          lensK f (MkVec v) = fmap (\vk -> devectorize (v V.// [(k,vk)])) (f vk0)
             where
-              MkVec v = get new
-
-          getK :: Vec n a -> a
-          getK (MkVec v) = v V.! k
+              vk0 = v V.! k
 
 instance Dim n => Distributive (Vec n) where
   distribute f = devectorize $ V.generate (reflectDim (Proxy :: Proxy n))

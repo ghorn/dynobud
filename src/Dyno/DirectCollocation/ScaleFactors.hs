@@ -14,6 +14,7 @@ module Dyno.DirectCollocation.ScaleFactors
 
 import GHC.Generics ( Generic, Generic1 )
 
+import Control.Lens ( (.~) )
 import Data.Maybe ( catMaybes, fromMaybe )
 import Data.Serialize ( Serialize )
 import qualified Data.Foldable as F
@@ -29,7 +30,7 @@ import Dyno.View.JVec ( unJVec )
 import Dyno.TypeVecs ( Dim )
 import Dyno.Ocp
 
-import Accessors ( Lookup, Setter(..), flatten, accessors )
+import Accessors ( Lookup, Field(..), accessors, describeField, flatten )
 
 data ScaleFactor =
   ScaleFactor
@@ -94,10 +95,11 @@ getScaleFactors ::
   -> OcpPhase x z u p r o c h q qo po fp
   -> OcpPhaseInputs x z u p c h fp
   -> ScaleFactors x z u p h c ScaleFactor
-getScaleFactors x g ocp inputs = f <$> myScale <*> bounds <*> magnitude <*> names
+getScaleFactors x g ocp inputs =
+  getScaleFactor <$> myScale <*> bounds <*> magnitude <*> names
   where
-    f :: Double -> Bounds -> Double -> String -> ScaleFactor
-    f myscale' bounds' magnitude' name' =
+    getScaleFactor :: Double -> Bounds -> Double -> String -> ScaleFactor
+    getScaleFactor myscale' bounds' magnitude' name' =
       ScaleFactor
       { sfMyScale = myscale'
       , sfBounds = bounds'
@@ -133,11 +135,12 @@ getScaleFactors x g ocp inputs = f <$> myScale <*> bounds <*> magnitude <*> name
       }
 
     names :: ScaleFactors x z u p h c String
-    names = F.foldl' ff (fill "") (flatten (accessors (fill "")))
+    names = F.foldl' ff (fill "") (flatten accessors)
       where
-        ff sf0 (name, _, SetString set) = set name sf0
-        ff _ (name, _, _) =
-          error $ "the 'impossible' happened, got a non-strong getter for " ++ show name
+        ff sf0 (name, FieldString f) = (f .~ name) sf0
+        ff _ (name, f) =
+          error $ "the 'impossible' happened, got a non-strong getter for "
+          ++ show name ++ " with type " ++ describeField f
 
 getMagnitude ::
   forall x z u p h c n deg r

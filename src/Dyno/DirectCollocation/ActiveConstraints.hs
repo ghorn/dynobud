@@ -19,7 +19,9 @@ module Dyno.DirectCollocation.ActiveConstraints
 
 import GHC.Generics ( Generic )
 
+import Accessors ( Lookup, Field(..), flatten', accessors, describeField )
 import Control.Applicative
+import Control.Lens ( (^.) )
 import Data.List ( intercalate )
 import Data.Maybe ( catMaybes )
 import qualified Data.Foldable as F
@@ -34,8 +36,6 @@ import Dyno.Vectorize ( Vectorize, Id(..) )
 import Dyno.View.View ( View(..), J, JV, splitJV )
 import Dyno.View.JVec ( unJVec )
 import Dyno.TypeVecs ( Dim )
-
-import Accessors ( Lookup, Getter(..), flatten', accessors )
 
 data Active a = Active { activeLower :: a, activeUpper :: a }
               deriving (Functor, F.Foldable, T.Traversable, Generic)
@@ -109,11 +109,13 @@ flattenActiveConstraints ::
   , Lookup (h Int)
   , Lookup (c Int)
   ) => ActiveConstraints x z u p h c (Active Int) -> [([String], Active Int)]
-flattenActiveConstraints activeCons = map report $ flatten' $ accessors lbs
+flattenActiveConstraints activeCons = map report $ flatten' accessors
   where
-    report (name, GetInt get, _) = (name, Active (get lbs) (get ubs))
-    report (name, _, _) =
-      error $ "the 'impossible' happened, flattenActiveConstraints got a non-int getter " ++ show name
+    report (name, FieldInt f) = (name, Active (lbs ^. f) (ubs ^. f))
+    report (name, f) =
+      error $ "the 'impossible' happened, " ++
+      "flattenActiveConstraints got a non-int getter " ++ show name ++
+      " with type " ++ describeField f
     lbs = fmap activeLower activeCons
     ubs = fmap activeUpper activeCons
 

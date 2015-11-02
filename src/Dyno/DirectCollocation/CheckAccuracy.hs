@@ -17,6 +17,8 @@ module Dyno.DirectCollocation.CheckAccuracy
 
 import GHC.Generics ( Generic, Generic1 )
 
+import Accessors
+import Control.Lens ( (^.) )
 import Data.List ( sortBy )
 import Data.Maybe ( isJust, fromJust )
 import Data.Proxy ( Proxy(..) )
@@ -24,8 +26,6 @@ import Data.Foldable ( foldl', maximumBy )
 import qualified Data.Vector as V
 import Linear ( Additive )
 import Text.Printf ( printf )
-
-import Accessors
 
 import Dyno.Integrate
 import Dyno.Vectorize ( Vectorize(..), Id(..), None(..), fill )
@@ -69,22 +69,25 @@ summarizeAccuracy (Checks _ worstStageMismatch trajMismatch) =
   ("" : "worst overall mismatches:" : map showOne trajMismatches)
   where
     showOne :: (String, Err Double) -> String
-    showOne (name, err) = printf "relerr: %.2g, abserr: %.2g - %s - dir coll: %.2g, rk45: %.2g"
-                          (errRel err) (errAbs err) name (errRef err) (errVal err)
+    showOne (name, err) =
+      printf "relerr: %.2g, abserr: %.2g - %s - dir coll: %.2g, rk45: %.2g"
+      (errRel err) (errAbs err) name (errRef err) (errVal err)
 
-    acs = flatten $ accessors (fill 0 :: x Double)
+    acs = flatten accessors
 
     stageMismatches = sortBy (flip comp) $ map (report worstStageMismatch) acs
     trajMismatches = sortBy (flip comp) $ map (report trajMismatch) acs
     comp (_,x) (_,y) = compare (errRel x) (errRel y)
 
-    report x (name, GetDouble g, _) = (name, Err ref val abs' rel)
+    report x (name, FieldDouble f) = (name, Err ref val abs' rel)
       where
-        ref  = g (fmap errRef x)
-        val  = g (fmap errVal x)
-        abs' = g (fmap errAbs x)
-        rel  = g (fmap errRel x)
-    report _ (name, _, _) = error $ "summarizeAccuracy got a non-double getter for " ++ show name
+        ref  = (fmap errRef x) ^. f
+        val  = (fmap errVal x) ^. f
+        abs' = (fmap errAbs x) ^. f
+        rel  = (fmap errRel x) ^. f
+    report _ (name, f) =
+      error $ "summarizeAccuracy got a non-double getter for " ++ show name ++
+      " with type " ++ describeField f
 
 toErr :: (Ord a, Fractional a) => Maybe a -> a -> a -> Err a
 toErr mscale ref val =
