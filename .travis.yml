@@ -37,7 +37,7 @@ before_install:
    fi
 
    # some dependencies
- - travis_retry sudo apt-get install -qq pkg-config libglpk-dev libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev libglib2.0-dev libcairo2-dev libpango1.0-dev libgtk2.0-dev libgsl0-dev liblapack-dev libblas-dev
+ - travis_retry sudo apt-get install -qq pkg-config libglpk-dev libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev libglib2.0-dev libcairo2-dev libpango1.0-dev libgtk2.0-dev libgsl0-dev liblapack-dev libblas-dev gcc-4.8
 
    # casadi dependencies
  - travis_retry sudo apt-get install -qq coinor-libipopt-dev libmumps-dev libmumps-seq-dev
@@ -71,7 +71,7 @@ install:
 # - cabal install happy
  - travis_retry cabal install gtk2hs-buildtools -j2
  - for pkg in $(ghc-pkg list --user); do ghc-pkg unregister --force ${pkg}; done
- - travis_retry cabal install --only-dependencies -fexamples --enable-tests --enable-benchmarks -j2
+ - travis_retry cabal install --only-dependencies -fexamples --enable-tests --enable-benchmarks -j2 --with-gcc=gcc-4.8
 
 # Here starts the actual work to be performed for the package under test; any command which exits with a non-zero exit code causes the build to fail.
 script:
