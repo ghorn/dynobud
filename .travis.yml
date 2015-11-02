@@ -1,14 +1,69 @@
-env:
-  matrix:
-#    - CABALVER=1.22 GHCVER=7.8.4
-    - CABALVER=1.22 GHCVER=7.10.2
-  global:
-    - secure: "kbkJf+ukAlZMIcbTD/jIGt6p51nkm2VERZ7jHKQ0betHPyQtBz7Ly43bge4oggRP6s9cDoobFSMendQHTuV5Kyv+BHnQTBpReryOzFMqP3Bm0ZGlZzbn+v2Z1HisDIHGK2kLk3iQyO4S8+Pc/yqbJYVf4iUxh+tUoB11/aCmE3k="
-    - IPOPT_DEFAULT_LINEAR_SOLVER=ma57
-    - LD_LIBRARY_PATH=/home/travis/build/libhsl
+language: c
 
-# Note: the distinction between `before_install` and `install` is not important.
+# explicitly request container-based infrastructure
+sudo: required
+
+matrix:
+  include:
+    - env: CABALVER=1.22 GHCVER=7.8.4
+      addons: {apt: {packages: [cabal-install-1.18,ghc-7.8.4], sources: [hvr-ghc]}}
+    - env: CABALVER=1.22 GHCVER=7.10.2
+      addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.2],sources: [hvr-ghc]}}
+
+  allow_failures:
+     - env: CABALVER=1.22 GHCVER=7.8.4
+
+language: c
+
+# explicitly request container-based infrastructure
+sudo: false
+
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+# blocked by https://github.com/travis-ci/apt-source-whitelist/issues/149
+#            https://github.com/travis-ci/apt-source-whitelist/pull/150
+#    - chris-lea/zeromq
+
+    packages:
+    - pkg-config
+    - libglpk-dev
+    - libgl1-mesa-dev
+    - libglu1-mesa-dev
+    - freeglut3-dev
+    - libglib2.0-dev
+    - libcairo2-dev
+    - libpango1.0-dev
+    - libgtk2.0-dev
+    - libgsl0-dev
+    - liblapack-dev
+    - libblas-dev
+    - coinor-libipopt-dev
+    - libmumps-dev
+    - libmumps-seq-dev
+    - gcc-4.8
+    - happy-1.19.4
+    - alex-3.1.3
+    - gcc
+    - g++
+    - gfortran
+    - git
+    - cmake
+# blocked by https://github.com/travis-ci/apt-source-whitelist/issues/149
+#            https://github.com/travis-ci/apt-source-whitelist/pull/150
+#    - libzmq3-dev=4.0.5-1chl1~precise1
+
+
+
+global:
+  - secure: "kbkJf+ukAlZMIcbTD/jIGt6p51nkm2VERZ7jHKQ0betHPyQtBz7Ly43bge4oggRP6s9cDoobFSMendQHTuV5Kyv+BHnQTBpReryOzFMqP3Bm0ZGlZzbn+v2Z1HisDIHGK2kLk3iQyO4S8+Pc/yqbJYVf4iUxh+tUoB11/aCmE3k="
+  - IPOPT_DEFAULT_LINEAR_SOLVER=ma57
+  - LD_LIBRARY_PATH=/home/travis/build/libhsl
+
 before_install:
+ - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
+ - export PATH=/opt/alex/3.1.3/bin:/opt/happy/1.19.4/bin:$PATH
    # hsl linear solvers
  - pushd ../../ && git clone https://github.com/casadi/testbot.git
  - pushd testbot && recipes/setup.sh && popd
@@ -17,40 +72,14 @@ before_install:
  - ls -al
  - popd
 
-   # ghc/cabal
- - travis_retry sudo add-apt-repository -y ppa:hvr/ghc
- - travis_retry sudo apt-get update
- - travis_retry sudo apt-get install cabal-install-$CABALVER ghc-$GHCVER # see note about happy/alex
- - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
-
-   # zeromq 4
- - travis_retry sudo add-apt-repository -y ppa:chris-lea/zeromq
- - travis_retry sudo apt-get update
- - travis_retry sudo apt-get install libzmq3-dev=4.0.5-1chl1~precise1
-
-   # alex/happy binaries
- - if [ $GHCVER = "head" ] || [ ${GHCVER%.*} = "7.8" ] || [ ${GHCVER%.*} = "7.10" ]; then
-     travis_retry sudo apt-get install happy-1.19.4 alex-3.1.3;
-     export PATH=/opt/alex/3.1.3/bin:/opt/happy/1.19.4/bin:$PATH;
-   else
-     travis_retry sudo apt-get install happy alex;
-   fi
-
-   # some dependencies
- - travis_retry sudo apt-get install -qq pkg-config libglpk-dev libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev libglib2.0-dev libcairo2-dev libpango1.0-dev libgtk2.0-dev libgsl0-dev liblapack-dev libblas-dev gcc-4.8
-
-   # casadi dependencies
- - travis_retry sudo apt-get install -qq coinor-libipopt-dev libmumps-dev libmumps-seq-dev
-
    # casadi from source:
- - travis_retry sudo apt-get install -qq gcc g++ gfortran git cmake
  - cd ..
  - git clone https://github.com/casadi/casadi.git
  - cd casadi
  - mkdir build
  - cd build
  - cmake -DCMAKE_INSTALL_PREFIX=~/casadi_install -DWITH_EXAMPLES=OFF ..
- - make -j2
+ - make -j4
  - make install
  - export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:~/casadi_install/lib/pkgconfig
  - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/casadi_install/lib
@@ -67,8 +96,6 @@ install:
  - cabal --version
  - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
  - travis_retry cabal update
-# - cabal install alex
-# - cabal install happy
  - travis_retry cabal install gtk2hs-buildtools -j2
  - for pkg in $(ghc-pkg list --user); do ghc-pkg unregister --force ${pkg}; done
  - travis_retry cabal install --only-dependencies -fexamples --enable-tests --enable-benchmarks -j2 --with-gcc=gcc-4.8
