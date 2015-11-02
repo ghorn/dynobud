@@ -30,11 +30,14 @@ module Dyno.Vectorize
        , vzipWith4
        , vdiag
        , vdiag'
+       , vnames
+       , vnames'
        , GVectorize(..)
        ) where
 
 import GHC.Generics
 
+import Accessors ( Field, Lookup, accessors, flatten, flatten' )
 import Control.Applicative
 import Data.Either ( partitionEithers )
 import Data.Serialize ( Serialize )
@@ -43,13 +46,11 @@ import qualified Data.Foldable as F
 import qualified Data.Traversable as T
 import Data.Proxy ( Proxy(..) )
 import qualified Linear
+import SpatialMath ( Euler )
+import SpatialMathT ( V3T, Rot )
 import Text.Printf ( printf )
 import Prelude -- BBP workaround
 
-import SpatialMath ( Euler )
-import SpatialMathT ( V3T, Rot )
-
-import Accessors ( Lookup )
 
 
 -- | a length-0 vectorizable type
@@ -346,3 +347,21 @@ splitsAt' kInner jOuter v
 -- break a vector jOuter vectors, each of length kInner
 splitsAt :: Int -> Int -> V.Vector a -> V.Vector (V.Vector a)
 splitsAt k j = V.fromList . splitsAt' k j
+
+-- | fill a vectorizable thing with its field names
+vnames :: forall f . (Vectorize f, Lookup (f ())) => f String
+vnames = case mr of
+  Left msg -> error $ "vnames devectorize error: " ++ msg
+  Right r -> r
+  where
+    mr = devectorize' $ V.fromList $
+         fmap fst (flatten accessors :: [(String, Field (f ()))])
+
+-- | fill a vectorizable thing with its field name heirarchy
+vnames' :: forall f . (Vectorize f, Lookup (f ())) => f [String]
+vnames' = case mr of
+  Left msg -> error $ "vnames' devectorize error: " ++ msg
+  Right r -> r
+  where
+    mr = devectorize' $ V.fromList $
+         fmap fst (flatten' accessors :: [([String], Field (f ()))])
