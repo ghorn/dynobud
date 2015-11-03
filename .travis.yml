@@ -1,7 +1,9 @@
 language: c
 
-# explicitly request container-based infrastructure
-sudo: false
+# # explicitly request container-based infrastructure
+# sudo: false
+
+sudo: required
 
 env:
   matrix:
@@ -22,7 +24,7 @@ addons:
     - ubuntu-toolchain-r-test
 # blocked by https://github.com/travis-ci/apt-source-whitelist/issues/149
 #            https://github.com/travis-ci/apt-source-whitelist/pull/150
-#    - chris-lea/zeromq
+    - chris-lea/zeromq
 
     packages:
     - cabal-install-1.22
@@ -53,7 +55,7 @@ addons:
     - cmake
 # blocked by https://github.com/travis-ci/apt-source-whitelist/issues/149
 #            https://github.com/travis-ci/apt-source-whitelist/pull/150
-#    - libzmq3-dev=4.0.5-1chl1~precise1
+    - libzmq3-dev=4.0.5-1chl1~precise1
 
 
 before_install:
