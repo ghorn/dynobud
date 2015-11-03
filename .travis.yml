@@ -60,7 +60,7 @@ before_install:
  - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
  - export PATH=/opt/alex/3.1.3/bin:/opt/happy/1.19.4/bin:$PATH
    # hsl linear solvers
- - pushd ../../ && git clone https://github.com/casadi/testbot.git
+ - pushd ../../ && git clone https://github.com/ghorn/testbot.git
  - pushd testbot && recipes/setup.sh && popd
  - travis_retry testbot/recipes/fetch.sh libhsl.tar.gz && mkdir libhsl && tar -xvf libhsl.tar.gz -C libhsl
  - mkdir -p /home/travis/build/casadi/testbot
