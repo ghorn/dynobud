@@ -3,27 +3,29 @@ language: c
 # explicitly request container-based infrastructure
 sudo: false
 
-matrix:
-  include:
-    - env: CABALVER=1.22 GHCVER=7.8.4
-      addons: {apt: {packages: [cabal-install-1.18,ghc-7.8.4], sources: [hvr-ghc]}}
-    - env: CABALVER=1.22 GHCVER=7.10.2
-      addons: {apt: {packages: [cabal-install-1.22,ghc-7.10.2],sources: [hvr-ghc]}}
+env:
+  matrix:
+    - CABALVER=1.22 GHCVER=7.8.4
+    - CABALVER=1.22 GHCVER=7.10.2
 
-  allow_failures:
-     - env: CABALVER=1.22 GHCVER=7.8.4
+  global:
+    secure: "kbkJf+ukAlZMIcbTD/jIGt6p51nkm2VERZ7jHKQ0betHPyQtBz7Ly43bge4oggRP6s9cDoobFSMendQHTuV5Kyv+BHnQTBpReryOzFMqP3Bm0ZGlZzbn+v2Z1HisDIHGK2kLk3iQyO4S8+Pc/yqbJYVf4iUxh+tUoB11/aCmE3k="
 
-secure: "kbkJf+ukAlZMIcbTD/jIGt6p51nkm2VERZ7jHKQ0betHPyQtBz7Ly43bge4oggRP6s9cDoobFSMendQHTuV5Kyv+BHnQTBpReryOzFMqP3Bm0ZGlZzbn+v2Z1HisDIHGK2kLk3iQyO4S8+Pc/yqbJYVf4iUxh+tUoB11/aCmE3k="
+#  allow_failures:
+#     - env: CABALVER=1.22 GHCVER=7.8.4
 
 addons:
   apt:
     sources:
+    - hvr-ghc
     - ubuntu-toolchain-r-test
 # blocked by https://github.com/travis-ci/apt-source-whitelist/issues/149
 #            https://github.com/travis-ci/apt-source-whitelist/pull/150
 #    - chris-lea/zeromq
 
     packages:
+    - cabal-install-$CABALVER
+    - ghc-$GHCVER
     - pkg-config
     - libglpk-dev
     - libgl1-mesa-dev
