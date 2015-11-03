@@ -1,7 +1,7 @@
 language: c
 
 # explicitly request container-based infrastructure
-sudo: required
+sudo: false
 
 matrix:
   include:
