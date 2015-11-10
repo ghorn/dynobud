@@ -21,8 +21,7 @@ import Data.Vector ( Vector )
 import Data.Proxy ( Proxy(..) )
 
 import Dyno.Nlp ( Bounds, NlpOut(..) )
-import Dyno.NlpSolver ( NlpSolver, runNlpSolver, solve'
-                      , setX0, setP, setLbg, setUbg, setLbx, setUbx )
+import Dyno.NlpSolver ( NlpSolver, withNlpSolver )
 import Dyno.Solvers ( Solver )
 import Dyno.Vectorize ( Vectorize, Id(..) )
 import Dyno.TypeVecs ( Dim, Vec )
@@ -43,6 +42,7 @@ data GSlacks g n a =
   GSlacks (J (JV g) a) (J (JVec n (JV Id)) a) (J (JVec n (JV Id)) a)
   deriving Generic
 instance (Vectorize g, Dim n) => View (GSlacks g n)
+
 
 -- | Minimize the L1 norm of model mismatch.
 --
@@ -77,6 +77,7 @@ l1Fit solver fitModel qConstraints mq0 qbnds gbnds mapOpts featuresData =
     input :: (Maybe (q Double), q Bounds, g Bounds, Vec n (x Double, Double))
     input = (mq0, qbnds, gbnds, featuresData)
 
+
 -- | Solve multiple L1 fitting problems with the same structure.
 -- This is equivilent to but more efficient than calling
 -- 'l1Fit' many times.
@@ -89,7 +90,29 @@ l1Fits ::
   -> M.Map String Opt
   -> t (Maybe (q Double), q Bounds, g Bounds, Vec n (x Double, Double))
   -> IO (t (Either String (q Double)))
-l1Fits solver fitModel qConstraints mapOpts inputs = do
+l1Fits solver fitModel qConstraints mapOpts inputs =
+  withL1Fit solver fitModel qConstraints mapOpts (\fit -> mapM fit inputs)
+
+
+-- | Low level interface to L1 fitting.
+withL1Fit ::
+  forall n q g x b
+  . (Vectorize q, Vectorize g, Vectorize x, Dim n)
+  => Solver
+  -> (forall a . (Floating a, ArcTan2 a) => q a -> x a -> a)
+  -> (forall a . (Floating a, ArcTan2 a) => q a -> g a)
+  -> M.Map String Opt
+  -> (((Maybe (q Double), q Bounds, g Bounds, Vec n (x Double, Double))
+       -> NlpSolver (L1X q n)
+                    (JTuple (JVec n (JV x)) (JVec n (JV Id)))
+                    (GSlacks g n)
+                    (Either String (q Double))
+      ) -> NlpSolver (L1X q n)
+                     (JTuple (JVec n (JV x)) (JVec n (JV Id)))
+                     (GSlacks g n)
+                     b
+     ) -> IO b
+withL1Fit solver fitModel qConstraints mapOpts userFun = do
   let fitModel' (q :*: x :*: y :*: s) = f - y + s
         where
           f = vcat $ Id (fitModel (vsplit q) (vsplit x))
@@ -142,44 +165,39 @@ l1Fits solver fitModel qConstraints mapOpts inputs = do
           g :: GSlacks g n MX
           g = GSlacks (vcat (qConstraints (vsplit q))) gs0 gs1
 
-  let action = mapM solveOne inputs
+  let action solveOne = userFun solveOne'
         where
-          solveOne :: (Maybe (q Double), q Bounds, g Bounds, Vec n (x Double, Double))
+          solveOne' :: (Maybe (q Double), q Bounds, g Bounds, Vec n (x Double, Double))
                       -> NlpSolver
                          (L1X q n)
                          (JTuple (JVec n (JV x)) (JVec n (JV Id)))
                          (GSlacks g n)
                          (Either String (q Double))
-          solveOne (mq0, qbnds, gbnds, featuresData) = do
-            let p :: J (JTuple (JVec n (JV x)) (JVec n (JV Id))) (Vector Double)
-                p = cat $ JTuple fs' ds'
-                  where
-                    fitFeatures :: Vec n (x Double)
-                    (fitFeatures, fitData) = TV.tvunzip featuresData
-                    fs' = cat $ JVec $ fmap catJV fitFeatures
-                    ds' = cat $ JVec $ fmap (catJV . Id) fitData
-                lbx = cat $ L1X (catJV (fmap fst qbnds)) (jfill Nothing)
-                ubx = cat $ L1X (catJV (fmap snd qbnds)) (jfill Nothing)
-                lbg = cat $ GSlacks (catJV (fmap fst gbnds))
-                      (jfill Nothing) (jfill (Just 0))
-                ubg = cat $ GSlacks (catJV (fmap snd gbnds))
-                      (jfill (Just 0)) (jfill Nothing)
-                x0 = case mq0 of
-                  Nothing -> jfill 0
-                  Just q0 -> cat (L1X (catJV q0) (jfill 0))
-            setX0 x0
-            setP p
-            setLbx lbx
-            setUbx ubx
-            setLbg lbg
-            setUbg ubg
-            (status, out) <- solve'
-            let L1X xopt _ = split (xOpt out)
-            return $ case status of
-              Left msg -> Left msg
-              Right _ -> Right (splitJV xopt)
+          solveOne' (mq0, qbnds, gbnds', featuresData) =
+            fmap (fmap toSol) (solveOne x0 p xbnds gbnds)
+            where
+              toSol out = splitJV xopt
+                where
+                  L1X xopt _ = split (xOpt out)
 
-  runNlpSolver solver fg Nothing Nothing Nothing Nothing action
+              p :: J (JTuple (JVec n (JV x)) (JVec n (JV Id))) (Vector Double)
+              p = cat $ JTuple fs' ds'
+                where
+                  fitFeatures :: Vec n (x Double)
+                  (fitFeatures, fitData) = TV.tvunzip featuresData
+                  fs' = cat $ JVec $ fmap catJV fitFeatures
+                  ds' = cat $ JVec $ fmap (catJV . Id) fitData
+              xbnds :: J (L1X q n) (Vector Bounds)
+              xbnds = cat $ L1X (catJV qbnds) (jfill (Nothing, Nothing))
+              gbnds :: J (GSlacks g n) (Vector Bounds)
+              gbnds = cat $ GSlacks (catJV gbnds')
+                      (jfill (Nothing, Just 0)) (jfill ((Just 0, Nothing)))
+              x0 :: J (L1X q n) (Vector Double)
+              x0 = case mq0 of
+                Nothing -> jfill 0
+                Just q0 -> cat (L1X (catJV q0) (jfill 0))
+
+  withNlpSolver solver fg Nothing Nothing Nothing Nothing action
 
 
 -- | Minimize the L2 norm of model mismatch.
@@ -206,6 +224,7 @@ l2Fit solver fitModel qConstraints mq0 qbnds gbnds mapOpts featuresData = do
     input :: (Maybe (q Double), q Bounds, g Bounds, Vec n (x Double, Double))
     input = (mq0, qbnds, gbnds, featuresData)
 
+
 -- | Solve multiple L2 fitting problems with the same structure.
 -- This is equivilent to but more efficient than calling
 -- 'l2Fit' many times.
@@ -218,7 +237,29 @@ l2Fits ::
   -> M.Map String Opt
   -> t (Maybe (q Double), q Bounds, g Bounds, Vec n (x Double, Double))
   -> IO (t (Either String (q Double)))
-l2Fits solver fitModel qConstraints mapOpts inputs = do
+l2Fits solver fitModel qConstraints mapOpts inputs =
+  withL2Fit solver fitModel qConstraints mapOpts (\fit -> mapM fit inputs)
+
+
+-- | Low level interface to L2 fitting.
+withL2Fit ::
+  forall n q g x b
+  . (Vectorize q, Vectorize g, Vectorize x, Dim n)
+  => Solver
+  -> (forall a . (Floating a, ArcTan2 a) => q a -> x a -> a)
+  -> (forall a . (Floating a, ArcTan2 a) => q a -> g a)
+  -> M.Map String Opt
+  -> (((Maybe (q Double), q Bounds, g Bounds, Vec n (x Double, Double))
+       -> NlpSolver (JV q)
+                    (JTuple (JVec n (JV x)) (JVec n (JV Id)))
+                    (JV g)
+                    (Either String (q Double))
+      ) -> NlpSolver (JV q)
+                     (JTuple (JVec n (JV x)) (JVec n (JV Id)))
+                     (JV g)
+                     b
+     ) -> IO b
+withL2Fit solver fitModel qConstraints mapOpts userFun = do
   let fitModel' (q :*: x :*: y) = err * err
         where
           err = f - y
@@ -258,40 +299,30 @@ l2Fits solver fitModel qConstraints mapOpts inputs = do
           g :: J (JV g) MX
           g = vcat (qConstraints (vsplit q))
 
-  let action = mapM solveOne inputs
+  let action solveOne = userFun solveOne'
         where
-          solveOne :: (Maybe (q Double), q Bounds, g Bounds, Vec n (x Double, Double))
+          solveOne' :: (Maybe (q Double), q Bounds, g Bounds, Vec n (x Double, Double))
                       -> NlpSolver
                          (JV q)
                          (JTuple (JVec n (JV x)) (JVec n (JV Id)))
                          (JV g)
                          (Either String (q Double))
-          solveOne (mq0, qbnds, gbnds, featuresData) = do
-            let p :: J (JTuple (JVec n (JV x)) (JVec n (JV Id))) (Vector Double)
-                p = cat $ JTuple fs' ds'
-                  where
-                    fitFeatures :: Vec n (x Double)
-                    (fitFeatures, fitData) = TV.tvunzip featuresData
-                    fs' = cat $ JVec $ fmap catJV fitFeatures
-                    ds' = cat $ JVec $ fmap (catJV . Id) fitData
-                lbx = catJV (fmap fst qbnds)
-                ubx = catJV (fmap snd qbnds)
-                lbg = catJV (fmap fst gbnds)
-                ubg = catJV (fmap snd gbnds)
-                x0 = case mq0 of
-                  Nothing -> jfill 0
-                  Just q0 -> catJV q0
-            setX0 x0
-            setP p
-            setLbx lbx
-            setUbx ubx
-            setLbg lbg
-            setUbg ubg
-            (status, out) <- solve'
-            return $ case status of
-              Left msg -> Left msg
-              Right _ -> Right (splitJV (xOpt out))
-  runNlpSolver solver fg Nothing Nothing Nothing Nothing action
+          solveOne' (mq0, qbnds, gbnds', featuresData) =
+            fmap (fmap (splitJV . xOpt)) (solveOne x0 p xbnds gbnds)
+            where
+              p :: J (JTuple (JVec n (JV x)) (JVec n (JV Id))) (Vector Double)
+              p = cat $ JTuple fs' ds'
+                where
+                  fitFeatures :: Vec n (x Double)
+                  (fitFeatures, fitData) = TV.tvunzip featuresData
+                  fs' = cat $ JVec $ fmap catJV fitFeatures
+                  ds' = cat $ JVec $ fmap (catJV . Id) fitData
+              xbnds = catJV qbnds
+              gbnds = catJV gbnds'
+              x0 = case mq0 of
+                Nothing -> jfill 0
+                Just q0 -> catJV q0
+  withNlpSolver solver fg Nothing Nothing Nothing Nothing action
 
 
 -- | Minimize the L-infinity norm of model mismatch.
@@ -341,6 +372,28 @@ lInfFits ::
   -> t (Maybe (q Double), q Bounds, g Bounds, Vec n (x Double, Double))
   -> IO (t (Either String (q Double)))
 lInfFits solver fitModel qConstraints mapOpts inputs = do
+  withLInfFit solver fitModel qConstraints mapOpts (\fit -> mapM fit inputs)
+
+
+-- | Low-level interface to L-infinity fitting.
+withLInfFit ::
+  forall n q g x b
+  . (Vectorize q, Vectorize g, Vectorize x, Dim n)
+  => Solver
+  -> (forall a . (Floating a, ArcTan2 a) => q a -> x a -> a)
+  -> (forall a . (Floating a, ArcTan2 a) => q a -> g a)
+  -> M.Map String Opt
+  -> (((Maybe (q Double), q Bounds, g Bounds, Vec n (x Double, Double))
+       -> NlpSolver (JTuple (JV q) (JV Id))
+                    (JTuple (JVec n (JV x)) (JVec n (JV Id)))
+                    (GSlacks g n)
+                    (Either String (q Double))
+      ) -> NlpSolver (JTuple (JV q) (JV Id))
+                     (JTuple (JVec n (JV x)) (JVec n (JV Id)))
+                     (GSlacks g n)
+                     b
+     ) -> IO b
+withLInfFit solver fitModel qConstraints mapOpts userFun = do
   let fitModel' (q :*: x :*: y :*: s) = f - y + s
         where
           f = vcat $ Id (fitModel (vsplit q) (vsplit x))
@@ -389,41 +442,33 @@ lInfFits solver fitModel qConstraints mapOpts inputs = do
           g :: GSlacks g n MX
           g = GSlacks (vcat (qConstraints (vsplit q))) gs0 gs1
 
-  let action = mapM solveOne inputs
+  let action solveOne = userFun solveOne'
         where
-          solveOne :: (Maybe (q Double), q Bounds, g Bounds, Vec n (x Double, Double))
+          solveOne' :: (Maybe (q Double), q Bounds, g Bounds, Vec n (x Double, Double))
                       -> NlpSolver
                          (JTuple (JV q) (JV Id))
                          (JTuple (JVec n (JV x)) (JVec n (JV Id)))
                          (GSlacks g n)
                          (Either String (q Double))
-          solveOne (mq0, qbnds, gbnds, featuresData) = do
-            let p :: J (JTuple (JVec n (JV x)) (JVec n (JV Id))) (Vector Double)
-                p = cat $ JTuple fs' ds'
-                  where
-                    fitFeatures :: Vec n (x Double)
-                    (fitFeatures, fitData) = TV.tvunzip featuresData
-                    fs' = cat $ JVec $ fmap catJV fitFeatures
-                    ds' = cat $ JVec $ fmap (catJV . Id) fitData
-                lbx = cat $ JTuple (catJV (fmap fst qbnds)) (catJV (Id Nothing))
-                ubx = cat $ JTuple (catJV (fmap snd qbnds)) (catJV (Id Nothing))
-                lbg = cat $ GSlacks (catJV (fmap fst gbnds))
-                      (jfill Nothing) (jfill (Just 0))
-                ubg = cat $ GSlacks (catJV (fmap snd gbnds))
-                      (jfill (Just 0)) (jfill Nothing)
-                x0 = case mq0 of
-                  Nothing -> jfill 0
-                  Just q0 -> cat (JTuple (catJV q0) (catJV (Id 0)))
-            setX0 x0
-            setP p
-            setLbx lbx
-            setUbx ubx
-            setLbg lbg
-            setUbg ubg
-            (status, out) <- solve'
-            let JTuple xopt _ = split (xOpt out)
-            return $ case status of
-              Left msg -> Left msg
-              Right _ -> Right (splitJV xopt)
+          solveOne' (mq0, qbnds, gbnds', featuresData) =
+            fmap (fmap toSol) (solveOne x0 p xbnds gbnds)
+            where
+              toSol out = splitJV xopt
+                where
+                  JTuple xopt _ = split (xOpt out)
 
-  runNlpSolver solver fg Nothing Nothing Nothing Nothing action
+              p :: J (JTuple (JVec n (JV x)) (JVec n (JV Id))) (Vector Double)
+              p = cat $ JTuple fs' ds'
+                where
+                  fitFeatures :: Vec n (x Double)
+                  (fitFeatures, fitData) = TV.tvunzip featuresData
+                  fs' = cat $ JVec $ fmap catJV fitFeatures
+                  ds' = cat $ JVec $ fmap (catJV . Id) fitData
+              xbnds = cat $ JTuple (catJV qbnds) (catJV (Id (Nothing, Nothing)))
+              gbnds = cat $ GSlacks (catJV gbnds')
+                      (jfill (Nothing, Just 0)) (jfill (Just 0, Nothing))
+              x0 = case mq0 of
+                Nothing -> jfill 0
+                Just q0 -> cat (JTuple (catJV q0) (catJV (Id 0)))
+
+  withNlpSolver solver fg Nothing Nothing Nothing Nothing action
