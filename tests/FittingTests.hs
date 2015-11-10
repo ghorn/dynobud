@@ -70,6 +70,7 @@ testFit ::
   -> (Solver
       -> (forall a . (Floating a, ArcTan2 a) => Id a -> None a -> a)
       -> (forall a . (Floating a, ArcTan2 a) => Id a -> None a)
+      -> Maybe (Id Double)
       -> Id Bounds
       -> None Bounds
       -> M.Map String Opt
@@ -78,7 +79,7 @@ testFit ::
      )
   -> HUnit.Assertion
 testFit expectedValue fit = toHUnit $ do
-  ret <- fit solver fitModel (const None) qbounds gbounds mapOptions fitData
+  ret <- fit solver fitModel (const None) Nothing qbounds gbounds mapOptions fitData
   return $ case ret of
     Left msg -> Just msg
     Right (Id x)
