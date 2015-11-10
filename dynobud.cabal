@@ -26,6 +26,7 @@ library
                        Dyno.SimpleOcp
                        Dyno.Ocp
                        Dyno.OcpHomotopy
+                       Dyno.DirectCollocation
                        Dyno.DirectCollocation.ActiveConstraints
                        Dyno.DirectCollocation.CheckAccuracy
                        Dyno.DirectCollocation.Dynamic
