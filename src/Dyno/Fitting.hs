@@ -6,9 +6,9 @@
 {-# LANGUAGE PolyKinds #-}
 
 module Dyno.Fitting
-       ( l1Fit, l1Fits
-       , l2Fit, l2Fits
-       , lInfFit, lInfFits
+       ( l1Fit, l1Fits, withL1Fit
+       , l2Fit, l2Fits, withL2Fit
+       , lInfFit, lInfFits, withLInfFit
        ) where
 
 import GHC.Generics ( Generic )
