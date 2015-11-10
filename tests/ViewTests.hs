@@ -3,6 +3,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE PolyKinds #-}
 
 module ViewTests
@@ -42,6 +43,7 @@ import Dyno.View.Unsafe ( M(UnsafeM), mkM )
 import Dyno.TypeVecs ( Vec, Dim )
 import Dyno.Vectorize ( Vectorize(..), Id, fill )
 import Dyno.View.View ( View(..), J, JV, JNone, JTuple, JTriple, JQuad )
+import Dyno.View.JVec ( JVec )
 import Dyno.View.M
 import Dyno.View.Cov ( Cov, fromMat, toMat )
 
@@ -603,12 +605,28 @@ test_sumCols = HUnit.assertEqual "" x y
     y :: M (JV V2) (JV Id) DMatrix
     y = sumCols sumInput
 
+test_reshape :: HUnit.Assertion
+test_reshape = HUnit.assertEqual "" x y
+  where
+    j :: J (JVec 3 (JV V2)) DMatrix
+    j = countUp
+
+    x :: M (JV V2) (JVec 3 (JV Id)) DMatrix
+    x = mkM $ blockcat'
+        [ [0, 2, 4]
+        , [1, 3, 5]
+        ]
+
+    y :: M (JV V2) (JVec 3 (JV Id)) DMatrix
+    y = reshape j
+
 viewTests :: Test
 viewTests =
-  testGroup "view tests"
+  testGroup "view tests" $
   [ testCase "blockcat scalars" test_blockcatScalars
   , testCase "blockcat blocks" test_blockcatBlocks
   , testCase "blocksplit" test_blockSplit
+  , testCase "reshape" test_reshape
   , testCase "sumInput" test_sumInput
   , testCase "sumRows" test_sumRows
   , testCase "sumCols" test_sumCols

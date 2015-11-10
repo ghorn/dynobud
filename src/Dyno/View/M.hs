@@ -46,6 +46,7 @@ module Dyno.View.M
        , fromHMat
        , fromHMat'
        , blockSplit
+       , reshape
          -- * hmatrix wrappers
        , rcond
        , rank
@@ -67,6 +68,7 @@ import Casadi.Viewable ( Viewable(..) )
 import Dyno.View.Unsafe ( M(UnsafeM), mkM, mkM', unM )
 import Dyno.Vectorize ( Vectorize(..), Id, fill, devectorize )
 import Dyno.TypeVecs ( Vec, Dim(..) )
+import qualified Dyno.TypeVecs as TV
 import Dyno.View.View ( View(..), J, S, JV, JTuple, JTriple, JQuad )
 import Dyno.View.JVec ( JVec )
 
@@ -382,3 +384,13 @@ sumRows (UnsafeM x) = mkM (CM.sumRows x)
 
 sumCols :: (View f, View g, CMatrix a) => M f g a -> M f (JV Id) a
 sumCols (UnsafeM x) = mkM (CM.sumCols x)
+
+-- | reshape a vector into a column-major matrix
+reshape ::
+  forall n f a
+  . (Dim n, View f, CMatrix a)
+  => J (JVec n f) a -> M f (JVec n (JV Id)) a
+reshape (UnsafeM x) = mkM (CM.reshape x (nx, ny))
+  where
+    nx = size (Proxy :: Proxy f)
+    ny = TV.reflectDim (Proxy :: Proxy n)
