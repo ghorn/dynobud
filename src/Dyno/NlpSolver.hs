@@ -10,6 +10,8 @@ module Dyno.NlpSolver
        , RunNlpOptions(..)
        , runNlpSolverWith
        , defaultRunnerOptions
+       , withNlpSolver
+       , withNlpSolver'
          -- * solve
        , solve
        , solve'
@@ -94,12 +96,12 @@ import qualified Casadi.GenericC as Gen
 
 import Dyno.FormatTime ( formatSeconds )
 import qualified Dyno.View.M as M
-import Dyno.Nlp ( NlpOut(..), KKT(..) )
+import Dyno.Nlp ( NlpOut(..), KKT(..), Bounds )
 import Dyno.NlpScaling ( ScaleFuns(..), scaledFG, mkScaleFuns )
 import Dyno.SolverInternal ( SolverInternal(..) )
 import Dyno.Solvers ( Solver(..), getSolverInternal )
 import Dyno.Vectorize ( Id(..) )
-import Dyno.View.View ( View(..), J, S, JV, fmapJ, d2v, v2d, jfill )
+import Dyno.View.View ( View(..), J, S, JV, fmapJ, d2v, v2d, jfill, unzipJ )
 import Dyno.View.M ( M )
 import Dyno.View.Unsafe ( mkM, unM )
 
@@ -667,3 +669,60 @@ runNlpSolverWith runnerOptions solverStuff nlpFun scaleX scaleG scaleF callback'
   (ret, retTime) <- timeIt $ liftIO $ runReaderT nlpMonad nlpState
   when (verbose runnerOptions) $ printf "ran NLP monad in %s\n" (formatSeconds retTime)
   return ret
+
+
+withNlpSolver ::
+  forall x p g a .
+  (View x, View p, View g)
+  => Solver
+  -> (J x MX -> J p MX -> (S MX, J g MX))
+  -> Maybe (J x (Vector Double))
+  -> Maybe (J g (Vector Double))
+  -> Maybe Double
+  -> Maybe (J x (Vector Double) -> J p (Vector Double) -> IO Bool)
+  -> ((J x (Vector Double) -> J p (Vector Double)
+       -> J x (Vector Bounds) -> J g (Vector Bounds)
+       -> NlpSolver x p g (Either String (NlpOut x g (Vector Double)))
+      ) -> NlpSolver x p g a)
+  -> IO a
+withNlpSolver = withNlpSolver' defaultRunnerOptions
+
+withNlpSolver' ::
+  forall x p g a .
+  (View x, View p, View g)
+  => RunNlpOptions
+  -> Solver
+  -> (J x MX -> J p MX -> (S MX, J g MX))
+  -> Maybe (J x (Vector Double))
+  -> Maybe (J g (Vector Double))
+  -> Maybe Double
+  -> Maybe (J x (Vector Double) -> J p (Vector Double) -> IO Bool)
+  -> ((J x (Vector Double) -> J p (Vector Double)
+       -> J x (Vector Bounds) -> J g (Vector Bounds)
+       -> NlpSolver x p g (Either String (NlpOut x g (Vector Double)))
+      ) -> NlpSolver x p g a)
+  -> IO a
+withNlpSolver' opts solver fg sx sg sf cb userFun =
+  runNlpSolverWith opts solver fg sx sg sf cb action
+  where
+    action :: NlpSolver x p g a
+    action = userFun solveOne
+      where
+        solveOne ::
+          J x (Vector Double) -> J p (Vector Double)
+          -> J x (Vector Bounds) -> J g (Vector Bounds)
+          -> NlpSolver x p g (Either String (NlpOut x g (Vector Double)))
+        solveOne x0 p xbnds gbnds = do
+          setX0 x0
+          setP p
+          let (lbx, ubx) = unzipJ xbnds
+              (lbg, ubg) = unzipJ gbnds
+          setLbx lbx
+          setUbx ubx
+          setLbg lbg
+          setUbg ubg
+          (status, out) <- solve'
+          return $ case status of
+            Left msg -> Left msg
+            Right _ -> Right out
+
