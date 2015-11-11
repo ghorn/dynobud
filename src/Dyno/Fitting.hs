@@ -9,6 +9,7 @@ module Dyno.Fitting
        ( l1Fit, l1Fits, withL1Fit
        , l2Fit, l2Fits, withL2Fit
        , lInfFit, lInfFits, withLInfFit
+       , L1X(..), GSlacks(..)
        ) where
 
 import GHC.Generics ( Generic )
