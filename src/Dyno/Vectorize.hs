@@ -24,6 +24,7 @@ module Dyno.Vectorize
        , Id(..)
        , Tuple(..)
        , Triple(..)
+       , Quad(..)
        , vlength
        , vzipWith
        , vzipWith3
@@ -96,6 +97,19 @@ instance (Vectorize f, Vectorize g, Vectorize h,
           Applicative f, Applicative g, Applicative h)
          => Linear.Additive (Triple f g h) where
   zero = Triple (fill 0) (fill 0) (fill 0)
+
+
+-- | a length-4 vectorizable type
+data Quad f g h i a = Quad { unFst4 :: f a, unSnd4 :: g a, unThd4 :: h a, unFth4 :: i a }
+                    deriving (Eq, Ord, Generic, Generic1, Functor, F.Foldable, T.Traversable, Show)
+instance (Vectorize f, Vectorize g, Vectorize h, Vectorize i) => Vectorize (Quad f g h i)
+instance (Applicative f, Applicative g, Applicative h, Applicative i) => Applicative (Quad f g h i) where
+  pure x = Quad (pure x) (pure x) (pure x) (pure x)
+  Quad fx fy fz fw <*> Quad x y z w = Quad (fx <*> x) (fy <*> y) (fz <*> z) (fw <*> w)
+instance (Vectorize f, Vectorize g, Vectorize h, Vectorize i,
+          Applicative f, Applicative g, Applicative h, Applicative i)
+         => Linear.Additive (Quad f g h i) where
+  zero = Quad (fill 0) (fill 0) (fill 0) (fill 0)
 
 
 instance Lookup (None a)
