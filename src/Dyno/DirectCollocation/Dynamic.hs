@@ -58,7 +58,7 @@ addCollocationChannel name action = addChannel name sameMeta toSignalTree action
   where
     toSignalTree ::
       (DynPlotPoints Double, CollTrajMeta)
-      -> [Tree ( String
+      -> [Tree ( [String]
                , String
                , Maybe ((DynPlotPoints Double, CollTrajMeta) -> [[(Double, Double)]])
                )]
@@ -208,7 +208,7 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
             t = t0 + h*tau
 
 
-data NameTree = NameTreeNode (String,String) [(String,NameTree)]
+data NameTree = NameTreeNode (String, String) [(String, NameTree)]
               | NameTreeLeaf Int
               deriving (Show, Eq, Generic)
 instance Binary NameTree
@@ -227,7 +227,7 @@ instance Binary CollTrajMeta
 instance Serialize CollTrajMeta
 
 namesFromAccTree :: AccessorTree a -> NameTree
-namesFromAccTree x = (\(_,(_,y)) -> y) $ namesFromAccTree' 0 ("",x)
+namesFromAccTree x = (\(_,(_,y)) -> y) $ namesFromAccTree' 0 ("", x)
 
 namesFromAccTree' :: Int -> (String, AccessorTree a) -> (Int, (String, NameTree))
 namesFromAccTree' k (nm, Field _) = (k+1, (nm, NameTreeLeaf k))
@@ -236,28 +236,32 @@ namesFromAccTree' k0 (nm, Data names ats) = (k, (nm, NameTreeNode names children
     (k, children) = mapAccumL namesFromAccTree' k0 ats
 
 
-type MetaTree a = Tree.Forest (String, String, Maybe ((DynPlotPoints a, CollTrajMeta) -> [[(a,a)]]))
+type MetaTree a = Tree.Forest ([String], String, Maybe ((DynPlotPoints a, CollTrajMeta) -> [[(a,a)]]))
 
 forestFromMeta :: CollTrajMeta -> MetaTree Double
 forestFromMeta meta = [xTree,zTree,uTree,oTree,xdTree,hTree,poTree,qTree,qdTree]
   where
-    xTree  = blah (\(DynPlotPoints x _ _ _  _ _  _ _ _ ) ->  x) "differential states" (ctmX meta)
-    zTree  = blah (\(DynPlotPoints _ z _ _  _ _  _ _ _ ) ->  z) "algebraic variables" (ctmZ meta)
-    uTree  = blah (\(DynPlotPoints _ _ u _  _ _  _ _ _ ) ->  u) "controls" (ctmU meta)
-    oTree  = blah (\(DynPlotPoints _ _ _ o  _ _  _ _ _ ) ->  o) "outputs" (ctmO meta)
-    xdTree = blah (\(DynPlotPoints _ _ _ _ xd _  _ _ _ ) -> xd) "diff state derivatives" (ctmX meta)
-    hTree  = blah (\(DynPlotPoints _ _ _ _  _ h  _ _ _ ) ->  h) "path constraints" (ctmH meta)
-    poTree = blah (\(DynPlotPoints _ _ _ _  _ _ po _ _ ) -> po) "plot outputs" (ctmPo meta)
-    qTree  = blah (\(DynPlotPoints _ _ _ _  _ _  _ q _ ) ->  q) "quadrature states" (ctmQ meta)
-    qdTree = blah (\(DynPlotPoints _ _ _ _  _ _  _ _ qd) -> qd) "ddt(quadrature states)" (ctmQ meta)
+    xTree  = blah (\(DynPlotPoints x _ _ _  _ _  _ _ _ ) ->  x) ["differential states"] (ctmX meta)
+    zTree  = blah (\(DynPlotPoints _ z _ _  _ _  _ _ _ ) ->  z) ["algebraic variables"] (ctmZ meta)
+    uTree  = blah (\(DynPlotPoints _ _ u _  _ _  _ _ _ ) ->  u) ["controls"] (ctmU meta)
+    oTree  = blah (\(DynPlotPoints _ _ _ o  _ _  _ _ _ ) ->  o) ["outputs"] (ctmO meta)
+    xdTree = blah (\(DynPlotPoints _ _ _ _ xd _  _ _ _ ) -> xd) ["diff state derivatives"] (ctmX meta)
+    hTree  = blah (\(DynPlotPoints _ _ _ _  _ h  _ _ _ ) ->  h) ["path constraints"] (ctmH meta)
+    poTree = blah (\(DynPlotPoints _ _ _ _  _ _ po _ _ ) -> po) ["plot outputs"] (ctmPo meta)
+    qTree  = blah (\(DynPlotPoints _ _ _ _  _ _  _ q _ ) ->  q) ["quadrature states"] (ctmQ meta)
+    qdTree = blah (\(DynPlotPoints _ _ _ _  _ _  _ _ qd) -> qd) ["ddt(quadrature states)"] (ctmQ meta)
 
     blah :: forall f c t
             . (Functor f, F.Foldable f)
-            => (c -> f (f (t, Vector t))) -> String -> NameTree
-            -> Tree (String, String, Maybe ((c,CollTrajMeta) -> [[(t, t)]]))
+            => (c -> f (f (t, Vector t))) -> [String] -> NameTree
+            -> Tree ([String], String, Maybe ((c, CollTrajMeta) -> [[(t, t)]]))
     blah f myname (NameTreeNode (nm1,_) children) =
-      Tree.Node (myname,nm1,Nothing) $ map (uncurry (blah f)) children
-    blah f myname (NameTreeLeaf k) = Tree.Node (myname,"",Just (woo . f . fst)) []
+      Tree.Node (reverse myname, nm1, Nothing) $ map g children
+      where
+        g :: (String, NameTree)
+          -> Tree ([String], String, Maybe ((c, CollTrajMeta) -> [[(t, t)]]))
+        g (x, y) = blah f (x:myname) y
+    blah f myname (NameTreeLeaf k) = Tree.Node (reverse myname, "", Just (woo . f . fst)) []
       where
         woo :: f (f (t, Vector t)) -> [[(t, t)]]
         woo = F.toList . fmap (F.toList . fmap (\(t,x) -> (t, x V.! k)))
