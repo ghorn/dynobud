@@ -241,15 +241,15 @@ type MetaTree a = Tree.Forest ([String], String, Maybe ((DynPlotPoints a, CollTr
 forestFromMeta :: CollTrajMeta -> MetaTree Double
 forestFromMeta meta = [xTree,zTree,uTree,oTree,xdTree,hTree,poTree,qTree,qdTree]
   where
-    xTree  = blah (\(DynPlotPoints x _ _ _  _ _  _ _ _ ) ->  x) ["differential states"] (ctmX meta)
-    zTree  = blah (\(DynPlotPoints _ z _ _  _ _  _ _ _ ) ->  z) ["algebraic variables"] (ctmZ meta)
+    xTree  = blah (\(DynPlotPoints x _ _ _  _ _  _ _ _ ) ->  x) ["diff states"] (ctmX meta)
+    zTree  = blah (\(DynPlotPoints _ z _ _  _ _  _ _ _ ) ->  z) ["alg vars"] (ctmZ meta)
     uTree  = blah (\(DynPlotPoints _ _ u _  _ _  _ _ _ ) ->  u) ["controls"] (ctmU meta)
     oTree  = blah (\(DynPlotPoints _ _ _ o  _ _  _ _ _ ) ->  o) ["outputs"] (ctmO meta)
-    xdTree = blah (\(DynPlotPoints _ _ _ _ xd _  _ _ _ ) -> xd) ["diff state derivatives"] (ctmX meta)
+    xdTree = blah (\(DynPlotPoints _ _ _ _ xd _  _ _ _ ) -> xd) ["ddt(diff states)"] (ctmX meta)
     hTree  = blah (\(DynPlotPoints _ _ _ _  _ h  _ _ _ ) ->  h) ["path constraints"] (ctmH meta)
     poTree = blah (\(DynPlotPoints _ _ _ _  _ _ po _ _ ) -> po) ["plot outputs"] (ctmPo meta)
     qTree  = blah (\(DynPlotPoints _ _ _ _  _ _  _ q _ ) ->  q) ["quadrature states"] (ctmQ meta)
-    qdTree = blah (\(DynPlotPoints _ _ _ _  _ _  _ _ qd) -> qd) ["ddt(quadrature states)"] (ctmQ meta)
+    qdTree = blah (\(DynPlotPoints _ _ _ _  _ _  _ _ qd) -> qd) ["ddt(quad states)"] (ctmQ meta)
 
     blah :: forall f c t
             . (Functor f, F.Foldable f)
