@@ -47,6 +47,7 @@ module Dyno.View.M
        , fromHMat'
        , blockSplit
        , reshape
+       , reshape'
          -- * hmatrix wrappers
        , rcond
        , rank
@@ -391,6 +392,16 @@ reshape ::
   . (Dim n, View f, CMatrix a)
   => J (JVec n f) a -> M f (JVec n (JV Id)) a
 reshape (UnsafeM x) = mkM (CM.reshape x (nx, ny))
+  where
+    nx = size (Proxy :: Proxy f)
+    ny = TV.reflectDim (Proxy :: Proxy n)
+
+-- | reshape a column-major matrix into a vector
+reshape' ::
+  forall n f a
+  . (Dim n, View f, CMatrix a)
+  => M f (JVec n (JV Id)) a -> J (JVec n f) a
+reshape' (UnsafeM x) = mkM (CM.reshape x (nx*ny, 1))
   where
     nx = size (Proxy :: Proxy f)
     ny = TV.reflectDim (Proxy :: Proxy n)
