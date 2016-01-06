@@ -90,7 +90,7 @@ library
                        cereal,
                        distributive,
                        process,
-                       Plot-ho-matic >= 0.7.0.0,
+                       Plot-ho-matic >= 0.8.0.0,
                        generic-accessors >= 0.5.0.0,
                        time,
                        directory,

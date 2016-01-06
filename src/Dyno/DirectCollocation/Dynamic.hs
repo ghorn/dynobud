@@ -59,8 +59,7 @@ addCollocationChannel name action = addChannel name sameMeta toSignalTree action
     toSignalTree ::
       (DynPlotPoints Double, CollTrajMeta)
       -> [Tree ( [String]
-               , String
-               , Maybe ((DynPlotPoints Double, CollTrajMeta) -> [[(Double, Double)]])
+               , Either String ((DynPlotPoints Double, CollTrajMeta) -> [[(Double, Double)]])
                )]
     toSignalTree = forestFromMeta . snd
 
@@ -236,32 +235,32 @@ namesFromAccTree' k0 (nm, Data names ats) = (k, (nm, NameTreeNode names children
     (k, children) = mapAccumL namesFromAccTree' k0 ats
 
 
-type MetaTree a = Tree.Forest ([String], String, Maybe ((DynPlotPoints a, CollTrajMeta) -> [[(a,a)]]))
+type MetaTree a = Tree.Forest ([String], Either String ((DynPlotPoints a, CollTrajMeta) -> [[(a,a)]]))
 
 forestFromMeta :: CollTrajMeta -> MetaTree Double
-forestFromMeta meta = [xTree,zTree,uTree,oTree,xdTree,hTree,poTree,qTree,qdTree]
+forestFromMeta meta =
+  [ blah (\(DynPlotPoints x _ _ _  _ _  _ _ _ ) ->  x) ["diff states"] (ctmX meta)
+  , blah (\(DynPlotPoints _ z _ _  _ _  _ _ _ ) ->  z) ["alg vars"] (ctmZ meta)
+  , blah (\(DynPlotPoints _ _ u _  _ _  _ _ _ ) ->  u) ["controls"] (ctmU meta)
+  , blah (\(DynPlotPoints _ _ _ o  _ _  _ _ _ ) ->  o) ["outputs"] (ctmO meta)
+  , blah (\(DynPlotPoints _ _ _ _ xd _  _ _ _ ) -> xd) ["ddt(diff states)"] (ctmX meta)
+  , blah (\(DynPlotPoints _ _ _ _  _ h  _ _ _ ) ->  h) ["path constraints"] (ctmH meta)
+  , blah (\(DynPlotPoints _ _ _ _  _ _ po _ _ ) -> po) ["plot outputs"] (ctmPo meta)
+  , blah (\(DynPlotPoints _ _ _ _  _ _  _ q _ ) ->  q) ["quadrature states"] (ctmQ meta)
+  , blah (\(DynPlotPoints _ _ _ _  _ _  _ _ qd) -> qd) ["ddt(quad states)"] (ctmQ meta)
+  ]
   where
-    xTree  = blah (\(DynPlotPoints x _ _ _  _ _  _ _ _ ) ->  x) ["diff states"] (ctmX meta)
-    zTree  = blah (\(DynPlotPoints _ z _ _  _ _  _ _ _ ) ->  z) ["alg vars"] (ctmZ meta)
-    uTree  = blah (\(DynPlotPoints _ _ u _  _ _  _ _ _ ) ->  u) ["controls"] (ctmU meta)
-    oTree  = blah (\(DynPlotPoints _ _ _ o  _ _  _ _ _ ) ->  o) ["outputs"] (ctmO meta)
-    xdTree = blah (\(DynPlotPoints _ _ _ _ xd _  _ _ _ ) -> xd) ["ddt(diff states)"] (ctmX meta)
-    hTree  = blah (\(DynPlotPoints _ _ _ _  _ h  _ _ _ ) ->  h) ["path constraints"] (ctmH meta)
-    poTree = blah (\(DynPlotPoints _ _ _ _  _ _ po _ _ ) -> po) ["plot outputs"] (ctmPo meta)
-    qTree  = blah (\(DynPlotPoints _ _ _ _  _ _  _ q _ ) ->  q) ["quadrature states"] (ctmQ meta)
-    qdTree = blah (\(DynPlotPoints _ _ _ _  _ _  _ _ qd) -> qd) ["ddt(quad states)"] (ctmQ meta)
-
     blah :: forall f c t
             . (Functor f, F.Foldable f)
             => (c -> f (f (t, Vector t))) -> [String] -> NameTree
-            -> Tree ([String], String, Maybe ((c, CollTrajMeta) -> [[(t, t)]]))
+            -> Tree ([String], Either String ((c, CollTrajMeta) -> [[(t, t)]]))
     blah f myname (NameTreeNode (nm1,_) children) =
-      Tree.Node (reverse myname, nm1, Nothing) $ map g children
+      Tree.Node (reverse myname, Left nm1) $ map g children
       where
         g :: (String, NameTree)
-          -> Tree ([String], String, Maybe ((c, CollTrajMeta) -> [[(t, t)]]))
+          -> Tree ([String], Either String ((c, CollTrajMeta) -> [[(t, t)]]))
         g (x, y) = blah f (x:myname) y
-    blah f myname (NameTreeLeaf k) = Tree.Node (reverse myname, "", Just (woo . f . fst)) []
+    blah f myname (NameTreeLeaf k) = Tree.Node (reverse myname, Right (woo . f . fst)) []
       where
         woo :: f (f (t, Vector t)) -> [[(t, t)]]
         woo = F.toList . fmap (F.toList . fmap (\(t,x) -> (t, x V.! k)))
