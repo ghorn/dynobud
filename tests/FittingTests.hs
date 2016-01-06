@@ -47,8 +47,8 @@ solver = ipoptSolver
 --        L2   minimum should be 4/3
 --        Linf minimum should be 3/2
 
-fitModel :: Id a -> None a -> a
-fitModel (Id c) None = c
+fitModel :: Id a -> None a -> Id a
+fitModel c None = c
 
 qbounds :: Id Bounds
 qbounds = Id (Nothing, Nothing)
@@ -56,8 +56,8 @@ qbounds = Id (Nothing, Nothing)
 gbounds :: None Bounds
 gbounds = None
 
-fitData :: Vec 3 (None Double, Double)
-fitData = fmap (\x -> (None, x)) $ TV.mkVec' [1, 2, 1]
+fitData :: Vec 3 (None Double, Id Double)
+fitData = fmap (\x -> (None, Id x)) $ TV.mkVec' [1, 2, 1]
 
 mapOptions :: M.Map String Opt
 mapOptions =
@@ -67,19 +67,20 @@ mapOptions =
 
 testFit ::
   Double
-  -> (Solver
-      -> (forall a . (Floating a, ArcTan2 a) => Id a -> None a -> a)
+  -> (Double
+      -> Solver
+      -> (forall a . (Floating a, ArcTan2 a) => Id a -> None a -> Id a)
       -> (forall a . (Floating a, ArcTan2 a) => Id a -> None a)
       -> Maybe (Id Double)
       -> Id Bounds
       -> None Bounds
       -> M.Map String Opt
-      -> Vec 3 (None Double, Double)
+      -> Vec 3 (None Double, Id Double)
       -> IO (Either String (Id Double))
      )
   -> HUnit.Assertion
 testFit expectedValue fit = toHUnit $ do
-  ret <- fit solver fitModel (const None) Nothing qbounds gbounds mapOptions fitData
+  ret <- fit 0.0 solver fitModel (const None) Nothing qbounds gbounds mapOptions fitData
   return $ case ret of
     Left msg -> Just msg
     Right (Id x)
