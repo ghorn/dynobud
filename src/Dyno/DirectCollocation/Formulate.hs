@@ -565,11 +565,17 @@ toCallbacks n roots taus outputFun pathStageConFun lagQuadFun quadFun quadOutFun
     -- prepare callbacks
     f :: J (JV o) DMatrix ->  J (JV x) DMatrix -> J (JV h) DMatrix -> J (JV po) DMatrix
          -> Quadratures q qo Double -> Quadratures q qo Double
-         -> ( J (JV o) (Vector Double), J (JV x) (Vector Double), J (JV h) (Vector Double)
-            , J (JV po) (Vector Double)
-            , Quadratures q qo Double, Quadratures q qo Double
-            )
-    f o' x' h' po' q q' = (d2v o', d2v x', d2v h', d2v po', q, q')
+         -> StageOutputsPoint x o h q qo po Double
+    f o' x' h' po' q q' =
+      StageOutputsPoint
+      { sopO = d2v o'
+      , sopXDot = d2v x'
+      , sopH = d2v h'
+      , sopPo = d2v po'
+      , sopQs = q
+      , sopQDots = q'
+      }
+
 
     callOutputFun :: (J (JV x) DMatrix, J (JV x) DMatrix)
                      -> J (JV p) (Vector Double)

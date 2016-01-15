@@ -20,7 +20,7 @@ module Dyno.DirectCollocation.Export
 
 import Control.Lens ( (^.) )
 import Control.Monad ( unless )
-import Data.List ( unzip6, intercalate )
+import Data.List ( intercalate )
 import Data.Proxy ( Proxy(..) )
 import Linear.V ( Dim(..) )
 import Data.Vector ( Vector )
@@ -38,6 +38,7 @@ import Dyno.View.View ( View(..), splitJV, catJV )
 import Dyno.DirectCollocation.Formulate ( CollProblem(..), DirCollOptions(..) )
 import Dyno.DirectCollocation.Types ( CollTraj(..), CollOcpConstraints(..)
                                     , StageOutputs(..), Quadratures(..)
+                                    , StageOutputsPoint(..)
                                     , getXzus'''
                                     )
 import Dyno.DirectCollocation.Quadratures ( timesFromTaus )
@@ -151,25 +152,25 @@ exportTraj' mextra exportConfig cp fp nlpOut = do
       xdots :: [x Double]
       hs :: [h Double]
       -- drop the interpolated value
-      os = map splitJV os'
-      xdots = map splitJV xdots'
-      hs = map splitJV hs'
-      pos = map splitJV pos'
-      (os', xdots', hs', pos', _, _) = unzip6 $ F.concatMap (F.toList . soVec) outs
+      os = map (splitJV . sopO) stageOutputsPoints
+      xdots = map (splitJV . sopXDot) stageOutputsPoints
+      hs = map (splitJV . sopH) stageOutputsPoints
+      pos = map (splitJV . sopPo) stageOutputsPoints
+      stageOutputsPoints = F.concatMap (F.toList . soVec) outs
       qsFull :: [Quadratures q qo Double]
       qsFull = fill 0 : F.concatMap toQFull outs
         where
           toQFull :: StageOutputs x o h q qo po deg Double -> [Quadratures q qo Double]
-          toQFull stageOutputs = (map (\(_,_,_,_,qs',_) -> qs') (F.toList (soVec stageOutputs))) ++ [soQNext stageOutputs]
+          toQFull stageOutputs = (map sopQs (F.toList (soVec stageOutputs))) ++ [soQNext stageOutputs]
 
       qs :: [Quadratures q qo Double]
       qs = F.concatMap toQ outs
         where
           toQ :: StageOutputs x o h q qo po deg Double -> [Quadratures q qo Double]
-          toQ stageOutputs = map (\(_,_,_,_,qs',_) -> qs') (F.toList (soVec stageOutputs))
+          toQ stageOutputs = map sopQs (F.toList (soVec stageOutputs))
 
       toQd :: StageOutputs x o h q qo po deg Double -> [Quadratures q qo Double]
-      toQd stageOutputs = (map (\(_,_,_,_,_,qd) -> qd) (F.toList (soVec stageOutputs)))
+      toQd stageOutputs = (map sopQDots (F.toList (soVec stageOutputs)))
       qds :: [Quadratures q qo Double]
       qds = F.concatMap toQd outs
 

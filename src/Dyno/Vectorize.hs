@@ -111,7 +111,6 @@ instance (Vectorize f, Vectorize g, Vectorize h, Vectorize i,
          => Linear.Additive (Quad f g h i) where
   zero = Quad (fill 0) (fill 0) (fill 0) (fill 0)
 
-
 instance Lookup (None a)
 instance (Lookup a, Generic a) => Lookup (Id a)
 instance (Lookup (f a), Generic (f a),

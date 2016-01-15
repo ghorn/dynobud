@@ -31,6 +31,7 @@ module Dyno.DirectCollocation.Types
        , Quadratures(..)
        , StageOutputs(..)
        , StageOutputs'
+       , StageOutputsPoint(..)
          -- * robust
        , CollTrajCov(..)
        , CollOcpCovConstraints(..)
@@ -352,15 +353,23 @@ instance (Lookup a, Lookup (q a), Lookup (qo a)) => Lookup (Quadratures q qo a)
 instance (Serialize a, Serialize (q a), Serialize (qo a)) => Serialize (Quadratures q qo a)
 
 -- | for callbacks
+data StageOutputsPoint x o h q qo po a =
+  StageOutputsPoint
+  { sopO :: J (JV o) (Vector a)
+  , sopXDot :: J (JV x) (Vector a)
+  , sopH :: J (JV h) (Vector a)
+  , sopPo :: J (JV po) (Vector a)
+  , sopQs :: Quadratures q qo a -- qs
+  , sopQDots :: Quadratures q qo a -- qdots
+  } deriving Generic
+instance ( Serialize a, Serialize (q a), Serialize (qo a)
+         , Vectorize x, Vectorize o, Vectorize h, Vectorize po
+         ) => (Serialize (StageOutputsPoint x o h q qo po a))
+
+-- | for callbacks
 data StageOutputs x o h q qo po deg a =
   StageOutputs
-  { soVec :: Vec deg ( J (JV o) (Vector a)
-                     , J (JV x) (Vector a)
-                     , J (JV h) (Vector a)
-                     , J (JV po) (Vector a)
-                     , Quadratures q qo a -- qs
-                     , Quadratures q qo a -- qdots
-                     )
+  { soVec :: Vec deg (StageOutputsPoint x o h q qo po a)
   , soXNext :: J (JV x) (Vector a)
   , soQNext :: Quadratures q qo a
   } deriving Generic

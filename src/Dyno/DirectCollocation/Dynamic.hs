@@ -37,7 +37,7 @@ import PlotHo ( Plotter, addChannel )
 
 import Dyno.View.Unsafe ( unM, unM' )
 import Dyno.Vectorize ( Vectorize(..), Id(..), fill )
-import Dyno.View.View ( View(..), J, JV, splitJV )
+import Dyno.View.View ( View(..), JV, splitJV )
 import Dyno.View.M ( M )
 import Dyno.View.JVec ( JVec(..) )
 import qualified Dyno.TypeVecs as TV
@@ -177,10 +177,7 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
           unzip9 $ TV.unVec $ TV.tvzipWith3 g xzus0 (soVec stageOutputs) taus
 
         g :: CollPoint (JV x) (JV z) (JV u) (Vector a)
-             -> ( J (JV o) (Vector a), J (JV x) (Vector a), J (JV h) (Vector a)
-                , J (JV po) (Vector a)
-                , Quadratures q qo a, Quadratures q qo a
-                )
+             -> StageOutputsPoint x o h q qo po a
              -> a
              -> ( (a, V.Vector a)
                 , (a, V.Vector a)
@@ -192,16 +189,16 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
                 , (a, V.Vector a)
                 , (a, V.Vector a)
                 )
-        g (CollPoint x z u) (o,x',pathc,po,q,q') tau =
+        g (CollPoint x z u) sop tau =
           ( (t,unM'' "x" x)
           , (t,unM'' "z" z)
           , (t,unM'' "u" u)
-          , (t,unM'' "o" o)
-          , (t,unM'' "x'" x')
-          , (t,unM'' "h" pathc)
-          , (t,unM'' "po" po)
-          , (t,vectorize q)
-          , (t,vectorize q')
+          , (t,unM'' "o" (sopO sop))
+          , (t,unM'' "x'" (sopXDot sop))
+          , (t,unM'' "h" (sopH sop))
+          , (t,unM'' "po" (sopPo sop))
+          , (t,vectorize (sopQs sop))
+          , (t,vectorize (sopQDots sop))
           )
           where
             t = t0 + h*tau
