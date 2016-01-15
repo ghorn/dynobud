@@ -1,4 +1,4 @@
--- todo(greg):
+-- | todo(greg):
 -- a better name for this module would be Dyno.TechnicalDebt
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE ScopedTypeVariables #-}
