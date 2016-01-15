@@ -355,7 +355,8 @@ instance (Serialize a, Serialize (q a), Serialize (qo a)) => Serialize (Quadratu
 -- | for callbacks
 data StageOutputsPoint x o h q qo po a =
   StageOutputsPoint
-  { sopO :: J (JV o) (Vector a)
+  { sopT :: a
+  , sopO :: J (JV o) (Vector a)
   , sopXDot :: J (JV x) (Vector a)
   , sopH :: J (JV h) (Vector a)
   , sopPo :: J (JV po) (Vector a)
@@ -369,7 +370,9 @@ instance ( Serialize a, Serialize (q a), Serialize (qo a)
 -- | for callbacks
 data StageOutputs x o h q qo po deg a =
   StageOutputs
-  { soVec :: Vec deg (StageOutputsPoint x o h q qo po a)
+  { soT0 :: Double
+  , soX0 :: J (JV x) (Vector a)
+  , soVec :: Vec deg (StageOutputsPoint x o h q qo po a)
   , soXNext :: J (JV x) (Vector a)
   , soQNext :: Quadratures q qo a
   } deriving Generic

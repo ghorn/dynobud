@@ -563,12 +563,14 @@ toCallbacks n roots taus outputFun pathStageConFun lagQuadFun quadFun quadOutFun
   (getHellaOutputs, getPlotPoints, getOutputs)
   where
     -- prepare callbacks
-    f :: J (JV o) DMatrix ->  J (JV x) DMatrix -> J (JV h) DMatrix -> J (JV po) DMatrix
+    f :: S DMatrix
+         -> J (JV o) DMatrix ->  J (JV x) DMatrix -> J (JV h) DMatrix -> J (JV po) DMatrix
          -> Quadratures q qo Double -> Quadratures q qo Double
          -> StageOutputsPoint x o h q qo po Double
-    f o' x' h' po' q q' =
+    f t o' x' h' po' q q' =
       StageOutputsPoint
-      { sopO = d2v o'
+      { sopT = unId $ splitJV $ d2v t
+      , sopO = d2v o'
       , sopXDot = d2v x'
       , sopH = d2v h'
       , sopPo = d2v po'
@@ -597,9 +599,8 @@ toCallbacks n roots taus outputFun pathStageConFun lagQuadFun quadFun quadOutFun
         eval outputFun $ stage' :*: p' :*: fp' :*: (v2d h) :*: (v2d k)
 
       let stageTimes :: Vec deg (S DMatrix)
-          stageTimes = fmap (\tau -> t0 + realToFrac tau * h') taus
-            where
-              t0 = h' * v2d k
+          stageTimes = fmap (\tau -> stageT0 + realToFrac tau * h') taus
+          stageT0 = h' * v2d k
           stageTimes' = cat (JVec stageTimes)
           h' = v2d h
           pathCStageIn = PathCStageIn stage' p' fp' stageTimes' h'
@@ -638,14 +639,16 @@ toCallbacks n roots taus outputFun pathStageConFun lagQuadFun quadFun quadOutFun
           (xs,zs,us) = TV.tvunzip3 $ fmap (toXzu . split) (unJVec (split xzus))
             where
               toXzu (CollPoint x z u) = (x, z, u)
-              CollStage _ xzus = split stage'
+          CollStage stageX0 xzus = split stage'
           toQuadPlotIn x z u o q qo t = QuadraturePlottingIn x0 xF x z u p' o q qo fp' t tf
 
       pos <- T.mapM (eval quadPlotFun) quadPlotInputs
 
       let stageOutputs =
             StageOutputs
-            { soVec = TV.tvzipWith6 f outs0 xdots0 hs0 pos qs qdots
+            { soX0 = d2v stageX0
+            , soT0 = unId $ splitJV $ d2v stageT0
+            , soVec = f <$> stageTimes <*> outs0 <*> xdots0 <*> hs0 <*> pos <*> qs <*> qdots
             , soXNext = d2v xnext
             , soQNext = nextQuadratures
             }
