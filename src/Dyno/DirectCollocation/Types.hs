@@ -40,6 +40,7 @@ module Dyno.DirectCollocation.Types
 import GHC.Generics ( Generic, Generic1 )
 
 import Linear.V ( Dim(..) )
+import Data.Aeson ( FromJSON, ToJSON )
 import Data.Vector ( Vector )
 import Data.Serialize ( Serialize )
 
@@ -351,6 +352,8 @@ data Quadratures q qo a =
 instance (Vectorize q, Vectorize qo) => Vectorize (Quadratures q qo)
 instance (Lookup a, Lookup (q a), Lookup (qo a)) => Lookup (Quadratures q qo a)
 instance (Serialize a, Serialize (q a), Serialize (qo a)) => Serialize (Quadratures q qo a)
+instance (FromJSON a, FromJSON (q a), FromJSON (qo a)) => FromJSON (Quadratures q qo a)
+instance (ToJSON a, ToJSON (q a), ToJSON (qo a)) => ToJSON (Quadratures q qo a)
 
 -- | for callbacks
 data StageOutputsPoint x o h q qo po a =
