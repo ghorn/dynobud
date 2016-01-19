@@ -129,12 +129,10 @@ instance (ToJSON a, ToJSON (f a), ToJSON (g a), ToJSON (h a), ToJSON (i a))
          => ToJSON (Quad f g h i a)
 
 instance Lookup (None a)
-instance (Lookup a, Generic a) => Lookup (Id a)
-instance (Lookup (f a), Generic (f a),
-          Lookup (g a), Generic (g a)) => Lookup (Tuple f g a)
-instance (Lookup (f a), Generic (f a),
-          Lookup (g a), Generic (g a),
-          Lookup (h a), Generic (h a)) => Lookup (Triple f g h a)
+instance Lookup a => Lookup (Id a)
+instance (Lookup (f a), Lookup (g a)) => Lookup (Tuple f g a)
+instance (Lookup (f a), Lookup (g a), Lookup (h a)) => Lookup (Triple f g h a)
+instance (Lookup (f a), Lookup (g a), Lookup (h a), Lookup (i a)) => Lookup (Quad f g h i a)
 instance Vectorize Linear.V0
 instance Vectorize Linear.V1
 instance Vectorize Linear.V2
