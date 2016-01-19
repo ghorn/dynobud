@@ -40,6 +40,7 @@ import GHC.Generics
 
 import Accessors ( Field, Lookup, accessors, flatten, flatten' )
 import Control.Applicative
+import Data.Aeson ( FromJSON, ToJSON )
 import Data.Either ( partitionEithers )
 import Data.Serialize ( Serialize )
 import qualified Data.Vector as V
@@ -63,6 +64,8 @@ instance Applicative None where
   (<*>) = const (const None)
 instance Linear.Additive None where
 instance Serialize (None a)
+instance FromJSON a => FromJSON (None a)
+instance ToJSON a => ToJSON (None a)
 
 -- | a length-1 vectorizable type
 newtype Id a = Id { unId :: a }
@@ -73,6 +76,8 @@ instance Applicative Id where
   Id fx <*> Id x = Id (fx x)
 instance Linear.Additive Id where
 instance Serialize a => Serialize (Id a)
+instance FromJSON a => FromJSON (Id a)
+instance ToJSON a => ToJSON (Id a)
 
 
 -- | a length-2 vectorizable type
@@ -84,6 +89,10 @@ instance (Applicative f, Applicative g) => Applicative (Tuple f g) where
   Tuple fx fy <*> Tuple x y = Tuple (fx <*> x) (fy <*> y)
 instance (Vectorize f, Vectorize g, Applicative f, Applicative g) => Linear.Additive (Tuple f g) where
   zero = Tuple (fill 0) (fill 0)
+instance (FromJSON a, FromJSON (f a), FromJSON (g a))
+         => FromJSON (Tuple f g a)
+instance (ToJSON a, ToJSON (f a), ToJSON (g a))
+         => ToJSON (Tuple f g a)
 
 
 -- | a length-3 vectorizable type
@@ -97,6 +106,10 @@ instance (Vectorize f, Vectorize g, Vectorize h,
           Applicative f, Applicative g, Applicative h)
          => Linear.Additive (Triple f g h) where
   zero = Triple (fill 0) (fill 0) (fill 0)
+instance (FromJSON a, FromJSON (f a), FromJSON (g a), FromJSON (h a))
+         => FromJSON (Triple f g h a)
+instance (ToJSON a, ToJSON (f a), ToJSON (g a), ToJSON (h a))
+         => ToJSON (Triple f g h a)
 
 
 -- | a length-4 vectorizable type
@@ -110,6 +123,10 @@ instance (Vectorize f, Vectorize g, Vectorize h, Vectorize i,
           Applicative f, Applicative g, Applicative h, Applicative i)
          => Linear.Additive (Quad f g h i) where
   zero = Quad (fill 0) (fill 0) (fill 0) (fill 0)
+instance (FromJSON a, FromJSON (f a), FromJSON (g a), FromJSON (h a), FromJSON (i a))
+         => FromJSON (Quad f g h i a)
+instance (ToJSON a, ToJSON (f a), ToJSON (g a), ToJSON (h a), ToJSON (i a))
+         => ToJSON (Quad f g h i a)
 
 instance Lookup (None a)
 instance (Lookup a, Generic a) => Lookup (Id a)
