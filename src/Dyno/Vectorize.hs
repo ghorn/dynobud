@@ -20,6 +20,7 @@
 module Dyno.Vectorize
        ( Vectorize(..)
        , devectorize
+       , (:.)(..)
        , None(..)
        , Id(..)
        , Tuple(..)
@@ -38,9 +39,9 @@ module Dyno.Vectorize
 
 import GHC.Generics
 
-import Accessors ( Field, Lookup, accessors, flatten, flatten' )
+import Accessors ( Field, Lookup(..), accessors, flatten, flatten' )
 import Control.Applicative
-import Data.Aeson ( FromJSON, ToJSON )
+import Data.Aeson ( FromJSON(..), ToJSON(..) )
 import Data.Either ( partitionEithers )
 import Data.Serialize ( Serialize )
 import qualified Data.Vector as V
@@ -127,6 +128,19 @@ instance (FromJSON a, FromJSON (f a), FromJSON (g a), FromJSON (h a), FromJSON (
          => FromJSON (Quad f g h i a)
 instance (ToJSON a, ToJSON (f a), ToJSON (g a), ToJSON (h a), ToJSON (i a))
          => ToJSON (Quad f g h i a)
+
+infixl 9 :.
+-- | Functor composition
+newtype (g :. f) a = O {unO :: g (f a)} deriving (Eq, Show, Generic, Generic1)
+instance (Functor g, Functor f) => Functor (g :. f) where
+  fmap f (O x) = O $ fmap (fmap f) x
+instance (Vectorize g, Vectorize f) => Vectorize (g :. f)
+instance Lookup (g (f a)) => Lookup ((g :. f) a) where
+  toAccessorTree lens0 = toAccessorTree (lens0 . (\f x -> fmap O (f (unO x))))
+instance ToJSON (g (f a)) => ToJSON ((g :. f) a) where
+  toJSON = toJSON . unO
+instance FromJSON (g (f a)) => FromJSON ((g :. f) a) where
+  parseJSON x = O <$> parseJSON x
 
 instance Lookup (None a)
 instance Lookup a => Lookup (Id a)
