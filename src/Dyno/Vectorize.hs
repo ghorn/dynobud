@@ -43,7 +43,7 @@ import Accessors ( Field, Lookup(..), accessors, flatten, flatten' )
 import Control.Applicative
 import Data.Aeson ( FromJSON(..), ToJSON(..) )
 import Data.Either ( partitionEithers )
-import Data.Serialize ( Serialize )
+import Data.Serialize ( Serialize(..) )
 import qualified Data.Vector as V
 import qualified Data.Foldable as F
 import qualified Data.Traversable as T
@@ -141,6 +141,9 @@ instance ToJSON (g (f a)) => ToJSON ((g :. f) a) where
   toJSON = toJSON . unO
 instance FromJSON (g (f a)) => FromJSON ((g :. f) a) where
   parseJSON x = O <$> parseJSON x
+instance Serialize (g (f a)) => Serialize ((g :. f) a) where
+  get = O <$> get
+  put = put . unO
 
 instance Lookup (None a)
 instance Lookup a => Lookup (Id a)
