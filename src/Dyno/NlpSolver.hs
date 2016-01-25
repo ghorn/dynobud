@@ -75,6 +75,7 @@ import Data.Vector ( Vector )
 import qualified Data.Vector as V
 import Foreign.C.Types ( CInt )
 
+import System.IO ( stdout, hFlush )
 import System.Process ( callProcess, showCommandForUser )
 import Text.Printf ( printf )
 
@@ -438,6 +439,9 @@ solve = do
   solveStatus <- liftIO $ do
 
     stop <- newEmptyMVar -- mvar that will be filled when nlp finishes
+    -- Flush stdout so that solver output comes after user output
+    -- See https://github.com/haskell/process/issues/53
+    hFlush stdout
     _ <- forkIO (C.function_evaluate nlp >> putMVar stop ())
     -- wait until nlp finishes
     ret <- try (takeMVar stop)
@@ -609,7 +613,11 @@ runNlpSolverWith runnerOptions solverStuff nlpFun scaleX scaleG scaleF callback'
             xval <- fmap (d2v . xbarToX scale . mkM . CM.densify) $
                     C.ioInterfaceFunction_getOutput__2 function' 0
             pval <- readIORef paramRef
-            callback xval pval
+            r <- callback xval pval
+            -- Flush stdout so that solver output comes after user output
+            -- See https://github.com/haskell/process/issues/53
+            hFlush stdout
+            return r
         interrupt <- readIORef intref
         return $ if callbackRet && not interrupt then 0
                  else fromIntegral (solverInterruptCode (getSolverInternal solverStuff))
