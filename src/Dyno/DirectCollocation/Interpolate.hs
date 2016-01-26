@@ -18,7 +18,7 @@ import Linear.V
 import Linear ( lerp )
 
 import Dyno.View.Unsafe ( mkM, unM )
-import Dyno.View.View ( View(..), J, JV )
+import Dyno.View.View ( View(..), J, JV, jfill )
 import Dyno.View.JVec
 import Dyno.TypeVecs ( Vec )
 import Dyno.Vectorize ( Vectorize )
@@ -73,7 +73,7 @@ newtype Times deg a = Times (a, Vec deg a) deriving Functor
 interpolateTraj ::
   forall x z u p n0 n1 deg0 deg1
   . ( Dim n0, Dim n1, Dim deg0, Dim deg1
-    , Vectorize x, Vectorize z, Vectorize u
+    , Vectorize x, Vectorize z, Vectorize u, Vectorize p
     )
   => Vec deg0 Double
   -> CollTraj x z u p n0 deg0 (V.Vector Double)
@@ -96,7 +96,7 @@ interpolateTraj taus0 traj0 roots1 = traj0 { ctStages = cat (JVec (fmap cat stag
 
     stages0 :: Vec n0 (Vec deg0 (J (CollPoint (JV x) (JV z) (JV u)) (V.Vector Double)))
     stages0 = fmap (points . split) $ unJVec $ split (ctStages traj0)
-    points (CollStage _ ps) = unJVec (split ps)
+    points (CollStage _ ps _ _) = unJVec (split ps)
 
     times0 :: Vec n0 (TimeVal (Point x z u) deg0)
     times0 = TV.tvzipWith3 (\(t0,ts) t1 xs -> (t0, TV.tvzip ts xs, t1))
@@ -110,16 +110,16 @@ interpolateTraj taus0 traj0 roots1 = traj0 { ctStages = cat (JVec (fmap cat stag
     times1 :: Vec n1 (Double, Vec deg1 Double)
     times1 = timesFromTaus 0 taus1 dt1
 
-    stages1 :: Vec n1 (CollStage (JV x) (JV z) (JV u) deg1 (V.Vector Double))
+    stages1 :: Vec n1 (CollStage (JV x) (JV z) (JV u) (JV p) deg1 (V.Vector Double))
     stages1 = snd $ T.mapAccumL foo tzip0 times1
 
     foo :: TimeZ deg0 (Point x z u)
            -> (Double, Vec deg1 Double)
 
            -> ( TimeZ deg0 (Point x z u)
-              , CollStage (JV x) (JV z) (JV u) deg1 (V.Vector Double)
+              , CollStage (JV x) (JV z) (JV u) (JV p) deg1 (V.Vector Double)
               )
-    foo timez0 (t0, ts) = (timezf, CollStage x0 (cat (JVec xzus)))
+    foo timez0 (t0, ts) = (timezf, CollStage x0 (cat (JVec xzus)) (ctP traj0) (ctTf traj0))
       where
         CollPoint x0 _ _ = split xzu0
         (timez1, xzu0) = interp timez0 t0
@@ -129,14 +129,14 @@ interpolateTraj taus0 traj0 roots1 = traj0 { ctStages = cat (JVec (fmap cat stag
 -- | Re-discretize collocation constraints using the lagrange interpolation polynomials
 -- from the quadrature scheme. This is useful for lagrange multipliers.
 interpolateConstraints ::
-  forall x r c h n0 n1 deg0 deg1
+  forall x p r c h n0 n1 deg0 deg1
   . ( Dim n0, Dim n1, Dim deg0, Dim deg1
-    , Vectorize x, Vectorize r, Vectorize c, Vectorize h
+    , Vectorize x, Vectorize p, Vectorize r, Vectorize c, Vectorize h
     )
   => Vec deg0 Double
-  -> CollOcpConstraints x r c h n0 deg0 (V.Vector Double)
+  -> CollOcpConstraints x p r c h n0 deg0 (V.Vector Double)
   -> QuadratureRoots
-  -> CollOcpConstraints x r c h n1 deg1 (V.Vector Double)
+  -> CollOcpConstraints x p r c h n1 deg1 (V.Vector Double)
 interpolateConstraints taus0 con0 roots1 = con1
   where
     con1 = CollOcpConstraints
@@ -144,6 +144,8 @@ interpolateConstraints taus0 con0 roots1 = con1
            , coPathC = go' (coPathC con0)
            , coContinuity = cat (JVec cont)
            , coBc = coBc con0
+           , coParams = jfill 0
+           , coTfs = jfill 0
            }
 
     cont0 :: Vec n0 (J (JV x) (V.Vector Double))

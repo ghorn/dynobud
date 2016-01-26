@@ -134,5 +134,5 @@ solveOcp' simple _ _ = do
     Left msg -> return (Left msg)
     Right _ -> do
       let CollTraj _ _ stages' xf' = split (xOpt opt)
-          xs = map ((\(CollStage x _) -> splitJV x) . split) $ F.toList $ unJVec (split stages')
+          xs = map ((\(CollStage x _ _ _) -> splitJV x) . split) $ F.toList $ unJVec (split stages')
       return $ Right $ map (\(Tuple x u) -> (x, u)) (xs ++ [splitJV xf'])

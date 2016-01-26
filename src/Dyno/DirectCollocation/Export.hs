@@ -74,7 +74,7 @@ exportTraj ::
   => ExportConfig
   -> CollProblem x z u p r o c h q qo po fp n deg
   -> fp Double
-  -> NlpOut (CollTraj x z u p n deg) (CollOcpConstraints x r c h n deg) (Vector Double)
+  -> NlpOut (CollTraj x z u p n deg) (CollOcpConstraints x p r c h n deg) (Vector Double)
   -> IO Export
 exportTraj = exportTraj' (Nothing :: Maybe ([String], None Double))
 
@@ -101,7 +101,7 @@ exportTraj' ::
   -> ExportConfig
   -> CollProblem x z u p r o c h q qo po fp n deg
   -> fp Double
-  -> NlpOut (CollTraj x z u p n deg) (CollOcpConstraints x r c h n deg) (Vector Double)
+  -> NlpOut (CollTraj x z u p n deg) (CollOcpConstraints x p r c h n deg) (Vector Double)
   -> IO Export
 exportTraj' mextra exportConfig cp fp nlpOut = do
   let matlabRetName = ecMatlabVariableName exportConfig

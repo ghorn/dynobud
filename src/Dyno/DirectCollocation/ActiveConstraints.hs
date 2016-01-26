@@ -127,7 +127,7 @@ getActiveConstraints ::
     )
   => (J (CollTraj x z u p n deg) (Vector Double)
       -> J (JV fp) (Vector Double)
-      -> IO (J (CollOcpConstraints x r c h n deg) (Vector Double))
+      -> IO (J (CollOcpConstraints x p r c h n deg) (Vector Double))
      )
   -> OcpPhase x z u p r o c h q qo po fp
   -> Double
@@ -147,7 +147,7 @@ whatsActive ::
     )
   => Double
   -> CollTraj x z u p n deg (Vector Double)
-  -> CollOcpConstraints x r c h n deg (Vector Double)
+  -> CollOcpConstraints x p r c h n deg (Vector Double)
   -> OcpPhaseInputs x z u p c h fp
   -> OcpPhase x z u p r o c h q qo po fp
   -> ActiveConstraints x z u p h c (Active Int)

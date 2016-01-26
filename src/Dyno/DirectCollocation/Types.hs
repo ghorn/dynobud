@@ -64,7 +64,7 @@ data CollTraj x z u p n deg a =
   CollTraj
   { ctTf :: S a
   , ctP :: J (JV p) a
-  , ctStages :: J (JVec n (CollStage (JV x) (JV z) (JV u) deg)) a
+  , ctStages :: J (JVec n (CollStage (JV x) (JV z) (JV u) (JV p) deg)) a
   , ctXf :: J (JV x) a
   } deriving (Eq, Generic, Show)
 
@@ -73,8 +73,8 @@ data CollTrajCov sx x z u p n deg a =
   CollTrajCov (J (Cov (JV sx)) a) (J (CollTraj x z u p n deg) a)
   deriving (Eq, Generic, Show)
 
-data CollStage x z u deg a =
-  CollStage (J x a) (J (JVec deg (CollPoint x z u)) a)
+data CollStage x z u p deg a =
+  CollStage (J x a) (J (JVec deg (CollPoint x z u)) a) (J p a) (S a)
   deriving (Eq, Generic, Show)
 
 data CollPoint x z u a =
@@ -87,14 +87,16 @@ data CollStageConstraints x deg r a =
   deriving (Eq, Generic, Show)
 
 -- | CollOcpConstraints using type families to compress type parameters
-type CollOcpConstraints' ocp n deg = CollOcpConstraints (X ocp) (R ocp) (C ocp) (H ocp) n deg
+type CollOcpConstraints' ocp n deg = CollOcpConstraints (X ocp) (P ocp) (R ocp) (C ocp) (H ocp) n deg
 
-data CollOcpConstraints x r c h n deg a =
+data CollOcpConstraints x p r c h n deg a =
   CollOcpConstraints
   { coCollPoints :: J (JVec n (JVec deg (JV r))) a
   , coContinuity :: J (JVec n (JV x)) a
   , coPathC :: J (JVec n (JVec deg (JV h))) a
   , coBc :: J (JV c) a
+  , coParams :: J (JVec n (JV p)) a
+  , coTfs :: J (JVec n (JV Id)) a
   } deriving (Eq, Generic, Show)
 
 data CollOcpCovConstraints ocp n deg sh shr sc a =
@@ -107,7 +109,7 @@ data CollOcpCovConstraints ocp n deg sh shr sc a =
 
 -- View instances
 instance (View x, View z, View u) => View (CollPoint x z u)
-instance (View x, View z, View u, Dim deg) => View (CollStage x z u deg)
+instance (View x, View z, View u, View p, Dim deg) => View (CollStage x z u p deg)
 instance ( Vectorize x, Vectorize z, Vectorize u, Vectorize p
          , Dim n, Dim deg
          ) =>  View (CollTraj x z u p n deg)
@@ -116,10 +118,10 @@ instance ( Vectorize sx, Vectorize x, Vectorize z, Vectorize u, Vectorize p
          ) => View (CollTrajCov sx x z u p n deg)
 
 instance (Vectorize x, Vectorize r, Dim deg) => View (CollStageConstraints x deg r)
-instance ( Vectorize x, Vectorize r, Vectorize c, Vectorize h
+instance ( Vectorize x, Vectorize p, Vectorize r, Vectorize c, Vectorize h
          , Dim n, Dim deg
-         ) => View (CollOcpConstraints x r c h n deg)
-instance ( Vectorize (X ocp), Vectorize (R ocp), Vectorize (C ocp), Vectorize (H ocp)
+         ) => View (CollOcpConstraints x p r c h n deg)
+instance ( Vectorize (X ocp), Vectorize (P ocp), Vectorize (R ocp), Vectorize (C ocp), Vectorize (H ocp)
          , Dim n, Dim deg
          , View sh, Vectorize shr, View sc
          ) => View (CollOcpCovConstraints ocp n deg sh shr sc)
@@ -129,33 +131,38 @@ fromXzus :: forall x z u p n deg a
             . (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Dim n, Dim deg)
             => a -> p a -> Vec n (x a, Vec deg (x a, z a, u a)) -> x a
             -> CollTraj x z u p n deg (Vector a)
-fromXzus t p xzus xf = CollTraj (catJV (Id t)) (catJV p) (cat (JVec traj)) (catJV xf)
+fromXzus t' p' xzus xf = CollTraj t p (cat (JVec traj)) (catJV xf)
   where
-    traj :: Vec n (J (CollStage (JV x) (JV z) (JV u) deg) (Vector a))
+    t = catJV (Id t')
+    p = catJV p'
+
+    traj :: Vec n (J (CollStage (JV x) (JV z) (JV u) (JV p) deg) (Vector a))
     traj = fmap (cat . toCollStage) xzus
 
-    toCollStage :: (x a, Vec deg (x a, z a, u a)) -> CollStage (JV x) (JV z) (JV u) deg (Vector a)
-    toCollStage (x0, xzus') = CollStage (catJV x0) (cat (JVec (fmap toCollPoint xzus')))
+    toCollStage :: (x a, Vec deg (x a, z a, u a)) -> CollStage (JV x) (JV z) (JV u) (JV p) deg (Vector a)
+    toCollStage (x0, xzus') = CollStage (catJV x0) (cat (JVec (fmap toCollPoint xzus'))) p t
 
     toCollPoint :: (x a, z a, u a) -> J (CollPoint (JV x) (JV z) (JV u)) (Vector a)
     toCollPoint (x,z,u) = cat $ CollPoint (catJV x) (catJV z) (catJV u)
 
 getXzus ::
-  (Vectorize x, Vectorize z, Vectorize u, Dim n, Dim deg)
+  (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Dim n, Dim deg)
   => CollTraj x z u p n deg (Vector a)
   -> (Vec n (Vec deg (x a, z a, u a)))
-getXzus traj = fmap snd $ fst $ getXzus' traj
+getXzus traj = fmap snd4 $ fst $ getXzus' traj
+  where
+    snd4 (_,x,_,_) = x
 
 getXzus' ::
-  (Vectorize x, Vectorize z, Vectorize u, Dim n, Dim deg)
+  (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Dim n, Dim deg)
   => CollTraj x z u p n deg (Vector a)
-  -> (Vec n (x a, Vec deg (x a, z a, u a)), x a)
+  -> (Vec n (x a, Vec deg (x a, z a, u a), p a, a), x a)
 getXzus' (CollTraj _ _ stages xf) =
   (fmap (getXzusFromStage . split) (unJVec (split stages)), splitJV xf)
 
 getXzus'' ::
   forall x z u p n deg a
-  . (Vectorize x, Vectorize z, Vectorize u, Dim n, Dim deg)
+  . (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Dim n, Dim deg)
   => CollTraj x z u p n deg (Vector a)
   -> ( Vec n (Vec deg (x a))
      , Vec n (Vec deg (z a))
@@ -167,7 +174,7 @@ getXzus'' traj = (fmap snd xs, zs, us)
 
 getXzus''' ::
   forall x z u p n deg a
-  . (Vectorize x, Vectorize z, Vectorize u, Dim n, Dim deg)
+  . (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Dim n, Dim deg)
   => CollTraj x z u p n deg (Vector a)
   -> ( ( Vec n (x a, Vec deg (x a))
        , x a
@@ -180,29 +187,31 @@ getXzus''' traj = ((xs, xf), zs, us)
     (xzus, xf) = getXzus' traj
     (xs, zs, us) = TV.tvunzip3 $ fmap f xzus
       where
-        f (x0, xzus') = ((x0,xs'), zs', us')
+        f (x0, xzus', _, _) = ((x0,xs'), zs', us')
           where
             (xs',zs',us') = TV.tvunzip3 xzus'
 
-getXzusFromStage :: (Vectorize x, Vectorize z, Vectorize u, Dim deg)
-                    => CollStage (JV x) (JV z) (JV u) deg (Vector a)
-                    -> (x a, Vec deg (x a, z a, u a))
-getXzusFromStage (CollStage x0 xzus) = (splitJV x0, fmap (f . split) (unJVec (split xzus)))
+getXzusFromStage :: (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Dim deg)
+                    => CollStage (JV x) (JV z) (JV u) (JV p) deg (Vector a)
+                    -> (x a, Vec deg (x a, z a, u a), p a, a)
+getXzusFromStage (CollStage x0 xzus p tf) = (splitJV x0, fmap (f . split) (unJVec (split xzus)), splitJV p, unId (splitJV tf))
   where
     f (CollPoint x z u) = (splitJV x, splitJV z, splitJV u)
 
 
 fillCollConstraints ::
-  forall x r c h n deg a .
-  ( Vectorize x, Vectorize r, Vectorize c, Vectorize h
+  forall x p r c h n deg a .
+  ( Vectorize x, Vectorize p, Vectorize r, Vectorize c, Vectorize h
   , Dim n, Dim deg )
-  => x a -> r a -> c a -> h a -> CollOcpConstraints x r c h n deg (Vector a)
-fillCollConstraints x r c h =
+  => x a -> p a -> r a -> c a -> h a -> a -> CollOcpConstraints x p r c h n deg (Vector a)
+fillCollConstraints x p r c h tf =
   CollOcpConstraints
   { coCollPoints = jreplicate $ jreplicate $ catJV r
   , coContinuity = jreplicate $ catJV x
   , coPathC = jreplicate $ jreplicate $ catJV h
   , coBc = catJV c
+  , coParams = jreplicate (catJV p)
+  , coTfs = jreplicate (catJV (Id tf))
   }
 
 
@@ -268,7 +277,7 @@ fmapCollTraj' fx' fx fz fu fp ft (CollTraj tf1 p stages1 xf) =
   where
     tf2 :: S (Vector b)
     tf2 = catJV $ fmap ft (splitJV tf1)
-    stages2 = cat $ fmapJVec (fmapStage fx' fx fz fu) (split stages1)
+    stages2 = cat $ fmapJVec (fmapStage fx' fx fz fu fp ft) (split stages1)
 
     fj :: (Vectorize f1, Vectorize f2)
           => (f1 a -> f2 b)
@@ -279,18 +288,21 @@ fmapJVec :: (View f, View g, Viewable a, Viewable b)
             => (f a -> g b) -> JVec deg f a -> JVec deg g b
 fmapJVec f = JVec . fmap (cat . f . split) . unJVec
 
-fmapStage :: forall x1 x2 z1 z2 u1 u2 deg a b .
+fmapStage :: forall x1 x2 z1 z2 u1 u2 p1 p2 deg a b .
              ( Vectorize x1, Vectorize x2
              , Vectorize z1, Vectorize z2
              , Vectorize u1, Vectorize u2
+             , Vectorize p1, Vectorize p2
              , Dim deg )
              => (x1 a -> x2 b)
              -> (x1 a -> x2 b)
              -> (z1 a -> z2 b)
              -> (u1 a -> u2 b)
-             -> CollStage (JV x1) (JV z1) (JV u1) deg (Vector a)
-             -> CollStage (JV x2) (JV z2) (JV u2) deg (Vector b)
-fmapStage fx' fx fz fu = fmapStageJ (fj fx') (fj fx) (fj fz) (fj fu)
+             -> (p1 a -> p2 b)
+             -> (a -> b)
+             -> CollStage (JV x1) (JV z1) (JV u1) (JV p1) deg (Vector a)
+             -> CollStage (JV x2) (JV z2) (JV u2) (JV p2) deg (Vector b)
+fmapStage fx' fx fz fu fp ft = fmapStageJ (fj fx') (fj fx) (fj fz) (fj fu) (fj fp) (catJV . fmap ft . splitJV)
   where
     fj :: (Vectorize f1, Vectorize f2)
           => (f1 a -> f2 b)
@@ -298,7 +310,7 @@ fmapStage fx' fx fz fu = fmapStageJ (fj fx') (fj fx) (fj fz) (fj fu)
           -> J (JV f2) (Vector b)
     fj f = catJV . f . splitJV
 
-fmapStageJ :: forall x1 x2 z1 z2 u1 u2 deg a b .
+fmapStageJ :: forall x1 x2 z1 z2 u1 u2 p1 p2 deg a b .
               ( Viewable a, Viewable b
               , View x1, View x2
               , View z1, View z2
@@ -308,9 +320,11 @@ fmapStageJ :: forall x1 x2 z1 z2 u1 u2 deg a b .
               -> (J x1 a -> J x2 b)
               -> (J z1 a -> J z2 b)
               -> (J u1 a -> J u2 b)
-              -> CollStage x1 z1 u1 deg a
-              -> CollStage x2 z2 u2 deg b
-fmapStageJ fx' fx fz fu (CollStage x0 points0) = CollStage (fx' x0) points1
+              -> (J p1 a -> J p2 b)
+              -> (S a -> S b)
+              -> CollStage x1 z1 u1 p1 deg a
+              -> CollStage x2 z2 u2 p2 deg b
+fmapStageJ fx' fx fz fu fp ftf (CollStage x0 points0 p0 tf0) = CollStage (fx' x0) points1 (fp p0) (ftf tf0)
   where
     points1 = cat $ fmapJVec (fmapCollPointJ fx fz fu) (split points0)
 

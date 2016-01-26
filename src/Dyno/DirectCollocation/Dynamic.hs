@@ -130,7 +130,7 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
     taus :: Vec deg a
     taus = mkTaus quadratureRoots
 
-    stages :: Vec n (CollStage (JV x) (JV z) (JV u) deg (Vector a))
+    stages :: Vec n (CollStage (JV x) (JV z) (JV u) (JV p) deg (Vector a))
     stages = fmap split (unJVec (split stages'))
 
     xss = xss' `V.snoc` (V.singleton (tf, unM xf))
@@ -146,7 +146,7 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
 
     -- todo(greg): should take the times from toCallbacks, not recalculate
     f :: a
-         -> ( CollStage (JV x) (JV z) (JV u) deg (Vector a)
+         -> ( CollStage (JV x) (JV z) (JV u) (JV p) deg (Vector a)
             , StageOutputs x o h q qo po deg a
             )
          -> ( a
@@ -161,7 +161,7 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
               , V.Vector (a, V.Vector a)
               )
             )
-    f t0 (CollStage x0 xzus', stageOutputs) = (tnext, (xs,zs,us,os,xds,hs,pos,qs,qds))
+    f t0 (CollStage x0 xzus' _ _, stageOutputs) = (tnext, (xs,zs,us,os,xds,hs,pos,qs,qds))
       where
         tnext = t0 + h
         xzus0 = fmap split (unJVec (split xzus')) :: Vec deg (CollPoint (JV x) (JV z) (JV u) (Vector a))

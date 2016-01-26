@@ -109,29 +109,30 @@ mkComputeSensitivities roots covDae = do
       computeAllSensitivities collTraj = CovarianceSensitivities (M.vcat' fs) (M.vcat' ws)
         where
           -- split up the design vars
-          CollTraj tf parm stages' _ = split collTraj
-          stages = unJVec (split stages') :: Vec n (J (CollStage (JV x) (JV z) (JV u) deg) MX)
-          spstages = fmap split stages :: Vec n (CollStage (JV x) (JV z) (JV u) deg MX)
+          CollTraj _ _ stages' _ = split collTraj
+          stages = unJVec (split stages') :: Vec n (J (CollStage (JV x) (JV z) (JV u) (JV p) deg) MX)
+          spstages = fmap split stages :: Vec n (CollStage (JV x) (JV z) (JV u) (JV p) deg MX)
 
           -- timestep
-          dt = tf / fromIntegral n
           n = reflectDim (Proxy :: Proxy n)
 
-          -- initial time at each collocation stage
-          t0s :: Vec n (S MX)
-          t0s = TV.mkVec' $ take n [dt * fromIntegral k | k <- [(0::Int)..]]
-
           -- times at each collocation point
-          times :: Vec n (Vec deg (S MX))
-          times = fmap (\t0 -> fmap (\tau -> t0 + realToFrac tau * dt) taus) t0s
+          times :: Int -> S MX -> Vec deg (S MX)
+          times k dt = fmap (\tau -> t0 + realToFrac tau * dt) taus
+            where
+              t0 = dt * fromIntegral k
 
-          times' :: Vec n (J (JVec deg (JV Id)) MX)
-          times' = fmap (cat . JVec) times
+          ks :: Vec n Int
+          ks = TV.mkVec' (take n [(0::Int)..])
 
           fs :: Vec n (M (JV sx) (JV sx) MX)
           ws :: Vec n (M (JV sx) (JV sw) MX)
-          (fs, ws) = TV.tvunzip $ TV.tvzipWith mkFw times' spstages
-          mkFw stagetimes (CollStage x0' xzus') = sens dt parm stagetimes x0' xzus'
+          (fs, ws) = TV.tvunzip $ mkFw <$> ks <*> spstages
+          mkFw k (CollStage x0' xzus' parm tf) = sens dt parm stagetimes x0' xzus'
+            where
+              stagetimes :: J (JVec deg (JV Id)) MX
+              stagetimes = cat $ JVec $ times k dt
+              dt = tf / fromIntegral n
 
   return computeAllSensitivities
 --  toMXFun "compute all sensitivities" computeAllSensitivities

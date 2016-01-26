@@ -180,7 +180,7 @@ solver = ipoptSolver { options = [ ("expand", Opt True)
 
 goodSolution :: NlpOut
                 (CollTraj QuadX QuadZ QuadU QuadP NCollStages CollDeg)
-                (CollOcpConstraints QuadX QuadR QuadBc None NCollStages CollDeg)
+                (CollOcpConstraints QuadX QuadP QuadR QuadBc None NCollStages CollDeg)
                 (Vector Double)
                 -> HUnit.Assertion
 goodSolution out = HUnit.assertBool msg (abs (f - fExpected) < 1e-8 && abs (pF - fExpected) < 1e-8)

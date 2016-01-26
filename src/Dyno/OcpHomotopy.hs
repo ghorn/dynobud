@@ -45,7 +45,7 @@ runOcpHomotopyWith ::
              -> J (JV fp) (Vector Double) -> IO Bool)
      )
   -> IO (t (NlpOut (CollTraj x z u p n deg)
-                   (CollOcpConstraints x r c h n deg)
+                   (CollOcpConstraints x p r c h n deg)
                    (Vector Double)))
 runOcpHomotopyWith dirCollOpts opts step0 homotopyParams ocpHomotopy ocpHomotopyInputs guess
   useStartupCallback useHomotopyCallback
@@ -55,7 +55,7 @@ runOcpHomotopyWith dirCollOpts opts step0 homotopyParams ocpHomotopy ocpHomotopy
   let nlpHomotopy :: Nlp
                      (CollTraj x z u p n deg)
                      (JV fp)
-                     (CollOcpConstraints x r c h n deg)
+                     (CollOcpConstraints x p r c h n deg)
                      MX
       nlpHomotopy = cpNlp cp0
 
@@ -73,7 +73,7 @@ runOcpHomotopyWith dirCollOpts opts step0 homotopyParams ocpHomotopy ocpHomotopy
   let homoGuessX :: J (CollTraj x z u p n deg) (Vector Double)
       homoGuessX  = xOpt opt0
       homoGuessLX = lambdaXOpt opt0
-      homoGuessLG :: J (CollOcpConstraints x r c h n deg) (Vector Double)
+      homoGuessLG :: J (CollOcpConstraints x p r c h n deg) (Vector Double)
       homoGuessLG = lambdaGOpt opt0
 
       pFinals :: t (J (JV fp) (Vector Double))
@@ -114,6 +114,6 @@ runOcpHomotopy ::
       -> IO ([String] -> J (CollTraj x z u p n deg) (Vector Double) -> J (JV fp) (Vector Double) -> IO Bool)
      )
   -> IO (t (NlpOut (CollTraj x z u p n deg)
-                   (CollOcpConstraints x r c h n deg)
+                   (CollOcpConstraints x p r c h n deg)
                    (Vector Double)))
 runOcpHomotopy dirCollOpts = runOcpHomotopyWith dirCollOpts defaultRunnerOptions

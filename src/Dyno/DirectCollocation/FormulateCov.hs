@@ -187,9 +187,11 @@ makeCollCovProblem dirCollOpts ocp ocpInputs ocpCov guess = do
         , nlpScaleG = Just $ cat $ CollOcpCovConstraints
                       { cocNormal = cat $ fillCollConstraints
                                     (fromMaybe (fill 1) (ocpXScale ocp))
+                                    (fromMaybe (fill 1) (ocpPScale ocp))
                                     (fromMaybe (fill 1) (ocpResidualScale ocp))
                                     (fromMaybe (fill 1) (ocpBcScale ocp))
                                     (fromMaybe (fill 1) (ocpPathCScale ocp))
+                                    (fromMaybe 1 (ocpTScale ocp))
                       , cocCovPathC = jreplicate (fromMaybe (jfill 1) (ocpCovPathCScale ocpCov))
                       , cocCovRobustPathC = jreplicate $
                                             fromMaybe (jfill 1) $
@@ -261,8 +263,8 @@ getFgCov
         }
     -- split up the design vars
     CollTraj tf parm stages' xf = split collTraj
-    stages = unJVec (split stages') :: Vec n (J (CollStage (JV x) (JV z) (JV u) deg) MX)
-    spstages = fmap split stages :: Vec n (CollStage (JV x) (JV z) (JV u) deg MX)
+    stages = unJVec (split stages') :: Vec n (J (CollStage (JV x) (JV z) (JV u) (JV p) deg) MX)
+    spstages = fmap split stages :: Vec n (CollStage (JV x) (JV z) (JV u) (JV p) deg MX)
 
     objectiveMayerCov = call mayerFun (tf :*: x0 :*: xf :*: p0 :*: pF)
 
@@ -276,9 +278,9 @@ getFgCov
 
     -- initial point at each stage
     x0s :: Vec n (J (JV x) MX)
-    x0s = fmap (\(CollStage x0' _) -> x0') spstages
+    x0s = fmap (\(CollStage x0' _ _ _) -> x0') spstages -- todo(greg): lift out ps/tfs for turbo graph coloring
 
-    x0 = (\(CollStage x0' _) -> x0') (TV.tvhead spstages)
+    x0 = (\(CollStage x0' _ _ _) -> x0') (TV.tvhead spstages) -- todo(greg): lift out ps/tfs for turbo graph coloring
 
 --    sensitivities = call computeSensitivities collTraj
 

@@ -188,7 +188,7 @@ solver = ipoptSolver { options = [ ("expand", Opt True)
 
 goodSolution :: NlpOut
                 (CollTraj QuadX QuadZ QuadU QuadP NCollStages CollDeg)
-                (CollOcpConstraints QuadX QuadR QuadBc None NCollStages CollDeg)
+                (CollOcpConstraints QuadX QuadP QuadR QuadBc None NCollStages CollDeg)
                 (Vector Double)
                 -> String
 goodSolution out = msg

@@ -42,15 +42,17 @@ type Sxe = S SX
 
 data IntegratorX x z n deg a =
   IntegratorX
-  { ixStages :: J (JVec n (CollStage (JV x) (JV z) JNone deg)) a
+  { ixStages :: J (JVec n (CollStage (JV x) (JV z) JNone JNone deg)) a
   , ixXf :: J (JV x) a
   } deriving (Generic)
+
 data IntegratorP u p n deg a =
   IntegratorP
   { ipTf :: S a
   , ipParm :: J (JV p) a
   , ipU :: J (JVec n (JVec deg (JV u))) a
   } deriving (Generic)
+
 data IntegratorG x r n deg a =
  IntegratorG
  { igCollPoints :: J (JVec n (JVec deg (JV r))) a
@@ -211,19 +213,21 @@ withIntegrator _ _ roots initialX dae solver userFun = do
         , ixXf = jfill Nothing
         }
         where
-          xs0 :: J (CollStage (JV x) (JV z) JNone deg) (Vector (Maybe Double))
-          xs0 = cat $ CollStage (catJV (fmap Just x0)) (jfill Nothing)
+          xs0 :: J (CollStage (JV x) (JV z) JNone JNone deg) (Vector (Maybe Double))
+          xs0 = cat $ CollStage (catJV (fmap Just x0)) (jfill Nothing) (jfill Nothing) (jfill Nothing)
 
   let solverThread = do
         let initialX' :: J (JV x) (Vector Double)
             initialX' = catJV initialX
 
+        let point = cat $ CollPoint initialX' (jfill 0) (jfill 0)
         setX0 $ cat $
           IntegratorX
           { ixStages = jreplicate $ cat $
-                       CollStage initialX' $ jreplicate $ cat $ CollPoint initialX' (jfill 0) (jfill 0)
+                       CollStage initialX' (jreplicate point) (jfill 0) (jfill 0)
           , ixXf = initialX'
           }
+
         setLbg (jfill (Just 0))
         setUbg (jfill (Just 0))
 
@@ -271,9 +275,9 @@ getFgIntegrator taus stageFun ix' ip' = (0, cat g)
     xf = ixXf ix 
     tf = ipTf ip
     parm = ipParm ip
-    stages = unJVec (split (ixStages ix)) :: Vec n (J (CollStage (JV x) (JV z) JNone deg) MX)
+    stages = unJVec (split (ixStages ix)) :: Vec n (J (CollStage (JV x) (JV z) JNone JNone deg) MX)
 
-    spstages :: Vec n (CollStage (JV x) (JV z) JNone deg MX)
+    spstages :: Vec n (CollStage (JV x) (JV z) JNone JNone deg MX)
     spstages = fmap split stages
 
     us :: Vec n (J (JVec deg (JV u)) MX)
@@ -292,7 +296,7 @@ getFgIntegrator taus stageFun ix' ip' = (0, cat g)
 
     -- initial point at each stage
     x0s :: Vec n (J (JV x) MX)
-    x0s = fmap (\(CollStage x0' _) -> x0') spstages
+    x0s = fmap (\(CollStage x0' _ _ _) -> x0') spstages
 
     -- final point at each stage (for matching constraint)
     xfs :: Vec n (J (JV x) MX)
@@ -308,11 +312,11 @@ getFgIntegrator taus stageFun ix' ip' = (0, cat g)
     dcs :: Vec n (J (JVec deg (JV r)) MX)
     interpolatedXs :: Vec n (J (JV x) MX)
     (dcs, interpolatedXs) = TV.tvunzip $ TV.tvzipWith3 fff spstages us times'
-    fff :: CollStage (JV x) (JV z) JNone deg MX
+    fff :: CollStage (JV x) (JV z) JNone JNone deg MX
            -> J (JVec deg (JV u)) MX
            -> J (JVec deg (JV Id)) MX
            -> (J (JVec deg (JV r)) MX, J (JV x) MX)
-    fff (CollStage x0' xzs') us' stageTimes = (dc, interpolatedX')
+    fff (CollStage x0' xzs' _ _) us' stageTimes = (dc, interpolatedX')
       where
         dc :*: interpolatedX' = stageFun (x0' :*: xzs :*: us' :*: dt :*: parm :*: stageTimes)
 

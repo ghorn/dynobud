@@ -91,7 +91,7 @@ getScaleFactors ::
     , Dim n, Dim deg
     )
   => CollTraj x z u p n deg (Vector Double)
-  -> CollOcpConstraints x r c h n deg (Vector Double)
+  -> CollOcpConstraints x p r c h n deg (Vector Double)
   -> OcpPhase x z u p r o c h q qo po fp
   -> OcpPhaseInputs x z u p c h fp
   -> ScaleFactors x z u p h c ScaleFactor
@@ -149,7 +149,7 @@ getMagnitude ::
     , Dim n, Dim deg
     )
   => CollTraj x z u p n deg (Vector Double)
-  -> CollOcpConstraints x r c h n deg (Vector Double)
+  -> CollOcpConstraints x p r c h n deg (Vector Double)
   -> ScaleFactors x z u p h c Double
 getMagnitude traj@(CollTraj tf' p' _ _) g =
   ScaleFactors
