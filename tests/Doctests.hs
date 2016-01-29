@@ -7,4 +7,5 @@ import Test.DocTest
 main :: IO ()
 main = doctest [ "-isrc"
                , "src/Dyno/FormatTime.hs"
+               , "src/Dyno/View/Conditional.hs"
                ]

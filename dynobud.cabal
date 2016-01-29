@@ -46,6 +46,7 @@ library
                        Dyno.Linearize
                        Dyno.Random
                        Dyno.View
+                       Dyno.View.Conditional
                        Dyno.View.Cov
 --                       Dyno.View.CustomFunction
                        Dyno.View.Fun
@@ -71,7 +72,7 @@ library
 
   build-depends:       base >=4.6 && < 5,
                        casadi-bindings-core >= 2.4.1.0,
-                       casadi-bindings >= 2.4.1.5,
+                       casadi-bindings >= 2.4.1.8,
 --                       casadi-bindings-internal,
                        data-default-class,
                        jacobi-roots >=0.2 && <0.3,
