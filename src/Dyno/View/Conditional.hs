@@ -1,12 +1,19 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -fno-cse #-} -- unsafePerformIO
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 
 module Dyno.View.Conditional
        ( Conditional(..), Switch, toSwitch
        ) where
 
+import GHC.Generics ( Generic, Generic1 )
+
+import Accessors ( Lookup )
+import Data.Aeson ( ToJSON, FromJSON )
+import Data.Serialize ( Serialize )
 import qualified Data.Vector as V
 import Linear ( V2(..), V3(..) )
 import System.IO.Unsafe ( unsafePerformIO )
@@ -22,7 +29,12 @@ import Dyno.View.View ( J, JV, S )
 import Dyno.View.Unsafe ( mkM', unM )
 import Dyno.View.M ( vcat, vsplit )
 
-newtype Switch f a = Switch a deriving Show
+newtype Switch f a = Switch a deriving (Functor, Generic, Generic1)
+instance Vectorize (Switch f)
+instance Lookup a => Lookup (Switch f a)
+instance Serialize a => Serialize (Switch f a)
+instance ToJSON a => ToJSON (Switch f a)
+instance FromJSON a => FromJSON (Switch f a)
 
 class Conditional a where
   conditional :: (Enum b, Bounded b, Ord b, Show b, Vectorize f, Vectorize g)
