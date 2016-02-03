@@ -1,8 +1,10 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -fno-cse #-} -- unsafePerformIO
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 
 module Dyno.View.Conditional
@@ -11,7 +13,8 @@ module Dyno.View.Conditional
 
 import GHC.Generics ( Generic, Generic1 )
 
-import Accessors ( Lookup )
+import Accessors ( Lookup(..) )
+import Control.Lens ( Lens' )
 import Data.Aeson ( ToJSON, FromJSON )
 import Data.Serialize ( Serialize )
 import qualified Data.Vector as V
@@ -29,12 +32,22 @@ import Dyno.View.View ( J, JV, S )
 import Dyno.View.Unsafe ( mkM', unM )
 import Dyno.View.M ( vcat, vsplit )
 
-newtype Switch f a = Switch a deriving (Functor, Generic, Generic1)
+newtype Switch f a = Switch a deriving (Functor, Generic, Generic1, Show)
 instance Vectorize (Switch f)
-instance Lookup a => Lookup (Switch f a)
 instance Serialize a => Serialize (Switch f a)
 instance ToJSON a => ToJSON (Switch f a)
 instance FromJSON a => FromJSON (Switch f a)
+
+instance (Bounded f, Enum f, Eq f, Show f, Lookup f, RealFrac a) => Lookup (Switch f a) where
+  toAccessorTree lens0 = toAccessorTree (lens0 . swLens)
+      where
+        swLens :: Lens' (Switch f a) f
+        swLens g x = fmap toSwitch (g (fromSwitch' x))
+
+        fromSwitch' x = case fromSwitch x of
+          Right r -> r
+          Left err -> error $ "error: toAccessorTree (Switch f a): " ++ err
+
 
 class Conditional a where
   conditional :: (Enum b, Bounded b, Ord b, Show b, Vectorize f, Vectorize g)
@@ -71,6 +84,25 @@ toSwitch key = lookupKey 0 orderedKeys
       error $
       "toSwitch: the \"impossible\" happened! " ++
       "The enum " ++ show key ++ " was not in the set of all enums."
+
+
+{-# INLINABLE fromSwitch #-}
+fromSwitch ::  forall a b
+               . (Enum b, Bounded b, RealFrac a)
+               => Switch b a -> Either String b
+fromSwitch (Switch index) = lookupKey (round index)
+  where
+    lookupKey intKey
+      | intKey < 0 = Left $ "fromSwitch: got negative index: " ++ show intKey
+      | otherwise = lookupKey' intKey orderKeys
+
+    lookupKey' :: Int -> [b] -> Either String b
+    lookupKey' 0 (x:_) = Right x
+    lookupKey' k (_:xs) = lookupKey' (k-1) xs
+    lookupKey' _ [] =
+      Left $
+      "fromSwitch: " ++
+      "The index " ++ show (round index :: Int) ++ " didn't map to an enum."
 
 
 {-# NOINLINE mxConditional #-}
@@ -145,19 +177,11 @@ evaluateConditionalNative ::
   forall f g a b
   . (Enum b, Eq b, Bounded b, Show b, RealFrac a)
   => Switch b a -> (b -> f a -> g a) -> f a -> g a
-evaluateConditionalNative (Switch key) handleAnyCase = handleAnyCase (fromSwitch (round key))
+evaluateConditionalNative sw handleAnyCase = handleAnyCase enum
   where
-    fromSwitch intKey
-      | intKey < 0 = error $ "evaluateConditionalNative: fromSwitch: key " ++ show intKey ++ " is negative"
-      | otherwise = lookupKey intKey orderKeys
-      where
-        lookupKey :: Int -> [b] -> b
-        lookupKey 0 (x:_) = x
-        lookupKey k (_:xs) = lookupKey (k-1) xs
-        lookupKey _ [] =
-          error $
-          "evaluateConditionalNative: fromSwitch: " ++
-          "The key " ++ show intKey ++ " was not in the set of all enums."
+    enum = case fromSwitch sw of
+      Right r -> r
+      Left err -> error $ "error: evaluateConditionalNative: " ++ err
 
 
 data Foo = FooA | FooB | FooC deriving (Enum, Bounded, Eq, Ord, Show)
