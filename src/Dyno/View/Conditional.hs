@@ -1,54 +1,46 @@
 {-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -fno-cse #-} -- unsafePerformIO
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE DeriveFunctor #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Dyno.View.Conditional
-       ( Conditional(..), toSwitch, toSwitch'
+       ( Conditional(..), Switch, toSwitch
        ) where
 
-import GHC.Generics ( Generic1 )
-
-import qualified Data.Map as M
-import Data.Proxy ( Proxy(..) )
 import qualified Data.Vector as V
---import Data.Vector ( Vector )
+import Linear ( V2(..), V3(..) )
+import System.IO.Unsafe ( unsafePerformIO )
 
 import Casadi.MX ( MX )
 import Casadi.SX ( SX )
 import Casadi.DMatrix ( DMatrix )
 import qualified Casadi.CMatrix as C
 
-import Dyno.Vectorize ( Vectorize(..), devectorize, vlength )
+import Dyno.Vectorize ( Vectorize )
+import Dyno.View.Fun ( MXFun, SXFun, toMXFun, toSXFun, call, callSX )
+import Dyno.View.View ( J, JV, S )
+import Dyno.View.Unsafe ( mkM', unM )
+import Dyno.View.M ( vcat, vsplit )
 
 newtype Switch f a = Switch a deriving Show
 
--- todo(greg): short circuit or not?
---
 class Conditional a where
-  conditional :: (Enum b, Bounded b, Ord b, Show b) => Switch b a -> [(b, a)] -> a
-  conditional' :: Vectorize f => Switch f a -> f a -> a
+  conditional :: (Enum b, Bounded b, Ord b, Show b, Vectorize f, Vectorize g)
+                 => Bool -> g a -> Switch b a -> (b -> f a -> g a) -> f a -> g a
 
-instance Conditional SX where
-  conditional = cmatConditional (realToFrac nan)
-  conditional' = cmatConditional' (realToFrac nan)
-instance Conditional MX where
-  conditional = cmatConditional (realToFrac nan)
-  conditional' = cmatConditional' (realToFrac nan)
-instance Conditional DMatrix where
-  conditional = cmatConditional (realToFrac nan)
-  conditional' = cmatConditional' (realToFrac nan)
+instance Conditional (S SX) where
+  conditional = sxConditional
+  {-# NOINLINE conditional #-}
+instance Conditional (S MX) where
+  conditional = mxConditional
+  {-# NOINLINE conditional #-}
+instance Conditional (S DMatrix) where
+  conditional = dmConditional
 
 instance Conditional Double where
-  conditional = evaluateConditional nan
-  conditional' = evaluateConditional' nan
+  conditional = \_ _ -> evaluateConditionalNative
 instance Conditional Float where
-  conditional = evaluateConditional (realToFrac nan)
-  conditional' = evaluateConditional' (realToFrac nan)
-
-nan :: Double
-nan = 0
+  conditional = \_ _ -> evaluateConditionalNative
 
 {-# INLINABLE toSwitch #-}
 toSwitch ::  forall a b
@@ -61,37 +53,73 @@ toSwitch key = lookupKey 0 orderedKeys
 
     lookupKey :: Int -> [b] -> Switch b a
     lookupKey k (x:xs)
-      | key == x = Switch (0.0 + (fromIntegral k))
+      | key == x = Switch (fromIntegral k)
       | otherwise = lookupKey (k+1) xs
     lookupKey _ [] =
       error $
-      "toConditionalKey: the \"impossible\" happened! " ++
+      "toSwitch: the \"impossible\" happened! " ++
       "The enum " ++ show key ++ " was not in the set of all enums."
 
-{-# INLINABLE toSwitch' #-}
-toSwitch' ::  forall f a
-              . (Vectorize f, Fractional a)
-              => (f Int -> Int) -> Switch f a
-toSwitch' get = Switch index
+
+{-# NOINLINE mxConditional #-}
+mxConditional ::
+  forall f g b
+  . (Enum b, Eq b, Bounded b, Show b, Vectorize f, Vectorize g)
+  => Bool -> g (S MX) -> Switch b (S MX) -> (b -> f (S MX) -> g (S MX)) -> f (S MX) -> g (S MX)
+mxConditional shortCircuit def (Switch sw) handleAnyCase input = unsafePerformIO $ do
+  let toFunction :: b -> IO (MXFun (J (JV f)) (J (JV g)))
+      toFunction key = toMXFun ("conditional_" ++ show key) (vcat . handleAnyCase key . vsplit)
+
+  functions <- mapM toFunction orderKeys :: IO [MXFun (J (JV f)) (J (JV g))]
+  let catInput = vcat input
+
+      outputs :: [J (JV g) MX]
+      outputs = map (\f -> call f catInput) functions
+
+      output :: MX
+      output = C.conditional' (unM sw) (V.fromList (map unM outputs)) (unM (vcat def)) shortCircuit
+
+  case mkM' output of
+    Right r -> return (vsplit r)
+    Left err -> error $ "cmatConditional: error splitting the output:\n" ++ err
+
+{-# NOINLINE sxConditional #-}
+sxConditional ::
+  forall f g b
+  . (Enum b, Eq b, Bounded b, Show b, Vectorize f, Vectorize g)
+  => Bool -> g (S SX) -> Switch b (S SX) -> (b -> f (S SX) -> g (S SX)) -> f (S SX) -> g (S SX)
+sxConditional shortCircuit def (Switch sw) handleAnyCase input = unsafePerformIO $ do
+  let toFunction :: b -> IO (SXFun (J (JV f)) (J (JV g)))
+      toFunction key = toSXFun ("conditional_" ++ show key) (vcat . handleAnyCase key . vsplit)
+
+  functions <- mapM toFunction orderKeys :: IO [SXFun (J (JV f)) (J (JV g))]
+  let catInput = vcat input
+
+      outputs :: [J (JV g) SX]
+      outputs = map (\f -> callSX f catInput) functions
+
+      output :: SX
+      output = C.conditional' (unM sw) (V.fromList (map unM outputs)) (unM (vcat def)) shortCircuit
+
+  case mkM' output of
+    Right r -> return (vsplit r)
+    Left err -> error $ "cmatConditional: error splitting the output:\n" ++ err
+
+dmConditional ::
+  forall f g b
+  . (Enum b, Eq b, Bounded b, Show b, Vectorize f, Vectorize g)
+  => Bool -> g (S DMatrix) -> Switch b (S DMatrix)
+  -> (b -> f (S DMatrix) -> g (S DMatrix)) -> f (S DMatrix) -> g (S DMatrix)
+dmConditional shortCircuit def (Switch sw) handleAnyCase input =
+  case mkM' output of
+    Right r -> vsplit r
+    Left err -> error $ "cmatConditional: error splitting the output:\n" ++ err
   where
-    index = 0.0 + fromIntegral (get f)
+    outputs :: [J (JV g) DMatrix]
+    outputs = map (\key -> vcat (handleAnyCase key input)) orderKeys
 
-    f :: f Int
-    f = devectorize $ V.fromList $ take (vlength (Proxy :: Proxy f)) [0..]
-
-cmatConditional :: forall a b
-                   . (Enum b, Ord b, Bounded b, Show b, C.CMatrix a)
-                   => a -> Switch b a -> [(b, a)] -> a
-cmatConditional def (Switch x) unorderedKeyVals = C.conditional' x (V.fromList orderedVals) def False
-  where
-    -- The values in their proper order.
-    orderedVals :: [a]
-    orderedVals = orderVals unorderedKeyVals
-
-cmatConditional' :: forall f a
-                    . (Vectorize f, C.CMatrix a)
-                    => a -> Switch f a -> f a -> a
-cmatConditional' def (Switch x) orderedVals = C.conditional x (vectorize orderedVals) def
+    output :: DMatrix
+    output = C.conditional' (unM sw) (V.fromList (map unM outputs)) (unM (vcat def)) shortCircuit
 
 orderKeys :: (Enum a, Bounded a) => [a]
 orderKeys
@@ -100,99 +128,72 @@ orderKeys
   where
     keys = enumFrom minBound
 
-orderVals :: forall a b . (Enum b, Bounded b, Ord b, Show b) => [(b, a)] -> [a]
-orderVals unorderedKeyVals = orderedVals
+{-# INLINABLE evaluateConditionalNative #-}
+evaluateConditionalNative ::
+  forall f g a b
+  . (Enum b, Eq b, Bounded b, Show b, RealFrac a)
+  => Switch b a -> (b -> f a -> g a) -> f a -> g a
+evaluateConditionalNative (Switch key) handleAnyCase = handleAnyCase (fromSwitch (round key))
   where
-    switchMap :: M.Map b a
-    switchMap = M.fromListWithKey err unorderedKeyVals
+    fromSwitch intKey
+      | intKey < 0 = error $ "evaluateConditionalNative: fromSwitch: key " ++ show intKey ++ " is negative"
+      | otherwise = lookupKey intKey orderKeys
       where
-        err k _ _ = error $ "conditional: orderVals got two entries for " ++ show k
-
-    -- The options in their proper order.
-    -- Will show up to casadi as [0,1,2..]
-    orderedKeys :: [b]
-    orderedKeys = orderKeys
-
-    -- The options in their proper order.
-    -- Will show up to casadi as [0,1,2..]
-    orderedVals :: [a]
-    orderedVals = map lookup' orderedKeys
-      where
-        lookup' k = case M.lookup k switchMap of
-          Just r -> r
-          Nothing -> error $ "conditional: missing an entry for " ++ show k
-
-{-# INLINABLE evaluateConditional #-}
-evaluateConditional ::
-  forall b a
-  . (Enum b, Ord b, Bounded b, Show b, RealFrac a)
-  => a -> Switch b a -> [(b, a)] -> a
-evaluateConditional def (Switch k) pairs = lookupWithDefault (floor k) (orderVals pairs)
-  where
-    lookupWithDefault :: Int -> [a] -> a
-    lookupWithDefault 0 (x:_) = x
-    lookupWithDefault j (_:xs) = lookupWithDefault (j - 1) xs
-    lookupWithDefault _ [] = def
-
-{-# INLINABLE evaluateConditional' #-}
-evaluateConditional' ::
-  forall f a
-  . (Vectorize f, RealFrac a)
-  => a -> Switch f a -> f a -> a
-evaluateConditional' def (Switch k) pairs = case vectorize pairs V.!? round k of
-  Nothing -> def
-  Just r -> r
+        lookupKey :: Int -> [b] -> b
+        lookupKey 0 (x:_) = x
+        lookupKey k (_:xs) = lookupKey (k-1) xs
+        lookupKey _ [] =
+          error $
+          "evaluateConditionalNative: fromSwitch: " ++
+          "The key " ++ show intKey ++ " was not in the set of all enums."
 
 
-
-data Cases a = Cases {_case1 :: a, _case2 :: a} deriving (Functor, Generic1)
-instance Vectorize Cases
-
-data Foo = FooA | FooB deriving (Enum, Bounded, Eq, Ord, Show)
-
+data Foo = FooA | FooB | FooC deriving (Enum, Bounded, Eq, Ord, Show)
 -- | a test
--- >>> _test (toSwitch FooA) (Cases 42 43) :: (Switch Foo Double, Double)
--- (Switch 0.0,42.0)
+-- >>> _test (toSwitch FooA) (V3 1 2 3) :: (Switch Foo Double, V2 Double)
+-- (Switch 0.0,V2 1.0 2.0)
 --
--- >>> _test (toSwitch FooB) (Cases 42 43) :: (Switch Foo Double, Double)
--- (Switch 1.0,43.0)
+-- >>> _test (toSwitch FooB) (V3 1 2 3) :: (Switch Foo Double, V2 Double)
+-- (Switch 1.0,V2 2.0 4.0)
 --
--- >>> _test (Switch (-1)) (Cases 42 43) :: (Switch Foo Double, Double)
--- (Switch (-1.0),-100.0)
+-- >>> _test (toSwitch FooC) (V3 1 2 3) :: (Switch Foo Double, V2 Double)
+-- (Switch 2.0,V2 3.0 6.0)
 --
--- >>> _test (toSwitch FooA) (Cases 42 43) :: (Switch Foo DMatrix, DMatrix)
--- (Switch 0,42)
+-- >>> _test (toSwitch FooA) (V3 1 2 3) :: (Switch Foo (S DMatrix), V2 (S DMatrix))
+-- (Switch 0,V2 1 2)
 --
--- >>> _test (toSwitch FooB) (Cases 42 43) :: (Switch Foo DMatrix, DMatrix)
--- (Switch 1,43)
+-- >>> _test (toSwitch FooB) (V3 1 2 3) :: (Switch Foo (S DMatrix), V2 (S DMatrix))
+-- (Switch 1,V2 2 4)
 --
--- >>> _test (Switch (-1)) (Cases 42 43) :: (Switch Foo DMatrix, DMatrix)
--- (Switch -1,-100)
-_test :: Conditional a => Switch Foo a -> Cases a -> (Switch Foo a, a)
-_test whichFoo (Cases x y) = (whichFoo, r)
+-- >>> _test (toSwitch FooC) (V3 1 2 3) :: (Switch Foo (S DMatrix), V2 (S DMatrix))
+-- (Switch 2,V2 3 6)
+--
+-- >>> _test (toSwitch FooA) (V3 1 2 3) :: (Switch Foo (S SX), V2 (S SX))
+-- (Switch 0,V2 1 2)
+--
+-- >>> _test (toSwitch FooB) (V3 1 2 3) :: (Switch Foo (S SX), V2 (S SX))
+-- (Switch 1,V2 2 4)
+--
+-- >>> _test (toSwitch FooC) (V3 1 2 3) :: (Switch Foo (S SX), V2 (S SX))
+-- (Switch 2,V2 3 6)
+--
+-- >>> _test (toSwitch FooA) (V3 1 2 3) :: (Switch Foo (S MX), V2 (S MX))
+-- (Switch 0,V2 vertsplit(conditional(0){0}){0} vertsplit(conditional(0){0}){1})
+--
+-- >>> _test (toSwitch FooB) (V3 1 2 3) :: (Switch Foo (S MX), V2 (S MX))
+-- (Switch 1,V2 vertsplit(conditional(1){0}){0} vertsplit(conditional(1){0}){1})
+--
+-- >>> _test (toSwitch FooC) (V3 1 2 3) :: (Switch Foo (S MX), V2 (S MX))
+-- (Switch 2,V2 vertsplit(conditional(2){0}){0} vertsplit(conditional(2){0}){1})
+--
+_test :: forall a
+         . (Conditional a, Num a)
+         => Switch Foo a -> V3 a -> (Switch Foo a, V2 a)
+_test foo input = (foo, conditional True def foo f input)
   where
-    r = conditional whichFoo
-        [ (FooA, x)
-        , (FooB, y)
-        ]
-
--- | another test
--- >>> _test' (toSwitch' _case1) (Cases 42 43) :: (Switch Cases Double, Double)
--- (Switch 0.0,42.0)
---
--- >>> _test' (toSwitch' _case2) (Cases 42 43) :: (Switch Cases Double, Double)
--- (Switch 1.0,43.0)
---
--- >>> _test' (Switch (-1)) (Cases 42 43) :: (Switch Cases Double, Double)
--- (Switch (-1.0),-100.0)
---
--- >>> _test' (toSwitch' _case1) (Cases 42 43) :: (Switch Cases DMatrix, DMatrix)
--- (Switch 0,42)
---
--- >>> _test' (toSwitch' _case2) (Cases 42 43) :: (Switch Cases DMatrix, DMatrix)
--- (Switch 1,43)
---
--- >>> _test' (Switch (-1)) (Cases 42 43) :: (Switch Cases DMatrix, DMatrix)
--- (Switch -1,-100)
-_test' :: Conditional a => Switch Cases a -> Cases a -> (Switch Cases a, a)
-_test' whichCase (Cases x y) = (whichCase, conditional' whichCase (Cases x y))
+    def = V2 (-1) (-2)
+    f :: Foo -> V3 a -> V2 a
+    f sw (V3 x y z) = case sw of
+      FooA -> V2 x (2*x)
+      FooB -> V2 y (2*y)
+      FooC -> V2 z (2*z)
