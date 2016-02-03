@@ -30,7 +30,7 @@ import Dyno.View.JVec ( unJVec )
 import Dyno.TypeVecs ( Dim )
 import Dyno.Ocp
 
-import Accessors ( Lookup, Field(..), accessors, describeField, flatten )
+import Accessors ( Lookup, GATip(..), GAField(..), accessors, describeGAField, flatten )
 
 data ScaleFactor =
   ScaleFactor
@@ -137,10 +137,13 @@ getScaleFactors x g ocp inputs =
     names :: ScaleFactors x z u p h c String
     names = F.foldl' ff (fill "") (flatten accessors)
       where
-        ff sf0 (name, FieldString f) = (f .~ name) sf0
-        ff _ (name, f) =
+        ff sf0 (name, GATipField (FieldString f)) = (f .~ name) sf0
+        ff _ (name, GATipField f) =
           error $ "the 'impossible' happened, got a non-strong getter for "
-          ++ show name ++ " with type " ++ describeField f
+          ++ show name ++ " with type " ++ describeGAField f
+        ff _ (name, GATipSimpleEnum _) =
+          error $ "the 'impossible' happened, got a SimpleEnum getter for "
+          ++ show name
 
 getMagnitude ::
   forall x z u p h c n deg r

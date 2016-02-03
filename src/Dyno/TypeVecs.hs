@@ -59,7 +59,7 @@ import Data.Reflection as R
 import Data.Distributive ( Distributive(..) )
 import Prelude -- BBP workaround
 
-import Accessors ( Lookup(..), AccessorTree(..) )
+import Accessors ( Lookup(..), GAData(..), GAConstructor(..) )
 
 import Dyno.Vectorize
 
@@ -83,10 +83,10 @@ instance (Dim n, S.Serialize a) => S.Serialize (Vec n a) where
 
 instance (Lookup a, Dim n) => Lookup (Vec n a) where
   toAccessorTree lens0 =
-    Data ("Vec " ++ show n, "Vec " ++ show n) $ map child (take n [0..])
+    Right $ GAData ("Vec " ++ show n) $ GAConstructor ("Vec " ++ show n) $ map child (take n [0..])
     where
       n = reflectDim (Proxy :: Proxy n)
-      child k = ("v" ++ show k, toAccessorTree (lens0 . lensK))
+      child k = (Just ("v" ++ show k), toAccessorTree (lens0 . lensK))
         where
           lensK f (MkVec v) = fmap (\vk -> devectorize (v V.// [(k,vk)])) (f vk0)
             where

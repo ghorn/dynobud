@@ -19,7 +19,7 @@ module Dyno.DirectCollocation.ActiveConstraints
 
 import GHC.Generics ( Generic )
 
-import Accessors ( Lookup, Field(..), flatten', accessors, describeField )
+import Accessors ( Lookup, GATip(..), GAField(..), flatten', accessors, describeGAField )
 import Control.Applicative
 import Control.Lens ( (^.) )
 import Data.List ( intercalate )
@@ -68,8 +68,11 @@ summarizeActiveConstraints activeCons =
   unlines $ catMaybes $ map report $ flattenActiveConstraints activeCons
   where
     report (_, Active 0 0) = Nothing
-    report (name, Active lb ub) =
-      Just $ printf "% 4d lower, % 4d upper (%s)" lb ub (intercalate "." name)
+    report (mnames, Active lb ub) =
+      Just $ printf "% 4d lower, % 4d upper (%s)" lb ub (intercalate "." names)
+      where
+        names :: [String]
+        names = map (maybe "()" id) mnames
 
 matlabActiveConstraints ::
   ( Functor x, Functor z, Functor u, Functor p, Functor h, Functor c
@@ -83,7 +86,10 @@ matlabActiveConstraints ::
 matlabActiveConstraints activeCons = "{" ++ intercalate "; " cons ++ "}"
   where
     cons = map report $ flattenActiveConstraints activeCons
-    report (name, Active lb ub) = printf "'%s', %d, %d" (intercalate "." name) lb ub
+    report (mnames, Active lb ub) = printf "'%s', %d, %d" (intercalate "." names) lb ub
+      where
+        names :: [String]
+        names = map (maybe "()" id) mnames
 
 pythonActiveConstraints ::
   ( Functor x, Functor z, Functor u, Functor p, Functor h, Functor c
@@ -97,7 +103,11 @@ pythonActiveConstraints ::
 pythonActiveConstraints activeCons = "[" ++ intercalate ", " cons ++ "]"
   where
     cons = map report $ flattenActiveConstraints activeCons
-    report (name, Active lb ub) = printf "('%s', %d, %d)" (intercalate "." name) lb ub
+    report (mnames, Active lb ub) = printf "('%s', %d, %d)" (intercalate "." names) lb ub
+      where
+        names :: [String]
+        names = map (maybe "()" id) mnames
+
 
 flattenActiveConstraints ::
   forall x z u p h c .
@@ -108,14 +118,17 @@ flattenActiveConstraints ::
   , Lookup (p Int)
   , Lookup (h Int)
   , Lookup (c Int)
-  ) => ActiveConstraints x z u p h c (Active Int) -> [([String], Active Int)]
+  ) => ActiveConstraints x z u p h c (Active Int) -> [([Maybe String], Active Int)]
 flattenActiveConstraints activeCons = map report $ flatten' accessors
   where
-    report (name, FieldInt f) = (name, Active (lbs ^. f) (ubs ^. f))
-    report (name, f) =
+    report (mnames, GATipField (FieldInt f)) = (mnames, Active (lbs ^. f) (ubs ^. f))
+    report (mnames, GATipField f) =
       error $ "the 'impossible' happened, " ++
-      "flattenActiveConstraints got a non-int getter " ++ show name ++
-      " with type " ++ describeField f
+      "flattenActiveConstraints got a non-int getter " ++ show mnames ++
+      " with type " ++ describeGAField f
+    report (mnames, GATipSimpleEnum _) =
+      error $ "the 'impossible' happened, " ++
+      "flattenActiveConstraints got a SimpleEnum getter " ++ show mnames
     lbs = fmap activeLower activeCons
     ubs = fmap activeUpper activeCons
 

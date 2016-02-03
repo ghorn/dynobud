@@ -39,7 +39,7 @@ module Dyno.Vectorize
 
 import GHC.Generics
 
-import Accessors ( Field, Lookup(..), accessors, flatten, flatten' )
+import Accessors ( GATip, Lookup(..), accessors, flatten, flatten' )
 import Control.Applicative
 import Data.Aeson ( FromJSON(..), ToJSON(..) )
 import Data.Either ( partitionEithers )
@@ -400,13 +400,13 @@ vnames = case mr of
   Right r -> r
   where
     mr = devectorize' $ V.fromList $
-         fmap fst (flatten accessors :: [(String, Field (f ()))])
+         fmap fst (flatten accessors :: [(String, GATip (f ()))])
 
 -- | fill a vectorizable thing with its field name heirarchy
 vnames' :: forall f . (Vectorize f, Lookup (f ())) => f [String]
 vnames' = case mr of
   Left msg -> error $ "vnames' devectorize error: " ++ msg
-  Right r -> r
+  Right r -> fmap (map (maybe "()" id)) r
   where
     mr = devectorize' $ V.fromList $
-         fmap fst (flatten' accessors :: [([String], Field (f ()))])
+         fmap fst (flatten' accessors :: [([Maybe String], GATip (f ()))])

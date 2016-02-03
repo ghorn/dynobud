@@ -29,7 +29,7 @@ import Control.Monad.State.Lazy ( State )
 import qualified Control.Monad.State.Lazy as State
 import qualified Data.Set as S
 
-import Accessors ( Lookup, Field(..), flatten, flatten', accessors )
+import Accessors ( Lookup, GATip(..), GAField(..), GASimpleEnum(..), flatten, flatten', accessors )
 
 import Dyno.Nlp ( NlpOut(..) )
 import Dyno.TypeVecs ( Vec )
@@ -250,33 +250,36 @@ runPythonExporter action = reverse pythonOut
 npArray :: String -> String
 npArray str = "numpy.array(" ++ str ++ ")"
 
-toDub :: Field (xzu Double) -> xzu Double -> Double
-toDub (FieldDouble f) = (^. f)
-toDub (FieldFloat f) = realToFrac . (^. f)
-toDub (FieldInt f) = realToFrac . (^. f)
-toDub (FieldBool f) = fromIntegral . fromEnum . (^. f)
-toDub (FieldString _) = const (read "NaN")
-toDub FieldSorry = const (read "NaN")
+toDub :: GATip (xzu Double) -> xzu Double -> Double
+toDub (GATipField (FieldDouble f)) = (^. f)
+toDub (GATipField (FieldFloat f)) = realToFrac . (^. f)
+toDub (GATipField (FieldInt f)) = realToFrac . (^. f)
+toDub (GATipField (FieldString _)) = const (read "NaN")
+toDub (GATipField FieldSorry) = const (read "NaN")
+toDub (GATipSimpleEnum enum) = realToFrac . eToIndex enum
 
 
 pythonParam :: forall p . (Vectorize p, Lookup (p Double))
               => String -> [String] -> p Double -> State PythonExporter ()
 pythonParam pyRetName topNames p = mapM_ pyParam at'
   where
-    pyParam :: ([String], (p Double -> Double)) -> State PythonExporter ()
-    pyParam (name, get) = putVal pyRetName (topNames ++ name) (show (get p))
+    pyParam :: ([Maybe String], (p Double -> Double)) -> State PythonExporter ()
+    pyParam (mnames, get) = putVal pyRetName (topNames ++ fromMNames mnames) (show (get p))
 
-    at' :: [([String], p Double -> Double)]
+    at' :: [([Maybe String], p Double -> Double)]
     at' = map (\(fn, f) -> (fn, toDub f)) $ flatten' accessors
+
+fromMNames :: [Maybe String] -> [String]
+fromMNames = map (maybe "()" id)
 
 pythonTraj :: forall x . (Vectorize x, Lookup (x Double))
               => String -> [String] -> [x Double] -> State PythonExporter ()
 pythonTraj pyRetName topNames xs = mapM_ pyArray at'
   where
-    pyArray :: ([String], (x Double -> Double)) -> State PythonExporter ()
-    pyArray (name, get) = putVal pyRetName (topNames ++ name) (npArray (show (map get xs)))
+    pyArray :: ([Maybe String], (x Double -> Double)) -> State PythonExporter ()
+    pyArray (mnames, get) = putVal pyRetName (topNames ++ fromMNames mnames) (npArray (show (map get xs)))
 
-    at' :: [([String], x Double -> Double)]
+    at' :: [([Maybe String], x Double -> Double)]
     at' = map (\(fn, f) -> (fn, toDub f)) $ flatten' accessors
 
 

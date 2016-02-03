@@ -5,7 +5,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PolyKinds #-}
 
--- todo(greg): use this in the untit tests
+-- todo(greg): use this in the unit tests
 module Dyno.DirectCollocation.CheckAccuracy
        ( Err(..)
        , Checks(..)
@@ -17,7 +17,7 @@ module Dyno.DirectCollocation.CheckAccuracy
 
 import GHC.Generics ( Generic, Generic1 )
 
-import Accessors
+import Accessors ( Lookup, GATip(..), GAField(..), accessors, describeGAField, flatten  )
 import Control.Lens ( (^.) )
 import Data.List ( sortBy )
 import Data.Maybe ( isJust, fromJust )
@@ -79,15 +79,17 @@ summarizeAccuracy (Checks _ worstStageMismatch trajMismatch) =
     trajMismatches = sortBy (flip comp) $ map (report trajMismatch) acs
     comp (_,x) (_,y) = compare (errRel x) (errRel y)
 
-    report x (name, FieldDouble f) = (name, Err ref val abs' rel)
+    report x (name, GATipField (FieldDouble f)) = (name, Err ref val abs' rel)
       where
         ref  = (fmap errRef x) ^. f
         val  = (fmap errVal x) ^. f
         abs' = (fmap errAbs x) ^. f
         rel  = (fmap errRel x) ^. f
-    report _ (name, f) =
+    report _ (name, GATipField f) =
       error $ "summarizeAccuracy got a non-double getter for " ++ show name ++
-      " with type " ++ describeField f
+      " with type " ++ describeGAField f
+    report _ (name, GATipSimpleEnum _) =
+      error $ "summarizeAccuracy got a SimpleEnum getter for " ++ show name
 
 toErr :: (Ord a, Fractional a) => Maybe a -> a -> a -> Err a
 toErr mscale ref val =

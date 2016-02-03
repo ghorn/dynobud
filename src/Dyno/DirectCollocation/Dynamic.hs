@@ -32,7 +32,7 @@ import Data.Binary ( Binary )
 import Data.Serialize ( Serialize )
 import Linear.V
 
-import Accessors ( AccessorTree(..), Lookup(..), accessors )
+import Accessors ( AccessorTree, Lookup(..), GAData(..), GAConstructor(..), accessors )
 import PlotHo ( Plotter, addChannel )
 
 import Dyno.View.Unsafe ( unM, unM' )
@@ -223,13 +223,27 @@ instance Binary CollTrajMeta
 instance Serialize CollTrajMeta
 
 namesFromAccTree :: AccessorTree a -> NameTree
-namesFromAccTree x = (\(_,(_,y)) -> y) $ namesFromAccTree' 0 ("", x)
+namesFromAccTree x = (\(_,(_,y)) -> y) $ namesFromAccTree' 0 (Just "", x)
 
-namesFromAccTree' :: Int -> (String, AccessorTree a) -> (Int, (String, NameTree))
-namesFromAccTree' k (nm, Field _) = (k+1, (nm, NameTreeLeaf k))
-namesFromAccTree' k0 (nm, Data names ats) = (k, (nm, NameTreeNode names children))
+namesFromAccTree' :: Int -> (Maybe String, AccessorTree a) -> (Int, (String, NameTree))
+namesFromAccTree' k (mname, Left _) = (k+1, (name, NameTreeLeaf k))
   where
+    name = case mname of
+      Nothing -> "()"
+      Just r -> r
+namesFromAccTree' k0 (mname, Right (GAData dname (GAConstructor cname ats))) =
+  (k, (name, NameTreeNode (dname,cname) children))
+  where
+    name = case mname of
+      Nothing -> "()"
+      Just r -> r
     (k, children) = mapAccumL namesFromAccTree' k0 ats
+namesFromAccTree' k (mname, Right (GAData dname (GASum _))) =
+  (k + 1, (name ++ " (" ++ dname ++ ")", NameTreeLeaf k))
+  where
+    name = case mname of
+      Nothing -> "()"
+      Just r -> r
 
 
 type MetaTree a = Tree.Forest ([String], Either String ((DynPlotPoints a, CollTrajMeta) -> [[(a,a)]]))

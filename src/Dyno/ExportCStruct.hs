@@ -23,7 +23,8 @@ import Text.Printf ( printf )
 import Text.Read ( readMaybe )
 
 import Accessors
-       ( Lookup, AccessorTree(..), Field(..)
+       ( Lookup, AccessorTree
+       , GAData(..), GAConstructor(..), GASimpleEnum(..), GAField(..)
        , accessors, flatten, sameFieldType )
 import Dyno.Vectorize ( Vectorize, vlength )
 
@@ -34,26 +35,40 @@ runCStructExporter action =
     (_, CStructExporter (_, _, stack)) ->
       error $ "runCStructExporter: stack is not empty!!:\n" ++ unlines stack
 
-data CStructExporter = CStructExporter (M.Map String Fields, [[String]], [String])
+data CStructExporter = CStructExporter (M.Map String Constructor, [[String]], [String])
 
-data Fields where
-  Fields :: [(String, AccessorTree a)] -> Fields
+data Constructor where
+  Constructor :: GAConstructor a -> Constructor
 
 write :: String -> State CStructExporter ()
 write str =
   State.modify $
   \(CStructExporter (set, typedefs, outs)) -> CStructExporter (set, typedefs, str: outs)
 
-typedefStruct :: String -> [(String, AccessorTree a)] -> State CStructExporter ()
-typedefStruct typeName fields = do
+typedefStruct :: String -> GAConstructor a -> State CStructExporter ()
+typedefStruct typeName (GAConstructor _ fields) = do
   write "typedef struct {"
   mapM_ (uncurry writeCField) fields
   write $ "} " ++ typeName ++ ";"
 
   CStructExporter (set, typedefs, currentStack) <- State.get
   State.put $ CStructExporter (set, reverse currentStack : typedefs, [])
+-- special case Bool:
+typedefStruct typeName (GASum (GASimpleEnum {eConstructors = ["False", "True"]})) = do
+  write $ "/* C99, requires <stdbool.h> */"
+  write $ "typedef bool " ++ typeName ++ ";"
+  CStructExporter (set, typedefs, currentStack) <- State.get
+  State.put $ CStructExporter (set, reverse currentStack : typedefs, [])
+typedefStruct typeName (GASum simpleEnum) = do
+  write "typedef enum {"
+  let writeEntry opt = write $ "    " ++ opt ++ ","
+  mapM_ writeEntry (eConstructors simpleEnum)
+  write $ "} " ++ typeName ++ ";"
 
-sameFields :: [(String, AccessorTree a)] -> [(String, AccessorTree b)] -> Bool
+  CStructExporter (set, typedefs, currentStack) <- State.get
+  State.put $ CStructExporter (set, reverse currentStack : typedefs, [])
+
+sameFields :: [(Maybe String, AccessorTree a)] -> [(Maybe String, AccessorTree b)] -> Bool
 sameFields xs ys
   | length xs /= length ys = False
   | otherwise = all (uncurry same) (zip xs ys)
@@ -61,27 +76,36 @@ sameFields xs ys
     same (nx, fx) (ny, fy) = (nx == ny) && sameTree fx fy
 
 sameTree :: AccessorTree a -> AccessorTree b -> Bool
-sameTree (Data (x0, x1) fx) (Data (y0, y1) fy) = x0 == y0 && x1 == y1 && sameFields fx fy
-sameTree (Field fx) (Field fy) = sameFieldType fx fy
+sameTree (Right (GAData dn0 con0)) (Right (GAData dn1 con1)) =
+  dn0 == dn1 && sameConstructor con0 con1
+sameTree (Left fx) (Left fy) = sameFieldType fx fy
 sameTree _ _ = False
 
-typedefStructIfMissing :: String -> [(String, AccessorTree a)] -> State CStructExporter String
-typedefStructIfMissing typeName fields = do
+sameConstructor :: GAConstructor a -> GAConstructor b -> Bool
+sameConstructor (GAConstructor cn0 fields0) (GAConstructor cn1 fields1) =
+  cn0 == cn1 && sameFields fields0 fields1
+sameConstructor (GASum simpleEnum0) (GASum simpleEnum1) =
+  eConstructors simpleEnum0 == eConstructors simpleEnum1
+sameConstructor _ _ = False
+
+
+typedefStructIfMissing :: String -> GAConstructor a -> State CStructExporter String
+typedefStructIfMissing typeName con = do
   CStructExporter (set0, typedefs, currentStack) <- State.get
   case M.lookup typeName set0 of
    -- haven't seen this type name yet, use it
    Nothing -> do
-     State.put (CStructExporter (M.insert typeName (Fields fields) set0, typedefs, []))
-     typedefStruct typeName fields
+     State.put (CStructExporter (M.insert typeName (Constructor con) set0, typedefs, []))
+     typedefStruct typeName con
      State.modify $
        \(CStructExporter (set, structs, _)) -> CStructExporter (set, structs, currentStack)
      return typeName
    -- have seen this type name already, check if it's the one we have seen already
-   Just (Fields fields0)
+   Just (Constructor con0)
      -- yeah it's the one we have seen already
-     | sameFields fields0 fields -> return typeName
+     | sameConstructor con0 con -> return typeName
      -- uh oh, same name but different type, lets modify the name
-     | otherwise -> typedefStructIfMissing newTypeName fields
+     | otherwise -> typedefStructIfMissing newTypeName con
      where
        -- ideally this would sort types by complexity and give simple ones simple names
        newTypeName = typeName ++ "_"
@@ -92,35 +116,38 @@ typedefStructIfMissing typeName fields = do
 --         (show fields)
 --         (show fields0)
 
-
 parseVecName :: String -> Maybe Int
 parseVecName ('V':'e':'c':' ':k) = readMaybe k
 parseVecName _ = Nothing
 
-writeCField :: String -> AccessorTree a -> State CStructExporter ()
-writeCField fieldName (Field f) =
+writeCField :: Maybe String -> AccessorTree a -> State CStructExporter ()
+writeCField (Just fieldName) x = writeCField' fieldName x
+writeCField Nothing _ = error "writeCField: got a non-record field"
+
+writeCField' :: String -> AccessorTree a -> State CStructExporter ()
+writeCField' fieldName (Left f) =
   write $ printf "  %s %s;" (primitiveName f) fieldName
-writeCField fieldName (Data (typeName0, _) fields) = case parseVecName typeName0 of
+writeCField' fieldName (Right (GAData typeName0 con)) = case parseVecName typeName0 of
   Nothing -> do
-    typeName <- typedefStructIfMissing typeName0 fields
+    typeName <- typedefStructIfMissing typeName0 con
     write $ printf "  %s %s;" typeName fieldName
   Just k -> do -- handle Vecs as arrays
-    childtype <- case fields of
-      [] -> error "writeCField: Vec child has no children"
-      ((_, Field f):_) -> return (primitiveName f)
-      ((_, Data (typeName0',_) childfields):_) ->
-        typedefStructIfMissing typeName0' childfields
+    childtype <- case con of
+      (GASum _) -> error "writeCField: Vec is an Enum"
+      (GAConstructor _ []) -> error "writeCField: Vec child has no children"
+      (GAConstructor _ ((_, Left f):_)) -> return (primitiveName f)
+      (GAConstructor _ ((_, Right (GAData typeName0' con')):_)) ->
+        typedefStructIfMissing typeName0' con'
     write $ printf "  %s %s[%d];" childtype fieldName k
 
 
-primitiveName :: Field a -> String
+primitiveName :: GAField a -> String
 primitiveName (FieldDouble _) = "double"
 primitiveName (FieldInt _   ) = "int64_t"
 primitiveName (FieldFloat _ ) = "float"
 primitiveName (FieldString _) = error "writeCField: strings can't be struct fields :("
-primitiveName (FieldBool _  ) = error "writeCField: bools can't be struct fields :("
 primitiveName FieldSorry    =
-  error "writeCField: found a GetSorry (generic-accessors doesn't support a type)"
+  error "writeCField: found a FieldSorry (generic-accessors doesn't support a type)"
 
 
 
@@ -128,8 +155,8 @@ primitiveName FieldSorry    =
 putTypedef :: forall a . Lookup a => Proxy a -> State CStructExporter String
 putTypedef _ =
   case handleM33 (accessors :: AccessorTree a) of
-    (Data (typeName, _) fields) -> typedefStructIfMissing typeName fields
-    (Field _) -> error "putStruct: accessors got Field instead of Data"
+    (Right (GAData typeName con)) -> typedefStructIfMissing typeName con
+    (Left _) -> error "putStruct: accessors got Field instead of Data"
 
 -- | convenience function to export only one struct
 exportTypedef :: Lookup a => Proxy a -> String
@@ -139,69 +166,90 @@ exportTypedef = snd . runCStructExporter . putTypedef
 -- If a string with a variable name is given, the variable is declared.
 exportCData :: forall a . Lookup a => Int -> Maybe String -> a -> String
 exportCData spaces0 maybeVarName theData = case (acc, maybeVarName) of
-  (Data (typeName,_) fields, Nothing) -> exportStructData theData typeName spaces fields
-  (Data (typeName,_) fields, Just varName) ->
+  (Right (GAData typeName con), Nothing) -> exportStructData theData typeName spaces con
+  (Right (GAData typeName con), Just varName) ->
     printf "%s%s %s = {\n%s;" spaces typeName varName
-    (exportStructData theData typeName (spaces ++ "  ") fields)
-  (Field _, _) -> error "exportStructData: accessors got Field instead of Data"
+    (exportStructData theData typeName (spaces ++ "  ") con)
+  (Left _, _) -> error "exportStructData: accessors got Field instead of Data"
   where
     spaces = replicate spaces0 ' '
     acc = handleM33 accessors
 
 handleM33 :: AccessorTree a -> AccessorTree a
-handleM33 r@(Field _) = r
-handleM33 (Data ("V3","V3")
-           [ ("x", Data ("V3","V3") [ ("x", Field field0)
-                                    , ("y", Field field1)
-                                    , ("z", Field field2)
-                                    ])
-           , ("y", Data ("V3","V3") [ ("x", Field field3)
-                                    , ("y", Field field4)
-                                    , ("z", Field field5)
-                                    ])
-           , ("z", Data ("V3","V3") [ ("x", Field field6)
-                                    , ("y", Field field7)
-                                    , ("z", Field field8)
-                                    ])
-           ]) = r
+handleM33 r@(Left _) = r
+handleM33 r@(Right (GAData _ (GASum _))) = r
+handleM33 (Right (GAData "V3" (GAConstructor "V3"
+           [ ( Just "x"
+             , Right (GAData "V3"
+                      (GAConstructor "V3"
+                       [ (Just "x", Left field0)
+                       , (Just "y", Left field1)
+                       , (Just "z", Left field2)
+                       ])
+                     )
+             )
+           , ( Just "y"
+             , Right (GAData "V3"
+                      (GAConstructor "V3"
+                       [ (Just "x", Left field3)
+                       , (Just "y", Left field4)
+                       , (Just "z", Left field5)
+                       ])
+                     )
+             )
+           , ( Just "z"
+             , Right (GAData "V3"
+                      (GAConstructor "V3"
+                       [ (Just "x", Left field6)
+                       , (Just "y", Left field7)
+                       , (Just "z", Left field8)
+                       ])
+                     )
+             )
+           ]))) = r
   where
-    r = Data ("M33","M33")
-        [ ("xx", Field field0)
-        , ("xy", Field field1)
-        , ("xz", Field field2)
-        , ("yx", Field field3)
-        , ("yy", Field field4)
-        , ("yz", Field field5)
-        , ("zx", Field field6)
-        , ("zy", Field field7)
-        , ("zz", Field field8)
-        ]
-handleM33 (Data name fields) = Data name $ map (\(n,at) -> (n, handleM33 at)) fields
+    r = Right (GAData "M33" (GAConstructor "M33"
+        [ (Just "xx", Left field0)
+        , (Just "xy", Left field1)
+        , (Just "xz", Left field2)
+        , (Just "yx", Left field3)
+        , (Just "yy", Left field4)
+        , (Just "yz", Left field5)
+        , (Just "zx", Left field6)
+        , (Just "zy", Left field7)
+        , (Just "zz", Left field8)
+        ]))
+handleM33 (Right (GAData dname (GAConstructor cname fields))) =
+  Right $ GAData dname $ GAConstructor cname $ map (\(n,at) -> (n, handleM33 at)) fields
 
-exportStructData :: forall a . a -> String -> String -> [(String, AccessorTree a)] -> String
-exportStructData theData comment spaces fields =
-  spaces ++ intercalate (",\n"++spaces) (map exportField' fields)
+exportStructData :: forall a . a -> String -> String -> GAConstructor a -> String
+exportStructData theData comment spaces (GAConstructor _ fields) =
+  spaces ++ intercalate (",\n"++spaces) (map exportFieldData' fields)
   ++ "\n"++ spaces ++ "} /* " ++ comment ++ " */"
   where
-    exportField' :: (String, AccessorTree a) -> String
-    exportField' (n,t) = exportField theData (Just n) spaces t
+    exportFieldData' :: (Maybe String, AccessorTree a) -> String
+    exportFieldData' (n,t) = exportFieldData theData n spaces t
+exportStructData theData comment spaces (GASum simpleEnum) =
+  spaces ++ eToString simpleEnum theData ++ "/* " ++ comment ++ "*/"
 
-toString :: a -> Field a -> String
+toString :: a -> GAField a -> String
 toString theData (FieldDouble f) = case show (theData ^. f) of
   "Infinity" -> "INFINITY"
   "-Infinity" -> "-INFINITY"
   r -> r
-toString theData (FieldFloat f) = show (theData ^. f)
+toString theData (FieldFloat f) = case show (theData ^. f) of
+  "Infinity" -> "INFINITY"
+  "-Infinity" -> "-INFINITY"
+  r -> r
 toString theData (FieldInt f) = show (theData ^. f)
-toString theData (FieldBool f) = show (fromEnum (theData ^. f))
 toString _ (FieldString _) = "NAN"
 toString _ FieldSorry = "NAN"
 
-exportField :: a -> Maybe String -> String -> AccessorTree a -> String
-exportField theData (Just fieldName) _ (Field f) =
+exportFieldData :: a -> Maybe String -> String -> AccessorTree a -> String
+exportFieldData theData (Just fieldName) _ (Left f) =
   printf ".%s = %s" fieldName (toString theData f)
-exportField theData Nothing _ (Field f) = toString theData f
-exportField theData mfieldName spaces (Data (typeName,_) subfields) =
+exportFieldData theData Nothing _ (Left f) = toString theData f
+exportFieldData theData mfieldName spaces (Right (GAData typeName con)) =
   nameEq ++ "\n" ++ fields
   where
     nameEq = case mfieldName of
@@ -213,13 +261,14 @@ exportField theData mfieldName spaces (Data (typeName,_) subfields) =
       Nothing -> typeName
 
     fields :: String
-    fields = case parseVecName typeName of
-      Nothing -> exportStructData theData comment (spaces ++ "  ") subfields
-      Just _ ->
+    fields = case (parseVecName typeName, con) of
+      (Nothing, _) -> exportStructData theData comment (spaces ++ "  ") con
+      (Just _, GAConstructor _ subfields) ->
         spaces ++ "  "
         ++ intercalate (",\n"++(spaces++"  "))
-           (map (exportField theData Nothing (spaces++"  ") . snd) subfields)
+           (map (exportFieldData theData Nothing (spaces++"  ") . snd) subfields)
         ++ "\n"++spaces++"  } /* " ++ comment ++ " */"
+      (Just _, GASum _) -> error "exportFieldData: field: %s, type %s: Vec is GASum" (show mfieldName) typeName
 
 exportNames :: forall f . (Vectorize f, Lookup (f ())) => Proxy f -> String -> (String, String)
 exportNames _ functionName = (src, prototype)
