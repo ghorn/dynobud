@@ -51,7 +51,7 @@ instance (Bounded f, Enum f, Eq f, Show f, Lookup f, RealFrac a) => Lookup (Swit
 
 class Conditional a where
   conditional :: (Enum b, Bounded b, Show b, Vectorize f, Vectorize g)
-                 => Bool -> g a -> Switch b a -> (b -> f a -> g a) -> f a -> g a
+                 => Bool -> g a -> Switch b a -> f a -> (b -> f a -> g a) -> g a
 
 instance Conditional (S SX) where
   conditional = sxConditional
@@ -109,8 +109,8 @@ fromSwitch (Switch index) = lookupKey (round index)
 mxConditional ::
   forall f g b
   . (Enum b, Bounded b, Show b, Vectorize f, Vectorize g)
-  => Bool -> g (S MX) -> Switch b (S MX) -> (b -> f (S MX) -> g (S MX)) -> f (S MX) -> g (S MX)
-mxConditional shortCircuit def (Switch sw) handleAnyCase input = unsafePerformIO $ do
+  => Bool -> g (S MX) -> Switch b (S MX) -> f (S MX) -> (b -> f (S MX) -> g (S MX)) -> g (S MX)
+mxConditional shortCircuit def (Switch sw) input handleAnyCase = unsafePerformIO $ do
   let toFunction :: b -> IO (MXFun (J (JV f)) (J (JV g)))
       toFunction key = toMXFun ("conditional_" ++ show key) (vcat . handleAnyCase key . vsplit)
 
@@ -131,8 +131,8 @@ mxConditional shortCircuit def (Switch sw) handleAnyCase input = unsafePerformIO
 sxConditional ::
   forall f g b
   . (Enum b, Bounded b, Show b, Vectorize f, Vectorize g)
-  => Bool -> g (S SX) -> Switch b (S SX) -> (b -> f (S SX) -> g (S SX)) -> f (S SX) -> g (S SX)
-sxConditional shortCircuit def (Switch sw) handleAnyCase input = unsafePerformIO $ do
+  => Bool -> g (S SX) -> Switch b (S SX) -> f (S SX) -> (b -> f (S SX) -> g (S SX)) -> g (S SX)
+sxConditional shortCircuit def (Switch sw) input handleAnyCase = unsafePerformIO $ do
   let toFunction :: b -> IO (SXFun (J (JV f)) (J (JV g)))
       toFunction key = toSXFun ("conditional_" ++ show key) (vcat . handleAnyCase key . vsplit)
 
@@ -153,8 +153,8 @@ dmConditional ::
   forall f g b
   . (Enum b, Bounded b, Vectorize f, Vectorize g)
   => Bool -> g (S DMatrix) -> Switch b (S DMatrix)
-  -> (b -> f (S DMatrix) -> g (S DMatrix)) -> f (S DMatrix) -> g (S DMatrix)
-dmConditional shortCircuit def (Switch sw) handleAnyCase input =
+  -> f (S DMatrix) -> (b -> f (S DMatrix) -> g (S DMatrix)) -> g (S DMatrix)
+dmConditional shortCircuit def (Switch sw) input handleAnyCase =
   case mkM' output of
     Right r -> vsplit r
     Left err -> error $ "cmatConditional: error splitting the output:\n" ++ err
@@ -176,8 +176,8 @@ orderKeys
 evaluateConditionalNative ::
   forall f g a b
   . (Enum b, Bounded b, RealFrac a)
-  => Switch b a -> (b -> f a -> g a) -> f a -> g a
-evaluateConditionalNative sw handleAnyCase = handleAnyCase enum
+  => Switch b a -> f a -> (b -> f a -> g a) -> g a
+evaluateConditionalNative sw input handleAnyCase = handleAnyCase enum input
   where
     enum = case fromSwitch sw of
       Right r -> r
@@ -225,7 +225,7 @@ data Foo = FooA | FooB | FooC deriving (Enum, Bounded, Eq, Ord, Show)
 _test :: forall a
          . (Conditional a, Num a)
          => Switch Foo a -> V3 a -> (Switch Foo a, V2 a)
-_test foo input = (foo, conditional True def foo f input)
+_test foo input = (foo, conditional True def foo input f)
   where
     def = V2 (-1) (-2)
     f :: Foo -> V3 a -> V2 a
