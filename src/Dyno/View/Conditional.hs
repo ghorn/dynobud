@@ -50,7 +50,7 @@ instance (Bounded f, Enum f, Eq f, Show f, Lookup f, RealFrac a) => Lookup (Swit
 
 
 class Conditional a where
-  conditional :: (Enum b, Bounded b, Ord b, Show b, Vectorize f, Vectorize g)
+  conditional :: (Enum b, Bounded b, Show b, Vectorize f, Vectorize g)
                  => Bool -> g a -> Switch b a -> (b -> f a -> g a) -> f a -> g a
 
 instance Conditional (S SX) where
@@ -108,7 +108,7 @@ fromSwitch (Switch index) = lookupKey (round index)
 {-# NOINLINE mxConditional #-}
 mxConditional ::
   forall f g b
-  . (Enum b, Eq b, Bounded b, Show b, Vectorize f, Vectorize g)
+  . (Enum b, Bounded b, Show b, Vectorize f, Vectorize g)
   => Bool -> g (S MX) -> Switch b (S MX) -> (b -> f (S MX) -> g (S MX)) -> f (S MX) -> g (S MX)
 mxConditional shortCircuit def (Switch sw) handleAnyCase input = unsafePerformIO $ do
   let toFunction :: b -> IO (MXFun (J (JV f)) (J (JV g)))
@@ -130,7 +130,7 @@ mxConditional shortCircuit def (Switch sw) handleAnyCase input = unsafePerformIO
 {-# NOINLINE sxConditional #-}
 sxConditional ::
   forall f g b
-  . (Enum b, Eq b, Bounded b, Show b, Vectorize f, Vectorize g)
+  . (Enum b, Bounded b, Show b, Vectorize f, Vectorize g)
   => Bool -> g (S SX) -> Switch b (S SX) -> (b -> f (S SX) -> g (S SX)) -> f (S SX) -> g (S SX)
 sxConditional shortCircuit def (Switch sw) handleAnyCase input = unsafePerformIO $ do
   let toFunction :: b -> IO (SXFun (J (JV f)) (J (JV g)))
@@ -151,7 +151,7 @@ sxConditional shortCircuit def (Switch sw) handleAnyCase input = unsafePerformIO
 
 dmConditional ::
   forall f g b
-  . (Enum b, Eq b, Bounded b, Show b, Vectorize f, Vectorize g)
+  . (Enum b, Bounded b, Vectorize f, Vectorize g)
   => Bool -> g (S DMatrix) -> Switch b (S DMatrix)
   -> (b -> f (S DMatrix) -> g (S DMatrix)) -> f (S DMatrix) -> g (S DMatrix)
 dmConditional shortCircuit def (Switch sw) handleAnyCase input =
@@ -175,7 +175,7 @@ orderKeys
 {-# INLINABLE evaluateConditionalNative #-}
 evaluateConditionalNative ::
   forall f g a b
-  . (Enum b, Eq b, Bounded b, Show b, RealFrac a)
+  . (Enum b, Bounded b, RealFrac a)
   => Switch b a -> (b -> f a -> g a) -> f a -> g a
 evaluateConditionalNative sw handleAnyCase = handleAnyCase enum
   where
