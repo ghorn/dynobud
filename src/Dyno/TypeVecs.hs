@@ -82,15 +82,17 @@ instance (Dim n, S.Serialize a) => S.Serialize (Vec n a) where
       Left msg -> fail msg
 
 instance (Lookup a, Dim n) => Lookup (Vec n a) where
-  toAccessorTree lens0 =
-    Right $ GAData ("Vec " ++ show n) $ GAConstructor ("Vec " ++ show n) $ map child (take n [0..])
+  toAccessorTree lens0 = case n of
+    -- if it's a vector of only 1, just ignore it
+    1 -> toAccessorTree (lens0 . (lensK 0))
+    _ -> Right $ GAData ("Vec " ++ show n) $ GAConstructor ("Vec " ++ show n) $ map child (take n [0..])
     where
       n = reflectDim (Proxy :: Proxy n)
-      child k = (Just ("v" ++ show k), toAccessorTree (lens0 . lensK))
+      child k = (Just ("[" ++ show k ++ "]"), toAccessorTree (lens0 . lensK k))
+
+      lensK k f (MkVec v) = fmap (\vk -> devectorize (v V.// [(k,vk)])) (f vk0)
         where
-          lensK f (MkVec v) = fmap (\vk -> devectorize (v V.// [(k,vk)])) (f vk0)
-            where
-              vk0 = v V.! k
+          vk0 = v V.! k
 
 instance Dim n => Distributive (Vec n) where
   distribute f = devectorize $ V.generate (reflectDim (Proxy :: Proxy n))
