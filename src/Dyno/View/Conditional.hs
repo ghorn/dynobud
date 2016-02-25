@@ -8,7 +8,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 module Dyno.View.Conditional
-       ( Conditional(..), Switch, toSwitch
+       ( Conditional(..), Switch, toSwitch, fromSwitch
        ) where
 
 import GHC.Generics ( Generic, Generic1 )
