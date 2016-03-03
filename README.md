@@ -2,23 +2,20 @@
 
 [![Build Status](https://secure.travis-ci.org/ghorn/dynobud.png?branch=master)](http://travis-ci.org/ghorn/dynobud)
 
-This library has a few distinct features, which may later be broken into separate packages:
+This library has a few distinct features:
 * high-level, strongly-typed interface to CasADi
 * NLP modeling/solving (examples/EasyNlp.hs, examples/BasicNlp.hs, examples/SofaExpando.hs)
 * OCP modeling/solving (examles/Glider.hs, examples/DaeColl.hs, examples/Rocket.hs, etc)
-* toy OCP solver interface (examples/ToyOcp.hs)
-* proof of concept monadic NLP modeling DSL (examples/NlpDsl.hs)
-* live plotter for OCP solving (examples/Dynoplot.hs)
+* live plotter for viewing OCP convergence (examples/Dynoplot.hs)
 
 This package is built on top of CasADi (www.casadi.org).
 You will have to install the CasADi C++ libraries and the casadi-bindings haskell package.
 See http://hackage.haskell.org/package/casadi-bindings for instructions.
-Installing ipopt is also highly recommended if you want to solve NLPs (`apt-get install coinor-libipopt-dev` if you're lucky)
+Installing ipopt is also highly recommended if you want to solve NLPs (`apt-get install coinor-libipopt-dev` if you're lucky).
+If you are solving large scale problems, I recommend using the HSL linear solvers, which are available for free for academic users.
 
-Please keep in mind that this library is continually evolving as my PhD progresses and I expect it to be very unstable.
-The API is also very messy as the library is evolving fast and it's unclear which parts are internal and external.
-Nevertheless, I have started making hackage releases so that my few users have some snapshots to version-constrain against.
-The library is tested on travis-ci, so the unit tests pass and the examples build.
+This library is fairly unstable, as it is in active use and development.
+For usage, consult the examples folder.
 
 To install:
 
@@ -33,7 +30,7 @@ To install dependencies, you may need to do something like this:
     >> cabal install happy
     >> cabal install gtk2hs-buildtools
 
-    >> sudo apt-get install coinor-libipopt-dev liblapack-dev libblas-dev libglpk-dev libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev libzmq3-dev libglib2.0-dev libcairo2-dev libpango1.0-dev libgtk2.0-dev libgsl0-dev
+    >> sudo apt-get install coinor-libipopt-dev liblapack-dev libblas-dev libglpk-dev libgl1-mesa-dev libglu1-mesa-dev freeglut3-dev libzmq3-dev libglib2.0-dev libcairo2-dev libpango1.0-dev libgtk-3-dev libgsl0-dev
 
 To build dynobud from source
 
@@ -50,7 +47,7 @@ Try running the examples in dynobud/examples.
     >> cabal build
     >> dist/build/rocket/rocket
 
-Known issues:
+OSX issue:
 
     "user error: out of memory"
 
