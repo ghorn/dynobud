@@ -1,0 +1,318 @@
+ \documentclass[a4paper,12pt]{article}
+%\documentclass[printer]{gOMS2e}
+%\usepackage{indentfirst}
+%\usepackage[T1]{fontenc}
+\usepackage{amsfonts}
+\usepackage{amsmath,url}
+\usepackage[left=2cm,right=2cm,top=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+
+%\newcommand{\qed}{\hfill \qedbox $\quad\quad$\\[1ex]}%
+%\newcommand{\beq}{\begin{equation}}
+%\newcommand{\eeq}{\end{equation}}
+%\newcommand{\barr}{\begin{array}}
+%\newcommand{\earr}{\end{array}}
+%\newcommand{\bvec}{ \left[ \!\! \barr{cccccccccccc} }
+%\newcommand{\evec}{ \earr \!\! \right] }
+%\newcommand{\bmat}{ \left( \!\! \barr{ccccccc} }
+%\newcommand{\emat}{ \earr \!\! \right) }
+%\newcommand{\e}{\mathbf{e}}
+%\renewcommand{\AA}{\mathbb{A}}
+%\newcommand{\BB}{\mathbb{B}}
+%\newcommand{\R}{\mathbb{R}}
+%\newcommand{\N}{\mathbb{N}}
+%\newcommand{\EE}{{\mathbb{E}}}
+%\newcommand{\LL}{{\mathcal{L}}}
+%\newcommand{\FF}{{\mathbb{F}}}
+%\newcommand{\XX}{{\mathbb{X}}}
+%\newcommand{\Id}{\mathbb{I}}
+%\newcommand{\conv}{\mathbf{conv}}
+%\newcommand{\nonneg}{\mathbf{nonneg}}
+%\newcommand{\quadand}{\quad\mbox{ and }\quad}
+
+\newcommand{\dpartial}[2]{\frac{\partial {#1}}{\partial {#2}}}
+\newcommand{\dtotal}[2]{\frac{d {#1}}{d {#2}}}
+
+\newcommand{\myl}{\xi}
+\newcommand{\myldot}{\myl'}
+%\newcommand{\pos}{\vec{r}}
+%\newcommand{\rad}{l}
+\newcommand{\matr}[2]{\left[\begin{array}{#1}#2\end{array}\right]}
+%\newcommand{\dpartial}[2]{\frac{\partial#1}{\partial #2}}
+\newcommand{\refeq}[1]{Eq.~(\ref{#1})}
+\newcommand{\refsec}[1]{Sect.~\ref{#1}}
+\newcommand{\reffig}[1]{Fig.~\ref{#1}}
+%\newcommand{\reftab}[1]{Table \ref{#1}}
+%\usepackage{epstopdf}
+%\usepackage{amsmath}
+%\usepackage{amssymb}
+
+\newcommand{\taus}[3]{\frac{\tau_{#1}-\tau_{#2}}{\tau_{#3}-\tau_{#2}}}
+\newcommand{\taud}[3]{\frac{1}{\tau_{#3}-\tau_{#2}}}
+
+\begin{document}
+\sffamily
+\begin{center}
+\begin{LARGE}
+{\bf Direct Collocation}\\
+\vspace*{0.3cm}
+\end{LARGE}\end{center}
+\begin{center}
+\begin{Large}
+Greg Horn
+\end{Large}
+
+\end{center}
+\vspace*{1cm}
+
+\section{Lagrange Interpolation}
+\begin{equation}
+\begin{aligned}
+x(\tau) &= \sum_{j=0}^D \myl_j(\tau) x_j
+\end{aligned}
+\label{eq:lagrange_interp_poly}
+\end{equation}
+where
+\begin{equation}
+\myl_j(\tau) = \prod_{k=0,k \neq j}^D\frac{\tau-\tau_k}{\tau_j-\tau_k}
+\end{equation}
+The derivative of this polynomial on an intermediate point is given by
+\begin{equation}
+x'(\tau) = \sum_{j=0}^D \myldot_j(\tau) x_j
+\label{eq:lagrange_interp_poly_deriv}
+\end{equation}
+
+Written out for $D=3$, this looks like
+
+\begin{align}
+x(\tau) = & x_0 \taus{}{1}{0} \taus{}{2}{0} \taus{}{3}{0} + \\
+          & x_1 \taus{}{0}{1} \taus{}{2}{1} \taus{}{3}{1} + \\
+          & x_2 \taus{}{0}{2} \taus{}{1}{2} \taus{}{3}{2} + \\
+          & x_3 \taus{}{0}{3} \taus{}{1}{3} \taus{}{2}{3}
+\end{align}
+
+By evaluating this at a certain $\tau_m$ eliminates all terms except $m=k$, giving
+\begin{equation}
+x(\tau_m) = x_m
+\end{equation}
+
+The derivative for $D=3$ is
+
+\begin{align}
+x'(\tau) = &x_0 (\taud{}{1}{0} \taus{}{2}{0} \taus{}{3}{0}
+               + \taus{}{1}{0} \taud{}{2}{0} \taus{}{3}{0}
+               + \taus{}{1}{0} \taus{}{2}{0} \taud{}{3}{0}) + \\
+           &x_1 (\taud{}{0}{1} \taus{}{2}{1} \taus{}{3}{1}
+               + \taus{}{0}{1} \taud{}{2}{1} \taus{}{3}{1}
+               + \taus{}{0}{1} \taus{}{2}{1} \taud{}{3}{1}) + \\
+           &x_2 (\taud{}{0}{2} \taus{}{1}{2} \taus{}{3}{2}
+               + \taus{}{0}{2} \taud{}{1}{2} \taus{}{3}{2}
+               + \taus{}{0}{2} \taus{}{1}{2} \taud{}{3}{2}) + \\
+           &x_3 (\taud{}{0}{3} \taus{}{1}{3} \taus{}{2}{3}
+               + \taus{}{0}{3} \taud{}{1}{3} \taus{}{2}{3}
+               + \taus{}{0}{3} \taus{}{1}{3} \taud{}{2}{3})
+\end{align}
+
+evaluating this at $\tau_0$ gives:
+
+\begin{align}
+x'(\tau_0) = &x_0 (\taud{0}{1}{0} \taus{0}{2}{0} \taus{0}{3}{0}
+                 + \taus{0}{1}{0} \taud{0}{2}{0} \taus{0}{3}{0}
+                 + \taus{0}{1}{0} \taus{0}{2}{0} \taud{0}{3}{0}) +\\
+             &x_1 (\taud{0}{0}{1} \taus{0}{2}{1} \taus{0}{3}{1}
+                 + \taus{0}{0}{1} \taud{0}{2}{1} \taus{0}{3}{1}
+                 + \taus{0}{0}{1} \taus{0}{2}{1} \taud{0}{3}{1}) +\\
+             &x_2 (\taud{0}{0}{2} \taus{0}{1}{2} \taus{0}{3}{2}
+                 + \taus{0}{0}{2} \taud{0}{1}{2} \taus{0}{3}{2}
+                 + \taus{0}{0}{2} \taus{0}{1}{2} \taud{0}{3}{2}) +\\
+             &x_3 (\taud{0}{0}{3} \taus{0}{1}{3} \taus{0}{2}{3}
+                 + \taus{0}{0}{3} \taud{0}{1}{3} \taus{0}{2}{3}
+                 + \taus{0}{0}{3} \taus{0}{1}{3} \taud{0}{2}{3})
+\end{align}
+which simplifies to
+\begin{align}
+x'(\tau_0) = &x_0 (\taud{0}{1}{0}
+                 + \taud{0}{2}{0}
+                 + \taud{0}{3}{0}) +\\
+             &x_1 (\taud{0}{0}{1} \taus{0}{2}{1} \taus{0}{3}{1}) +\\
+             &x_2 (\taud{0}{0}{2} \taus{0}{1}{2} \taus{0}{3}{2}) +\\
+             &x_3 (\taud{0}{0}{3} \taus{0}{1}{3} \taus{0}{2}{3}) \\
+= & x_0 C_{0,0} + x_1 C_{0,1} + x_2 C_{0,2} + x_3 C_{0,3}
+\end{align}
+
+evaluating this at $\tau_1$ gives:
+\begin{align}
+x'(\tau_0) = &x_0 (\taud{1}{1}{0} \taus{1}{2}{0} \taus{1}{3}{0}) +\\
+             &x_1 (\taud{1}{0}{1}
+                 + \taud{1}{2}{1}
+                 + \taud{1}{3}{1}) +\\
+             &x_2 (\taus{1}{0}{2} \taud{1}{1}{2} \taus{1}{3}{2}) +\\
+             &x_3 ( \taus{1}{0}{3} \taud{1}{1}{3} \taus{1}{2}{3}) \\
+= & x_0 C_{1,0} + x_1 C_{1,1} + x_2 C_{1,2} + x_3 C_{1,3}
+\end{align}
+
+evaluating this at $\tau_2$ gives:
+\begin{align}
+x'(\tau_2) = &x_0 (\taus{2}{1}{0} \taud{2}{2}{0} \taus{2}{3}{0}) + \\
+             &x_1 (\taus{2}{0}{1} \taud{2}{2}{1} \taus{2}{3}{1}) + \\
+             &x_2 (\taud{2}{0}{2}
+                 + \taud{2}{1}{2}
+                 + \taud{2}{3}{2}) + \\
+             &x_3 (\taus{2}{0}{3} \taus{2}{1}{3} \taud{2}{2}{3}) \\
+= & x_0 C_{2,0} + x_1 C_{2,1} + x_2 C_{2,2} + x_3 C_{2,3}
+\end{align}
+
+evaluating this at $\tau_3$ gives:
+\begin{align}
+x'(\tau_3) = &x_0 (\taus{3}{1}{0} \taus{3}{2}{0} \taud{3}{3}{0}) + \\
+             &x_1 (\taus{3}{0}{1} \taus{3}{2}{1} \taud{3}{3}{1}) + \\
+             &x_2 (\taus{3}{0}{2} \taus{3}{1}{2} \taud{3}{3}{2}) + \\
+             &x_3 (\taud{3}{0}{3} 
+                 + \taud{3}{1}{3} 
+                 + \taud{3}{2}{3}) \\
+= & x_0 C_{3,0} + x_1 C_{3,1} + x_2 C_{3,2} + x_3 C_{3,3}
+\end{align}
+
+The general formula for $C_{j,k}$ is
+\begin{equation}
+C_{j,k} =
+\begin{cases}
+\sum_{i=0,i\ne k}^D{\frac{1}{\tau_k-\tau_i}} & j=k \\
+\frac{1}{\tau_k-\tau_j} \prod_{i=0,i\ne j,i\ne k}^D{\frac{\tau_j-\tau_i}{\tau_k-\tau_i}}  & j \ne k
+\end{cases}
+\end{equation}
+
+---------------------------------------------------------------------------------------------- \\
+%\begin{figure}[h]
+%\includegraphics[scale=0.35]{figures/collocation_interval.eps}
+%\caption{Trajectory Discretization}
+%\label{fig:traj_discretization}
+%\end{figure}
+In direct collocation, a trajectory is broken into $N$ intervals $I_i = [t_{i,0},t_{i+1,0}], i=0,\dots N-1$ (\reffig{fig:traj_discretization}).
+It is convenient to scale time on interval $I_i$ according to $t = t_{i,0} + \tau \frac{T}{N}$ with $\tau\in[0,1]$.
+The differential state on interval $I_i$ is approximated as a Lagrange interpolating polynomial $\vec{x}_i^D$ of degree $D$, with $D+1$ control points $\vec{x}_{i,j}$ placed respectively at $\tau_j$:
+
+Given an initial value $\vec{x}_{i,0}$, the model equations can be satisfied by enforcing \refeq{eq:dae} at the collocation nodes $\tau_1,\dots,\tau_D$.
+This results in the collocation equations:
+\begin{equation}
+%0 = f\left(\sum_{k=0}^D \frac{N}{T}\left.\frac{\mathrm{d}\myl_k(\tau)}{\mathrm{d}\tau}\right|_{\tau=\tau_j} x_{i,k}, \,x_{i,j}, \,z_{i,j}, \,u_i, \,p, \,t_{i,j}\right), \; j = 1, \ldots, D.\\%, \\
+0 = \vec{f}\left(\sum_{k=0}^D \frac{N}{T}\myldot_k(\tau_j) \vec{x}_{i,k}, \,\vec{x}_{i,j}, \,\vec{z}_{i,j}, \,\vec{u}_i, \,\vec{\theta}, \,t_{i,j}\right), \; j = 1, \ldots, D.%, \\
+%0 &= g(x_{i,j}, \,z_{i,j}, \,u_i, \,p, \,t_{i,j}), \; j = 1, \ldots, D.
+\label{eq:coll_eqns}
+\end{equation}
+When \refeq{eq:coll_eqns} is satisfied, the final value $\vec{x}_{i+1,0}$ can be recovered by evaluating \refeq{eq:lagrange_interp_poly} at $\tau=1$:
+\begin{equation}
+\vec{x}_{i+1,0} = \vec{x}_i^D(t_{i+1,0}) = \sum_{j=0}^D \myl_j(1) \vec{x}_{i,j}.
+\label{eq:continuity_eqs}
+\end{equation}
+
+The collocation points $\tau_j$ must be chosen as the roots of shifted Gauss-Jacobi polynomials so that \refeq{eq:continuity_eqs} is an accurate Gauss quadrature integration \cite{Biegler2010}.%and an accurate implicit Runge-Kutta method \cite{Biegler2010}.
+The special Gauss-Jacobi polynomials Gauss-Legendre or Gauss-Radau are often used for their A-stability and for their high-order accuracy.
+Numerical values for these roots can be found in \cite{Biegler2010}, though it is convenient to use the SciPy function scipy.special.js\_roots \cite{Scipy2001}.
+
+We summarize \refeq{eq:coll_eqns} and \refeq{eq:continuity_eqs} with $X_i = (\vec{x}_{i,1},\dots,\vec{x}_{i,D})$, $Z_i = (\vec{z}_{i,1},\dots,\vec{z}_{i,D})$, $i=0,\dots,N-1$, $\vec{x}_i=\vec{x}_{i,0}$, $i=0,\dots,N$, as
+\begin{equation}
+\begin{aligned}
+%x_i &\equiv x_{i,0} \\
+%X_i &= (x_{i,1}^T, \dots, x_{i,D}^T)^T \\
+%Z_i &= (z_{i,1}^T, \dots, z_{i,D}^T)^T \\
+0 &= \vec{G}(X_i,Z_i,\vec{u}_i,\vec{\theta},T) \\
+\vec{x}_{i+1} &= \phi(\vec{x}_i,X_i).
+\label{eq:coll_eqns_summary}
+\end{aligned}
+\end{equation}
+
+\subsection{Quadrature States}
+\label{sec:quadrature_states}
+In \refsec{sec:ocp_statement} it was stated that some integral terms such as \refeq{eq:mean_power_objective_function} can be evaluated by adding a differential state to the problem and evaluating it at $T$.
+If this integral term is used only in the cost function, it can be beneficial to evaluate it without adding an additional state to the system.
+
+Consider the problem where some derivative $\dot{q}$ is known at the collocation nodes, and $q(\tau=1)$ should be computed by assuming that $q(\tau=0)=0$ and integrating over one collocation interval.
+Writing out \refeq{eq:lagrange_interp_poly_deriv} at the collocation nodes:
+\begin{equation}
+\matr{c}{
+\dot{q}(\tau_1) \\
+\vdots   \\
+\dot{q}(\tau_D)}
+=
+\frac{N}{T}
+\matr{ccc}{
+\myldot_1(\tau_1) & \cdots & \myldot_D(\tau_1) \\
+\vdots &  \ddots & \vdots \\
+\myldot_1(\tau_D) & \cdots & \myldot_D(\tau_D)}
+%
+\matr{c}{
+q(\tau_1) \\
+\vdots   \\
+q(\tau_D)},
+\end{equation}
+and solving for $q(\tau_j)$ yields:
+\begin{equation}
+\matr{c}{
+q(\tau_1) \\
+\vdots   \\
+q(\tau_D)}
+%
+=
+%
+\frac{T}{N}
+\matr{ccc}{
+\myldot_1(\tau_1) & \cdots & \myldot_D(\tau_1) \\
+\vdots           & \ddots & \vdots \\
+\myldot_1(\tau_D) & \cdots & \myldot_D(\tau_D)}^{-1}
+%
+\matr{c}{
+\dot{q}(\tau_1) \\
+\vdots   \\
+\dot{q}(\tau_D)}.
+\end{equation}
+Combining this with \refeq{eq:continuity_eqs} yields:
+\begin{equation}
+\begin{aligned}
+%q(\tau=1) &= \matr{ccc}{\myl_1(1) & \cdots & \myl_D(1)}\matr{c}{q(\tau_1) \\ \vdots \\ q(\tau_D)} \\
+q(\tau=1) &=
+\matr{ccc}{\myl_1(1) & \cdots & \myl_D(1)}
+\frac{T}{N}
+\matr{ccc}{
+\myldot_1(\tau_1) & \cdots & \myldot_D(\tau_1) \\
+\vdots           & \ddots & \vdots \\
+\myldot_1(\tau_D) & \cdots & \myldot_D(\tau_D)}^{-1}
+%
+\matr{c}{
+\dot{q}(\tau_1) \\
+\vdots   \\
+\dot{q}(\tau_D)} \\
+&=
+\frac{T}{N}\Lambda^T
+\matr{c}{
+\dot{q}(\tau_1) \\
+\vdots   \\
+\dot{q}(\tau_D)},
+\end{aligned}
+\end{equation}
+%
+where $\Lambda$ is a constant vector since both $\myl_j(\tau_k)$ and $\myldot_j(\tau_k)$ are constant.
+Integrating over all collocation intervals yields the value at $T$:
+\begin{equation}
+q(T) = \frac{T}{N}\Lambda^T
+\sum_{i=0}^{N-1}
+\matr{c}{
+\dot{q}(t_{i,1}) \\
+\vdots   \\
+\dot{q}(t_{i,D})}
+\end{equation}
+%
+so the integral term of the cost function from \refeq{eq:general_continuous_ocp} can be computed as:
+\begin{equation}
+\int_0^T \! J_\mathrm{L}(\vec{x}(t),\vec{z}(t),\vec{u}(t),\vec{\theta},t,T) \, \mathrm{d}t =
+\frac{T}{N}\Lambda^T
+\sum_{i=0}^{N-1}
+\matr{c}{
+J_\mathrm{L}(\vec{x}_{i,1},\vec{z}_{i,1},\vec{u}_i,\vec{\theta},t_{i,1},T) \\
+\vdots   \\
+J_\mathrm{L}(\vec{x}_{i,D},\vec{z}_{i,D},\vec{u}_i,\vec{\theta},t_{i,D},T)}.
+\end{equation}
+
+\end{document}
