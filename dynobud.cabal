@@ -146,8 +146,8 @@ executable multiple_shooting
                        , casadi-bindings
                        , vector
                        , linear
-                       , Chart >= 1.3.3
-                       , Chart-gtk >= 1.3.3
+                       , Chart >= 1.5.4
+                       , Chart-cairo >= 1.5.4
                        , lens
                        , colour
                        , data-default-class

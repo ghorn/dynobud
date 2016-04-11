@@ -13,8 +13,9 @@ import GHC.Generics ( Generic, Generic1 )
 
 import qualified Data.Foldable as F
 
+import Control.Monad ( void )
 import Graphics.Rendering.Chart hiding ( x0 )
-import Graphics.Rendering.Chart.Gtk
+import Graphics.Rendering.Chart.Backend.Cairo
 import Data.Default.Class
 import Data.Colour
 import Data.Colour.Names
@@ -80,7 +81,14 @@ main = do
                           , ("p", zip [0..] (map (\(X p _) -> p) xs))
                           , ("v", zip [0..] (map (\(X _ v) -> v) xs))
                           ]
-  renderableToWindow renderable 600 600
+      fileOptions :: FileOptions
+      fileOptions =
+        fo_format .~ SVG
+        $ fo_size .~ (600, 600)
+        $ def
+      path = "./multiple_shooting.svg"
+  putStrLn $ "writing solution plot to " ++ show path
+  void $ renderableToFile fileOptions path renderable
 
 
 charts :: [(String,[(Double,Double)])] -> Renderable ()
