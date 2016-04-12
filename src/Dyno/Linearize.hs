@@ -2,7 +2,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Dyno.Linearize
-       ( OdeJacobian
+       ( linearize', linearize
+       , OdeJacobian
        , ErrorOdeJacobian
        , makeOdeJacobian
        , makeErrorOdeJacobian
@@ -10,7 +11,7 @@ module Dyno.Linearize
        , evalErrorOdeJacobian
        ) where
 
-import Dyno.Vectorize ( Vectorize(..), Triple(..), fill )
+import Dyno.Vectorize ( Vectorize(..), Triple(..), None(..), Id(..), fill )
 import Dyno.View.View
 import Dyno.View.M
 import Dyno.View.Fun
@@ -168,3 +169,49 @@ evalErrorOdeJacobian (ErrorOdeJacobian fj) x0 u0 p0 sc0 = do
       (dx_dw, do_dw) = vsplitTup dxo_dw
       (dx_dp, do_dp) = vsplitTup dxo_dp
   return (dx_dx, dx_du, dx_dw, dx_dp, do_dx, do_du, do_dw, do_dp, x', o)
+
+linearize' :: forall f g h p
+              . (Vectorize f, Vectorize g, Vectorize h, Vectorize p)
+              => (f (S SX) -> p (S SX) -> (g (S SX), h (S SX)))
+              -> IO (f Double -> p Double -> IO (g (f Double), g Double, h Double))
+linearize' userF = do
+  let userF' :: JacIn (JV f) (J (JV p)) SX -> JacOut (JV g) (J (JV h)) SX
+      userF' (JacIn x p) = JacOut (vcat g) (vcat h)
+        where
+          (g, h) = userF (vsplit x) (vsplit p)
+
+  sxUserF <- toSXFun "yolo" userF'
+  jacUserF <- toFunJac sxUserF
+
+  let callFun :: f Double -> p Double -> IO (g (f Double), g Double, h Double)
+      callFun f p = do
+        let jacIn :: JacIn (JV f) (J (JV p)) DMatrix
+            jacIn = JacIn (v2d (catJV f)) (v2d (catJV p))
+
+        Jac dfdg' g' h' <- eval jacUserF jacIn
+        let _ = dfdg' :: M (JV g) (JV f) DMatrix
+
+        let g :: g Double
+            g = splitJV (d2v g')
+
+            h :: h Double
+            h = splitJV (d2v h')
+
+            dfdg  :: g (f Double)
+            dfdg =  fmap (fmap (unId . splitJV . d2v) . hsplit) (vsplit dfdg')
+
+        return (dfdg, g, h)
+
+  return callFun
+
+
+linearize :: forall f g
+             . (Vectorize f, Vectorize g)
+             => (f (S SX) -> g (S SX))
+             -> IO (f Double -> IO (g (f Double), g Double))
+linearize userF = do
+  jac <- linearize' (\x None -> (userF x, None))
+  let retFun x = do
+        (dfdg, g, None) <- jac x None
+        return (dfdg, g)
+  return retFun

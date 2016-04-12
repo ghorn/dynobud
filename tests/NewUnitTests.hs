@@ -13,6 +13,7 @@ import ViewTests ( viewTests )
 import IntegrationTests ( integrationTests )
 import MapTests ( mapTests )
 import FittingTests ( fittingTests )
+import LinearizeTests ( linearizeTests )
 
 main :: IO ()
 main = defaultMainWithOpts tests opts
@@ -25,6 +26,7 @@ tests =
   , integrationTests
   , vectorizeTests
   , viewTests
+  , linearizeTests
   ]
 
 opts :: RunnerOptions' Maybe
