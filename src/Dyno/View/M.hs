@@ -328,9 +328,9 @@ solve :: (View g, View h, CMatrix a)
          -> M g h a
 solve (UnsafeM x) (UnsafeM y) n options = mkM (CM.solve x y n options)
 
+-- TODO(greg): deprecate this?
 solve' :: (View g, View h, CMatrix a) => M f g a -> M f h a -> M g h a
 solve' (UnsafeM x) (UnsafeM y) = mkM (CM.solve' x y)
-{-# DEPRECATED solve' "use the new solve, this one is going away" #-}
 
 toHMat :: forall n m
        . (View n, View m)
@@ -379,6 +379,10 @@ blockSplit (UnsafeM m) = CM.blocksplit m vsizes hsizes
   where
     vsizes = V.fromList $ 0 : (F.toList (sizes 0 (Proxy :: Proxy f)))
     hsizes = V.fromList $ 0 : (F.toList (sizes 0 (Proxy :: Proxy g)))
+
+-- TODO(greg):
+-- blockSplit :: forall f g a . (Vectorize f, Vectorize g) => M (JV f) (JV g) DMatrix -> f (g Double)
+-- blockCat :: forall f g a . (Vectorize f, Vectorize g) => f (g Double) -> M (JV f) (JV g) DMatrix
 
 sumRows :: (View f, View g, CMatrix a) => M f g a -> M (JV Id) g a
 sumRows (UnsafeM x) = mkM (CM.sumRows x)
