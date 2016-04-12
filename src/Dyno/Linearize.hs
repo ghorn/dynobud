@@ -2,7 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Dyno.Linearize
-       ( linearize', linearize
+       ( linearize', linearize, linearizeDM', linearizeDM
        , OdeJacobian
        , ErrorOdeJacobian
        , makeOdeJacobian
@@ -175,20 +175,11 @@ linearize' :: forall f g h p
               => (f (S SX) -> p (S SX) -> (g (S SX), h (S SX)))
               -> IO (f Double -> p Double -> IO (g (f Double), g Double, h Double))
 linearize' userF = do
-  let userF' :: JacIn (JV f) (J (JV p)) SX -> JacOut (JV g) (J (JV h)) SX
-      userF' (JacIn x p) = JacOut (vcat g) (vcat h)
-        where
-          (g, h) = userF (vsplit x) (vsplit p)
-
-  sxUserF <- toSXFun "yolo" userF'
-  jacUserF <- toFunJac sxUserF
+  funJac <- linearizeDM' userF
 
   let callFun :: f Double -> p Double -> IO (g (f Double), g Double, h Double)
       callFun f p = do
-        let jacIn :: JacIn (JV f) (J (JV p)) DMatrix
-            jacIn = JacIn (v2d (catJV f)) (v2d (catJV p))
-
-        Jac dfdg' g' h' <- eval jacUserF jacIn
+        (dfdg', g', h') <- funJac f p
         let _ = dfdg' :: M (JV g) (JV f) DMatrix
 
         let g :: g Double
@@ -213,5 +204,40 @@ linearize userF = do
   jac <- linearize' (\x None -> (userF x, None))
   let retFun x = do
         (dfdg, g, None) <- jac x None
+        return (dfdg, g)
+  return retFun
+
+linearizeDM' :: forall f g h p
+              . (Vectorize f, Vectorize g, Vectorize h, Vectorize p)
+              => (f (S SX) -> p (S SX) -> (g (S SX), h (S SX)))
+              -> IO (f Double -> p Double -> IO (M (JV g) (JV f) DMatrix, J (JV g) DMatrix, J (JV h) DMatrix))
+linearizeDM' userF = do
+  let userF' :: JacIn (JV f) (J (JV p)) SX -> JacOut (JV g) (J (JV h)) SX
+      userF' (JacIn x p) = JacOut (vcat g) (vcat h)
+        where
+          (g, h) = userF (vsplit x) (vsplit p)
+
+  sxUserF <- toSXFun "yolo" userF'
+  jacUserF <- toFunJac sxUserF
+
+  let callFun :: f Double -> p Double -> IO (M (JV g) (JV f) DMatrix, J (JV g) DMatrix, J (JV h) DMatrix)
+      callFun f p = do
+        let jacIn :: JacIn (JV f) (J (JV p)) DMatrix
+            jacIn = JacIn (v2d (catJV f)) (v2d (catJV p))
+
+        Jac dfdg g h <- eval jacUserF jacIn
+        return (dfdg, g, h)
+
+  return callFun
+
+
+linearizeDM :: forall f g
+             . (Vectorize f, Vectorize g)
+             => (f (S SX) -> g (S SX))
+             -> IO (f Double -> IO (M (JV g) (JV f) DMatrix, J (JV g) DMatrix))
+linearizeDM userF = do
+  jac <- linearizeDM' (\x None -> (userF x, None))
+  let retFun x = do
+        (dfdg, g, _) <- jac x None
         return (dfdg, g)
   return retFun
