@@ -8,7 +8,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 module Dyno.View.Conditional
-       ( Conditional(..), Switch, toSwitch, fromSwitch
+       ( Conditional(..), Switch(..), toSwitch, fromSwitch
        ) where
 
 import GHC.Generics ( Generic, Generic1 )
@@ -32,7 +32,7 @@ import Dyno.View.View ( J, JV, S )
 import Dyno.View.Unsafe ( mkM', unM )
 import Dyno.View.M ( vcat, vsplit )
 
-newtype Switch f a = Switch a deriving (Functor, Generic, Generic1, Show)
+newtype Switch f a = UnsafeSwitch a deriving (Functor, Generic, Generic1, Show)
 instance Vectorize (Switch f)
 instance Serialize a => Serialize (Switch f a)
 instance ToJSON a => ToJSON (Switch f a)
@@ -78,7 +78,7 @@ toSwitch key = lookupKey 0 orderedKeys
 
     lookupKey :: Int -> [b] -> Switch b a
     lookupKey k (x:xs)
-      | key == x = Switch (fromIntegral k)
+      | key == x = UnsafeSwitch (fromIntegral k)
       | otherwise = lookupKey (k+1) xs
     lookupKey _ [] =
       error $
@@ -90,7 +90,7 @@ toSwitch key = lookupKey 0 orderedKeys
 fromSwitch ::  forall a b
                . (Enum b, Bounded b, RealFrac a)
                => Switch b a -> Either String b
-fromSwitch (Switch index) = lookupKey (round index)
+fromSwitch (UnsafeSwitch index) = lookupKey (round index)
   where
     lookupKey intKey
       | intKey < 0 = Left $ "fromSwitch: got negative index: " ++ show intKey
@@ -110,7 +110,7 @@ mxConditional ::
   forall f g b
   . (Enum b, Bounded b, Show b, Vectorize f, Vectorize g)
   => Bool -> g (S MX) -> Switch b (S MX) -> f (S MX) -> (b -> f (S MX) -> g (S MX)) -> g (S MX)
-mxConditional shortCircuit def (Switch sw) input handleAnyCase = unsafePerformIO $ do
+mxConditional shortCircuit def (UnsafeSwitch sw) input handleAnyCase = unsafePerformIO $ do
   let toFunction :: b -> IO (MXFun (J (JV f)) (J (JV g)))
       toFunction key = toMXFun ("conditional_" ++ show key) (vcat . handleAnyCase key . vsplit)
 
@@ -132,7 +132,7 @@ sxConditional ::
   forall f g b
   . (Enum b, Bounded b, Show b, Vectorize f, Vectorize g)
   => Bool -> g (S SX) -> Switch b (S SX) -> f (S SX) -> (b -> f (S SX) -> g (S SX)) -> g (S SX)
-sxConditional shortCircuit def (Switch sw) input handleAnyCase = unsafePerformIO $ do
+sxConditional shortCircuit def (UnsafeSwitch sw) input handleAnyCase = unsafePerformIO $ do
   let toFunction :: b -> IO (SXFun (J (JV f)) (J (JV g)))
       toFunction key = toSXFun ("conditional_" ++ show key) (vcat . handleAnyCase key . vsplit)
 
@@ -154,7 +154,7 @@ dmConditional ::
   . (Enum b, Bounded b, Vectorize f, Vectorize g)
   => Bool -> g (S DMatrix) -> Switch b (S DMatrix)
   -> f (S DMatrix) -> (b -> f (S DMatrix) -> g (S DMatrix)) -> g (S DMatrix)
-dmConditional shortCircuit def (Switch sw) input handleAnyCase =
+dmConditional shortCircuit def (UnsafeSwitch sw) input handleAnyCase =
   case mkM' output of
     Right r -> vsplit r
     Left err -> error $ "cmatConditional: error splitting the output:\n" ++ err
