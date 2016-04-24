@@ -23,11 +23,11 @@ import System.IO.Unsafe ( unsafePerformIO )
 
 import Casadi.MX ( MX )
 import Casadi.SX ( SX )
-import Casadi.DMatrix ( DMatrix )
+import Casadi.DM ( DM )
 import qualified Casadi.CMatrix as C
 
 import Dyno.Vectorize ( Vectorize )
-import Dyno.View.Fun ( MXFun, SXFun, toMXFun, toSXFun, call, callSX )
+import Dyno.View.Fun ( Fun, toMXFun, toSXFun, callMX, callSX )
 import Dyno.View.View ( J, JV, S )
 import Dyno.View.Unsafe ( mkM', unM )
 import Dyno.View.M ( vcat, vsplit )
@@ -59,7 +59,7 @@ instance Conditional (S SX) where
 instance Conditional (S MX) where
   conditional = mxConditional
   {-# NOINLINE conditional #-}
-instance Conditional (S DMatrix) where
+instance Conditional (S DM) where
   conditional = dmConditional
 
 instance Conditional Double where
@@ -111,14 +111,14 @@ mxConditional ::
   . (Enum b, Bounded b, Show b, Vectorize f, Vectorize g)
   => Bool -> g (S MX) -> Switch b (S MX) -> f (S MX) -> (b -> f (S MX) -> g (S MX)) -> g (S MX)
 mxConditional shortCircuit def (UnsafeSwitch sw) input handleAnyCase = unsafePerformIO $ do
-  let toFunction :: b -> IO (MXFun (J (JV f)) (J (JV g)))
+  let toFunction :: b -> IO (Fun (J (JV f)) (J (JV g)))
       toFunction key = toMXFun ("conditional_" ++ show key) (vcat . handleAnyCase key . vsplit)
 
-  functions <- mapM toFunction orderKeys :: IO [MXFun (J (JV f)) (J (JV g))]
+  functions <- mapM toFunction orderKeys :: IO [Fun (J (JV f)) (J (JV g))]
   let catInput = vcat input
 
       outputs :: [J (JV g) MX]
-      outputs = map (\f -> call f catInput) functions
+      outputs = map (\f -> callMX f catInput) functions
 
       output :: MX
       output = C.conditional' (unM sw) (V.fromList (map unM outputs)) (unM (vcat def)) shortCircuit
@@ -133,10 +133,10 @@ sxConditional ::
   . (Enum b, Bounded b, Show b, Vectorize f, Vectorize g)
   => Bool -> g (S SX) -> Switch b (S SX) -> f (S SX) -> (b -> f (S SX) -> g (S SX)) -> g (S SX)
 sxConditional shortCircuit def (UnsafeSwitch sw) input handleAnyCase = unsafePerformIO $ do
-  let toFunction :: b -> IO (SXFun (J (JV f)) (J (JV g)))
+  let toFunction :: b -> IO (Fun (J (JV f)) (J (JV g)))
       toFunction key = toSXFun ("conditional_" ++ show key) (vcat . handleAnyCase key . vsplit)
 
-  functions <- mapM toFunction orderKeys :: IO [SXFun (J (JV f)) (J (JV g))]
+  functions <- mapM toFunction orderKeys :: IO [Fun (J (JV f)) (J (JV g))]
   let catInput = vcat input
 
       outputs :: [J (JV g) SX]
@@ -152,17 +152,17 @@ sxConditional shortCircuit def (UnsafeSwitch sw) input handleAnyCase = unsafePer
 dmConditional ::
   forall f g b
   . (Enum b, Bounded b, Vectorize f, Vectorize g)
-  => Bool -> g (S DMatrix) -> Switch b (S DMatrix)
-  -> f (S DMatrix) -> (b -> f (S DMatrix) -> g (S DMatrix)) -> g (S DMatrix)
+  => Bool -> g (S DM) -> Switch b (S DM)
+  -> f (S DM) -> (b -> f (S DM) -> g (S DM)) -> g (S DM)
 dmConditional shortCircuit def (UnsafeSwitch sw) input handleAnyCase =
   case mkM' output of
     Right r -> vsplit r
     Left err -> error $ "cmatConditional: error splitting the output:\n" ++ err
   where
-    outputs :: [J (JV g) DMatrix]
+    outputs :: [J (JV g) DM]
     outputs = map (\key -> vcat (handleAnyCase key input)) orderKeys
 
-    output :: DMatrix
+    output :: DM
     output = C.conditional' (unM sw) (V.fromList (map unM outputs)) (unM (vcat def)) shortCircuit
 
 orderKeys :: (Enum a, Bounded a) => [a]
@@ -187,40 +187,40 @@ evaluateConditionalNative sw input handleAnyCase = handleAnyCase enum input
 data Foo = FooA | FooB | FooC deriving (Enum, Bounded, Eq, Ord, Show)
 -- | a test
 -- >>> _test (toSwitch FooA) (V3 1 2 3) :: (Switch Foo Double, V2 Double)
--- (Switch 0.0,V2 1.0 2.0)
+-- (UnsafeSwitch 0.0,V2 1.0 2.0)
 --
 -- >>> _test (toSwitch FooB) (V3 1 2 3) :: (Switch Foo Double, V2 Double)
--- (Switch 1.0,V2 2.0 4.0)
+-- (UnsafeSwitch 1.0,V2 2.0 4.0)
 --
 -- >>> _test (toSwitch FooC) (V3 1 2 3) :: (Switch Foo Double, V2 Double)
--- (Switch 2.0,V2 3.0 6.0)
+-- (UnsafeSwitch 2.0,V2 3.0 6.0)
 --
--- >>> _test (toSwitch FooA) (V3 1 2 3) :: (Switch Foo (S DMatrix), V2 (S DMatrix))
--- (Switch 0,V2 1 2)
+-- >>> _test (toSwitch FooA) (V3 1 2 3) :: (Switch Foo (S DM), V2 (S DM))
+-- (UnsafeSwitch 0,V2 1 2)
 --
--- >>> _test (toSwitch FooB) (V3 1 2 3) :: (Switch Foo (S DMatrix), V2 (S DMatrix))
--- (Switch 1,V2 2 4)
+-- >>> _test (toSwitch FooB) (V3 1 2 3) :: (Switch Foo (S DM), V2 (S DM))
+-- (UnsafeSwitch 1,V2 2 4)
 --
--- >>> _test (toSwitch FooC) (V3 1 2 3) :: (Switch Foo (S DMatrix), V2 (S DMatrix))
--- (Switch 2,V2 3 6)
+-- >>> _test (toSwitch FooC) (V3 1 2 3) :: (Switch Foo (S DM), V2 (S DM))
+-- (UnsafeSwitch 2,V2 3 6)
 --
 -- >>> _test (toSwitch FooA) (V3 1 2 3) :: (Switch Foo (S SX), V2 (S SX))
--- (Switch 0,V2 1 2)
+-- (UnsafeSwitch 0,V2 1 2)
 --
 -- >>> _test (toSwitch FooB) (V3 1 2 3) :: (Switch Foo (S SX), V2 (S SX))
--- (Switch 1,V2 2 4)
+-- (UnsafeSwitch 1,V2 2 4)
 --
 -- >>> _test (toSwitch FooC) (V3 1 2 3) :: (Switch Foo (S SX), V2 (S SX))
--- (Switch 2,V2 3 6)
+-- (UnsafeSwitch 2,V2 3 6)
 --
 -- >>> _test (toSwitch FooA) (V3 1 2 3) :: (Switch Foo (S MX), V2 (S MX))
--- (Switch 0,V2 vertsplit(conditional(0){0}){0} vertsplit(conditional(0){0}){1})
+-- (UnsafeSwitch 0,V2 vertsplit(switch(0){0}){0} vertsplit(switch(0){0}){1})
 --
 -- >>> _test (toSwitch FooB) (V3 1 2 3) :: (Switch Foo (S MX), V2 (S MX))
--- (Switch 1,V2 vertsplit(conditional(1){0}){0} vertsplit(conditional(1){0}){1})
+-- (UnsafeSwitch 1,V2 vertsplit(switch(1){0}){0} vertsplit(switch(1){0}){1})
 --
 -- >>> _test (toSwitch FooC) (V3 1 2 3) :: (Switch Foo (S MX), V2 (S MX))
--- (Switch 2,V2 vertsplit(conditional(2){0}){0} vertsplit(conditional(2){0}){1})
+-- (UnsafeSwitch 2,V2 vertsplit(switch(2){0}){0} vertsplit(switch(2){0}){1})
 --
 _test :: forall a
          . (Conditional a, Num a)

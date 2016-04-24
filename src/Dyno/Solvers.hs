@@ -1,22 +1,31 @@
 {-# OPTIONS_GHC -Wall #-}
 
-module Dyno.Solvers ( Solver(options, functionOptions, functionCall)
-                    , Opt(..)
+module Dyno.Solvers ( Solver(options, runnerOptions), RunNlpOptions(..)
+                    , GType(..)
                     , ipoptSolver, snoptSolver, worhpSolver
                     , getSolverInternal
                     ) where
 
-import Casadi.MXFunction ( MXFunction )
-import Casadi.Option ( Opt(..) )
+import Casadi.GenericType ( GType(..) )
 
 import Dyno.SolverInternal ( SolverInternal(..) )
 
 data Solver =
   Solver
-  { options :: [(String,Opt)]
-  , functionOptions :: [(String, Opt)]
-  , functionCall :: MXFunction -> IO ()
+  { options :: [(String, GType)]
+  , runnerOptions :: RunNlpOptions
   , solverInternal :: SolverInternal
+  }
+
+defaultRunnerOptions :: RunNlpOptions
+defaultRunnerOptions =
+  RunNlpOptions
+  { verbose = False
+  }
+
+data RunNlpOptions =
+  RunNlpOptions
+  { verbose :: Bool
   }
 
 -- | get the read-only part
@@ -27,8 +36,7 @@ snoptSolver :: Solver
 snoptSolver =
   Solver
   { options = []
-  , functionOptions = []
-  , functionCall = const (return ())
+  , runnerOptions = defaultRunnerOptions
   , solverInternal =
        SolverInternal
        { solverName = "snopt"
@@ -54,14 +62,12 @@ ipoptSolver :: Solver
 ipoptSolver =
   Solver
   { options = []
-  , functionOptions = []
-  , functionCall = const (return ())
+  , runnerOptions = defaultRunnerOptions
   , solverInternal =
        SolverInternal
        { solverName = "ipopt"
        , defaultSolverOptions =
-             [ ("max_iter", Opt (3000 :: Int))
-             , ("tol", Opt (1e-9 :: Double))
+             [
 --             , ("hessian_approximation", Opt "limited-memory")
 --             , ("expand", Opt True)
 --             , ("linear_solver", Opt "ma27")
@@ -80,8 +86,7 @@ worhpSolver :: Solver
 worhpSolver =
   Solver
   { options = []
-  , functionOptions = []
-  , functionCall = const (return ())
+  , runnerOptions = defaultRunnerOptions
   , solverInternal =
        SolverInternal
        { solverName = "worhp"
@@ -120,7 +125,5 @@ worhpSolver =
 --  , options = []
 --  , solverInterruptCode = 1
 --  , successCodes = [""]
---  , functionOptions = []
---  , functionCall = const (return ())
 --  }
 --

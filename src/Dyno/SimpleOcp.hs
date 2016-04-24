@@ -27,7 +27,6 @@ import Dyno.NlpUtils
 import Dyno.Nlp
 import Dyno.DirectCollocation.Formulate
 import Dyno.DirectCollocation.Types
-import Dyno.DirectCollocation.Quadratures
 import Dyno.Vectorize ( Vectorize(..), Tuple(..), None(..), fill, vzipWith )
 import Dyno.View.View -- ( View(..) )
 import Dyno.View.JVec
@@ -118,21 +117,17 @@ solveOcp' simple _ _ = do
   let ocp = toOcp simple
       ocpInputs = toOcpInputs simple
       tf = endTime simple
-      dirCollOpts =
-        DirCollOptions
-        { collocationRoots = Radau
-        , mapStrategy = Unrolled
-        } -- todo(greg): = def
+      dirCollOpts = def
       roots = collocationRoots dirCollOpts
 
       guess :: CollTraj (Tuple x u) None u None n deg (Vector Double)
       guess = makeGuess roots tf (\t -> Tuple (initialGuess simple t) (fill 0)) (const None) (const (fill 0)) None
   cp <- makeCollProblem dirCollOpts ocp ocpInputs (cat guess)
   let _ = cp :: CollProblem (Tuple x u) None u None (Tuple x u) None (SimpleBc x) None None None None None n deg
-  (emsg, opt) <- solveNlp solver (cpNlp cp) Nothing
-  case emsg of
+  (_, eopt) <- solveNlp solver (cpNlp cp) Nothing
+  case eopt of
     Left msg -> return (Left msg)
-    Right _ -> do
+    Right opt -> do
       let CollTraj _ _ stages' xf' = split (xOpt opt)
           xs = map ((\(CollStage x _ _ _) -> splitJV x) . split) $ F.toList $ unJVec (split stages')
       return $ Right $ map (\(Tuple x u) -> (x, u)) (xs ++ [splitJV xf'])

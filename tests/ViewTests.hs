@@ -30,11 +30,10 @@ import Test.Framework ( Test, testGroup )
 import Test.Framework.Providers.HUnit ( testCase )
 import Test.Framework.Providers.QuickCheck2 ( testProperty )
 
-import Casadi.Function ( evalDMatrix )
-import Casadi.MXFunction ( mxFunction )
+import Casadi.Function ( callDM, mxFunction )
 import Casadi.CMatrix ( CMatrix )
 import qualified Casadi.CMatrix as CM
-import Casadi.DMatrix ( DMatrix )
+import Casadi.DM ( DM )
 import Casadi.MX ( MX )
 import Casadi.SX ( SX )
 import Casadi.Viewable ( Viewable )
@@ -71,7 +70,7 @@ instance Show CMatrices where
 instance Arbitrary CMatrices where
   arbitrary = frequency [ (1, return (CMatrices "MX" (Proxy :: Proxy MX)))
                         , (5, return (CMatrices "SX" (Proxy :: Proxy SX)))
-                        , (5, return (CMatrices "DMatrix" (Proxy :: Proxy DMatrix)))
+                        , (5, return (CMatrices "DM" (Proxy :: Proxy DM)))
                         ]
 instance (View f, View g, CMatrix a) => Arbitrary (M f g a) where
   arbitrary = do
@@ -104,10 +103,10 @@ instance (View f, View g, CMatrix a) => Arbitrary (M f g a) where
 instance (Arbitrary a, Dim n) => Arbitrary (Vec n a) where
   arbitrary = T.sequence (fill arbitrary)
 
-evalMX :: MX -> DMatrix
+evalMX :: MX -> DM
 evalMX x = unsafePerformIO $ do
   f <- mxFunction "evalMX" V.empty (V.singleton x) M.empty
-  ret <- evalDMatrix f V.empty
+  ret <- callDM f V.empty
   return (V.head ret)
 
 data JX0 f a = JX0 (J (JV f) a) (J (JV f) a) deriving (Show, Generic, Generic1)
@@ -133,7 +132,7 @@ instance MyEq a => MyEq (M f g a) where
   myEq (UnsafeM x) (UnsafeM y) = myEq x y
 instance MyEq SX where
   myEq = (==)
-instance MyEq DMatrix where
+instance MyEq DM where
   myEq = (==)
 instance MyEq MX where
   myEq x y = myEq (evalMX x) (evalMX y)
@@ -310,9 +309,9 @@ prop_toFromHMat =
             . (View f, View g)
             => Proxy f -> Proxy g -> Gen Property
     test _ _ = do
-      m0 <- arbitrary :: Gen (M f g DMatrix)
+      m0 <- arbitrary :: Gen (M f g DM)
       let m1 = toHMat m0 :: Mat.Matrix Double
-          m2 = fromHMat m1 :: M f g DMatrix
+          m2 = fromHMat m1 :: M f g DM
       return $ beEqual m0 m2
 
 prop_fromToHMat :: Test
@@ -324,9 +323,9 @@ prop_fromToHMat =
             . (View f, View g)
             => Proxy f -> Proxy g -> Gen Property
     test _ _ = do
-      m0 <- arbitrary :: Gen (M f g DMatrix)
+      m0 <- arbitrary :: Gen (M f g DM)
       let m1 = toHMat m0 :: Mat.Matrix Double
-          m2 = fromHMat m1 :: M f g DMatrix
+          m2 = fromHMat m1 :: M f g DM
           m3 = toHMat m2 :: Mat.Matrix Double
       return $ beEqual m1 m3
 
@@ -339,9 +338,9 @@ prop_covToFromMat =
             . (View f, View g)
             => Proxy f -> Proxy g -> Gen Property
     test _ _ = do
-      m0 <- arbitrary :: Gen (J (Cov f) DMatrix)
-      let m1 = toMat m0 :: M f f DMatrix
-          m2 = fromMat m1 :: J (Cov f) DMatrix
+      m0 <- arbitrary :: Gen (J (Cov f) DM)
+      let m1 = toMat m0 :: M f f DM
+          m2 = fromMat m1 :: J (Cov f) DM
       return $ beEqual m0 m2
 
 prop_covFromToMat :: Test
@@ -353,20 +352,20 @@ prop_covFromToMat =
             . (View f, View g)
             => Proxy f -> Proxy g -> Gen Property
     test _ _ = do
-      m0' <- arbitrary :: Gen (M f f DMatrix)
+      m0' <- arbitrary :: Gen (M f f DM)
       let m0 = 0.5 * (m0' + trans m0') -- make it symmetric
-          m1 = fromMat m0 :: J (Cov f) DMatrix
-          m2 = toMat m1 :: M f f DMatrix
+          m1 = fromMat m0 :: J (Cov f) DM
+          m2 = toMat m1 :: M f f DM
       return $ beEqual m0 m2
 
 prop_serializeDeserializeBinary :: Test
 prop_serializeDeserializeBinary =
-  testProperty "(M f g DMatrix): Binary deserialize . serialize" $
+  testProperty "(M f g DM): Binary deserialize . serialize" $
   \(Views {vwProxy = p1}) (Views {vwProxy = p2}) -> test p1 p2
   where
     test :: forall f g . (View f, View g) => Proxy f -> Proxy g -> Gen Property
     test _ _ = do
-      m0 <- arbitrary :: Gen (M f g DMatrix)
+      m0 <- arbitrary :: Gen (M f g DM)
       let m1 = B.encode m0
       return $
         case B.decodeOrFail m1 of
@@ -375,12 +374,12 @@ prop_serializeDeserializeBinary =
 
 prop_serializeDeserializeCereal :: Test
 prop_serializeDeserializeCereal =
-  testProperty "(M f g DMatrix): Cereal deserialize . serialize" $
+  testProperty "(M f g DM): Cereal deserialize . serialize" $
   \(Views {vwProxy = p1}) (Views {vwProxy = p2}) -> test p1 p2
   where
     test :: forall f g . (View f, View g) => Proxy f -> Proxy g -> Gen Property
     test _ _ = do
-      m0 <- arbitrary :: Gen (M f g DMatrix)
+      m0 <- arbitrary :: Gen (M f g DM)
       let m1 = S.encode m0
       return $
         case S.decode m1 of
@@ -491,7 +490,7 @@ data BH a = BH (J (JV V2) a) (J (JV V4) a) deriving Generic
 instance View BV
 instance View BH
 
-blockcat' :: [[DMatrix]] -> DMatrix
+blockcat' :: [[DM]] -> DM
 blockcat' = CM.blockcat . V.fromList . map V.fromList
 
 blockcatScalars :: Num a => [[a]]
@@ -508,7 +507,7 @@ blockcatScalars =
   , [36, 37,    38, 39, 40, 41]
   ]
 
-blockcatBlocks :: Vector (Vector DMatrix)
+blockcatBlocks :: Vector (Vector DM)
 blockcatBlocks = V.fromList $ map V.fromList
   [ [x00, x01]
   , [x10, x11]
@@ -544,80 +543,80 @@ blockcatBlocks = V.fromList $ map V.fromList
     x30 = blockcat' [[36, 37]]
     x31 = blockcat' [[38, 39, 40, 41]]
 
-blockCountUp :: M BV BH DMatrix
+blockCountUp :: M BV BH DM
 blockCountUp = countUp
 
 test_blockcatScalars :: HUnit.Assertion
 test_blockcatScalars = HUnit.assertEqual "" x y
   where
-    x :: M BV BH DMatrix
+    x :: M BV BH DM
     x = blockCountUp
 
-    y :: M BV BH DMatrix
+    y :: M BV BH DM
     y = mkM $ blockcat' blockcatScalars
 
 test_blockcatBlocks :: HUnit.Assertion
 test_blockcatBlocks = HUnit.assertEqual "" x y
   where
-    x :: M BV BH DMatrix
+    x :: M BV BH DM
     x = blockCountUp
 
-    y :: M BV BH DMatrix
+    y :: M BV BH DM
     y = mkM $ CM.blockcat blockcatBlocks
 
 test_blockSplit :: HUnit.Assertion
 test_blockSplit = HUnit.assertEqual "" x y
   where
-    x, y :: V.Vector (V.Vector DMatrix)
+    x, y :: V.Vector (V.Vector DM)
     x = blockcatBlocks
     y = blockSplit blockCountUp
 
 ----------------- sumRows/sumCols ---------------
-sumInput :: M (JV V2) (JV V3) DMatrix
+sumInput :: M (JV V2) (JV V3) DM
 sumInput = countUp
 
 -- make sure the countUp is doing what I expect
 test_sumInput :: HUnit.Assertion
 test_sumInput = HUnit.assertEqual "" x sumInput
   where
-    x :: M (JV V2) (JV V3) DMatrix
+    x :: M (JV V2) (JV V3) DM
     x = vcat (V2 r0 r1)
 
-    r0, r1 :: M (JV Id) (JV V3) DMatrix
+    r0, r1 :: M (JV Id) (JV V3) DM
     r0 = hcat $ V3 0 1 2
     r1 = hcat $ V3 3 4 5
 
 test_sumRows :: HUnit.Assertion
 test_sumRows = HUnit.assertEqual "" x y
   where
-    x :: M (JV Id) (JV V3) DMatrix
+    x :: M (JV Id) (JV V3) DM
     x = hcat (V3 3 5 7)
 
-    y :: M (JV Id) (JV V3) DMatrix
-    y = sumRows sumInput
+    y :: M (JV Id) (JV V3) DM
+    y = sum1 sumInput
 
 test_sumCols :: HUnit.Assertion
 test_sumCols = HUnit.assertEqual "" x y
   where
-    x :: M (JV V2) (JV Id) DMatrix
+    x :: M (JV V2) (JV Id) DM
     x = vcat (V2 3 12)
 
-    y :: M (JV V2) (JV Id) DMatrix
-    y = sumCols sumInput
+    y :: M (JV V2) (JV Id) DM
+    y = sum2 sumInput
 
 test_reshape :: HUnit.Assertion
 test_reshape = HUnit.assertEqual "" x y
   where
-    j :: J (JVec 3 (JV V2)) DMatrix
+    j :: J (JVec 3 (JV V2)) DM
     j = countUp
 
-    x :: M (JV V2) (JVec 3 (JV Id)) DMatrix
+    x :: M (JV V2) (JVec 3 (JV Id)) DM
     x = mkM $ blockcat'
         [ [0, 2, 4]
         , [1, 3, 5]
         ]
 
-    y :: M (JV V2) (JVec 3 (JV Id)) DMatrix
+    y :: M (JV V2) (JVec 3 (JV Id)) DM
     y = reshape j
 
 viewTests :: Test

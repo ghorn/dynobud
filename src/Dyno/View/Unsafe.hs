@@ -126,18 +126,18 @@ mkM' :: forall f g a
         . (View f, View g, Viewable a)
         => a -> Either String (M f g a)
 mkM' x
-  | nx == nx' && ny == ny' = Right (UnsafeM x)
-  | all (== 0) [nx,nx'] && ny' == 0 = Right zeros
-  | all (== 0) [ny,ny'] && nx' == 0 = Right zeros
+  | tx == rx && ty == ry = Right (UnsafeM x)
+  | all (== 0) [tx, rx] && ry == 0 = Right zeros
+  | all (== 0) [ty, ry] && rx == 0 = Right zeros
   | otherwise = Left $ "mkM' length mismatch: " ++
-                "typed size: " ++ show (nx,ny) ++
-                ", actual size: " ++ show (nx', ny')
+                "typed size: " ++ show (tx,ty) ++
+                ", runtime size: " ++ show (rx, ry)
   where
-    nx = size (Proxy :: Proxy f)
-    ny = size (Proxy :: Proxy g)
-    nx' = vsize1 x
-    ny' = vsize2 x
-    zeros = mkM (vrecoverDimension x (nx, ny))
+    tx = size (Proxy :: Proxy f)
+    ty = size (Proxy :: Proxy g)
+    rx = vsize1 x
+    ry = vsize2 x
+    zeros = mkM (vrecoverDimension x (tx, ty))
 
 unM' :: forall f g a
         . (View f, View g, Viewable a)

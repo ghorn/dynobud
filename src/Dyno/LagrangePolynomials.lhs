@@ -114,10 +114,10 @@ import qualified Data.Foldable as F
 import qualified Data.Vector as V
 import Linear ( Additive, (^*), sumV )
 
-import Casadi.SXFunction ( sxFunction )
-import Casadi.Function ( evalDMatrix )
+import Casadi.Function ( sxFunction )
+import Casadi.Function ( callDM )
 import Casadi.SX ( SX, ssym, sgradient )
-import Casadi.DMatrix ( DMatrix, dnonzeros )
+import Casadi.DM ( DM, dnonzeros )
 import Casadi.CMatrix ( densify )
 
 import Dyno.TypeVecs
@@ -290,8 +290,8 @@ runComparison = do
   --mapM_ print zdot'
   
   putStrLn "numeric:"
-  vals' <- V.mapM (\tau_i -> evalDMatrix zdotAlg (V.fromList (tau_i : sampleTaus'))) (V.fromList sampleTaus')
-  let d2d :: DMatrix -> Double
+  vals' <- V.mapM (\tau_i -> callDM zdotAlg (V.fromList (tau_i : sampleTaus'))) (V.fromList sampleTaus')
+  let d2d :: DM -> Double
       d2d x = case V.toList (dnonzeros (densify x)) of
         [y] -> y
         ys -> error $ "d2d: need length 1, got length " ++ show (length ys)

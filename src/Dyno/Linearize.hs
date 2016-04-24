@@ -18,7 +18,7 @@ import Dyno.View.Fun
 import Dyno.View.FunJac
 
 import Casadi.SX ( SX )
-import Casadi.DMatrix ( DMatrix )
+import Casadi.DM ( DM )
 
 toOdeSX ::
   (Vectorize x, Vectorize u, Vectorize w, Vectorize p, Vectorize sc, Vectorize o)
@@ -52,7 +52,7 @@ toErrorOdeSX errorOde jacIn = jacOut
 
 newtype OdeJacobian x u w p sc o =
   OdeJacobian
-  (SXFun
+  (Fun
    (JacIn
     (JQuad (JV x) (JV u) (JV w) (JV p))
     (J (JV sc)))
@@ -63,7 +63,7 @@ newtype OdeJacobian x u w p sc o =
 
 newtype ErrorOdeJacobian x e u w p sc o =
   ErrorOdeJacobian
-  (SXFun
+  (Fun
    (JacIn
     (JQuad (JV e) (JV u) (JV w) (JV p))
     (J (JV (Triple x u sc))))
@@ -103,16 +103,16 @@ evalOdeJacobian ::
   -> u Double
   -> p Double
   -> sc Double
-  -> IO ( M (JV x) (JV x) DMatrix
-        , M (JV x) (JV u) DMatrix
-        , M (JV x) (JV w) DMatrix
-        , M (JV x) (JV p) DMatrix
-        , M (JV o) (JV x) DMatrix
-        , M (JV o) (JV u) DMatrix
-        , M (JV o) (JV w) DMatrix
-        , M (JV o) (JV p) DMatrix
-        , J (JV x) DMatrix
-        , J (JV o) DMatrix
+  -> IO ( M (JV x) (JV x) DM
+        , M (JV x) (JV u) DM
+        , M (JV x) (JV w) DM
+        , M (JV x) (JV p) DM
+        , M (JV o) (JV x) DM
+        , M (JV o) (JV u) DM
+        , M (JV o) (JV w) DM
+        , M (JV o) (JV p) DM
+        , J (JV x) DM
+        , J (JV o) DM
         )
 evalOdeJacobian (OdeJacobian fj) x0 u0 p0 sc0 = do
   let w  = vcat (fill 0)
@@ -121,7 +121,7 @@ evalOdeJacobian (OdeJacobian fj) x0 u0 p0 sc0 = do
       p  = vcat (fmap realToFrac p0)
       sc = vcat (fmap realToFrac sc0)
       jacIn = JacIn (cat (JQuad x u w p)) sc
-  jacOut <- eval fj jacIn
+  jacOut <- callDM fj jacIn
   let Jac dxo_dxup xo' _ = jacOut
       (x',o) = vsplitTup xo'
       (dxo_dx,dxo_du,dxo_dw,dxo_dp) = hsplitQuad dxo_dxup
@@ -142,16 +142,16 @@ evalErrorOdeJacobian ::
   -> u Double
   -> p Double
   -> sc Double
-  -> IO ( M (JV e) (JV e) DMatrix
-        , M (JV e) (JV u) DMatrix
-        , M (JV e) (JV w) DMatrix
-        , M (JV e) (JV p) DMatrix
-        , M (JV o) (JV e) DMatrix
-        , M (JV o) (JV u) DMatrix
-        , M (JV o) (JV w) DMatrix
-        , M (JV o) (JV p) DMatrix
-        , J (JV e) DMatrix
-        , J (JV o) DMatrix
+  -> IO ( M (JV e) (JV e) DM
+        , M (JV e) (JV u) DM
+        , M (JV e) (JV w) DM
+        , M (JV e) (JV p) DM
+        , M (JV o) (JV e) DM
+        , M (JV o) (JV u) DM
+        , M (JV o) (JV w) DM
+        , M (JV o) (JV p) DM
+        , J (JV e) DM
+        , J (JV o) DM
         )
 evalErrorOdeJacobian (ErrorOdeJacobian fj) x0 u0 p0 sc0 = do
   let e = vcat (fill 0)
@@ -160,7 +160,7 @@ evalErrorOdeJacobian (ErrorOdeJacobian fj) x0 u0 p0 sc0 = do
       p  = vcat (fmap realToFrac p0)
       x0u0sc0 = vcat $ fmap realToFrac $ Triple x0 u0 sc0
       jacIn = JacIn (cat (JQuad e du w p)) x0u0sc0
-  jacOut <- eval fj jacIn
+  jacOut <- callDM fj jacIn
   let Jac dxo_dxup xo' _ = jacOut
       (x',o) = vsplitTup xo'
       (dxo_dx,dxo_du,dxo_dw,dxo_dp) = hsplitQuad dxo_dxup
@@ -180,7 +180,7 @@ linearize' userF = do
   let callFun :: f Double -> p Double -> IO (g (f Double), g Double, h Double)
       callFun f p = do
         (dfdg', g', h') <- funJac f p
-        let _ = dfdg' :: M (JV g) (JV f) DMatrix
+        let _ = dfdg' :: M (JV g) (JV f) DM
 
         let g :: g Double
             g = splitJV (d2v g')
@@ -210,7 +210,7 @@ linearize userF = do
 linearizeDM' :: forall f g h p
               . (Vectorize f, Vectorize g, Vectorize h, Vectorize p)
               => (f (S SX) -> p (S SX) -> (g (S SX), h (S SX)))
-              -> IO (f Double -> p Double -> IO (M (JV g) (JV f) DMatrix, J (JV g) DMatrix, J (JV h) DMatrix))
+              -> IO (f Double -> p Double -> IO (M (JV g) (JV f) DM, J (JV g) DM, J (JV h) DM))
 linearizeDM' userF = do
   let userF' :: JacIn (JV f) (J (JV p)) SX -> JacOut (JV g) (J (JV h)) SX
       userF' (JacIn x p) = JacOut (vcat g) (vcat h)
@@ -220,12 +220,12 @@ linearizeDM' userF = do
   sxUserF <- toSXFun "yolo" userF'
   jacUserF <- toFunJac sxUserF
 
-  let callFun :: f Double -> p Double -> IO (M (JV g) (JV f) DMatrix, J (JV g) DMatrix, J (JV h) DMatrix)
+  let callFun :: f Double -> p Double -> IO (M (JV g) (JV f) DM, J (JV g) DM, J (JV h) DM)
       callFun f p = do
-        let jacIn :: JacIn (JV f) (J (JV p)) DMatrix
+        let jacIn :: JacIn (JV f) (J (JV p)) DM
             jacIn = JacIn (v2d (catJV f)) (v2d (catJV p))
 
-        Jac dfdg g h <- eval jacUserF jacIn
+        Jac dfdg g h <- callDM jacUserF jacIn
         return (dfdg, g, h)
 
   return callFun
@@ -234,7 +234,7 @@ linearizeDM' userF = do
 linearizeDM :: forall f g
              . (Vectorize f, Vectorize g)
              => (f (S SX) -> g (S SX))
-             -> IO (f Double -> IO (M (JV g) (JV f) DMatrix, J (JV g) DMatrix))
+             -> IO (f Double -> IO (M (JV g) (JV f) DM, J (JV g) DM))
 linearizeDM userF = do
   jac <- linearizeDM' (\x None -> (userF x, None))
   let retFun x = do

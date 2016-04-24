@@ -21,10 +21,10 @@ import qualified Data.Foldable as F
 
 import Casadi.MX ( MX )
 
-import Dyno.Nlp ( Bounds, Nlp(..) )
+import Dyno.Nlp ( Bounds, Nlp(..), NlpIn(..) )
 import Dyno.TypeVecs
 import Dyno.Vectorize ( Vectorize )
-import Dyno.View.Fun ( MXFun, toMXFun, call )
+import Dyno.View.Fun ( Fun, toMXFun, callMX )
 import Dyno.View.JVec ( JVec(..) )
 import Dyno.View.M ( vcat, vsplit )
 import Dyno.View.Scheme ( Scheme )
@@ -103,18 +103,21 @@ makeMsNlp msOcp = do
           x0' = vsplit x0
           u' = vsplit u
           p' = vsplit p
-  integrator <- toMXFun "my integrator" integrate
-  let _ = integrator :: MXFun (IntegratorIn x u p) (IntegratorOut x) -- just for type signature
+  integrator <- toMXFun "my_integrator" integrate
+  let _ = integrator :: Fun (IntegratorIn x u p) (IntegratorOut x) -- just for type signature
 
   let nlp =
         Nlp
         { nlpFG = fg
-        , nlpBX = bx
-        , nlpBG = bg
-        , nlpX0 = x0
-        , nlpP = cat JNone
-        , nlpLamX0 = Nothing
-        , nlpLamG0 = Nothing
+        , nlpIn =
+          NlpIn
+          { nlpBX = bx
+          , nlpBG = bg
+          , nlpX0 = x0
+          , nlpP = cat JNone
+          , nlpLamX0 = Nothing
+          , nlpLamG0 = Nothing
+          }
         , nlpScaleF = Nothing
         , nlpScaleX = Nothing
         , nlpScaleG = Nothing
@@ -153,7 +156,7 @@ makeMsNlp msOcp = do
           x1s = fmap (callIntegrate . split) $ unJVec $ split xus
           callIntegrate (JTuple x0' u) = x1
             where
-              IntegratorOut x1 = call integrator (IntegratorIn x0' u p)
+              IntegratorOut x1 = callMX integrator (IntegratorIn x0' u p)
 
           lagrangeSum = F.sum $ fmap callLagrangeSum (unJVec (split xus))
             where

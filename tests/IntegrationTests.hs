@@ -72,11 +72,11 @@ runIntegration ::
   forall x p deg n
   . ( Vectorize x, Vectorize p, Additive x, Dim deg, Dim n )
   => Proxy n -> Proxy deg
-  -> QuadratureRoots
+  -> DirCollOptions
   -> (forall a . Floating a => x a -> p a -> a -> x a)
   -> x Double -> p Double -> Double
   -> IO (Either String (x Double))
-runIntegration _ _ roots ode x0 p tf = do
+runIntegration _ _ dirCollOpts ode x0 p tf = do
   let ocp :: OcpPhase' (IntegrationOcp x p)
       ocp =
         OcpPhase
@@ -111,17 +111,12 @@ runIntegration _ _ roots ode x0 p tf = do
         , ocpFixedP = None
         }
   let guess :: J (CollTraj x None None p n deg) (Vector Double)
-      guess = cat $ makeGuessSim roots tf x0 (\_ x _ -> ode x p 0) (\_ _ -> None) p
-      dirCollOpts =
-        DirCollOptions
-        { collocationRoots = roots
-        , mapStrategy = Unrolled
-        }
+      guess = cat $ makeGuessSim (collocationRoots dirCollOpts) tf x0 (\_ x _ -> ode x p 0) (\_ _ -> None) p
   cp  <- makeCollProblem dirCollOpts ocp ocpInputs guess :: IO (CollProblem x None None p x None x None None None None None n deg)
-  (msg, opt') <- solveNlp solver (cpNlp cp) Nothing
-  return $ case msg of
+  (_, eopt) <- solveNlp solver (cpNlp cp) Nothing
+  return $ case eopt of
     Left m -> Left m
-    Right _ -> Right (toXf (xOpt opt'))
+    Right opt -> Right (toXf (xOpt opt))
 
 
 
@@ -132,10 +127,10 @@ pendOde (PendX theta omega) (PendP mass) t = PendX omega ((9.8 * sin theta + for
     force = 0.3 * sin t
 
 solver :: Solver
-solver = ipoptSolver { options = [ ("expand", Opt True)
-                                 --, ("linear_solver", Opt "ma86")
-                                 --, ("ma86_order", Opt "metis")
-                                 , ("tol", Opt (1e-11 :: Double))
+solver = ipoptSolver { options = [ ("expand", GBool True)
+                                 --, ("ipopt.linear_solver", GString "ma86")
+                                 --, ("ipopt.ma86_order", GString "metis")
+                                 , ("ipopt.tol", GDouble 1e-11)
                                  ] }
 
 pendX0 :: PendX Double
@@ -175,7 +170,22 @@ toXf traj = splitJV xf
 integrationTests :: Test
 integrationTests =
   testGroup "integration tests"
-  [ testCase "pendulum" $ compareIntegration (Proxy :: Proxy 80) (Proxy :: Proxy 3) pendOde pendX0 pendP tf
+  [ testGroup (show roots)
+    [ testGroup (show mapStrat)
+      [ testGroup ("unroll in haskell: " ++ show unrollInHaskell)
+        [ testCase "pendulum" $ compareIntegration (Proxy :: Proxy 80) (Proxy :: Proxy 3) dirCollOpts pendOde pendX0 pendP tf
+        ]
+      | unrollInHaskell <- [True, False]
+      , let dirCollOpts =
+              def
+              { mapStrategy = mapStrat
+              , collocationRoots = roots
+              , unrollMapInHaskell = unrollInHaskell
+              }
+      ]
+    | mapStrat <- [Unroll, Serial, Parallel]
+    ]
+  | roots <- [Radau, Legendre]
   ]
   where
     tf = 3.0
@@ -185,30 +195,21 @@ compareIntegration ::
   forall x p n deg
   . (Vectorize x, Vectorize p, Additive x, Dim n, Dim deg)
   => Proxy n -> Proxy deg
+  -> DirCollOptions
   -> (forall a . Floating a => x a -> p a -> a -> x a)
   -> x Double -> p Double -> Double -> HUnit.Assertion
-compareIntegration pn pdeg ode x0 p tf = HUnit.assert $ do
-  xL' <- runIntegration pn pdeg Legendre ode x0 p tf
-  xR' <- runIntegration pn pdeg Radau    ode x0 p tf
+compareIntegration pn pdeg dirCollOpts ode x0 p tf = HUnit.assert $ do
+  x' <- runIntegration pn pdeg dirCollOpts ode x0 p tf
   let xGsl = rk45 ode tf p x0
-      worstErr :: x Double -> x Double -> Double
-      worstErr x y = V.maximum $ V.map abs $ vectorize $ x `minus` y
 
       ret :: HUnit.Assertion
-      ret = case (xL', xR') of
-        (Left ml, Left mr) -> HUnit.assertString $ "legendre and radau solve failed with: "
-                                                    ++ show ml ++ ", " ++ show mr
-        (Left ml, _)       -> HUnit.assertString $ "legendre solve failed with: " ++ show ml
-        (_, Left mr)       -> HUnit.assertString $ "legendre solve failed with: " ++ show mr
-        (Right xL, Right xR) ->
-          case ( 1e-6 >= worstErr xL xGsl
-               , 1e-6 >= worstErr xR xGsl
-               ) of
-           ( True,  True) -> HUnit.assert True
-           (False, False) -> HUnit.assertString $ "legendre and radau have insufficient accuracy: "
-                                                  ++ show (worstErr xL xGsl, worstErr xR xGsl)
-           (False,  True) -> HUnit.assertString $ "legendre has insufficient accuracy: "
-                                                  ++ show (worstErr xL xGsl)
-           ( True, False) -> HUnit.assertString $ "radau has insufficient accuracy failed: "
-                                                  ++ show (worstErr xR xGsl)
+      ret = case x' of
+        Left err -> HUnit.assertString $ "failed with: " ++ show err
+        Right x
+          | worstErr <= 1e-6 -> HUnit.assert True
+          | otherwise -> HUnit.assertString $ "insufficient accuracy: " ++ show worstErr
+          where
+            worstErr :: Double
+            worstErr = V.maximum $ V.map abs $ vectorize $ x `minus` xGsl
+
   return ret :: IO HUnit.Assertion

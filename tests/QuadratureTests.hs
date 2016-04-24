@@ -10,7 +10,6 @@ module QuadratureTests
 
 import GHC.Generics ( Generic, Generic1 )
 
-import qualified Data.Map as M
 import Data.Vector ( Vector )
 import qualified Test.HUnit.Base as HUnit
 import Test.Framework ( Test, testGroup )
@@ -171,11 +170,11 @@ guess roots = cat $ makeGuess roots tf guessX guessZ guessU parm
 
 
 solver :: Solver
-solver = ipoptSolver { options = [ ("expand", Opt True)
---                                 , ("linear_solver", Opt "ma86")
---                                 , ("ma86_order", Opt "metis")
-                                 , ("print_level", Opt (0 :: Int))
-                                 , ("print_time", Opt False)
+solver = ipoptSolver { options = [ ("expand", GBool True)
+--                                 , ("ipopt.linear_solver", GString "ma86")
+--                                 , ("ipopt.ma86_order", GString "metis")
+                                 , ("ipopt.print_level", GInt 0)
+                                 , ("print_time", GBool False)
                                  ]}
 
 goodSolution :: NlpOut
@@ -191,19 +190,21 @@ goodSolution out = HUnit.assertBool msg (abs (f - fExpected) < 1e-8 && abs (pF -
     CollTraj _ _ _ xf' = split (xOpt out)
     Id f = splitJV (fOpt out)
 
-compareIntegration :: (MapStrategy, QuadratureRoots, StateOrOutput, QuadOrLagrange) -> HUnit.Assertion
-compareIntegration (mapStrat, roots, stateOrOutput, quadOrLag) = HUnit.assert $ do
+compareIntegration :: (MapStrategy, QuadratureRoots, StateOrOutput, QuadOrLagrange, Bool)
+                      -> HUnit.Assertion
+compareIntegration (mapStrat, roots, stateOrOutput, quadOrLag, unrollMapInHaskell') = HUnit.assert $ do
   let dirCollOpts =
-        DirCollOptions
+        def
         { mapStrategy = mapStrat
         , collocationRoots = roots
+        , unrollMapInHaskell = unrollMapInHaskell'
         }
   cp  <- makeCollProblem dirCollOpts (quadOcp stateOrOutput quadOrLag) quadOcpInputs (guess roots)
   let nlp = cpNlp cp
-  (ret, out) <- solveNlp solver nlp Nothing
-  case ret of
+  (_, eopt) <- solveNlp solver nlp Nothing
+  case eopt of
    Left msg -> return (HUnit.assertString msg)
-   Right _ -> return (goodSolution out) :: IO HUnit.Assertion
+   Right opt -> return (goodSolution opt) :: IO HUnit.Assertion
 
 
 quadratureTests :: Test
@@ -213,9 +214,10 @@ quadratureTests =
   | root <- [Radau, Legendre]
   , stateOrOutput <- [TestState, TestOutput]
   , quadOrLagr <- [TestQuadratures, TestLagrangeTerm]
-  , mapStrat <- [ Unrolled
-                , Symbolic (M.fromList [("parallelization", Opt "serial")])
-                , Symbolic (M.fromList [("parallelization", Opt "openmp")])
+  , mapStrat <- [ Unroll
+                , Serial
+                , Parallel
                 ]
-  , let input = (mapStrat, root, stateOrOutput, quadOrLagr)
+  , unrollMapInHaskell' <- [True, False]
+  , let input = (mapStrat, root, stateOrOutput, quadOrLagr, unrollMapInHaskell')
   ]

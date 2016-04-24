@@ -87,10 +87,10 @@ mkScaleFuns mx mg mf
               }
   where
     xdiaginv :: Maybe (M x x a)
-    xdiaginv = fmap (\scl -> M.diag (M.fromDMatrix (1.0 / (v2d scl)))) mx
+    xdiaginv = fmap (\scl -> M.diag (M.fromDM (1.0 / (v2d scl)))) mx
 
     gdiag :: Maybe (M g g a)
-    gdiag = fmap (\scl -> M.diag (M.fromDMatrix (v2d scl))) mg
+    gdiag = fmap (\scl -> M.diag (M.fromDM (v2d scl))) mg
 
     jacGBarToJacG' :: M g x a -> M g x a
     jacGBarToJacG' g0 = gg0x

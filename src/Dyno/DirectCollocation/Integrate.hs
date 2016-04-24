@@ -12,7 +12,6 @@ module Dyno.DirectCollocation.Integrate
 import GHC.Generics ( Generic )
 
 import qualified Control.Concurrent as CC
-import Control.Monad ( void, forever )
 import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 import qualified Data.Foldable as F
@@ -22,8 +21,8 @@ import Casadi.SX ( SX )
 import Casadi.MX ( MX )
 import Casadi.Viewable ( Viewable )
 
-import Dyno.View.View ( View(..), J, S, JV, JNone, JTuple(..), splitJV, catJV, jfill )
-import Dyno.View.Fun ( SXFun, call, toSXFun, toMXFun, expandMXFun )
+import Dyno.View.View ( View(..), J, S, JV, JNone, JTuple(..), splitJV, catJV, jfill, fmapJ )
+import Dyno.View.Fun ( Fun, callMX, toSXFun, toMXFun, expandMXFun )
 import Dyno.View.JVec ( JVec(..), jreplicate )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.M ( vcat, vsplit )
@@ -33,8 +32,8 @@ import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs )
 import Dyno.Solvers ( Solver )
-import Dyno.NlpSolver ( runNlpSolver, liftIO, solve
-                      , setX0, setLbg, setUbg, setP, setLbx, setUbx, getX )
+import Dyno.Nlp ( NlpIn(..), NlpOut(..) )
+import Dyno.NlpSolver ( callNlpsol, toNlpSol )
 import Dyno.DirectCollocation.Types ( CollStage(..), CollPoint(..) )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots, mkTaus, interpolate, timesFromTaus )
 
@@ -95,7 +94,7 @@ interpolateXDots cjks xs = TV.tvtail $ interpolateXDots' cjks xs
 dynStageConstraints' ::
   forall x z u p r deg . (Dim deg, View x, View z, View u, View p, View r)
   => Vec (TV.Succ deg) (Vec (TV.Succ deg) Double) -> Vec deg Double
-  -> SXFun (S :*: J p :*: J x :*: J (CollPoint x z u)) (J r)
+  -> Fun (S :*: J p :*: J x :*: J (CollPoint x z u)) (J r)
   -> (J x :*: J (JVec deg (JTuple x z)) :*: J (JVec deg u) :*: S :*: J p :*: J (JVec deg (JV Id))) MX
   -> (J (JVec deg r) :*: J x) MX
 dynStageConstraints' cijs taus dynFun (x0 :*: xzs' :*: us' :*: h :*: p :*: stageTimes') =
@@ -117,7 +116,7 @@ dynStageConstraints' cijs taus dynFun (x0 :*: xzs' :*: us' :*: h :*: p :*: stage
     applyDae :: J x MX -> JTuple x z MX -> J u MX -> S MX -> J r MX
     applyDae x' (JTuple x z) u t = r
       where
-        r = call dynFun (t :*: p :*: x' :*: collPoint)
+        r = callMX dynFun (t :*: p :*: x' :*: collPoint)
         collPoint = cat (CollPoint x z u)
 
     -- state derivatives, maybe these could be useful as outputs
@@ -139,7 +138,7 @@ dynamicsFunction' dae (t :*: parm :*: x' :*: collPoint) = dae x' x z u parm t
     CollPoint x z u = split collPoint
 
 withIntegrator ::
-  forall x z u p r deg n b .
+  forall x z u p r deg n .
   (Dim n, Dim deg, Vectorize x, Vectorize p, Vectorize u, Vectorize z, Vectorize r)
   => Proxy n
   -> Proxy deg
@@ -147,9 +146,8 @@ withIntegrator ::
   -> x Double
   -> (x Sxe -> x Sxe -> z Sxe -> u Sxe -> p Sxe -> Sxe -> r Sxe)
   -> Solver
-  -> ((x Double -> Either (u Double) (Vec n (Vec deg (u Double))) -> p Double -> Double -> IO (x Double)) -> IO b)
-  -> IO b
-withIntegrator _ _ roots initialX dae solver userFun = do
+  -> IO (x Double -> Either (u Double) (Vec n (Vec deg (u Double))) -> p Double -> Double -> IO (Either String (x Double)))
+withIntegrator _ _ roots initialX dae solver = do
   let -- the collocation points
       taus :: Vec deg Double
       taus = mkTaus roots
@@ -167,8 +165,8 @@ withIntegrator _ _ roots initialX dae solver userFun = do
             in vcat r
 
   dynStageConFun <- toMXFun "dynamicsStageCon" (dynStageConstraints' cijs taus dynFun)
---  let callDynStageConFun = call dynStageConFun
-  callDynStageConFun <- fmap call (expandMXFun dynStageConFun)
+--  let callDynStageConFun = callMX dynStageConFun
+  callDynStageConFun <- fmap callMX (expandMXFun dynStageConFun)
 
   let fg :: J (IntegratorX x z n deg) MX
             -> J (IntegratorP u p n deg) MX
@@ -187,9 +185,6 @@ withIntegrator _ _ roots initialX dae solver userFun = do
 --        , nlpScaleG' = Just $ cat $ fillCollConstraints
 --                       (fromMaybe (fill 1) (ocpXScale ocp))
 --                       (fromMaybe (fill 1) (ocpResidualScale ocp))
-
-  inputMVar <- CC.newEmptyMVar
-  outputMVar <- CC.newEmptyMVar
 
   let toParams :: Either (u Double) (Vec n (Vec deg (u Double)))
                   -> p Double
@@ -216,47 +211,43 @@ withIntegrator _ _ roots initialX dae solver userFun = do
           xs0 :: J (CollStage (JV x) (JV z) JNone JNone deg) (Vector (Maybe Double))
           xs0 = cat $ CollStage (catJV (fmap Just x0)) (jfill Nothing) (jfill Nothing) (jfill Nothing)
 
-  let solverThread = do
-        let initialX' :: J (JV x) (Vector Double)
-            initialX' = catJV initialX
+  nlpSol <- toNlpSol solver fg scaleX scaleG Nothing Nothing
 
-        let point = cat $ CollPoint initialX' (jfill 0) (jfill 0)
-        setX0 $ cat $
+  let initialGuess = cat $
           IntegratorX
           { ixStages = jreplicate $ cat $
                        CollStage initialX' (jreplicate point) (jfill 0) (jfill 0)
           , ixXf = initialX'
           }
+        where
+          initialX' :: J (JV x) (Vector Double)
+          initialX' = catJV initialX
+          point = cat $ CollPoint initialX' (jfill 0) (jfill 0)
 
-        setLbg (jfill (Just 0))
-        setUbg (jfill (Just 0))
+  initialGuessMVar <- CC.newMVar initialGuess
 
-        void $ forever $ do
-          (x0, us, p, tf) <- liftIO $ CC.takeMVar inputMVar
-          let bx = toBounds x0
---          liftIO $ putStrLn "\n\nsolving optimization problem"
---          liftIO $ printf "lnba, uba: %.3f, %.3f\n" lba uba
---          liftIO $ print (snd woo)
+  let doAnIntegration :: x Double -> Either (u Double) (Vec n (Vec deg (u Double))) -> p Double -> Double -> IO (Either String (x Double))
+      doAnIntegration x0 us p tf = do
+        xguess <- CC.readMVar initialGuessMVar
+        let bx = toBounds x0
+            inputs =
+              NlpIn
+              { nlpX0 = xguess
+              , nlpBG = jfill (Just 0, Just 0)
+              , nlpP = toParams us p tf
+              , nlpBX = fmapJ (\x -> (x, x)) bx
+              , nlpLamX0 = Nothing
+              , nlpLamG0 = Nothing
+              }
+        (_, ret) <- callNlpsol nlpSol inputs
+        case ret of
+          Left msg -> return $ Left $ "failed solving with error: \"" ++ msg ++ "\""
+          Right nlpOut -> do
+            let xtopt = xOpt nlpOut
+            _ <- CC.swapMVar initialGuessMVar xtopt
+            return $ Right $ splitJV (ixXf (split xtopt))
 
-          setP (toParams us p tf)
-          setLbx bx
-          setUbx bx
-
-          ret <- solve
-          xtopt <- case ret of
-            Left msg -> error $ "failed solving with error: \"" ++ msg ++ "\""
-            Right _ -> getX
-          setX0 xtopt
-
-          liftIO $ CC.putMVar outputMVar (splitJV (ixXf (split xtopt)))
-
-  _ <- CC.forkIO $ runNlpSolver solver fg scaleX scaleG Nothing Nothing solverThread
-
-  let getNextValue :: x Double -> Either (u Double) (Vec n (Vec deg (u Double))) -> p Double -> Double -> IO (x Double)
-      getNextValue x us p tf = do
-        CC.putMVar inputMVar (x, us, p, tf)
-        CC.takeMVar outputMVar
-  userFun getNextValue
+  return doAnIntegration
 
 
 getFgIntegrator ::
@@ -272,7 +263,7 @@ getFgIntegrator taus stageFun ix' ip' = (0, cat g)
     ix = split ix'
     ip = split ip'
 
-    xf = ixXf ix 
+    xf = ixXf ix
     tf = ipTf ip
     parm = ipParm ip
     stages = unJVec (split (ixStages ix)) :: Vec n (J (CollStage (JV x) (JV z) JNone JNone deg) MX)

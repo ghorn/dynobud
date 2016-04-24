@@ -16,11 +16,11 @@ import Dyno.View.View ( J, jfill, catJV )
 import Dyno.Nlp ( NlpOut(..), Bounds )
 import Dyno.Ocp
 import Dyno.Vectorize ( Vectorize, None(..), fill )
-import Dyno.Solvers ( Solver(..), Opt(..), ipoptSolver )
+import Dyno.Solvers ( Solver(..), GType(..), ipoptSolver )
 import Dyno.NlpUtils ( solveNlp )
 import Dyno.DirectCollocation.ActiveConstraints
 import Dyno.DirectCollocation.Formulate
-       ( CollProblem(..), DirCollOptions(..), MapStrategy(..), makeCollProblem )
+       ( CollProblem(..), DirCollOptions(..), MapStrategy(..), makeCollProblem, def )
 import Dyno.DirectCollocation.Types ( CollTraj' )
 import Dyno.DirectCollocation.Dynamic ( toMeta )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..) )
@@ -158,7 +158,7 @@ lagrange _ _ (RocketU u') _ _ _ _ _ = 1e-4*u'*u'
 -- (1e-6*u*u + 1e-6*p*p + 1e-6*v*v + 1e-6*m*m)
 
 solver :: Solver
-solver = ipoptSolver { options = [("expand", Opt True)] }
+solver = ipoptSolver { options = [("expand", GBool True)] }
 
 guess :: J (CollTraj' RocketOcp NCollStages CollDeg) (Vector Double)
 guess = jfill 1
@@ -168,9 +168,9 @@ type CollDeg = 3
 
 dirCollOpts :: DirCollOptions
 dirCollOpts =
-  DirCollOptions
+  def
   { collocationRoots = Legendre
-  , mapStrategy = Unrolled
+  , mapStrategy = Unroll
   }
 
 main :: IO ()
@@ -181,15 +181,14 @@ main =
     let nlp = cpNlp cp
         meta = toMeta (cpMetaProxy cp)
 
-        cb' traj _ = do
+        cb' traj _ _ = do
           plotPoints <- cpPlotPoints cp traj (catJV None)
           send (plotPoints, meta)
 
-    (ret, opt) <- solveNlp solver nlp (Just cb')
-    case ret of
+    (_, eopt) <- solveNlp solver nlp (Just cb')
+    case eopt of
       Left msg -> putStrLn $ "\nsolve failed with " ++ show msg
-      Right msg -> do
-        putStrLn $ "\nsolve succeeded with " ++ show msg
+      Right opt -> do
         activeConstraints <- getActiveConstraints (cpConstraints cp) rocketOcp 1e-3
                              (xOpt opt) (catJV None) rocketOcpInputs
         putStrLn "\nactive constriants:"

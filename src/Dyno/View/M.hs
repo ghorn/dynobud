@@ -40,8 +40,8 @@ module Dyno.View.M
        , vcatQuad
        , solve
        , solve'
-       , sumRows, sumCols
-       , fromDMatrix
+       , sum1, sum2
+       , fromDM
        , toHMat
        , fromHMat
        , fromHMat'
@@ -60,10 +60,10 @@ import Data.Vector ( Vector )
 import qualified Data.Vector as V
 import qualified Numeric.LinearAlgebra as HMat
 
-import Casadi.GenericC ( GenericType )
 import Casadi.CMatrix ( CMatrix )
-import Casadi.DMatrix ( DMatrix, dnonzeros, dsparsify )
+import Casadi.DM ( DM, dnonzeros, dsparsify )
 import qualified Casadi.CMatrix as CM
+import Casadi.GenericType ( GenericType )
 import Casadi.Viewable ( Viewable(..) )
 
 import Dyno.View.Unsafe ( M(UnsafeM), mkM, mkM', unM )
@@ -75,7 +75,7 @@ import Dyno.View.JVec ( JVec )
 
 
 -- todo: generalize once casadi 2.3 is ready
-sparse :: (View f, View g) => M f g DMatrix -> M f g DMatrix
+sparse :: (View f, View g) => M f g DM -> M f g DM
 sparse (UnsafeM m) = mkM (dsparsify m)
 
 dense :: (View f, View g, CMatrix a) => M f g a -> M f g a
@@ -334,7 +334,7 @@ solve' (UnsafeM x) (UnsafeM y) = mkM (CM.solve' x y)
 
 toHMat :: forall n m
        . (View n, View m)
-       => M n m DMatrix -> HMat.Matrix Double
+       => M n m DM -> HMat.Matrix Double
 toHMat (UnsafeM d) = HMat.tr' $ (m HMat.>< n) (V.toList v)
   where
     v = dnonzeros (CM.densify d)
@@ -347,30 +347,30 @@ fromHMat x = case fromHMat' x of
   Left msg -> error msg
 
 fromHMat' :: (View f, View g, CMatrix a) => HMat.Matrix Double -> Either String (M f g a)
-fromHMat' = mkM' . CM.fromDMatrix . CM.vertcat . V.fromList . fmap (CM.trans . CM.fromDVector . V.fromList) . HMat.toLists
+fromHMat' = mkM' . CM.fromDM . CM.vertcat . V.fromList . fmap (CM.trans . CM.fromDVector . V.fromList) . HMat.toLists
 
-rcond :: (View f, View g) => M f g DMatrix -> Double
+rcond :: (View f, View g) => M f g DM -> Double
 rcond = HMat.rcond . toHMat
 
-rank :: (View f, View g) => M f g DMatrix -> Int
+rank :: (View f, View g) => M f g DM -> Int
 rank = HMat.rank . toHMat
 
-fromDMatrix :: (CM.CMatrix a, View f, View g)
-               => M f g DMatrix -> M f g a
-fromDMatrix = mkM . CM.fromDMatrix . unM
+fromDM :: (CM.CMatrix a, View f, View g)
+               => M f g DM -> M f g a
+fromDM = mkM . CM.fromDM . unM
 
 -- | Break a typed matrix into a list of its elements given by the
 -- sizes of the View constructor.
 -- For example:
 -- > data F a = F (J (JV V2) a) (J (JV V3) a)
 -- > data G a = G (J (JV V4) a) (J (JV V5) a) (J (JV V6) a)
--- > x :: M F G DMatrix
+-- > x :: M F G DM
 -- > x = ...
 -- >
--- > y :: Vector (Vector DMatrix)
+-- > y :: Vector (Vector DM)
 -- > y = blockSplit x
 --
--- > -- y is a 2x3 group with DMatrix dimensions:
+-- > -- y is a 2x3 group with DM dimensions:
 -- > --   [ [ (2,4), (2,5), (2,6) ]
 -- > --   , [ (3,4), (3,5), (3,6) ]
 -- > --   ]
@@ -384,11 +384,11 @@ blockSplit (UnsafeM m) = CM.blocksplit m vsizes hsizes
 -- blockSplit :: forall f g a . (Vectorize f, Vectorize g) => M (JV f) (JV g) DMatrix -> f (g Double)
 -- blockCat :: forall f g a . (Vectorize f, Vectorize g) => f (g Double) -> M (JV f) (JV g) DMatrix
 
-sumRows :: (View f, View g, CMatrix a) => M f g a -> M (JV Id) g a
-sumRows (UnsafeM x) = mkM (CM.sumRows x)
+sum1 :: (View f, View g, CMatrix a) => M f g a -> M (JV Id) g a
+sum1 (UnsafeM x) = mkM (CM.sum1 x)
 
-sumCols :: (View f, View g, CMatrix a) => M f g a -> M f (JV Id) a
-sumCols (UnsafeM x) = mkM (CM.sumCols x)
+sum2 :: (View f, View g, CMatrix a) => M f g a -> M f (JV Id) a
+sum2 (UnsafeM x) = mkM (CM.sum2 x)
 
 -- | reshape a vector into a column-major matrix
 reshape ::

@@ -5,22 +5,29 @@
 
 module Dyno.Nlp
        ( Bounds
-       , Nlp(..),  NlpOut(..)
-       , KKT(..)
+       , Nlp(..),  NlpIn(..), NlpOut(..)
        ) where
 
 import GHC.Generics ( Generic )
 
-import Casadi.DMatrix ( DMatrix )
+import Casadi.Viewable ( Viewable )
 import qualified Data.Vector as V
 import Data.Binary ( Binary )
 import Data.Serialize ( Serialize )
-import Casadi.Viewable ( Viewable )
 
 import Dyno.View.View ( View(..), J, S )
-import Dyno.View.M ( M )
 
 type Bounds = (Maybe Double, Maybe Double)
+
+data NlpIn x p g =
+  NlpIn
+  { nlpX0 :: J x (V.Vector Double)
+  , nlpBX :: J x (V.Vector Bounds)
+  , nlpBG :: J g (V.Vector Bounds)
+  , nlpP  :: J p (V.Vector Double)
+  , nlpLamX0 :: Maybe (J x (V.Vector Double))
+  , nlpLamG0 :: Maybe (J g (V.Vector Double))
+  }
 
 -- | nonlinear program (NLP)
 --
@@ -35,12 +42,7 @@ type Bounds = (Maybe Double, Maybe Double)
 data Nlp x p g a =
   Nlp
   { nlpFG :: J x a -> J p a -> (S a, J g a)
-  , nlpBX :: J x (V.Vector Bounds)
-  , nlpBG :: J g (V.Vector Bounds)
-  , nlpX0 :: J x (V.Vector Double)
-  , nlpP  :: J p (V.Vector Double)
-  , nlpLamX0 :: Maybe (J x (V.Vector Double))
-  , nlpLamG0 :: Maybe (J g (V.Vector Double))
+  , nlpIn :: NlpIn x p g
   , nlpScaleF :: Maybe Double
   , nlpScaleX :: Maybe (J x (V.Vector Double))
   , nlpScaleG :: Maybe (J g (V.Vector Double))
@@ -57,18 +59,3 @@ data NlpOut x g a =
   } deriving (Eq, Show, Generic)
 instance (View x, View g, Binary a, Viewable a) => Binary (NlpOut x g a)
 instance (View x, View g, Serialize a, Viewable a) => Serialize (NlpOut x g a)
-
-
--- | Karush–Kuhn–Tucker (KKT) matrix
-data KKT x g =
-  KKT
-  { kktHessLag :: M x x DMatrix -- ^ unscaled version only valid at solution
-  , kktHessF :: M x x DMatrix
-  , kktHessLambdaG :: M x x DMatrix -- ^ unscaled version only valid at solution
-  , kktJacG :: M g x DMatrix
-  , kktG :: J g DMatrix
-  , kktGradF :: J x DMatrix
-  , kktF :: S DMatrix
-  } deriving (Generic, Eq, Show)
-instance (View x, View g) => Binary (KKT x g)
-instance (View x, View g) => Serialize (KKT x g)

@@ -22,7 +22,7 @@ import Dyno.NlpUtils
 import Dyno.Ocp
 import Dyno.DirectCollocation.Formulate
        ( CollProblem(..), DirCollOptions(..), MapStrategy(..)
-       , makeCollProblem, makeGuess )
+       , makeCollProblem, makeGuess, def )
 import Dyno.DirectCollocation.Types ( CollTraj' )
 import Dyno.DirectCollocation.Dynamic ( toMeta )
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots(..) )
@@ -190,18 +190,22 @@ guess = cat $ makeGuess Radau tf guessX guessZ guessU parm
     parm = PendP 0.3
 
 solver :: Solver
-solver = ipoptSolver { options = [ ("expand", Opt True)
-                                 , ("linear_solver", Opt "ma86")
-                                 , ("ma86_order", Opt "metis")
-                                 ]}
+solver =
+  ipoptSolver
+  { options =
+      [ ("expand", GBool True)
+      , ("ipopt.linear_solver", GString "ma86")
+      , ("ipopt.ma86_order", GString "metis")
+      ]
+  }
 
-solver2 :: Solver
-solver2 = ipoptSolver { options = [("expand", Opt True)] }
+--solver2 :: Solver
+--solver2 = ipoptSolver { options = [("expand", GBool True)] }
 
 dirCollOpts :: DirCollOptions
 dirCollOpts =
-  DirCollOptions
-  { mapStrategy = Unrolled
+  def
+  { mapStrategy = Unroll
   , collocationRoots = Legendre
   }
 
@@ -211,7 +215,7 @@ main = do
   withCallback $ \send -> do
     let nlp = cpNlp cp
         meta = toMeta (cpMetaProxy cp)
-        cb' traj _ = do
+        cb' traj _ _ = do
           plotPoints <- cpPlotPoints cp traj (catJV None)
           send (plotPoints, meta)
     _ <- solveNlp solver nlp (Just cb')

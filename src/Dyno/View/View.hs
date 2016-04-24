@@ -23,7 +23,7 @@ import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
 
-import qualified Casadi.DMatrix as DMatrix
+import qualified Casadi.DM as DM
 import qualified Casadi.CMatrix as CM
 
 import Dyno.Vectorize ( Vectorize(..), devectorize )
@@ -45,11 +45,11 @@ jfill x = mkM (V.replicate n x)
   where
     n = size (Proxy :: Proxy f)
 
-v2d :: View f => J f (V.Vector Double) -> J f DMatrix.DMatrix
+v2d :: View f => J f (V.Vector Double) -> J f DM.DM
 v2d = mkM . CM.fromDVector . unM
 
-d2v :: View f => J f DMatrix.DMatrix -> J f (V.Vector Double)
-d2v = mkM . DMatrix.dnonzeros . CM.densify . unM
+d2v :: View f => J f DM.DM -> J f (V.Vector Double)
+d2v = mkM . DM.dnonzeros . CM.densify . unM
 
 fmapJ :: View f => (a -> b) -> J f (Vector a) -> J f (Vector b)
 fmapJ f = mkM . V.map f . unM

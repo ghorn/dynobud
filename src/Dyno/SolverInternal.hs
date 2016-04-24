@@ -4,12 +4,12 @@ module Dyno.SolverInternal
        ( SolverInternal(..)
        ) where
 
-import Casadi.Option ( Opt(..) )
+import Casadi.GenericType ( GType )
 
 data SolverInternal =
   SolverInternal
   { solverName :: String
-  , defaultSolverOptions :: [(String,Opt)]
+  , defaultSolverOptions :: [(String, GType)]
   , solverInterruptCode :: Int
   , successCodes :: [String]
   }

@@ -16,7 +16,7 @@ import Data.Vector ( Vector )
 import qualified Data.Foldable as F
 import Linear.V
 
-import Casadi.DMatrix ( DMatrix )
+import Casadi.DM ( DM )
 import Casadi.MX ( MX )
 
 import Dyno.View.M ( vcat, vsplit )
@@ -28,7 +28,7 @@ import Dyno.View.JVec( JVec(..), jreplicate )
 import Dyno.Vectorize ( Vectorize(..), Id(..), None(..), fill )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
-import Dyno.Nlp ( Nlp(..), Bounds )
+import Dyno.Nlp ( Nlp(..), NlpIn(..), Bounds )
 import Dyno.Ocp
 
 import Dyno.DirectCollocation.Types
@@ -52,10 +52,10 @@ data CollCovProblem ocp n deg sx sw sh shr sc =
              , Vec n (J (Cov (JV sx)) (Vector Double))
              , J (Cov (JV sx)) (Vector Double)
              )
-  , ccpSensitivities :: MXFun
+  , ccpSensitivities :: Fun
                         (J (CollTraj' ocp n deg))
                         (CovarianceSensitivities (JV sx) (JV sw) n)
-  , ccpCovariances :: MXFun
+  , ccpCovariances :: Fun
                       (J (Cov (JV sx)) :*: J (CollTraj (X ocp) (Z ocp) (U ocp) (P ocp) n deg))
                       (J (CovTraj sx n))
   , ccpDirCollOpts :: DirCollOptions
@@ -132,10 +132,10 @@ makeCollCovProblem dirCollOpts ocp ocpInputs ocpCov guess = do
         computeCovariances
         gammas
         (robustify :: (J (JV shr) MX -> J (JV p) MX -> J (JV x) MX -> J (Cov (JV sx)) MX -> J (JV shr) MX))
-        (sbcFun :: SXFun (J (Cov (JV sx)) :*: J (Cov (JV sx))) (J sc))
-        (shFun :: SXFun (J (JV x) :*: J (Cov (JV sx))) (J sh))
-        (lagrangeFun :: SXFun (S :*: J (JV x) :*: J (Cov (JV sx)) :*: S) S)
-        (mayerFun :: SXFun (S :*: (J (JV x) :*: (J (JV x) :*: (J (Cov (JV sx)) :*: J (Cov (JV sx)))))) S)
+        (sbcFun :: Fun (J (Cov (JV sx)) :*: J (Cov (JV sx))) (J sc))
+        (shFun :: Fun (J (JV x) :*: J (Cov (JV sx))) (J sh))
+        (lagrangeFun :: Fun (S :*: J (JV x) :*: J (Cov (JV sx)) :*: S) S)
+        (mayerFun :: Fun (S :*: (J (JV x) :*: (J (JV x) :*: (J (Cov (JV sx)) :*: J (Cov (JV sx)))))) S)
         (nlpFG nlp0)
 
   computeCovariancesFun' <- toMXFun "compute covariances" (\(x :*: y) -> computeCovariances x y)
@@ -154,26 +154,29 @@ makeCollCovProblem dirCollOpts ocp ocpInputs ocpCov guess = do
       getOutputs collTrajCov = do
         let CollTrajCov p0 collTraj = split collTrajCov
         outputs <- (cpOutputs cp0) collTraj (catJV None)
-        covTraj <- fmap split $ eval computeCovariancesFun' (v2d p0 :*: v2d collTraj)
+        covTraj <- fmap split $ callDM computeCovariancesFun' (v2d p0 :*: v2d collTraj)
         let covs' = ctAllButLast covTraj
             pF = ctLast covTraj
-        let covs = unJVec (split covs') :: Vec n (J (Cov (JV sx)) DMatrix)
+        let covs = unJVec (split covs') :: Vec n (J (Cov (JV sx)) DM)
         return (outputs, fmap d2v covs, d2v pF)
 
       nlp =
         Nlp
         { nlpFG = fg
-        , nlpBX = cat $ CollTrajCov (ocpCovS0bnd ocpCov) (nlpBX nlp0)
-        , nlpBG = cat $ CollOcpCovConstraints
-                  { cocNormal = nlpBG nlp0
-                  , cocCovPathC = jreplicate (ocpCovShBnds ocpCov)
-                  , cocCovRobustPathC = jreplicate robustPathCUb
-                  , cocSbc = ocpCovSbcBnds ocpCov
-                  }
-        , nlpX0 = cat $ CollTrajCov (jfill 0) (nlpX0 nlp0)
-        , nlpP = catJV None
-        , nlpLamX0 = Nothing
-        , nlpLamG0 = Nothing
+        , nlpIn =
+          NlpIn
+          { nlpBX = cat $ CollTrajCov (ocpCovS0bnd ocpCov) (nlpBX (nlpIn nlp0))
+          , nlpBG = cat $ CollOcpCovConstraints
+                    { cocNormal = nlpBG (nlpIn nlp0)
+                    , cocCovPathC = jreplicate (ocpCovShBnds ocpCov)
+                    , cocCovRobustPathC = jreplicate robustPathCUb
+                    , cocSbc = ocpCovSbcBnds ocpCov
+                    }
+          , nlpX0 = cat $ CollTrajCov (jfill 0) (nlpX0 (nlpIn nlp0))
+          , nlpP = catJV None
+          , nlpLamX0 = Nothing
+          , nlpLamG0 = Nothing
+          }
         , nlpScaleF = ocpObjScale ocp
         , nlpScaleX = Just $ cat $
                       CollTrajCov (fromMaybe (jfill 1) (ocpCovSScale ocpCov)) $
@@ -231,14 +234,14 @@ getFgCov ::
   -- robustify
   -> (J (JV shr) MX -> J (JV p) MX -> J (JV x) MX -> J (Cov (JV sx)) MX -> J (JV shr) MX)
    -- sbcFun
-  -> SXFun (J (Cov (JV sx)) :*: J (Cov (JV sx))) (J sc)
+  -> Fun (J (Cov (JV sx)) :*: J (Cov (JV sx))) (J sc)
    -- shFun
-  -> SXFun (J (JV x) :*: J (Cov (JV sx))) (J sh)
+  -> Fun (J (JV x) :*: J (Cov (JV sx))) (J sh)
    -- lagrangeFun
-  -> SXFun
+  -> Fun
       (S :*: J (JV x) :*: J (Cov (JV sx)) :*: S) S
    -- mayerFun
-  -> SXFun
+  -> Fun
       (S :*: J (JV x) :*: J (JV x) :*: J (Cov (JV sx)) :*: J (Cov (JV sx))) S
   -> (J (CollTraj x z u p n deg) MX -> J (JV fp) MX
       -> (S MX, J (CollOcpConstraints' ocp n deg) MX)
@@ -259,14 +262,14 @@ getFgCov
         { cocNormal = g0
         , cocCovPathC = cat (JVec covPathConstraints)
         , cocCovRobustPathC = cat (JVec robustifiedPathC)
-        , cocSbc = call sbcFun (p0 :*: pF)
+        , cocSbc = callMX sbcFun (p0 :*: pF)
         }
     -- split up the design vars
     CollTraj tf parm stages' xf = split collTraj
     stages = unJVec (split stages') :: Vec n (J (CollStage (JV x) (JV z) (JV u) (JV p) deg) MX)
     spstages = fmap split stages :: Vec n (CollStage (JV x) (JV z) (JV u) (JV p) deg MX)
 
-    objectiveMayerCov = call mayerFun (tf :*: x0 :*: xf :*: p0 :*: pF)
+    objectiveMayerCov = callMX mayerFun (tf :*: x0 :*: xf :*: p0 :*: pF)
 
     -- timestep
     dt = tf / fromIntegral n
@@ -282,7 +285,7 @@ getFgCov
 
     x0 = (\(CollStage x0' _ _ _) -> x0') (TV.tvhead spstages) -- todo(greg): lift out ps/tfs for turbo graph coloring
 
---    sensitivities = call computeSensitivities collTraj
+--    sensitivities = callMX computeSensitivities collTraj
 
     covs :: Vec n (J (Cov (JV sx)) MX)
     covs = unJVec (split covs')
@@ -294,13 +297,13 @@ getFgCov
     -- lagrange term
     objectiveLagrangeCov = (lagrangeF + lagrange0s) / fromIntegral n
       where
-      lagrangeF = call lagrangeFun (tf :*: xf :*: pF :*: tf)
+      lagrangeF = callMX lagrangeFun (tf :*: xf :*: pF :*: tf)
       lagrange0s =
         sum $ F.toList $
-        TV.tvzipWith3 (\tk xk pk -> call lagrangeFun (tk :*: xk :*: pk :*: tf)) t0s x0s covs
+        TV.tvzipWith3 (\tk xk pk -> callMX lagrangeFun (tk :*: xk :*: pk :*: tf)) t0s x0s covs
 
     covPathConstraints :: Vec n (J sh MX)
-    covPathConstraints = TV.tvzipWith (\xk pk -> call shFun (xk:*:pk)) x0s covs
+    covPathConstraints = TV.tvzipWith (\xk pk -> callMX shFun (xk:*:pk)) x0s covs
 
     robustifiedPathC :: Vec n (J (JV shr) MX)
     robustifiedPathC = TV.tvzipWith (robustify gammas parm) x0s covs

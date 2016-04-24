@@ -18,8 +18,7 @@ source-repository head
   location: git://github.com/ghorn/dynobud.git
 
 library
-  exposed-modules:     Dyno.AutoScaling
-                       Dyno.FormatTime
+  exposed-modules:     Dyno.FormatTime
                        Dyno.LagrangePolynomials
                        Dyno.TypeVecs
                        Dyno.MultipleShooting
@@ -71,8 +70,8 @@ library
   other-modules:
 
   build-depends:       base >=4.6 && < 5,
-                       casadi-bindings-core >= 2.4.1.0,
-                       casadi-bindings >= 2.4.1.9,
+                       casadi-bindings-core >= 3.0.0.0,
+                       casadi-bindings >= 3.0.0.0,
 --                       casadi-bindings-internal,
                        data-default-class,
                        jacobi-roots >=0.2 && <0.3,
@@ -281,28 +280,6 @@ executable rocket
 
   ghc-options:         -threaded -O2
 
-executable nlpDsl
-  if flag(examples)
-    Buildable: True
-  else
-    Buildable: False
-  hs-source-dirs:      examples
-  main-is:             NlpDsl.hs
-  other-modules:       ExampleDsl.NlpMonad
-                       ExampleDsl.LogsAndErrors
-                       ExampleDsl.Types
-  default-language:    Haskell2010
-  build-depends:       base >=4.6 && < 5
-                     , dynobud
-                     , casadi-bindings
-                     , vector
-                     , linear
-                     , containers
-                     , unordered-containers
-                     , lens
-                     , mtl
-  ghc-options:         -threaded -O2
-
 executable easy-nlp
   if flag(examples)
     Buildable: True
@@ -483,6 +460,7 @@ test-suite unit-tests
   main-is:             NewUnitTests.hs
   other-modules:       FittingTests
                        MapTests
+                       FunctionTests
                        LinearizeTests
                        QuadratureTests
                        IntegrationTests
@@ -502,6 +480,7 @@ test-suite unit-tests
                        binary,
                        cereal,
                        casadi-bindings,
+                       casadi-bindings-core,
                        hmatrix,
                        hmatrix-gsl,
                        base >=4.6 && < 5

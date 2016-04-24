@@ -139,8 +139,8 @@ eye3' =
 
 dirCollOpts :: DirCollOptions
 dirCollOpts =
-  DirCollOptions
-  { mapStrategy = Unrolled
+  def
+  { mapStrategy = Unroll
   , collocationRoots = Legendre
   }
 
@@ -152,13 +152,14 @@ main = do
   withCallback $ \send -> do
     let meta = toMeta (cpMetaProxy cp)
 
-        cb' traj _ = do
+        cb' traj _ _ = do
           plotPoints <- cpPlotPoints cp traj (catJV None)
           send (plotPoints, meta)
 
-    (msg,_) <- solveNlp ipoptSolver nlp (Just cb')
-    case msg of Left msg' -> putStrLn $ "optimization failed, message: " ++ msg'
-                Right _ -> putStrLn "optimization succeeded"
+    (_, eopt) <- solveNlp ipoptSolver nlp (Just cb')
+    case eopt of
+      Left msg -> putStrLn $ "optimization failed, message: " ++ msg
+      Right _ -> putStrLn "optimization succeeded"
 --    let xopt = xOpt opt
 --        lambda = lambdaOpt opt
 --

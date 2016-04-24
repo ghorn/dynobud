@@ -231,7 +231,13 @@ fg (X r points stages) = (f, g)
         inner (Point xij' yij') phiij = xij'*cos(phiij) + yij'*sin(phiij)
 
 solver :: Solver
-solver = ipoptSolver { options = [("ma86_order", Opt "metis"), ("max_iter", Opt (1000 :: Int))]}
+solver =
+  ipoptSolver
+  { options =
+    [ ("ipopt.ma86_order", GString "metis")
+    , ("ipopt.max_iter", GInt 1000)
+    ]
+  }
 --solver = snoptSolver { options = [ ("detect_linear", Opt False) ] }
 
 send :: Serialize a => ZMQ.Socket ZMQ.Pub -> String -> a -> IO ()
@@ -249,7 +255,7 @@ main =
     putStrLn $ "# design vars: " ++ show (vlength (Proxy :: Proxy X))
     putStrLn $ "# constraints: " ++ show (vlength (Proxy :: Proxy G))
     iters <- newIORef 0
-    _ <- solveNlpV solver fg bx bg guess $ Just $ \x -> do
+    _ <- solveNlpV solver fg bx bg guess $ Just $ \x _ -> do
       k <- readIORef iters
       writeIORef iters (k + 1)
       let msg = SofaMessage

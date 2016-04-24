@@ -23,7 +23,7 @@ import qualified Numeric.LinearAlgebra as Mat
 
 import qualified Casadi.Sparsity as Sparsity
 import Casadi.Slice ( slice' )
-import Casadi.DMatrix ( DMatrix )
+import Casadi.DM ( DM )
 import Casadi.CMatrix ( CMatrix )
 import qualified Casadi.CMatrix as CM
 
@@ -64,11 +64,11 @@ toMatrix c = unsafePerformIO $ do
   return (CM.triu2symm m)
 {-# NOINLINE toMatrix #-}
 
-toHMatrix :: forall f . View f => J (Cov f) DMatrix -> Mat.Matrix Double
+toHMatrix :: forall f . View f => J (Cov f) DM -> Mat.Matrix Double
 toHMatrix m = toHMat (toMat m)
 
 toHMatrix' :: forall f . View f => J (Cov f) (Vector Double) -> Mat.Matrix Double
-toHMatrix' v = toHMatrix $ (mkM (CM.fromDVector (unM v)) :: J (Cov f) DMatrix)
+toHMatrix' v = toHMatrix $ (mkM (CM.fromDVector (unM v)) :: J (Cov f) DM)
 
 diag' :: Vectorize f => f a -> a -> J (Cov (JV f)) (Vector a)
 diag' x offDiag = mkM $ V.fromList $ concat $ zipWith f vx [0..]
@@ -78,16 +78,16 @@ diag' x offDiag = mkM $ V.fromList $ concat $ zipWith f vx [0..]
 
 --data X a = X (J S a) (J S a) deriving (Generic, Show)
 --instance View X
---xx = X (mkM 1) (mkM 2) :: X DMatrix
+--xx = X (mkM 1) (mkM 2) :: X DM
 --xx' = cat xx
 --
---dd :: J (Cov X) DMatrix
+--dd :: J (Cov X) DM
 --dd = diag xx'
 --
---sp :: DMatrix
+--sp :: DM
 --sp = toMatrix dd
 --
---dd2 :: J (Cov X) DMatrix
+--dd2 :: J (Cov X) DM
 --dd2 = fromMatrix sp
 
 fromMat :: (View f, CMatrix a) => M f f a -> J (Cov f) a

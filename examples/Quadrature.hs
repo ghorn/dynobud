@@ -179,11 +179,11 @@ guess roots = cat $ makeGuess roots tf guessX guessZ guessU parm
 
 
 solver :: Solver
-solver = ipoptSolver { options = [ ("expand", Opt True)
-                                 , ("linear_solver", Opt "ma86")
-                                 , ("ma86_order", Opt "metis")
---                                 , ("print_level", Opt (0 :: Int))
---                                 , ("print_time", Opt False)
+solver = ipoptSolver { options = [ ("expand", GBool True)
+                                 , ("ipopt.linear_solver", GString "ma86")
+                                 , ("ipopt.ma86_order", GString "metis")
+--                                 , ("ipopt.print_level", GInt 0)
+--                                 , ("print_time", GBool False)
                                  ]}
 
 goodSolution :: NlpOut
@@ -202,20 +202,20 @@ compareIntegration (roots, stateOrOutput, quadOrLag) = do
   withCallback $ \send -> do
     let dirCollOpts :: DirCollOptions
         dirCollOpts =
-          DirCollOptions
-          { mapStrategy = Unrolled
+          def
+          { mapStrategy = Unroll
           , collocationRoots = roots
           }
     cp  <- makeCollProblem dirCollOpts (quadOcp stateOrOutput quadOrLag) quadOcpInputs (guess roots)
     let nlp = cpNlp cp
         meta = toMeta (cpMetaProxy cp)
-        cb traj _ = do
+        cb traj _ _ = do
           plotPoints <- cpPlotPoints cp traj (catJV None)
           send (plotPoints, meta)
-    (ret, out) <- solveNlp solver nlp (Just cb)
-    case ret of
+    (_, eopt) <- solveNlp solver nlp (Just cb)
+    case eopt of
      Left msg -> return (error msg)
-     Right _ -> putStrLn (goodSolution out)
+     Right out -> putStrLn (goodSolution out)
 
 main :: IO ()
 main = do

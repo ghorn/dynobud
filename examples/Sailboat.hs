@@ -291,8 +291,8 @@ solver = ipoptSolver
 
 dirCollOpts :: DirCollOptions
 dirCollOpts =
-  DirCollOptions
-  { mapStrategy = Unrolled
+  def
+  { mapStrategy = Unroll
   , collocationRoots = Legendre
   }
 
@@ -305,8 +305,8 @@ main = do
 --    withPublisher context urlOptTelem $ \sendOptTelemMsg -> do
       let meta = toMeta (cpMetaProxy cp)
 
-          callback :: J (CollTraj' SailboatOcp NCollStages CollDeg) (Vector Double) -> b -> IO Bool
-          callback traj _ = do
+          callback :: J (CollTraj' SailboatOcp NCollStages CollDeg) (Vector Double) -> b -> c -> IO Bool
+          callback traj _ _ = do
             plotPoints <- cpPlotPoints cp traj (catJV None)
                           :: IO (DynPlotPoints Double)
             -- dynoplot
@@ -349,10 +349,11 @@ main = do
 --            sendOptTelemMsg "opt_telem" (encodeProto optTelemMsg)
             return True
 
-      (msg0,opt0') <- solveNlp solver nlp (Just callback)
-      opt0 <- case msg0 of Left msg' -> error msg'
-                           Right _ -> return opt0'
-      let CollTraj endTime' _ _ xf = split (xOpt opt0)
+      (_, eopt) <- solveNlp solver nlp (Just callback)
+      opt <- case eopt of
+        Left msg -> error msg
+        Right r -> return r
+      let CollTraj endTime' _ _ xf = split (xOpt opt)
           endTime = unId $ splitJV endTime'
           V2 pxF _ = xP $ splitJV xf
       printf "optimal velocity: %.2f m/s\n" (pxF / endTime)

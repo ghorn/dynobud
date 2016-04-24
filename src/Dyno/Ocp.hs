@@ -33,7 +33,7 @@ import Dyno.View.Cov ( Cov )
 import Dyno.Nlp ( Bounds )
 
 import Casadi.SX ( SX )
-import Casadi.DMatrix ( DMatrix )
+import Casadi.DM ( DM )
 
 type Sx a = J a SX
 type Sxe = S SX
@@ -187,7 +187,7 @@ data OcpPhaseWithCov ocp sx sz sw sr sh shr sc =
     -- | robust factors for the robustified constraints
   , ocpCovGammas :: shr Double
     -- | covariance injection
-  , ocpCovSq :: J (Cov (JV sw)) DMatrix
+  , ocpCovSq :: J (Cov (JV sw)) DM
     -- | bounds on the initial convariance
   , ocpCovS0bnd :: J (Cov (JV sx)) (Vector Bounds)
     -- | the covariance boundary conditions @c(s(0), s(T))@

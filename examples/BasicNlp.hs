@@ -32,12 +32,15 @@ instance Vectorize G
 
 myNlp :: Nlp (JV X) JNone (JV G) MX
 myNlp = Nlp { nlpFG = fg
-            , nlpBX = bx
-            , nlpBG = bg
-            , nlpX0 = x0
-            , nlpP = cat JNone
-            , nlpLamX0 = Nothing
-            , nlpLamG0 = Nothing
+            , nlpIn =
+              NlpIn
+              { nlpBX = bx
+              , nlpBG = bg
+              , nlpX0 = x0
+              , nlpP = cat JNone
+              , nlpLamX0 = Nothing
+              , nlpLamG0 = Nothing
+              }
             , nlpScaleF = Nothing
             , nlpScaleX = Nothing
             , nlpScaleG = Nothing
