@@ -14,6 +14,7 @@ module ViewTests
 
 import GHC.Generics ( Generic, Generic1 )
 
+import Control.Exception ( ErrorCall, try, evaluate )
 import qualified Data.Map as M
 import Data.Proxy ( Proxy(..) )
 import qualified Data.Binary as B
@@ -41,7 +42,7 @@ import Casadi.Viewable ( Viewable )
 import Dyno.View.Unsafe ( M(UnsafeM), mkM )
 import Dyno.TypeVecs ( Vec, Dim )
 import Dyno.Vectorize ( Vectorize(..), Id, fill )
-import Dyno.View.View ( View(..), J, JV, JNone, JTuple, JTriple, JQuad )
+import Dyno.View.View ( View(..), S, J, JV, JNone, JTuple, JTriple, JQuad )
 import Dyno.View.JVec ( JVec )
 import Dyno.View.M
 import Dyno.View.Cov ( Cov, fromMat, toMat )
@@ -482,6 +483,27 @@ prop_hsplitQuad =
           m1 = hcatQuad mg0 mg1 mg2 mg3
       return (beEqual m0 m1)
 
+prop_repmatDims :: Test
+prop_repmatDims =
+  testProperty "repmat dimensions" $
+  \(Views {vwProxy = p0}) (Views {vwProxy = p1}) (CMatrices {cmProxy = p2})
+  -> test p0 p1 p2
+  where
+    test :: forall f g a
+            . (View f, View g, CMatrix a)
+            => Proxy f -> Proxy g -> Proxy a
+            -> Gen Property
+    test _ _ _ = do
+      x <- arbitrary :: Gen (S a)
+      let y = repmat x :: M f g a
+          seeIfItsAnException :: IO Property
+          seeIfItsAnException = do
+            z <- try (evaluate y)
+            return $ case z of
+              Left (_ :: ErrorCall) -> property False
+              Right _ -> property True
+      return (unsafePerformIO seeIfItsAnException)
+
 
 ---------- this next part is to test blockcat/blocksplit -----------
 data BV a = BV (J (JV V3) a) (J (JV V1) a) (J (JV V2) a) (J (JV V1) a)
@@ -646,4 +668,5 @@ viewTests =
   , prop_hsplitTrip
   , prop_vsplitQuad
   , prop_hsplitQuad
+  , prop_repmatDims
   ]

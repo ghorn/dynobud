@@ -48,6 +48,7 @@ module Dyno.View.M
        , blockSplit
        , reshape
        , reshape'
+       , repmat
          -- * hmatrix wrappers
        , rcond
        , rank
@@ -358,6 +359,13 @@ rank = HMat.rank . toHMat
 fromDM :: (CM.CMatrix a, View f, View g)
                => M f g DM -> M f g a
 fromDM = mkM . CM.fromDM . unM
+
+
+repmat :: forall f g a . (CM.CMatrix a, View f, View g) => S a -> M f g a
+repmat = mkM . flip CM.repmat (nx, ny) . unM
+  where
+    nx = size (Proxy :: Proxy f)
+    ny = size (Proxy :: Proxy g)
 
 -- | Break a typed matrix into a list of its elements given by the
 -- sizes of the View constructor.
