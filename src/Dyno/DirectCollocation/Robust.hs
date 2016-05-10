@@ -353,7 +353,7 @@ sensitivityStageFunction dynStageConJac
     dg_dsw0 :: M sx sw MX
     dg_dsxz :: M sx (JVec deg (JTuple sx sz)) MX
     ((df_dsx0, df_dsw0, df_dsxz), (dg_dsx0, dg_dsw0, dg_dsxz)) =
-      case fmap F.toList (F.toList (M.blockSplit mat)) of
+      case fmap F.toList (F.toList (M.blocksplit mat)) of
       [[x00,x01,x02],[x10,x11,x12]] -> ((mkM x00, mkM x01, mkM x02),
                                         (mkM x10, mkM x11, mkM x12))
       _ -> error "stageFunction: got wrong number of elements in jacobian"

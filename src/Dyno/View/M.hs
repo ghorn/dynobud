@@ -22,6 +22,7 @@ module Dyno.View.M
        , hsplit
        , vcat
        , hcat
+       , blockcat
        , vsplit'
        , hsplit'
        , vcat'
@@ -45,10 +46,11 @@ module Dyno.View.M
        , toHMat
        , fromHMat
        , fromHMat'
-       , blockSplit
+       , blocksplit
        , reshape
        , reshape'
        , repmat
+       , inv
          -- * hmatrix wrappers
        , rcond
        , rank
@@ -382,11 +384,14 @@ repmat = mkM . flip CM.repmat (nx, ny) . unM
 -- > --   [ [ (2,4), (2,5), (2,6) ]
 -- > --   , [ (3,4), (3,5), (3,6) ]
 -- > --   ]
-blockSplit :: forall f g a . (View f, View g, CMatrix a) => M f g a -> Vector (Vector a)
-blockSplit (UnsafeM m) = CM.blocksplit m vsizes hsizes
+blocksplit :: forall f g a . (View f, View g, CMatrix a) => M f g a -> Vector (Vector a)
+blocksplit (UnsafeM m) = CM.blocksplit m vsizes hsizes
   where
     vsizes = V.fromList $ 0 : (F.toList (sizes 0 (Proxy :: Proxy f)))
     hsizes = V.fromList $ 0 : (F.toList (sizes 0 (Proxy :: Proxy g)))
+
+blockcat :: forall f g a . (Vectorize f, Vectorize g, CMatrix a) => f (g (S a)) -> M (JV f) (JV g) a
+blockcat = vcat . fmap hcat
 
 -- TODO(greg):
 -- blockSplit :: forall f g a . (Vectorize f, Vectorize g) => M (JV f) (JV g) DMatrix -> f (g Double)
@@ -397,6 +402,9 @@ sum1 (UnsafeM x) = mkM (CM.sum1 x)
 
 sum2 :: (View f, View g, CMatrix a) => M f g a -> M f (JV Id) a
 sum2 (UnsafeM x) = mkM (CM.sum2 x)
+
+inv :: (View f, CMatrix a) => M f f a -> M f f a
+inv (UnsafeM x) = mkM (CM.inv x)
 
 -- | reshape a vector into a column-major matrix
 reshape ::

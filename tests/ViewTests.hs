@@ -586,12 +586,12 @@ test_blockcatBlocks = HUnit.assertEqual "" x y
     y :: M BV BH DM
     y = mkM $ CM.blockcat blockcatBlocks
 
-test_blockSplit :: HUnit.Assertion
-test_blockSplit = HUnit.assertEqual "" x y
+test_blocksplit :: HUnit.Assertion
+test_blocksplit = HUnit.assertEqual "" x y
   where
     x, y :: V.Vector (V.Vector DM)
     x = blockcatBlocks
-    y = blockSplit blockCountUp
+    y = blocksplit blockCountUp
 
 ----------------- sumRows/sumCols ---------------
 sumInput :: M (JV V2) (JV V3) DM
@@ -641,16 +641,39 @@ test_reshape = HUnit.assertEqual "" x y
     y :: M (JV V2) (JVec 3 (JV Id)) DM
     y = reshape j
 
+test_blockcat :: HUnit.Assertion
+test_blockcat = HUnit.assertEqual "" x y
+  where
+    x :: M (JV V2) (JV V2) DM
+    x = blockcat (V2 (V2 0 1) (V2 2 3))
+
+    y :: M (JV V2) (JV V2) DM
+    y = countUp
+
+test_inv :: HUnit.Assertion
+test_inv = HUnit.assertEqual "" y0 y1
+  where
+    x :: M (JV V2) (JV V2) DM
+    x = hcat $ fmap vcat (V2 (V2 1 2) (V2 0.5 2))
+
+    y0 :: M (JV V2) (JV V2) DM
+    y0 = inv x
+
+    y1 :: M (JV V2) (JV V2) DM
+    y1 = hcat $ fmap vcat (V2 (V2 2 (-2)) (V2 (-0.5) 1))
+
 viewTests :: Test
 viewTests =
   testGroup "view tests" $
   [ testCase "blockcat scalars" test_blockcatScalars
   , testCase "blockcat blocks" test_blockcatBlocks
-  , testCase "blocksplit" test_blockSplit
+  , testCase "blocksplit" test_blocksplit
+  , testCase "blockcat" test_blockcat
   , testCase "reshape" test_reshape
   , testCase "sumInput" test_sumInput
   , testCase "sumRows" test_sumRows
   , testCase "sumCols" test_sumCols
+  , testCase "inv" test_inv
   , prop_VSplitVCat
   , prop_HSplitHCat
   , prop_VSplitVCat'
