@@ -641,6 +641,28 @@ test_reshape = HUnit.assertEqual "" x y
     y :: M (JV V2) (JVec 3 (JV Id)) DM
     y = reshape j
 
+test_reshape' :: HUnit.Assertion
+test_reshape' = HUnit.assertEqual "" x y
+  where
+    m0 :: M (JV V2) (JVec 3 (JV Id)) DM
+    m0 = mkM $ blockcat'
+        [ [0, 2, 4]
+        , [1, 3, 5]
+        ]
+
+    x :: J (JVec 3 (JV V2)) DM
+    x = mkM $ blockcat'
+        [ [ 0 ]
+        , [ 1 ]
+        , [ 2 ]
+        , [ 3 ]
+        , [ 4 ]
+        , [ 5 ]
+        ]
+
+    y :: J (JVec 3 (JV V2)) DM
+    y = reshape' m0
+
 test_blockcat :: HUnit.Assertion
 test_blockcat = HUnit.assertEqual "" x y
   where
@@ -670,6 +692,7 @@ viewTests =
   , testCase "blocksplit" test_blocksplit
   , testCase "blockcat" test_blockcat
   , testCase "reshape" test_reshape
+  , testCase "reshape'" test_reshape'
   , testCase "sumInput" test_sumInput
   , testCase "sumRows" test_sumRows
   , testCase "sumCols" test_sumCols
