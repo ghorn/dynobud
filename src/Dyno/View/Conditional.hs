@@ -1,14 +1,11 @@
 {-# OPTIONS_GHC -Wall #-}
-{-# OPTIONS_GHC -fno-cse #-} -- unsafePerformIO
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 
 module Dyno.View.Conditional
-       ( Conditional(..), Switch(..), toSwitch, fromSwitch
+       ( Conditional(..), Conditional'(..), Switch(..), toSwitch, fromSwitch
        ) where
 
 import GHC.Generics ( Generic, Generic1 )
@@ -19,7 +16,6 @@ import Data.Aeson ( ToJSON, FromJSON )
 import Data.Serialize ( Serialize )
 import qualified Data.Vector as V
 import Linear ( V2(..), V3(..) )
-import System.IO.Unsafe ( unsafePerformIO )
 
 import Casadi.MX ( MX )
 import Casadi.SX ( SX )
@@ -27,10 +23,9 @@ import Casadi.DM ( DM )
 import qualified Casadi.CMatrix as C
 
 import Dyno.Vectorize ( Vectorize )
-import Dyno.View.Fun ( Fun, toMXFun, toSXFun, callMX, callSX )
-import Dyno.View.View ( J, JV, S )
+import Dyno.View.View ( View, S )
 import Dyno.View.Unsafe ( mkM', unM )
-import Dyno.View.M ( vcat, vsplit )
+import Dyno.View.M ( M, vcat, vsplit )
 
 newtype Switch f a = UnsafeSwitch a deriving (Functor, Generic, Generic1, Show)
 instance Vectorize (Switch f)
@@ -48,24 +43,37 @@ instance (Bounded f, Enum f, Eq f, Show f, Lookup f, RealFrac a) => Lookup (Swit
           Right r -> r
           Left err -> error $ "error: toAccessorTree (Switch f a): " ++ err
 
-
+-- | Switches over Vectorize
 class Conditional a where
-  conditional :: (Enum b, Bounded b, Show b, Vectorize f, Vectorize g)
-                 => Bool -> g a -> Switch b a -> f a -> (b -> f a -> g a) -> g a
+  conditional :: (Enum b, Bounded b, Show b, Vectorize f)
+                 => Bool -> Switch b a -> (b -> f a) -> f a
 
 instance Conditional (S SX) where
-  conditional = sxConditional
-  {-# NOINLINE conditional #-}
+  conditional = cmConditional
+
 instance Conditional (S MX) where
-  conditional = mxConditional
-  {-# NOINLINE conditional #-}
+  conditional = cmConditional
+
 instance Conditional (S DM) where
-  conditional = dmConditional
+  conditional = cmConditional
 
 instance Conditional Double where
-  conditional = \_ _ -> evaluateConditionalNative
+  conditional = \_ -> evaluateConditionalNative
 instance Conditional Float where
-  conditional = \_ _ -> evaluateConditionalNative
+  conditional = \_ -> evaluateConditionalNative
+
+-- | Switches over View
+class Conditional' a where
+  conditional' :: (Enum b, Bounded b, Show b, View f0, View f1)
+                  => Bool -> Switch b (S a) -> (b -> M f0 f1 a) -> M f0 f1 a
+
+instance Conditional' SX where
+  conditional' = cmConditional'
+instance Conditional' MX where
+  conditional' = cmConditional'
+instance Conditional' DM where
+  conditional' = cmConditional'
+
 
 {-# INLINABLE toSwitch #-}
 toSwitch ::  forall a b
@@ -105,65 +113,32 @@ fromSwitch (UnsafeSwitch index) = lookupKey (round index)
       "The index " ++ show (round index :: Int) ++ " didn't map to an enum."
 
 
-{-# NOINLINE mxConditional #-}
-mxConditional ::
-  forall f g b
-  . (Enum b, Bounded b, Show b, Vectorize f, Vectorize g)
-  => Bool -> g (S MX) -> Switch b (S MX) -> f (S MX) -> (b -> f (S MX) -> g (S MX)) -> g (S MX)
-mxConditional shortCircuit def (UnsafeSwitch sw) input handleAnyCase = unsafePerformIO $ do
-  let toFunction :: b -> IO (Fun (J (JV f)) (J (JV g)))
-      toFunction key = toMXFun ("conditional_" ++ show key) (vcat . handleAnyCase key . vsplit)
+cmConditional ::
+  forall f b a
+  . (Enum b, Bounded b, Show b, Vectorize f, C.CMatrix a)
+  => Bool -> Switch b (S a) -> (b -> f (S a)) -> f (S a)
+cmConditional shortCircuit sw handleAnyCase =
+  vsplit $ cmConditional' shortCircuit sw (vcat . handleAnyCase)
 
-  functions <- mapM toFunction orderKeys :: IO [Fun (J (JV f)) (J (JV g))]
-  let catInput = vcat input
 
-      outputs :: [J (JV g) MX]
-      outputs = map (\f -> callMX f catInput) functions
-
-      output :: MX
-      output = C.conditional' (unM sw) (V.fromList (map unM outputs)) (unM (vcat def)) shortCircuit
-
+cmConditional' ::
+  forall f0 f1 b a
+  . (Enum b, Bounded b, Show b, View f0, View f1, C.CMatrix a)
+  => Bool -> Switch b (S a) -> (b -> M f0 f1 a) -> M f0 f1 a
+cmConditional' shortCircuit (UnsafeSwitch sw) handleAnyCase =
   case mkM' output of
-    Right r -> return (vsplit r)
-    Left err -> error $ "cmatConditional: error splitting the output:\n" ++ err
-
-{-# NOINLINE sxConditional #-}
-sxConditional ::
-  forall f g b
-  . (Enum b, Bounded b, Show b, Vectorize f, Vectorize g)
-  => Bool -> g (S SX) -> Switch b (S SX) -> f (S SX) -> (b -> f (S SX) -> g (S SX)) -> g (S SX)
-sxConditional shortCircuit def (UnsafeSwitch sw) input handleAnyCase = unsafePerformIO $ do
-  let toFunction :: b -> IO (Fun (J (JV f)) (J (JV g)))
-      toFunction key = toSXFun ("conditional_" ++ show key) (vcat . handleAnyCase key . vsplit)
-
-  functions <- mapM toFunction orderKeys :: IO [Fun (J (JV f)) (J (JV g))]
-  let catInput = vcat input
-
-      outputs :: [J (JV g) SX]
-      outputs = map (\f -> callSX f catInput) functions
-
-      output :: SX
-      output = C.conditional' (unM sw) (V.fromList (map unM outputs)) (unM (vcat def)) shortCircuit
-
-  case mkM' output of
-    Right r -> return (vsplit r)
-    Left err -> error $ "cmatConditional: error splitting the output:\n" ++ err
-
-dmConditional ::
-  forall f g b
-  . (Enum b, Bounded b, Vectorize f, Vectorize g)
-  => Bool -> g (S DM) -> Switch b (S DM)
-  -> f (S DM) -> (b -> f (S DM) -> g (S DM)) -> g (S DM)
-dmConditional shortCircuit def (UnsafeSwitch sw) input handleAnyCase =
-  case mkM' output of
-    Right r -> vsplit r
+    Right r -> r
     Left err -> error $ "cmatConditional: error splitting the output:\n" ++ err
   where
-    outputs :: [J (JV g) DM]
-    outputs = map (\key -> vcat (handleAnyCase key input)) orderKeys
+    -- last output is the default case
+    allButLastOutputs :: [M f0 f1 a]
+    lastOutput :: M f0 f1 a
+    (allButLastOutputs, lastOutput) = case reverse (map handleAnyCase orderKeys) of
+      (lastOutput':reversedOutputs) -> (reverse reversedOutputs, lastOutput')
+      [] -> error "conditional needs at least one argument"
 
-    output :: DM
-    output = C.conditional' (unM sw) (V.fromList (map unM outputs)) (unM (vcat def)) shortCircuit
+    output :: a
+    output = C.conditional' (unM sw) (V.fromList (map unM allButLastOutputs)) (unM lastOutput) shortCircuit
 
 orderKeys :: (Enum a, Bounded a) => [a]
 orderKeys
@@ -174,10 +149,10 @@ orderKeys
 
 {-# INLINABLE evaluateConditionalNative #-}
 evaluateConditionalNative ::
-  forall f g a b
+  forall f a b
   . (Enum b, Bounded b, RealFrac a)
-  => Switch b a -> f a -> (b -> f a -> g a) -> g a
-evaluateConditionalNative sw input handleAnyCase = handleAnyCase enum input
+  => Switch b a -> (b -> f a) -> f a
+evaluateConditionalNative sw handleAnyCase = handleAnyCase enum
   where
     enum = case fromSwitch sw of
       Right r -> r
@@ -225,11 +200,9 @@ data Foo = FooA | FooB | FooC deriving (Enum, Bounded, Eq, Ord, Show)
 _test :: forall a
          . (Conditional a, Num a)
          => Switch Foo a -> V3 a -> (Switch Foo a, V2 a)
-_test foo input = (foo, conditional True def foo input f)
+_test sw (V3 x y z) = (sw, conditional True sw f)
   where
-    def = V2 (-1) (-2)
-    f :: Foo -> V3 a -> V2 a
-    f sw (V3 x y z) = case sw of
-      FooA -> V2 x (2*x)
-      FooB -> V2 y (2*y)
-      FooC -> V2 z (2*z)
+    f :: Foo -> V2 a
+    f FooA = V2 x (2*x)
+    f FooB = V2 y (2*y)
+    f FooC = V2 z (2*z)
