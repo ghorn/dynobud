@@ -17,6 +17,7 @@ module Dyno.View.Unsafe
 
 import GHC.Generics hiding ( S )
 
+import Data.Aeson ( FromJSON(..), ToJSON(..) )
 import qualified Data.Foldable as F
 import qualified Data.Sequence as Seq
 import Data.Proxy ( Proxy(..) )
@@ -34,6 +35,11 @@ import Dyno.Vectorize ( Vectorize(..), Id, devectorize, vlength )
 -- | Matrix with dimensions encoded as Views.
 newtype M (f :: * -> *) (g :: * -> *) (a :: *) =
   UnsafeM { unsafeUnM :: a } deriving (Eq, Functor, Generic)
+
+instance (Viewable a, View f, View g, FromJSON a) => FromJSON (M f g a) where
+  parseJSON = fmap mkM . parseJSON
+instance ToJSON a => ToJSON (M f g a) where
+  toJSON = toJSON . unsafeUnM
 
 -- | Type alias for a column vector view.
 type J f = M f (JV Id)
