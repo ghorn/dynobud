@@ -1,11 +1,14 @@
 {-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -fno-cse #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TypeOperators #-}
 
 module Dyno.View.Conditional
        ( Conditional(..), Conditional'(..), Switch(..), toSwitch, fromSwitch
+       , functionConditional
        ) where
 
 import GHC.Generics ( Generic, Generic1 )
@@ -16,16 +19,21 @@ import Data.Aeson ( ToJSON, FromJSON )
 import Data.Serialize ( Serialize )
 import qualified Data.Vector as V
 import Linear ( V2(..), V3(..) )
+import System.IO.Unsafe ( unsafePerformIO )
 
 import Casadi.MX ( MX )
 import Casadi.SX ( SX )
 import Casadi.DM ( DM )
 import qualified Casadi.CMatrix as C
+import Casadi.Core.Classes.Function as C
 
 import Dyno.Vectorize ( Vectorize )
-import Dyno.View.View ( View, S )
-import Dyno.View.Unsafe ( mkM', unM )
+import Dyno.View.Fun ( Fun(..), checkFunDimensionsWith )
+import Dyno.View.HList ( (:*:) )
 import Dyno.View.M ( M, vcat, vsplit )
+import Dyno.View.Scheme ( Scheme(..) )
+import Dyno.View.Unsafe ( mkM', unM )
+import Dyno.View.View ( View, S, J, JV )
 
 newtype Switch f a = UnsafeSwitch a deriving (Functor, Generic, Generic1, Show)
 instance Vectorize (Switch f)
@@ -139,6 +147,26 @@ cmConditional' shortCircuit (UnsafeSwitch sw) handleAnyCase =
 
     output :: a
     output = C.conditional' (unM sw) (V.fromList (map unM allButLastOutputs)) (unM lastOutput) shortCircuit
+
+{-# NOINLINE functionConditional #-}
+functionConditional ::
+  forall f g b
+  . (Enum b, Bounded b, Show b, Scheme f, Scheme g)
+  => (b -> Fun f g) -> Fun (J (JV (Switch b)) :*: f) g
+functionConditional handleAnyCase = unsafePerformIO $ do
+  let functions = map handleAnyCase orderKeys :: [Fun f g]
+
+      -- last output is the default case
+      allButLastFunctions :: [Fun f g]
+      lastFunction :: Fun f g
+      (allButLastFunctions, lastFunction) = case reverse functions of
+        (lastFunction':reversedFunctions) -> (reverse reversedFunctions, lastFunction')
+        [] -> error "conditional needs at least one argument"
+
+  switchFun <- C.function_conditional__0 "function_conditional"
+    (V.fromList (fmap unFun allButLastFunctions)) (unFun lastFunction)
+
+  checkFunDimensionsWith "functionConditional" (Fun switchFun)
 
 orderKeys :: (Enum a, Bounded a) => [a]
 orderKeys
