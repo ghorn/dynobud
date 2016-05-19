@@ -146,7 +146,8 @@ instance Serialize (g (f a)) => Serialize ((g :. f) a) where
   put = put . unO
 
 instance Lookup (None a)
-instance Lookup a => Lookup (Id a)
+instance Lookup a => Lookup (Id a) where
+  toAccessorTree lens0 = toAccessorTree (lens0 . (\f x -> fmap Id (f (unId x))))
 instance (Lookup (f a), Lookup (g a)) => Lookup (Tuple f g a)
 instance (Lookup (f a), Lookup (g a), Lookup (h a)) => Lookup (Triple f g h a)
 instance (Lookup (f a), Lookup (g a), Lookup (h a), Lookup (i a)) => Lookup (Quad f g h i a)
