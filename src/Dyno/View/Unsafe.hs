@@ -13,10 +13,13 @@
 module Dyno.View.Unsafe
        ( View(..), Viewable(..), M(..), J, S, JV
        , mkM, mkM', unM, unM'
+       , catJV, splitJV
        ) where
 
 import GHC.Generics hiding ( S )
 
+import Accessors ( Lookup(..) )
+import Control.Lens ( Lens' )
 import Data.Aeson ( FromJSON(..), ToJSON(..) )
 import qualified Data.Foldable as F
 import qualified Data.Sequence as Seq
@@ -40,6 +43,17 @@ instance (Viewable a, View f, View g, FromJSON a) => FromJSON (M f g a) where
   parseJSON = fmap mkM . parseJSON
 instance ToJSON a => ToJSON (M f g a) where
   toJSON = toJSON . unsafeUnM
+instance (Vectorize f, Lookup (f a)) => Lookup (J (JV f) (V.Vector a)) where
+  toAccessorTree lens0 = toAccessorTree (lens0 . lens1)
+    where
+      lens1 :: Lens' (J (JV f) (V.Vector a)) (f a)
+      lens1 f x = fmap catJV $ f (splitJV x)
+
+splitJV :: Vectorize f => J (JV f) (V.Vector a) -> f a
+splitJV = devectorize . unM
+
+catJV :: Vectorize f => f a -> J (JV f) (V.Vector a)
+catJV = mkM . vectorize
 
 -- | Type alias for a column vector view.
 type J f = M f (JV Id)

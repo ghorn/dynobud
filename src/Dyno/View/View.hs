@@ -27,7 +27,7 @@ import qualified Casadi.DM as DM
 import qualified Casadi.CMatrix as CM
 
 import Dyno.Vectorize ( Vectorize(..), devectorize )
-import Dyno.View.Unsafe ( View(..), J, S, JV, mkM, unM )
+import Dyno.View.Unsafe ( View(..), J, S, JV, mkM, unM, catJV, splitJV )
 
 -- some helper types
 data JNone a = JNone deriving ( Eq, Generic, Generic1, Show, Functor, F.Foldable, T.Traversable )
@@ -58,9 +58,3 @@ unzipJ :: View f => J f (Vector (a,b)) -> (J f (Vector a), J f (Vector b))
 unzipJ v = (mkM x, mkM y)
   where
     (x,y) = V.unzip (unM v)
-
-splitJV :: Vectorize f => J (JV f) (Vector a) -> f a
-splitJV = devectorize . unM
-
-catJV :: Vectorize f => f a -> J (JV f) (Vector a)
-catJV = mkM . vectorize
