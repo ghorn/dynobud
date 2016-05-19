@@ -30,14 +30,15 @@ import Casadi.GenericType ( GenericType, GType, fromGType )
 
 import qualified Casadi.Core.Classes.Function as F
 
-import Dyno.TypeVecs ( Dim )
+import Dyno.TypeVecs ( Dim, Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.View.Fun
 import Dyno.View.HList
 import Dyno.View.JVec ( JVec )
 import Dyno.View.M ( M )
 import Dyno.View.Scheme ( Scheme )
-import Dyno.View.View ( View )
+import Dyno.Vectorize ( Id )
+import Dyno.View.View ( View, JV )
 
 data MapStrategy = Unroll | Serial | Parallel deriving (Show, Eq, Ord, Generic)
 
@@ -79,6 +80,9 @@ class ParScheme' f0 f1 where
 
 -- normal
 instance (View f, View g) => ParScheme' (M f g) (M f (JVec n g)) where
+  repeated _ _ = S.singleton True
+
+instance (View f) => ParScheme' (M f (JV Id)) (M f (JV (Vec n))) where
   repeated _ _ = S.singleton True
 
 -- non-repeated

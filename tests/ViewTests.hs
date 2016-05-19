@@ -4,6 +4,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE PolyKinds #-}
 
 module ViewTests
@@ -41,7 +42,7 @@ import Casadi.Viewable ( Viewable )
 
 import Dyno.View.Unsafe ( M(UnsafeM), mkM )
 import Dyno.TypeVecs ( Vec, Dim )
-import Dyno.Vectorize ( Vectorize(..), Id, fill )
+import Dyno.Vectorize ( Vectorize(..), Id, (:.), fill )
 import Dyno.View.View ( View(..), S, J, JV, JNone, JTuple, JTriple, JQuad )
 import Dyno.View.JVec ( JVec )
 import Dyno.View.M
@@ -626,23 +627,8 @@ test_sumCols = HUnit.assertEqual "" x y
     y :: M (JV V2) (JV Id) DM
     y = sum2 sumInput
 
-test_reshape :: HUnit.Assertion
-test_reshape = HUnit.assertEqual "" x y
-  where
-    j :: J (JVec 3 (JV V2)) DM
-    j = countUp
-
-    x :: M (JV V2) (JVec 3 (JV Id)) DM
-    x = mkM $ blockcat'
-        [ [0, 2, 4]
-        , [1, 3, 5]
-        ]
-
-    y :: M (JV V2) (JVec 3 (JV Id)) DM
-    y = reshape j
-
-test_reshape' :: HUnit.Assertion
-test_reshape' = HUnit.assertEqual "" x y
+test_jflatten :: HUnit.Assertion
+test_jflatten = HUnit.assertEqual "" x y
   where
     m0 :: M (JV V2) (JVec 3 (JV Id)) DM
     m0 = mkM $ blockcat'
@@ -661,7 +647,59 @@ test_reshape' = HUnit.assertEqual "" x y
         ]
 
     y :: J (JVec 3 (JV V2)) DM
-    y = reshape' m0
+    y = jflatten m0
+
+test_junflatten :: HUnit.Assertion
+test_junflatten = HUnit.assertEqual "" x y
+  where
+    j :: J (JVec 3 (JV V2)) DM
+    j = countUp
+
+    x :: M (JV V2) (JVec 3 (JV Id)) DM
+    x = mkM $ blockcat'
+        [ [0, 2, 4]
+        , [1, 3, 5]
+        ]
+
+    y :: M (JV V2) (JVec 3 (JV Id)) DM
+    y = junflatten j
+
+test_flatten :: HUnit.Assertion
+test_flatten = HUnit.assertEqual "" x y
+  where
+    m0 :: M (JV V2) (JV (Vec 3)) DM
+    m0 = mkM $ blockcat'
+        [ [0, 2, 4]
+        , [1, 3, 5]
+        ]
+
+    x :: J (JV (Vec 3 :. V2)) DM
+    x = mkM $ blockcat'
+        [ [ 0 ]
+        , [ 1 ]
+        , [ 2 ]
+        , [ 3 ]
+        , [ 4 ]
+        , [ 5 ]
+        ]
+
+    y :: J (JV (Vec 3 :. V2)) DM
+    y = flatten m0
+
+test_unflatten :: HUnit.Assertion
+test_unflatten = HUnit.assertEqual "" x y
+  where
+    j :: J (JV (Vec 3 :. V2)) DM
+    j = countUp
+
+    x :: M (JV V2) (JV (Vec 3)) DM
+    x = mkM $ blockcat'
+        [ [0, 2, 4]
+        , [1, 3, 5]
+        ]
+
+    y :: M (JV V2) (JV (Vec 3)) DM
+    y = unflatten j
 
 test_blockcat :: HUnit.Assertion
 test_blockcat = HUnit.assertEqual "" x y
@@ -684,6 +722,110 @@ test_inv = HUnit.assertEqual "" y0 y1
     y1 :: M (JV V2) (JV V2) DM
     y1 = hcat $ fmap vcat (V2 (V2 2 (-2)) (V2 (-0.5) 1))
 
+
+
+test_hcat'' :: HUnit.Assertion
+test_hcat'' = HUnit.assertEqual "" m01 (hcat'' (V2 m0 m1))
+  where
+    m0 :: M (JV V3) (JV V4) DM
+    m0 = mkM $ blockcat'
+        [ [0,  6, 12, 18]
+        , [1,  7, 13, 19]
+        , [2,  8, 14, 20]
+        ]
+
+    m1 :: M (JV V3) (JV V4) DM
+    m1 = mkM $ blockcat'
+        [ [3,  9, 15, 21]
+        , [4, 10, 16, 22]
+        , [5, 11, 17, 23]
+        ]
+
+    m01 :: M (JV V3) (JV (V2 :. V4)) DM
+    m01 = mkM $ blockcat'
+        [ [0,  6, 12, 18, 3,  9, 15, 21]
+        , [1,  7, 13, 19, 4, 10, 16, 22]
+        , [2,  8, 14, 20, 5, 11, 17, 23]
+        ]
+
+test_hsplit'' :: HUnit.Assertion
+test_hsplit'' = HUnit.assertEqual "" (V2 m0 m1) (hsplit'' m01)
+  where
+    m01 :: M (JV V3) (JV (V2 :. V4)) DM
+    m01 = mkM $ blockcat'
+        [ [0,  6, 12, 18, 3,  9, 15, 21]
+        , [1,  7, 13, 19, 4, 10, 16, 22]
+        , [2,  8, 14, 20, 5, 11, 17, 23]
+        ]
+
+    m0 :: M (JV V3) (JV V4) DM
+    m0 = mkM $ blockcat'
+        [ [0,  6, 12, 18]
+        , [1,  7, 13, 19]
+        , [2,  8, 14, 20]
+        ]
+
+    m1 :: M (JV V3) (JV V4) DM
+    m1 = mkM $ blockcat'
+        [ [3,  9, 15, 21]
+        , [4, 10, 16, 22]
+        , [5, 11, 17, 23]
+        ]
+test_vcat'' :: HUnit.Assertion
+test_vcat'' = HUnit.assertEqual "" m01 (vcat'' (V2 m0 m1))
+  where
+    m0 :: M (JV V3) (JV V4) DM
+    m0 = mkM $ blockcat'
+        [ [0,  6, 12, 18]
+        , [1,  7, 13, 19]
+        , [2,  8, 14, 20]
+        ]
+
+    m1 :: M (JV V3) (JV V4) DM
+    m1 = mkM $ blockcat'
+        [ [3,  9, 15, 21]
+        , [4, 10, 16, 22]
+        , [5, 11, 17, 23]
+        ]
+
+    m01 :: M (JV (V2 :. V3)) (JV V4) DM
+    m01 = mkM $ blockcat'
+        [ [0,  6, 12, 18]
+        , [1,  7, 13, 19]
+        , [2,  8, 14, 20]
+        , [3,  9, 15, 21]
+        , [4, 10, 16, 22]
+        , [5, 11, 17, 23]
+        ]
+
+test_vsplit'' :: HUnit.Assertion
+test_vsplit'' = HUnit.assertEqual "" (V2 m0 m1) (vsplit'' m01)
+  where
+    m01 :: M (JV (V2 :. V3)) (JV V4) DM
+    m01 = mkM $ blockcat'
+        [ [0,  6, 12, 18]
+        , [1,  7, 13, 19]
+        , [2,  8, 14, 20]
+        , [3,  9, 15, 21]
+        , [4, 10, 16, 22]
+        , [5, 11, 17, 23]
+        ]
+
+    m0 :: M (JV V3) (JV V4) DM
+    m0 = mkM $ blockcat'
+        [ [0,  6, 12, 18]
+        , [1,  7, 13, 19]
+        , [2,  8, 14, 20]
+        ]
+
+    m1 :: M (JV V3) (JV V4) DM
+    m1 = mkM $ blockcat'
+        [ [3,  9, 15, 21]
+        , [4, 10, 16, 22]
+        , [5, 11, 17, 23]
+        ]
+
+
 viewTests :: Test
 viewTests =
   testGroup "view tests" $
@@ -691,12 +833,18 @@ viewTests =
   , testCase "blockcat blocks" test_blockcatBlocks
   , testCase "blocksplit" test_blocksplit
   , testCase "blockcat" test_blockcat
-  , testCase "reshape" test_reshape
-  , testCase "reshape'" test_reshape'
+  , testCase "flatten" test_flatten
+  , testCase "unflatten" test_unflatten
+  , testCase "jflatten" test_jflatten
+  , testCase "junflatten" test_junflatten
   , testCase "sumInput" test_sumInput
   , testCase "sumRows" test_sumRows
   , testCase "sumCols" test_sumCols
   , testCase "inv" test_inv
+  , testCase "hcat''" test_hcat''
+  , testCase "hsplit''" test_hsplit''
+  , testCase "vcat''" test_vcat''
+  , testCase "vsplit''" test_vsplit''
   , prop_VSplitVCat
   , prop_HSplitHCat
   , prop_VSplitVCat'

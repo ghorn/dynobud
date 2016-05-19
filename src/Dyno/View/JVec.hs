@@ -55,4 +55,3 @@ jreplicate = cat . jreplicate'
 reifyJVec :: forall a f r . Vector (J f a) -> (forall (n :: *). Dim n => JVec n f a -> r) -> r
 reifyJVec v f = reifyVector v $ \(v' :: Vec n (J f a)) -> f (JVec v' :: JVec n f a)
 {-# INLINE reifyJVec #-}
-

@@ -3,6 +3,7 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE PolyKinds #-}
 
 module Dyno.View.M
@@ -18,15 +19,19 @@ module Dyno.View.M
        , takeDiag
        , ones
        , countUp
-       , vsplit
-       , hsplit
-       , vcat
        , hcat
-       , blockcat
-       , vsplit'
-       , hsplit'
-       , vcat'
        , hcat'
+       , hcat''
+       , hsplit
+       , hsplit'
+       , hsplit''
+       , vcat
+       , vcat'
+       , vcat''
+       , vsplit
+       , vsplit'
+       , vsplit''
+       , blockcat
        , hsplitTup
        , hsplitTrip
        , hsplitQuad
@@ -47,8 +52,10 @@ module Dyno.View.M
        , fromHMat
        , fromHMat'
        , blocksplit
-       , reshape
-       , reshape'
+       , flatten
+       , unflatten
+       , jflatten
+       , junflatten
        , repmat
        , inv
          -- * hmatrix wrappers
@@ -70,7 +77,7 @@ import Casadi.GenericType ( GenericType )
 import Casadi.Viewable ( Viewable(..) )
 
 import Dyno.View.Unsafe ( M(UnsafeM), mkM, mkM', unM )
-import Dyno.Vectorize ( Vectorize(..), Id, fill, devectorize )
+import Dyno.Vectorize ( Vectorize(..), Id, (:.), fill, devectorize, vlength )
 import Dyno.TypeVecs ( Vec, Dim(..) )
 import qualified Dyno.TypeVecs as TV
 import Dyno.View.View ( View(..), J, S, JV, JTuple, JTriple, JQuad )
@@ -96,6 +103,25 @@ sm m0 m1 = mkM $ (unM m0) * (unM m1)
 trans :: (View f, View g, CMatrix a) => M f g a -> M g f a
 trans (UnsafeM m) = mkM (CM.trans m)
 
+
+vcat ::
+  forall f g a .
+  (Vectorize f, View g, Viewable a)
+  => f (M (JV Id) g a) -> M (JV f) g a
+vcat x = mkM $ vvertcat $ V.map unM (vectorize x)
+
+vcat' ::
+  forall f g n a .
+  (View f, View g, Dim n, CMatrix a)
+  => Vec n (M f g a) -> M (JVec n f) g a
+vcat' x = mkM $ CM.vertcat $ V.map unM (vectorize x)
+
+vcat'' ::
+  forall f g h a .
+  (Vectorize f, Vectorize g, View h, Viewable a)
+  => f (M (JV g) h a) -> M (JV (f :. g)) h a
+vcat'' x = mkM $ vvertcat $ V.map unM (vectorize x)
+
 vsplit ::
   forall f g a .
   (Vectorize f, View g, Viewable a)
@@ -105,11 +131,46 @@ vsplit (UnsafeM x) = fmap mkM $ devectorize $ vvertsplit x nrs
     nr = size (Proxy :: Proxy (JV f))
     nrs = V.fromList [0,1..nr]
 
-vcat ::
+vsplit' ::
+  forall f g n a .
+  (View f, View g, Dim n, CMatrix a)
+  => M (JVec n f) g a -> Vec n (M f g a)
+vsplit' (UnsafeM x)
+  | n == 0 = fill zeros
+  | nr == 0 = fill zeros
+  | otherwise = fmap mkM $ devectorize $ CM.vertsplit x nrs
+  where
+    n = reflectDim (Proxy :: Proxy n)
+    nr = size (Proxy :: Proxy f)
+    nrs = V.fromList [0,nr..n*nr]
+
+vsplit'' ::
+  forall f g h a .
+  (Vectorize f, Vectorize g, View h, Viewable a)
+  => M (JV (f :. g)) h a -> f (M (JV g) h a)
+vsplit'' (UnsafeM x) = fmap mkM $ devectorize $ vvertsplit x nrs
+  where
+    nf = size (Proxy :: Proxy (JV f))
+    ng = size (Proxy :: Proxy (JV g))
+    nrs = V.fromList [0,ng..(nf*ng)]
+
+hcat ::
   forall f g a .
-  (Vectorize f, View g, Viewable a)
-  => f (M (JV Id) g a) -> M (JV f) g a
-vcat x = mkM $ vvertcat $ V.map unM (vectorize x)
+  (View f, Vectorize g, CMatrix a)
+  => g (M f (JV Id) a) -> M f (JV g) a
+hcat x = mkM $ CM.horzcat $ V.map unM (vectorize x)
+
+hcat' ::
+  forall f g n a .
+  (View f, View g, Dim n, CMatrix a)
+  => Vec n (M f g a) -> M f (JVec n g) a
+hcat' x = mkM $ CM.horzcat $ V.map unM (vectorize x)
+
+hcat'' ::
+  forall f g h a .
+  (View f, Vectorize g, Vectorize h, CMatrix a)
+  => g (M f (JV h) a) -> M f (JV (g :. h)) a
+hcat'' x = mkM $ CM.horzcat $ V.map unM (vectorize x)
 
 hsplit ::
   forall f g a .
@@ -119,6 +180,29 @@ hsplit (UnsafeM x) = fmap mkM $ devectorize $ CM.horzsplit x ncs
   where
     nc = size (Proxy :: Proxy (JV g))
     ncs = V.fromList [0,1..nc]
+
+hsplit' ::
+  forall f g n a .
+  (View f, View g, Dim n, CMatrix a)
+  => M f (JVec n g) a -> Vec n (M f g a)
+hsplit' (UnsafeM x)
+  | n == 0 = fill zeros
+  | nc == 0 = fill zeros
+  | otherwise = fmap mkM $ devectorize $ CM.horzsplit x ncs
+  where
+    n = reflectDim (Proxy :: Proxy n)
+    nc = size (Proxy :: Proxy g)
+    ncs = V.fromList [0,nc..n*nc]
+
+hsplit'' ::
+  forall f g h a .
+  (View f, Vectorize g, Vectorize h, CMatrix a)
+  => M f (JV (g :. h)) a -> g (M f (JV h) a)
+hsplit'' (UnsafeM x) = fmap mkM $ devectorize $ CM.horzsplit x ncs
+  where
+    ng = vlength (Proxy :: Proxy g)
+    nh = vlength (Proxy :: Proxy h)
+    ncs = V.fromList [0,nh..(ng*nh)]
 
 hsplitTup ::
   forall f g h a .
@@ -181,31 +265,6 @@ hcatQuad ::
 hcatQuad (UnsafeM x0) (UnsafeM x1) (UnsafeM x2) (UnsafeM x3) =
   mkM (CM.horzcat (V.fromList [x0,x1,x2,x3]))
 
-hcat ::
-  forall f g a .
-  (View f, Vectorize g, CMatrix a)
-  => g (M f (JV Id) a) -> M f (JV g) a
-hcat x = mkM $ CM.horzcat $ V.map unM (vectorize x)
-
-vcat' ::
-  forall f g n a .
-  (View f, View g, Dim n, CMatrix a)
-  => Vec n (M f g a) -> M (JVec n f) g a
-vcat' x = mkM $ CM.vertcat $ V.map unM (vectorize x)
-
-vsplit' ::
-  forall f g n a .
-  (View f, View g, Dim n, CMatrix a)
-  => M (JVec n f) g a -> Vec n (M f g a)
-vsplit' (UnsafeM x)
-  | n == 0 = fill zeros
-  | nr == 0 = fill zeros
-  | otherwise = fmap mkM $ devectorize $ CM.vertsplit x nrs
-  where
-    n = reflectDim (Proxy :: Proxy n)
-    nr = size (Proxy :: Proxy f)
-    nrs = V.fromList [0,nr..n*nr]
-
 vsplitTup ::
   forall f g h a .
   (View f, View g, View h, CMatrix a)
@@ -266,25 +325,6 @@ vcatQuad ::
   => M f0 h a -> M f1 h a -> M f2 h a -> M f3 h a -> M (JQuad f0 f1 f2 f3) h a
 vcatQuad (UnsafeM x0) (UnsafeM x1) (UnsafeM x2) (UnsafeM x3) =
   mkM (CM.vertcat (V.fromList [x0,x1,x2,x3]))
-
-hcat' ::
-  forall f g n a .
-  (View f, View g, Dim n, CMatrix a)
-  => Vec n (M f g a) -> M f (JVec n g) a
-hcat' x = mkM $ CM.horzcat $ V.map unM (vectorize x)
-
-hsplit' ::
-  forall f g n a .
-  (View f, View g, Dim n, CMatrix a)
-  => M f (JVec n g) a -> Vec n (M f g a)
-hsplit' (UnsafeM x)
-  | n == 0 = fill zeros
-  | nc == 0 = fill zeros
-  | otherwise = fmap mkM $ devectorize $ CM.horzsplit x ncs
-  where
-    n = reflectDim (Proxy :: Proxy n)
-    nc = size (Proxy :: Proxy g)
-    ncs = V.fromList [0,nc..n*nc]
 
 zeros :: forall f g a . (View f, View g, CMatrix a) => M f g a
 zeros = mkM z
@@ -406,22 +446,42 @@ sum2 (UnsafeM x) = mkM (CM.sum2 x)
 inv :: (View f, CMatrix a) => M f f a -> M f f a
 inv (UnsafeM x) = mkM (CM.inv x)
 
+-- | reshape a column-major matrix into a vector
+jflatten ::
+  forall n f a
+  . (Dim n, View f, CMatrix a)
+  => M f (JVec n (JV Id)) a -> J (JVec n f) a
+jflatten (UnsafeM x) = mkM (CM.reshape x (nx*ny, 1))
+  where
+    nx = size (Proxy :: Proxy f)
+    ny = TV.reflectDim (Proxy :: Proxy n)
+
 -- | reshape a vector into a column-major matrix
-reshape ::
+junflatten ::
   forall n f a
   . (Dim n, View f, CMatrix a)
   => J (JVec n f) a -> M f (JVec n (JV Id)) a
-reshape (UnsafeM x) = mkM (CM.reshape x (nx, ny))
+junflatten (UnsafeM x) = mkM (CM.reshape x (nx, ny))
   where
     nx = size (Proxy :: Proxy f)
     ny = TV.reflectDim (Proxy :: Proxy n)
 
 -- | reshape a column-major matrix into a vector
-reshape' ::
-  forall n f a
-  . (Dim n, View f, CMatrix a)
-  => M f (JVec n (JV Id)) a -> J (JVec n f) a
-reshape' (UnsafeM x) = mkM (CM.reshape x (nx*ny, 1))
+flatten ::
+  forall f g a
+  . (Vectorize f, Vectorize g, CMatrix a)
+  => M (JV f) (JV g) a -> J (JV (g :. f)) a
+flatten (UnsafeM x) = mkM (CM.reshape x (nx*ny, 1))
   where
-    nx = size (Proxy :: Proxy f)
-    ny = TV.reflectDim (Proxy :: Proxy n)
+    nx = vlength (Proxy :: Proxy f)
+    ny = vlength (Proxy :: Proxy g)
+
+-- | reshape a vector into a column-major matrix
+unflatten ::
+  forall f g a
+  . (Vectorize f, Vectorize g, CMatrix a)
+  => J (JV (g :. f)) a -> M (JV f) (JV g) a
+unflatten (UnsafeM x) = mkM (CM.reshape x (nx, ny))
+  where
+    nx = vlength (Proxy :: Proxy f)
+    ny = vlength (Proxy :: Proxy g)

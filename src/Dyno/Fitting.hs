@@ -23,23 +23,22 @@ import Data.Proxy ( Proxy(..) )
 import Dyno.Nlp ( Bounds, NlpIn(..), NlpOut(..) )
 import Dyno.NlpSolver ( GType, toNlpSol, callNlpsol )
 import Dyno.Solvers ( Solver )
-import Dyno.Vectorize ( Vectorize, Id(..) )
+import Dyno.Vectorize ( Vectorize, Id(..), (:.) )
 import Dyno.TypeVecs ( Dim, Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.View.Fun ( Fun, callMX, toSXFun )
 import Dyno.View.HList ( (:*:)(..) )
-import Dyno.View.JVec ( JVec(..) )
-import Dyno.View.M ( M, mm, ones, reshape, reshape', sm, sum1, trans, vcat, vsplit )
+import Dyno.View.M ( M, mm, ones, flatten, unflatten, sm, sum1, trans, vcat, vsplit, vcat'' )
 import Dyno.View.MapFun ( MapStrategy, mapFun' )
 import Dyno.View.View ( J, S, View(..), JTuple(..), JV, catJV, splitJV, jfill)
 
 data L1X q y n a =
-  L1X (J (JV q) a) (J (JVec n (JV y)) a)
+  L1X (J (JV q) a) (J (JV (Vec n :. y)) a)
   deriving Generic
 instance (Vectorize q, Vectorize y, Dim n) => View (L1X q y n)
 
 data GSlacks g y n a =
-  GSlacks (J (JV g) a) (J (JVec n (JV y)) a) (J (JVec n (JV y)) a)
+  GSlacks (J (JV g) a) (J (JV (Vec n :. y)) a) (J (JV (Vec n :. y)) a)
   deriving Generic
 instance (Vectorize g, Vectorize y, Dim n) => View (GSlacks g y n)
 
@@ -125,39 +124,39 @@ withL1Fit eps solver fitModel qConstraints mapStrat mapOpts userFun = do
   mapFitModel <- mapFun' (Proxy :: Proxy n) fitModelFun "map_fit_model" mapStrat mapOpts
                  :: IO (Fun
                         (J (JV q)
-                         :*: M (JV x) (JVec n (JV Id))
-                         :*: M (JV y) (JVec n (JV Id))
-                         :*: M (JV y) (JVec n (JV Id))
+                         :*: M (JV x) (JV (Vec n))
+                         :*: M (JV y) (JV (Vec n))
+                         :*: M (JV y) (JV (Vec n))
                         )
-                        (M (JV y) (JVec n (JV Id)))
+                        (M (JV y) (JV (Vec n)))
                        )
   let fg :: J (L1X q y n) MX
-            -> J (JTuple (JVec n (JV x)) (JVec n (JV y))) MX
+            -> J (JTuple (JV (Vec n :. x)) (JV (Vec n :. y))) MX
             -> (S MX, J (GSlacks g y n) MX)
       fg dvs featuresData = (f, cat g)
         where
-          fitFeatures :: J (JVec n (JV x)) MX
-          fitData :: J (JVec n (JV y)) MX
+          fitFeatures :: J (JV (Vec n :. x)) MX
+          fitData :: J (JV (Vec n :. y)) MX
           JTuple fitFeatures fitData = split featuresData
 
           q :: J (JV q) MX
-          s' :: J (JVec n (JV y)) MX
+          s' :: J (JV (Vec n :. y)) MX
           L1X q s' = split dvs
 
-          s :: M (JV y) (JVec n (JV Id)) MX
-          s = reshape s'
+          s :: M (JV y) (JV (Vec n)) MX
+          s = unflatten s'
 
-          ys :: M (JV y) (JVec n (JV Id)) MX
-          ys = reshape fitData
+          ys :: M (JV y) (JV (Vec n)) MX
+          ys = unflatten fitData
 
-          xs :: M (JV x) (JVec n (JV Id)) MX
-          xs = reshape fitFeatures
+          xs :: M (JV x) (JV (Vec n)) MX
+          xs = unflatten fitFeatures
 
-          gs0 :: J (JVec n (JV y)) MX
-          gs0 = reshape' $ callMX mapFitModel (q :*: xs :*: ys :*: (-s))
+          gs0 :: J (JV (Vec n :. y)) MX
+          gs0 = flatten $ callMX mapFitModel (q :*: xs :*: ys :*: (-s))
 
-          gs1 :: J (JVec n (JV y)) MX
-          gs1 = reshape' $ callMX mapFitModel (q :*: xs :*: ys :*: s)
+          gs1 :: J (JV (Vec n :. y)) MX
+          gs1 = flatten $ callMX mapFitModel (q :*: xs :*: ys :*: s)
 
           f = realToFrac eps `sm` trans q `mm` q + sum1 s'
 
@@ -173,13 +172,15 @@ withL1Fit eps solver fitModel qConstraints mapStrat mapOpts userFun = do
               where
                 L1X xopt _ = split (xOpt out)
 
-            p :: J (JTuple (JVec n (JV x)) (JVec n (JV y))) (Vector Double)
+            p :: J (JTuple (JV (Vec n :. x)) (JV (Vec n :. y))) (Vector Double)
             p = cat $ JTuple fs' ds'
               where
                 fitFeatures :: Vec n (x Double)
                 (fitFeatures, fitData) = TV.tvunzip featuresData
-                fs' = cat $ JVec $ fmap catJV fitFeatures
-                ds' = cat $ JVec $ fmap catJV fitData
+                fs' :: J (JV (Vec n :. x)) (Vector Double)
+                ds' :: J (JV (Vec n :. y)) (Vector Double)
+                fs' = vcat'' $ fmap catJV fitFeatures
+                ds' = vcat'' $ fmap catJV fitData
 
             xbnds :: J (L1X q y n) (Vector Bounds)
             xbnds = cat $ L1X (catJV qbnds) (jfill (Nothing, Nothing))
@@ -277,26 +278,26 @@ withL2Fit eps solver fitModel qConstraints mapStrat mapOpts userFun = do
   mapFitModel <- mapFun' (Proxy :: Proxy n) fitModelFun "map_fit_model" mapStrat mapOpts
                  :: IO (Fun
                         (J (JV q)
-                         :*: M (JV x) (JVec n (JV Id))
-                         :*: M (JV y) (JVec n (JV Id))
+                         :*: M (JV x) (JV (Vec n))
+                         :*: M (JV y) (JV (Vec n))
                         )
                         (J (JV y))
                        )
-  let fg :: J (JV q) MX -> J (JTuple (JVec n (JV x)) (JVec n (JV y))) MX
+  let fg :: J (JV q) MX -> J (JTuple (JV (Vec n :. x)) (JV (Vec n :. y))) MX
             -> (S MX, J (JV g) MX)
       fg q featuresData = (0.5 * f, g)
         where
-          fitFeatures :: J (JVec n (JV x)) MX
-          fitData :: J (JVec n (JV y)) MX
+          fitFeatures :: J (JV (Vec n :. x)) MX
+          fitData :: J (JV (Vec n :. y)) MX
           JTuple fitFeatures fitData = split featuresData
 
           -- fit data
-          ys :: M (JV y) (JVec n (JV Id)) MX
-          ys = reshape fitData
+          ys :: M (JV y) (JV (Vec n)) MX
+          ys = unflatten fitData
 
           -- fit features
-          xs :: M (JV x) (JVec n (JV Id)) MX
-          xs = reshape fitFeatures
+          xs :: M (JV x) (JV (Vec n)) MX
+          xs = unflatten fitFeatures
 
           -- objective function
           f :: S MX
@@ -310,13 +311,15 @@ withL2Fit eps solver fitModel qConstraints mapStrat mapOpts userFun = do
   let solveOne :: (Maybe (q Double), q Bounds, g Bounds, Vec n (x Double, y Double))
                   -> IO (Either String (q Double))
       solveOne (mq0, qbnds, gbnds', featuresData) = do
-        let p :: J (JTuple (JVec n (JV x)) (JVec n (JV y))) (Vector Double)
+        let p :: J (JTuple (JV (Vec n :. x)) (JV (Vec n :. y))) (Vector Double)
             p = cat $ JTuple fs' ds'
               where
                 fitFeatures :: Vec n (x Double)
                 (fitFeatures, fitData) = TV.tvunzip featuresData
-                fs' = cat $ JVec $ fmap catJV fitFeatures
-                ds' = cat $ JVec $ fmap catJV fitData
+                fs' :: J (JV (Vec n :. x)) (Vector Double)
+                ds' :: J (JV (Vec n :. y)) (Vector Double)
+                fs' = vcat'' $ fmap catJV fitFeatures
+                ds' = vcat'' $ fmap catJV fitData
             xbnds = catJV qbnds
             gbnds = catJV gbnds'
             x0 = case mq0 of
@@ -420,20 +423,20 @@ withLInfFit eps solver fitModel qConstraints mapStrat mapOpts userFun = do
   mapFitModel <- mapFun' (Proxy :: Proxy n) fitModelFun "map_fit_model" mapStrat mapOpts
                  :: IO (Fun
                         (J (JV q)
-                         :*: M (JV x) (JVec n (JV Id))
-                         :*: M (JV y) (JVec n (JV Id))
+                         :*: M (JV x) (JV (Vec n))
+                         :*: M (JV y) (JV (Vec n))
                          :*: S
                         )
-                        (M (JV y) (JVec n (JV Id)))
+                        (M (JV y) (JV (Vec n)))
                        )
 
   let fg :: J (JTuple (JV q) (JV Id)) MX
-            -> J (JTuple (JVec n (JV x)) (JVec n (JV y))) MX
+            -> J (JTuple (JV (Vec n :. x)) (JV (Vec n :. y))) MX
             -> (S MX, J (GSlacks g y n) MX)
       fg dvs featuresData = (f, cat g)
         where
-          fitFeatures :: J (JVec n (JV x)) MX
-          fitData :: J (JVec n (JV y)) MX
+          fitFeatures :: J (JV (Vec n :. x)) MX
+          fitData :: J (JV (Vec n :. y)) MX
           JTuple fitFeatures fitData = split featuresData
 
           f = realToFrac eps `sm` trans q `mm` q + s
@@ -441,17 +444,17 @@ withLInfFit eps solver fitModel qConstraints mapStrat mapOpts userFun = do
           s :: S MX
           JTuple q s = split dvs
 
-          ys :: M (JV y) (JVec n (JV Id)) MX
-          ys = reshape fitData
+          ys :: M (JV y) (JV (Vec n)) MX
+          ys = unflatten fitData
 
-          xs :: M (JV x) (JVec n (JV Id)) MX
-          xs = reshape fitFeatures
+          xs :: M (JV x) (JV (Vec n)) MX
+          xs = unflatten fitFeatures
 
-          gs0 :: J (JVec n (JV y)) MX
-          gs0 = reshape' $ callMX mapFitModel (q :*: xs :*: ys :*: (-s))
+          gs0 :: J (JV (Vec n :. y)) MX
+          gs0 = flatten $ callMX mapFitModel (q :*: xs :*: ys :*: (-s))
 
-          gs1 :: J (JVec n (JV y)) MX
-          gs1 = reshape' $ callMX mapFitModel (q :*: xs :*: ys :*: s)
+          gs1 :: J (JV (Vec n :. y)) MX
+          gs1 = flatten $ callMX mapFitModel (q :*: xs :*: ys :*: s)
 
           g :: GSlacks g y n MX
           g = GSlacks (vcat (qConstraints (vsplit q))) gs0 gs1
@@ -465,13 +468,15 @@ withLInfFit eps solver fitModel qConstraints mapStrat mapOpts userFun = do
               where
                 JTuple xopt _ = split (xOpt out)
 
-            p :: J (JTuple (JVec n (JV x)) (JVec n (JV y))) (Vector Double)
+            p :: J (JTuple (JV (Vec n :. x)) (JV (Vec n :. y))) (Vector Double)
             p = cat $ JTuple fs' ds'
               where
                 fitFeatures :: Vec n (x Double)
                 (fitFeatures, fitData) = TV.tvunzip featuresData
-                fs' = cat $ JVec $ fmap catJV fitFeatures
-                ds' = cat $ JVec $ fmap catJV fitData
+                fs' :: J (JV (Vec n :. x)) (Vector Double)
+                ds' :: J (JV (Vec n :. y)) (Vector Double)
+                fs' = vcat'' $ fmap catJV fitFeatures
+                ds' = vcat'' $ fmap catJV fitData
             xbnds = cat $ JTuple (catJV qbnds) (catJV (Id (Nothing, Nothing)))
             gbnds = cat $ GSlacks (catJV gbnds')
                     (jfill (Nothing, Just 0)) (jfill (Just 0, Nothing))
