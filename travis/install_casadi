@@ -1,0 +1,18 @@
+#! /bin/bash
+set -eu
+
+git clone https://github.com/casadi/casadi.git
+cd casadi
+mkdir build
+cd build
+cmake -DCMAKE_C_COMPILER=gcc-4.8 -DCMAKE_CXX_COMPILER=g++-4.8 -DCMAKE_INSTALL_PREFIX=~/casadi_install -DWITH_EXAMPLES=OFF ..
+make -j4
+make install
+
+
+## casadi from .deb
+##wget http://github.com/casadi/casadi/releases/download/2.2.0/libcasadi-shared-2.2.0-x86_64.deb
+#wget http://sourceforge.net/projects/casadi/files/CasADi/2.3.0/linux/libcasadi-v2.3.0.deb
+#sudo dpkg -i libcasadi-v2.3.0.deb
+#sudo apt-get install -f
+#rm libcasadi-v2.3.0.deb
