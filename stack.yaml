@@ -26,6 +26,6 @@ extra-deps: [ casadi-bindings-3.0.0.1
             ]
 
 # Override default flag values for local packages and extra-deps
-flags:
-  dynobud:
-    examples: true
+#flags:
+#  dynobud:
+#    examples: true
