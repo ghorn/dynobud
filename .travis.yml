@@ -3,9 +3,15 @@ language: c
 # explicitly request container-based infrastructure
 sudo: false
 
+# NOTE:
+# I have disabled GHC from the hvr-ghc ppa so that I can
+# hack the stack ghc gcc location option with a sed command.
+# TODO(greg): revert this hack once this issue is fixed:
+# https://github.com/commercialhaskell/stack/issues/593
+
 env:
-  matrix:
-    - GHCVER=7.10.3
+#  matrix:
+#    - GHCVER=7.10.3
 
   global:
     secure: "kbkJf+ukAlZMIcbTD/jIGt6p51nkm2VERZ7jHKQ0betHPyQtBz7Ly43bge4oggRP6s9cDoobFSMendQHTuV5Kyv+BHnQTBpReryOzFMqP3Bm0ZGlZzbn+v2Z1HisDIHGK2kLk3iQyO4S8+Pc/yqbJYVf4iUxh+tUoB11/aCmE3k="
@@ -20,16 +26,16 @@ cache:
 addons:
   apt:
     sources:
-    - hvr-ghc
+#    - hvr-ghc
     - ubuntu-toolchain-r-test
 # blocked by https://github.com/travis-ci/apt-source-whitelist/issues/149
 #            https://github.com/travis-ci/apt-source-whitelist/pull/150
 #    - chris-lea/zeromq
 
     packages:
-    - cabal-install-1.24
-    - ghc-7.10.3
+#    - ghc-7.10.3
     - pkg-config
+    - libgmp-dev
     - libglpk-dev
     - libgl1-mesa-dev
     - libglu1-mesa-dev
@@ -62,7 +68,7 @@ before_install:
  - chmod a+x ~/.local/bin/stack
 
  # haskell deps
- - export PATH=/opt/ghc/$GHCVER/bin:$PATH
+ # - export PATH=/opt/ghc/$GHCVER/bin:$PATH
 
   # ipopt / hsl
  - export IPOPT_DEFAULT_LINEAR_SOLVER=ma57
@@ -82,8 +88,10 @@ before_install:
  - popd
 
 install:
-  - CC=gcc-4.8 CXX=g++-4.8 stack setup --no-terminal
-  - CC=gcc-4.8 CXX=g++-4.8 stack build --only-snapshot --no-terminal
+  - stack setup --no-terminal
+  # workaround for getting stack to use gcc 4.8
+  - sed -i -e 's,/usr/bin/gcc,/usr/bin/gcc-4.8,' ~/.stack/programs/x86_64-linux/ghc-7.10.3/lib/ghc-7.10.3/settings
+  - stack build --only-snapshot --no-terminal
 
 script:
-  - CC=gcc-4.8 CXX=g++-4.8 stack build --no-terminal --test
+  - stack build --no-terminal --test
