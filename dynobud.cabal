@@ -107,372 +107,372 @@ flag examples
     description:    build the examples
     default:        False
 
---executable kalman-filter
---  if flag(examples)
---    Buildable: True
---  else
---    Buildable: False
---  hs-source-dirs:      examples
---  main-is:             EKF.hs
---  default-language:    Haskell2010
---  build-depends:       base >=4.6 && < 5
---                       , casadi-bindings
---                       , dynobud
---                       , linear
---                       , Chart >= 1.5.4
---                       , Chart-cairo >= 1.5.4
---                       , lens
---                       , colour
---                       , data-default-class
---  ghc-options:         -O2
---
---executable nlp-solver
---  if flag(examples)
---    Buildable: True
---  else
---    Buildable: False
---  hs-source-dirs:      examples
---  main-is:             NlpSolverEx.hs
---  default-language:    Haskell2010
---  build-depends:       dynobud
---                       , base >=4.6 && < 5
---                       , casadi-bindings
---  ghc-options:         -O2
---
---executable toy-ocp
---  if flag(examples)
---    Buildable: True
---  else
---    Buildable: False
---  hs-source-dirs:      examples
---  main-is:             ToyOcp.hs
---  default-language:    Haskell2010
---  build-depends:       dynobud
---                       , base >=4.6 && < 5
---  ghc-options:         -O2
---
---
---executable multiple_shooting
---  if flag(examples)
---    Buildable: True
---  else
---    Buildable: False
---  hs-source-dirs:      examples
---  main-is:             MultipleShooting.hs
---  default-language:    Haskell2010
---  build-depends:       dynobud
---                       , base >=4.6 && < 5
---                       , casadi-bindings
---                       , vector
---                       , linear
---                       , Chart >= 1.5.4
---                       , Chart-cairo >= 1.5.4
---                       , lens
---                       , colour
---                       , data-default-class
---  ghc-options:         -O2
---
---
---executable sofa-viz-2000
---  if flag(examples)
---    Buildable: True
---  else
---    Buildable: False
---  hs-source-dirs:      examples
---  main-is:             SofaVisualizer.hs
---  other-modules:       Sofa.Common
---  default-language:    Haskell2010
---  build-depends:       dynobud,
---                       base >=4.6 && < 5,
---                       not-gloss >= 0.7.4.0,
---                       stm,
---                       containers,
-----                       binary,
---                       cereal,
---                       linear,
---                       bytestring,
---                       zeromq4-haskell,
---                       vector
---  ghc-options:         -O2 -threaded
---
---executable sofa-expand-o-matic
---  if flag(examples)
---    Buildable: True
---  else
---    Buildable: False
---  hs-source-dirs:      examples
---  main-is:             SofaExpando.hs
---  other-modules:       Sofa.Common
+executable kalman-filter
+  if flag(examples)
+    Buildable: True
+  else
+    Buildable: False
+  hs-source-dirs:      examples
+  main-is:             EKF.hs
+  default-language:    Haskell2010
+  build-depends:       base >=4.6 && < 5
+                       , casadi-bindings
+                       , dynobud
+                       , linear
+                       , Chart >= 1.5.4
+                       , Chart-cairo >= 1.5.4
+                       , lens
+                       , colour
+                       , data-default-class
+  ghc-options:         -O2
+
+executable nlp-solver
+  if flag(examples)
+    Buildable: True
+  else
+    Buildable: False
+  hs-source-dirs:      examples
+  main-is:             NlpSolverEx.hs
+  default-language:    Haskell2010
+  build-depends:       dynobud
+                       , base >=4.6 && < 5
+                       , casadi-bindings
+  ghc-options:         -O2
+
+executable toy-ocp
+  if flag(examples)
+    Buildable: True
+  else
+    Buildable: False
+  hs-source-dirs:      examples
+  main-is:             ToyOcp.hs
+  default-language:    Haskell2010
+  build-depends:       dynobud
+                       , base >=4.6 && < 5
+  ghc-options:         -O2
+
+
+executable multiple_shooting
+  if flag(examples)
+    Buildable: True
+  else
+    Buildable: False
+  hs-source-dirs:      examples
+  main-is:             MultipleShooting.hs
+  default-language:    Haskell2010
+  build-depends:       dynobud
+                       , base >=4.6 && < 5
+                       , casadi-bindings
+                       , vector
+                       , linear
+                       , Chart >= 1.5.4
+                       , Chart-cairo >= 1.5.4
+                       , lens
+                       , colour
+                       , data-default-class
+  ghc-options:         -O2
+
+
+executable sofa-viz-2000
+  if flag(examples)
+    Buildable: True
+  else
+    Buildable: False
+  hs-source-dirs:      examples
+  main-is:             SofaVisualizer.hs
+  other-modules:       Sofa.Common
+  default-language:    Haskell2010
+  build-depends:       dynobud,
+                       base >=4.6 && < 5,
+                       not-gloss >= 0.7.4.0,
+                       stm,
+                       containers,
+--                       binary,
+                       cereal,
+                       linear,
+                       bytestring,
+                       zeromq4-haskell,
+                       vector
+  ghc-options:         -O2 -threaded
+
+executable sofa-expand-o-matic
+  if flag(examples)
+    Buildable: True
+  else
+    Buildable: False
+  hs-source-dirs:      examples
+  main-is:             SofaExpando.hs
+  other-modules:       Sofa.Common
+  default-language:    Haskell2010
+  build-depends:       dynobud,
+                       vector,
+                       casadi-bindings-core,
+                       zeromq4-haskell,
+                       bytestring,
+--                       binary,
+                       cereal,
+                       linear,
+                       base >= 4.6 && < 5
+  ghc-options:         -threaded -O2
+
+executable homotopy
+  if flag(examples)
+    Buildable: True
+  else
+    Buildable: False
+  hs-source-dirs:      examples
+  main-is:             Homotopy.hs
+  default-language:    Haskell2010
+  build-depends:       dynobud,
+                       vector,
+                       casadi-bindings,
+                       base >= 4.6 && < 5
+  ghc-options:         -threaded -O2
+
+executable vec
+  if flag(examples)
+    Buildable: True
+  else
+    Buildable: False
+  hs-source-dirs:      examples
+  main-is:             Vec.hs
+  default-language:    Haskell2010
+  build-depends:       dynobud,
+                       vector >=0.10,
+                       base >=4.6 && < 5
+
+  ghc-options:         -threaded -O2
+
+executable parallel-map
+  if flag(examples)
+    Buildable: True
+  else
+    Buildable: False
+  hs-source-dirs:      examples
+  main-is:             ParallelMap.hs
+  default-language:    Haskell2010
+  build-depends:       dynobud,
+                       containers,
+                       linear,
+                       casadi-bindings,
+                       time,
+                       base >=4.6 && < 5
+
+  ghc-options:         -threaded -O2
+
+executable spring
+  if flag(examples)
+    Buildable: True
+  else
+    Buildable: False
+  hs-source-dirs:      examples
+  main-is:             Spring.hs
+  default-language:    Haskell2010
+  build-depends:       base >=4.6 && < 5
+                     , dynobud
+                     , casadi-bindings
+                     , vector
+                     , generic-accessors
+                     , bytestring
+                     , zeromq4-haskell
+--                     , binary
+                     , cereal
+  ghc-options:         -threaded -O2
+
+executable rocket
+  if flag(examples)
+    Buildable: True
+  else
+    Buildable: False
+  hs-source-dirs:      examples
+  main-is:             Rocket.hs
+  default-language:    Haskell2010
+  build-depends:       base >=4.6 && < 5
+                     , dynobud
+                     , casadi-bindings
+                     , containers
+                     , vector
+                     , generic-accessors
+                     , bytestring
+                     , zeromq4-haskell
+--                     , binary
+                     , cereal
+
+  ghc-options:         -threaded -O2
+
+executable easy-nlp
+  if flag(examples)
+    Buildable: True
+  else
+    Buildable: False
+  hs-source-dirs:      examples
+  main-is:             EasyNlp.hs
+  default-language:    Haskell2010
+  build-depends:       dynobud,
+                       vector >=0.10,
+                       base >=4.6 && < 5
+  ghc-options:         -threaded -O2
+
+executable basic-nlp
+  if flag(examples)
+    Buildable: True
+  else
+    Buildable: False
+  hs-source-dirs:      examples
+  main-is:             BasicNlp.hs
+  default-language:    Haskell2010
+  build-depends:       dynobud,
+                       vector >=0.10,
+                       casadi-bindings,
+                       base >=4.6 && < 5
+  ghc-options:         -threaded -O2
+
+executable beginner-qp
+  if flag(examples)
+    Buildable: True
+  else
+    Buildable: False
+  hs-source-dirs:      examples/beginner
+  main-is:             SimpleQp.hs
+  default-language:    Haskell2010
+  build-depends:       dynobud,
+                       base >=4.6 && < 5
+  ghc-options:         -O2
+
+executable dae-pendulum
+  if flag(examples)
+    Buildable: True
+  else
+    Buildable: False
+  hs-source-dirs:      examples
+  main-is:             DaePendulum.hs
+  default-language:    Haskell2010
+  build-depends:       dynobud,
+                       base >=4.6 && < 5,
+                       generic-accessors >= 0.1.0.0,
+                       bytestring,
+                       zeromq4-haskell,
+--                       binary,
+                       cereal,
+                       vector
+  ghc-options:         -threaded -O2
+
+executable glider
+  if flag(examples)
+    Buildable: True
+  else
+    Buildable: False
+  hs-source-dirs:      examples
+  main-is:             Glider.hs
+  other-modules:       Glider.Aircraft
+                       Glider.AeroCoeffs
+                       Glider.Betty
+  default-language:    Haskell2010
+  build-depends:       dynobud,
+                       base >=4.6 && < 5,
+                       containers,
+                       linear,
+                       bytestring,
+--                       binary,
+                       cereal,
+                       vector,
+                       generic-accessors >= 0.1.0.0,
+                       zeromq4-haskell
+  ghc-options:         -threaded -O2
+
+executable sailboat
+  if flag(examples)
+    Buildable: True
+  else
+    Buildable: False
+  hs-source-dirs:      examples
+  main-is:             Sailboat.hs
+  default-language:    Haskell2010
+  build-depends:       dynobud,
+                       base >=4.6 && < 5,
+                       containers,
+                       linear,
+                       bytestring,
+--                       binary,
+                       cereal,
+                       vector,
+                       semigroups,
+                       generic-accessors >= 0.1.0.0,
+                       zeromq4-haskell
+  ghc-options:         -threaded -O2
+
+executable dynoplot
+  if flag(examples)
+    Buildable: True
+  else
+    Buildable: False
+  hs-source-dirs:      examples
+  main-is:             Dynoplot.hs
+  default-language:    Haskell2010
+  build-depends:       dynobud,
+                       base >=4.6 && < 5,
+                       containers,
+                       vector,
+                       cereal,
+                       bytestring,
+                       zeromq4-haskell,
+                       Plot-ho-matic >= 0.5.0.0,
+                       cmdargs
+  ghc-options:         -O2 -with-rtsopts=-T
+
+executable quadrature-test
+  if flag(examples)
+    Buildable: True
+  else
+    Buildable: False
+  hs-source-dirs:      examples
+  main-is:             Quadrature.hs
+  default-language:    Haskell2010
+  build-depends:       dynobud,
+                       base >=4.6 && < 5,
+                       generic-accessors >= 0.1.0.0,
+                       bytestring,
+                       zeromq4-haskell,
+--                       binary,
+                       cereal,
+                       vector
+  ghc-options:         -threaded -O2
+
+--test-suite lp_tests
+--  type: exitcode-stdio-1.0
+--  hs-source-dirs:      tests
+--  main-is:             OldTests.hs
 --  default-language:    Haskell2010
 --  build-depends:       dynobud,
 --                       vector,
---                       casadi-bindings-core,
---                       zeromq4-haskell,
---                       bytestring,
-----                       binary,
---                       cereal,
 --                       linear,
---                       base >= 4.6 && < 5
---  ghc-options:         -threaded -O2
---
---executable homotopy
---  if flag(examples)
---    Buildable: True
---  else
---    Buildable: False
---  hs-source-dirs:      examples
---  main-is:             Homotopy.hs
---  default-language:    Haskell2010
---  build-depends:       dynobud,
---                       vector,
---                       casadi-bindings,
---                       base >= 4.6 && < 5
---  ghc-options:         -threaded -O2
---
---executable vec
---  if flag(examples)
---    Buildable: True
---  else
---    Buildable: False
---  hs-source-dirs:      examples
---  main-is:             Vec.hs
---  default-language:    Haskell2010
---  build-depends:       dynobud,
---                       vector >=0.10,
---                       base >=4.6 && < 5
---
---  ghc-options:         -threaded -O2
---
---executable parallel-map
---  if flag(examples)
---    Buildable: True
---  else
---    Buildable: False
---  hs-source-dirs:      examples
---  main-is:             ParallelMap.hs
---  default-language:    Haskell2010
---  build-depends:       dynobud,
---                       containers,
---                       linear,
---                       casadi-bindings,
---                       time,
---                       base >=4.6 && < 5
---
---  ghc-options:         -threaded -O2
---
---executable spring
---  if flag(examples)
---    Buildable: True
---  else
---    Buildable: False
---  hs-source-dirs:      examples
---  main-is:             Spring.hs
---  default-language:    Haskell2010
---  build-depends:       base >=4.6 && < 5
---                     , dynobud
---                     , casadi-bindings
---                     , vector
---                     , generic-accessors
---                     , bytestring
---                     , zeromq4-haskell
-----                     , binary
---                     , cereal
---  ghc-options:         -threaded -O2
---
---executable rocket
---  if flag(examples)
---    Buildable: True
---  else
---    Buildable: False
---  hs-source-dirs:      examples
---  main-is:             Rocket.hs
---  default-language:    Haskell2010
---  build-depends:       base >=4.6 && < 5
---                     , dynobud
---                     , casadi-bindings
---                     , containers
---                     , vector
---                     , generic-accessors
---                     , bytestring
---                     , zeromq4-haskell
-----                     , binary
---                     , cereal
---
---  ghc-options:         -threaded -O2
---
---executable easy-nlp
---  if flag(examples)
---    Buildable: True
---  else
---    Buildable: False
---  hs-source-dirs:      examples
---  main-is:             EasyNlp.hs
---  default-language:    Haskell2010
---  build-depends:       dynobud,
---                       vector >=0.10,
---                       base >=4.6 && < 5
---  ghc-options:         -threaded -O2
---
---executable basic-nlp
---  if flag(examples)
---    Buildable: True
---  else
---    Buildable: False
---  hs-source-dirs:      examples
---  main-is:             BasicNlp.hs
---  default-language:    Haskell2010
---  build-depends:       dynobud,
---                       vector >=0.10,
---                       casadi-bindings,
---                       base >=4.6 && < 5
---  ghc-options:         -threaded -O2
---
---executable beginner-qp
---  if flag(examples)
---    Buildable: True
---  else
---    Buildable: False
---  hs-source-dirs:      examples/beginner
---  main-is:             SimpleQp.hs
---  default-language:    Haskell2010
---  build-depends:       dynobud,
+--                       hmatrix-glpk,
+--                       QuickCheck >= 2,
+--                       HUnit,
+--                       test-framework,
+--                       test-framework-hunit,
+--                       test-framework-quickcheck2,
 --                       base >=4.6 && < 5
 --  ghc-options:         -O2
---
---executable dae-pendulum
---  if flag(examples)
---    Buildable: True
---  else
---    Buildable: False
---  hs-source-dirs:      examples
---  main-is:             DaePendulum.hs
+
+--test-suite old-unit-tests
+--  type: exitcode-stdio-1.0
+--  hs-source-dirs:      tests
+--  main-is:             UnitTests.hs
 --  default-language:    Haskell2010
 --  build-depends:       dynobud,
---                       base >=4.6 && < 5,
---                       generic-accessors >= 0.1.0.0,
---                       bytestring,
---                       zeromq4-haskell,
-----                       binary,
---                       cereal,
---                       vector
---  ghc-options:         -threaded -O2
---
---executable glider
---  if flag(examples)
---    Buildable: True
---  else
---    Buildable: False
---  hs-source-dirs:      examples
---  main-is:             Glider.hs
---  other-modules:       Glider.Aircraft
---                       Glider.AeroCoeffs
---                       Glider.Betty
---  default-language:    Haskell2010
---  build-depends:       dynobud,
---                       base >=4.6 && < 5,
---                       containers,
+--                       QuickCheck >= 2,
+--                       HUnit,
+--                       test-framework,
+--                       test-framework-hunit,
+--                       test-framework-quickcheck2,
+--                       hmatrix,
+--                       hmatrix-glpk,
+--                       vector,
 --                       linear,
---                       bytestring,
-----                       binary,
---                       cereal,
---                       vector,
---                       generic-accessors >= 0.1.0.0,
---                       zeromq4-haskell
---  ghc-options:         -threaded -O2
---
---executable sailboat
---  if flag(examples)
---    Buildable: True
---  else
---    Buildable: False
---  hs-source-dirs:      examples
---  main-is:             Sailboat.hs
---  default-language:    Haskell2010
---  build-depends:       dynobud,
---                       base >=4.6 && < 5,
---                       containers,
---                       linear,
---                       bytestring,
-----                       binary,
---                       cereal,
---                       vector,
---                       semigroups,
---                       generic-accessors >= 0.1.0.0,
---                       zeromq4-haskell
---  ghc-options:         -threaded -O2
---
---executable dynoplot
---  if flag(examples)
---    Buildable: True
---  else
---    Buildable: False
---  hs-source-dirs:      examples
---  main-is:             Dynoplot.hs
---  default-language:    Haskell2010
---  build-depends:       dynobud,
---                       base >=4.6 && < 5,
---                       containers,
---                       vector,
---                       cereal,
---                       bytestring,
---                       zeromq4-haskell,
---                       Plot-ho-matic >= 0.5.0.0,
---                       cmdargs
---  ghc-options:         -O2 -with-rtsopts=-T
---
---executable quadrature-test
---  if flag(examples)
---    Buildable: True
---  else
---    Buildable: False
---  hs-source-dirs:      examples
---  main-is:             Quadrature.hs
---  default-language:    Haskell2010
---  build-depends:       dynobud,
---                       base >=4.6 && < 5,
---                       generic-accessors >= 0.1.0.0,
---                       bytestring,
---                       zeromq4-haskell,
-----                       binary,
---                       cereal,
---                       vector
---  ghc-options:         -threaded -O2
---
-----test-suite lp_tests
-----  type: exitcode-stdio-1.0
-----  hs-source-dirs:      tests
-----  main-is:             OldTests.hs
-----  default-language:    Haskell2010
-----  build-depends:       dynobud,
-----                       vector,
-----                       linear,
-----                       hmatrix-glpk,
-----                       QuickCheck >= 2,
-----                       HUnit,
-----                       test-framework,
-----                       test-framework-hunit,
-----                       test-framework-quickcheck2,
-----                       base >=4.6 && < 5
+--                       MemoTrie,
+--                       base >=4.6 && < 5
 ----  ghc-options:         -O2
---
-----test-suite old-unit-tests
-----  type: exitcode-stdio-1.0
-----  hs-source-dirs:      tests
-----  main-is:             UnitTests.hs
-----  default-language:    Haskell2010
-----  build-depends:       dynobud,
-----                       QuickCheck >= 2,
-----                       HUnit,
-----                       test-framework,
-----                       test-framework-hunit,
-----                       test-framework-quickcheck2,
-----                       hmatrix,
-----                       hmatrix-glpk,
-----                       vector,
-----                       linear,
-----                       MemoTrie,
-----                       base >=4.6 && < 5
-------  ghc-options:         -O2
 
 test-suite unit-tests
   type:                exitcode-stdio-1.0
