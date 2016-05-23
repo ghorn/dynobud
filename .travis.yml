@@ -91,7 +91,7 @@ install:
   - stack setup --no-terminal
   # workaround for getting stack to use gcc 4.8
   - sed -i -e 's,/usr/bin/gcc",/usr/bin/gcc-4.8",' ~/.stack/programs/x86_64-linux/ghc-7.10.3/lib/ghc-7.10.3/settings
-  - stack build --only-snapshot --no-terminal
+  - stack build --flag dynobud:-examples --no-terminal --only-snapshot
 
 script:
-  - stack build --no-terminal --test
+  - stack build --flag dynobud:-examples --no-terminal --test
