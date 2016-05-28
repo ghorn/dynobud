@@ -25,7 +25,7 @@ import Dyno.View.Cov ( Cov )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.Fun
 import Dyno.View.JVec( JVec(..), jreplicate )
-import Dyno.View.Vectorize ( Vectorize(..), Id(..), None(..), fill )
+import Dyno.View.Vectorize ( Vectorize(..), Id(..), None(..), fill, unId )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.Nlp ( Nlp(..), NlpIn(..), Bounds )

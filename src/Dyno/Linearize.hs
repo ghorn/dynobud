@@ -11,7 +11,7 @@ module Dyno.Linearize
        , evalErrorOdeJacobian
        ) where
 
-import Dyno.View.Vectorize ( Vectorize(..), Triple(..), None(..), Id(..), fill )
+import Dyno.View.Vectorize ( Vectorize(..), Triple(..), None(..), unId, fill )
 import Dyno.View.View
 import Dyno.View.M
 import Dyno.View.Fun

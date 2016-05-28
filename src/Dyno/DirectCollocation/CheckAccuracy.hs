@@ -28,7 +28,7 @@ import Linear ( Additive )
 import Text.Printf ( printf )
 
 import Dyno.Integrate
-import Dyno.View.Vectorize ( Vectorize(..), Id(..), None(..), fill )
+import Dyno.View.Vectorize ( Vectorize(..), None(..), fill, unId )
 import Dyno.View.View ( View(..), J, splitJV )
 import Dyno.TypeVecs ( Vec, Dim )
 import qualified Dyno.TypeVecs as TV

@@ -27,7 +27,7 @@ import Dyno.View.JVec ( JVec(..), jreplicate )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.M ( vcat, vsplit )
 import qualified Dyno.View.M as M
-import Dyno.View.Vectorize ( Vectorize(..), Id(..), vzipWith )
+import Dyno.View.Vectorize ( Vectorize(..), Id(..), unId, vzipWith )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs )

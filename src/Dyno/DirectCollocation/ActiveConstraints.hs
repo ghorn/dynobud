@@ -32,7 +32,7 @@ import Text.Printf ( printf )
 import Dyno.DirectCollocation.Types
 import Dyno.Ocp ( OcpPhase(..), OcpPhaseInputs(..) )
 import Dyno.Nlp ( Bounds )
-import Dyno.View.Vectorize ( Vectorize, Id(..) )
+import Dyno.View.Vectorize ( Vectorize, unId )
 import Dyno.View.View ( View(..), J, JV, splitJV )
 import Dyno.View.JVec ( unJVec )
 import Dyno.TypeVecs ( Dim )

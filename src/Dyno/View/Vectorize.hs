@@ -20,9 +20,9 @@
 module Dyno.View.Vectorize
        ( Vectorize(..)
        , devectorize
-       , (:.)(..)
+       , (:.)(..), unO
        , None(..)
-       , Id(..)
+       , Id(..), unId
        , Tuple(..)
        , Triple(..)
        , Quad(..)
@@ -40,6 +40,7 @@ import GHC.Generics
 
 import Accessors ( GATip, Lookup(..), accessors, flatten, flatten' )
 import Control.Applicative
+import Control.Compose ( (:.)(..), Id(..), unO, unId )
 import Data.Aeson ( FromJSON(..), ToJSON(..) )
 import Data.Either ( partitionEithers )
 import Data.Serialize ( Serialize(..) )
@@ -67,17 +68,13 @@ instance Serialize (None a)
 instance FromJSON a => FromJSON (None a)
 instance ToJSON a => ToJSON (None a)
 
--- | a length-1 vectorizable type
-newtype Id a = Id { unId :: a }
-             deriving (Eq, Ord, Generic, Generic1, Functor, F.Foldable, T.Traversable, Show)
-instance Vectorize Id
-instance Applicative Id where
-  pure = Id
-  Id fx <*> Id x = Id (fx x)
-instance Linear.Additive Id where
-instance Serialize a => Serialize (Id a)
-instance FromJSON a => FromJSON (Id a)
-instance ToJSON a => ToJSON (Id a)
+instance Vectorize Id where
+  vectorize = V.singleton . unId
+  devectorize' v = case V.toList v of
+    [x] -> Right (Id x)
+    r -> Left $ "Id needed 1 entry but saw length " ++ show (length r)
+  fill = Id
+  vlength = const 1
 
 
 -- | a length-2 vectorizable type
@@ -128,25 +125,34 @@ instance (FromJSON a, FromJSON (f a), FromJSON (g a), FromJSON (h a), FromJSON (
 instance (ToJSON a, ToJSON (f a), ToJSON (g a), ToJSON (h a), ToJSON (i a))
          => ToJSON (Quad f g h i a)
 
-infixl 9 :.
--- | Functor composition
-newtype (g :. f) a = O {unO :: g (f a)} deriving (Eq, Show, Generic, Generic1)
-instance (Functor g, Functor f) => Functor (g :. f) where
-  fmap f (O x) = O $ fmap (fmap f) x
-instance (Vectorize g, Vectorize f) => Vectorize (g :. f)
-instance Lookup (g (f a)) => Lookup ((g :. f) a) where
-  toAccessorTree lens0 = toAccessorTree (lens0 . (\f x -> fmap O (f (unO x))))
-instance ToJSON (g (f a)) => ToJSON ((g :. f) a) where
-  toJSON = toJSON . unO
-instance FromJSON (g (f a)) => FromJSON ((g :. f) a) where
-  parseJSON x = O <$> parseJSON x
-instance Serialize (g (f a)) => Serialize ((g :. f) a) where
-  get = O <$> get
-  put = put . unO
+instance (Vectorize g, Vectorize f) => Vectorize (g :. f) where
+  fill = O . devectorize'' . V.replicate k . fill
+    where
+      devectorize'' x = case devectorize' x of
+        Right y -> y
+        Left msg -> error $ "fill (g :. f) devectorize error: " ++ msg
+      k = vlength (Proxy :: Proxy f)
+
+  vectorize = V.concatMap vectorize . vectorize . unO
+
+  devectorize' v = case partitionEithers (V.toList evs) of
+    ([], vs) -> fmap O (devectorize' (V.fromList vs))
+    (bad, good) -> Left $ printf "devectorize (g :. f): got %d failures and %d successes"
+                          (length bad) (length good)
+    where
+      kf = vlength (Proxy :: Proxy f)
+      kg = vlength (Proxy :: Proxy g)
+
+      evs = fmap devectorize' (splitsAt kg kf v)
+
+  vlength = const (nf * ng)
+    where
+      nf = vlength (Proxy :: Proxy f)
+      ng = vlength (Proxy :: Proxy g)
+
+
 
 instance Lookup (None a)
-instance Lookup a => Lookup (Id a) where
-  toAccessorTree lens0 = toAccessorTree (lens0 . (\f x -> fmap Id (f (unId x))))
 instance (Lookup (f a), Lookup (g a)) => Lookup (Tuple f g a)
 instance (Lookup (f a), Lookup (g a), Lookup (h a)) => Lookup (Triple f g h a)
 instance (Lookup (f a), Lookup (g a), Lookup (h a), Lookup (i a)) => Lookup (Quad f g h i a)

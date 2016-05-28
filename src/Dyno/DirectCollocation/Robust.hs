@@ -37,7 +37,7 @@ import qualified Dyno.View.M as M
 import Dyno.View.JVec ( JVec(..) )
 import Dyno.View.FunJac
 import Dyno.View.Scheme ( Scheme )
-import Dyno.View.Vectorize ( Vectorize(..), Id(..), vzipWith4 )
+import Dyno.View.Vectorize ( Vectorize(..), Id(..), unId, vzipWith4 )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs )

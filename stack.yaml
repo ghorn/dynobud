@@ -20,7 +20,7 @@ packages:
 
 - location:
     git: https://github.com/ghorn/generic-accessors
-    commit: 5dbb1934da574083744c5732086f2ece3dbbba14
+    commit: ca5c11e01cd132ba75c586bf34eb448384dae0d3
   extra-dep: true
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)

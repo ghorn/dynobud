@@ -29,7 +29,7 @@ import Dyno.View.Fun ( Fun, callMX, toSXFun )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.M ( M, mm, ones, flatten, unflatten, sm, sum1, trans, vcat, vsplit, vcat'' )
 import Dyno.View.MapFun ( MapStrategy, mapFun' )
-import Dyno.View.Vectorize ( Vectorize, Id(..), (:.) )
+import Dyno.View.Vectorize ( Vectorize, Id(..), (:.), unId )
 import Dyno.View.View ( J, S, View(..), JTuple(..), JV, catJV, splitJV, jfill)
 
 data L1X q y n a =

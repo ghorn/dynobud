@@ -49,7 +49,7 @@ import Dyno.View.Fun
 import Dyno.View.MapFun
 import Dyno.View.JVec( JVec(..), jreplicate )
 import Dyno.View.Scheme ( Scheme )
-import Dyno.View.Vectorize ( Vectorize(..), Id(..), fill, vlength )
+import Dyno.View.Vectorize ( Vectorize(..), Id(..), fill, vlength, unId )
 import Dyno.TypeVecs ( Vec, Dim, reflectDim )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs )
