@@ -164,7 +164,7 @@ instance Vectorize Linear.V4
 instance Vectorize Linear.Quaternion
 instance Vectorize Euler
 instance Vectorize (V3T f)
-instance Vectorize (Rot f1 f2)
+instance Vectorize g => Vectorize (Rot f1 f2 g)
 
 -- | partial version of 'devectorize\'' which throws an error
 -- if the vector length doesn' match the type length
