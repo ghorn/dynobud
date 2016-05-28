@@ -151,6 +151,21 @@ vectorizeThenDevectorize _ = case ex1 of
 prop_vecThenDevec :: Vectorizes -> Bool
 prop_vecThenDevec (Vectorizes _ _ p) = vectorizeThenDevectorize p
 
+vlengthEqLengthOfPure ::
+  forall f
+  . (Show (f Int), Eq (f Int), Vectorize f)
+  => Proxy f -> Bool
+vlengthEqLengthOfPure p = vlength p == V.length x1
+  where
+    x0 :: f ()
+    x0 = fill ()
+
+    x1 :: V.Vector ()
+    x1 = vectorize x0
+
+prop_vlengthEqLengthOfPure :: Vectorizes -> Bool
+prop_vlengthEqLengthOfPure (Vectorizes _ _ p) = vlengthEqLengthOfPure p
+
 transposeUnTranspose ::
   forall n m
   . (Eq (Vec n (Vec m Int)), Show (Vec n (Vec m Int)), Dim n, Dim m)
@@ -202,6 +217,7 @@ vectorizeTests =
   testGroup "vectorize tests"
   [ testProperty "vec . devec" prop_vecThenDevec
   , testProperty "transposeUnTranspose" prop_transpose
+  , testProperty "vlengthEqLengthOfPure" prop_vlengthEqLengthOfPure
   , testCase "vdiag" test_vdiag
   , testCase "vdiag'" test_vdiag'
   ]

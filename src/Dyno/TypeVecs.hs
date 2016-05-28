@@ -128,6 +128,7 @@ instance Dim n => Vectorize (Vec n) where
     where
       n = reflectDim (Proxy :: Proxy n)
       n' = V.length x
+  vlength = const (reflectDim (Proxy :: Proxy n))
 
 tvtranspose :: (Dim n, Dim m) => Vec n (Vec m a) -> Vec m (Vec n a)
 tvtranspose = T.sequenceA

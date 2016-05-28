@@ -26,7 +26,6 @@ module Dyno.View.Vectorize
        , Tuple(..)
        , Triple(..)
        , Quad(..)
-       , vlength
        , vzipWith
        , vzipWith3
        , vzipWith4
@@ -194,18 +193,12 @@ vdiag' v0 offDiag =
       | j /= k = offDiag
       | otherwise = v V.! k
 
--- this could me more efficient as a class method, but this is safer
-vlength :: Vectorize f => Proxy f -> Int
-vlength = V.length . vectorize . (fill () `asFunctorOf`)
-  where
-    asFunctorOf :: f a -> Proxy f -> f a
-    asFunctorOf x _ = x
-
 -- | fmap f == devectorize . (V.map f) . vectorize
 class Functor f => Vectorize (f :: * -> *) where
   vectorize :: f a -> V.Vector a
   devectorize' :: V.Vector a -> Either String (f a)
   fill :: a -> f a
+  vlength :: Proxy f -> Int
 
   default vectorize :: (Generic1 f, GVectorize (Rep1 f)) => f a -> V.Vector a
   vectorize f = gvectorize (from1 f)
@@ -215,6 +208,10 @@ class Functor f => Vectorize (f :: * -> *) where
 
   default fill :: (Generic1 f, GVectorize (Rep1 f)) => a -> f a
   fill = to1 . gfill
+
+  default vlength :: (Generic1 f, GVectorize (Rep1 f)) => Proxy f -> Int
+  vlength = const $ gvlength (Proxy :: Proxy (Rep1 f))
+
 
 -- undecidable, overlapping, orphan instances to get rid of boilerplate
 

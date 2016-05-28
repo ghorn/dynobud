@@ -8,20 +8,31 @@ compiler-check: newer-minor
 packages:
 - .
 
+#- location:
+#    git: https://github.com/ghorn/Plot-ho-matic
+#    commit: c18883ba529187c448fe6cc144dad323e78c41c2
+#  extra-dep: true
+
 - location:
-    git: https://github.com/ghorn/Plot-ho-matic
-    commit: c18883ba529187c448fe6cc144dad323e78c41c2
+    git: https://github.com/ghorn/spatial-math
+    commit: 5dca78454bc3d6df20f5db937edc744908d5c7c5
+  extra-dep: true
+
+- location:
+    git: https://github.com/ghorn/generic-accessors
+    commit: 5dbb1934da574083744c5732086f2ece3dbbba14
   extra-dep: true
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
 extra-deps: [ casadi-bindings-3.0.0.1
             , casadi-bindings-core-3.0.0.0
             , casadi-bindings-internal-0.1.4.0
-            , generic-accessors-0.6.0.0
+#            , generic-accessors-0.6.0.1
             , jacobi-roots-0.2.0.4
             , not-gloss-0.7.6.5
-#            , Plot-ho-matic-0.9.0.7
-            , spatial-math-0.2.7.0
+            , Plot-ho-matic-0.9.0.8
+#            , spatial-math-0.3.0.0
+            , TypeCompose-0.9.11
             , vector-binary-instances-0.2.1.0
             ]
 
