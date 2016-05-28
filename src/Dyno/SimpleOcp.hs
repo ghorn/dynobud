@@ -27,7 +27,7 @@ import Dyno.NlpUtils
 import Dyno.Nlp
 import Dyno.DirectCollocation.Formulate
 import Dyno.DirectCollocation.Types
-import Dyno.Vectorize ( Vectorize(..), Tuple(..), None(..), fill, vzipWith )
+import Dyno.View.Vectorize ( Vectorize(..), Tuple(..), None(..), fill, vzipWith )
 import Dyno.View.View -- ( View(..) )
 import Dyno.View.JVec
 

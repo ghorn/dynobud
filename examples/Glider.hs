@@ -7,7 +7,7 @@ module Main ( main ) where
 import Linear
 import Data.Vector ( Vector )
 
-import Dyno.Vectorize
+import Dyno.View.Vectorize
 import Dyno.View.View
 import Dyno.Solvers
 --import Dyno.Sqp.Sqp

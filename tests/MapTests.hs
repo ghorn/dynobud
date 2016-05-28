@@ -19,7 +19,7 @@ import Test.Framework ( Test, testGroup )
 import Test.Framework.Providers.HUnit ( testCase )
 import Text.Printf ( printf )
 
-import Dyno.Vectorize
+import Dyno.View.Vectorize
 import Dyno.View.Fun
 import Dyno.View.HList
 import Dyno.View.M ( M, hcat, hsplit, vcat, vsplit )

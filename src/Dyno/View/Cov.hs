@@ -28,7 +28,7 @@ import Casadi.CMatrix ( CMatrix )
 import qualified Casadi.CMatrix as CM
 
 import Dyno.View.Unsafe ( M(UnsafeM), mkM, unM )
-import Dyno.Vectorize ( Vectorize(..) )
+import Dyno.View.Vectorize ( Vectorize(..) )
 import Dyno.View.View ( View(..), J, JV )
 import Dyno.View.M ( toHMat )
 

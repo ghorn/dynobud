@@ -20,7 +20,7 @@ import qualified Data.Vector.Storable as SV
 import qualified Numeric.GSL.ODE as ODE
 import qualified Numeric.LinearAlgebra.Data as D
 
-import Dyno.Vectorize ( Vectorize(..), devectorize )
+import Dyno.View.Vectorize ( Vectorize(..), devectorize )
 
 newtype InitialTime a = InitialTime {unInitialTime :: a}
   deriving (Functor, Generic, Generic1, FromJSON, ToJSON, Num, Fractional, Floating, Ord, Eq, Show)

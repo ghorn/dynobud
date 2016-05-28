@@ -9,7 +9,7 @@ import Test.Framework ( Test, testGroup )
 import Test.Framework.Providers.HUnit ( testCase )
 import Linear ( V2(..), V3(..), V4(..) )
 
-import Dyno.Vectorize ( Id(..) )
+import Dyno.View.Vectorize ( Id(..) )
 import Dyno.Linearize ( linearize', linearize )
 
 testLinearize' :: HUnit.Assertion

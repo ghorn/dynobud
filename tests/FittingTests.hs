@@ -20,7 +20,7 @@ import Dyno.Solvers ( Solver(..), ipoptSolver )
 import Dyno.TypeVecs ( Vec )
 import Dyno.View.MapFun ( MapStrategy(..) )
 import qualified Dyno.TypeVecs as TV
-import Dyno.Vectorize
+import Dyno.View.Vectorize
 
 toHUnit :: IO (Maybe String) -> HUnit.Assertion
 toHUnit f = HUnit.assert $ do

@@ -27,12 +27,12 @@ import Casadi.DM ( DM )
 import qualified Casadi.CMatrix as C
 import Casadi.Core.Classes.Function as C
 
-import Dyno.Vectorize ( Vectorize )
 import Dyno.View.Fun ( Fun(..), checkFunDimensionsWith )
 import Dyno.View.HList ( (:*:) )
 import Dyno.View.M ( M, vcat, vsplit )
 import Dyno.View.Scheme ( Scheme(..) )
 import Dyno.View.Unsafe ( mkM', unM )
+import Dyno.View.Vectorize ( Vectorize )
 import Dyno.View.View ( View, S, J, JV )
 
 newtype Switch f a = UnsafeSwitch a deriving (Functor, Generic, Generic1, Show)

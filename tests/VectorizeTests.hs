@@ -26,7 +26,7 @@ import Test.Framework ( Test, testGroup )
 import Test.Framework.Providers.HUnit ( testCase )
 import Test.Framework.Providers.QuickCheck2 ( testProperty )
 
-import Dyno.Vectorize
+import Dyno.View.Vectorize
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 

@@ -23,13 +23,13 @@ import Data.Proxy ( Proxy(..) )
 import Dyno.Nlp ( Bounds, NlpIn(..), NlpOut(..) )
 import Dyno.NlpSolver ( GType, toNlpSol, callNlpsol )
 import Dyno.Solvers ( Solver )
-import Dyno.Vectorize ( Vectorize, Id(..), (:.) )
 import Dyno.TypeVecs ( Dim, Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.View.Fun ( Fun, callMX, toSXFun )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.M ( M, mm, ones, flatten, unflatten, sm, sum1, trans, vcat, vsplit, vcat'' )
 import Dyno.View.MapFun ( MapStrategy, mapFun' )
+import Dyno.View.Vectorize ( Vectorize, Id(..), (:.) )
 import Dyno.View.View ( J, S, View(..), JTuple(..), JV, catJV, splitJV, jfill)
 
 data L1X q y n a =

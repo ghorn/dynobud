@@ -51,7 +51,7 @@ import Dyno.Ocp
 import Dyno.View.View ( View(..), J, S, JV, splitJV, catJV, jfill )
 import Dyno.View.JVec ( JVec(..), jreplicate )
 import Dyno.View.Cov ( Cov )
-import Dyno.Vectorize ( Vectorize(..), Id(..) )
+import Dyno.View.Vectorize ( Vectorize(..), Id(..) )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 

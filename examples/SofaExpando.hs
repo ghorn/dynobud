@@ -18,7 +18,7 @@ import qualified System.ZMQ4 as ZMQ
 import Data.ByteString.Char8 ( pack )
 --import Data.ByteString.Lazy ( toStrict )
 
-import Dyno.Vectorize
+import Dyno.View.Vectorize
 import Dyno.Nlp
 import Dyno.NlpUtils
 import Dyno.TypeVecs ( Vec )

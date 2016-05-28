@@ -24,7 +24,6 @@ module Dyno.KalmanFilter
 
 import Casadi.DM ( DM )
 import Casadi.SX ( SX )
-import Dyno.Vectorize
 import Dyno.View
 import System.IO.Unsafe ( unsafePerformIO )
 

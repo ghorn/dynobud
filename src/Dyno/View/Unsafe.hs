@@ -33,7 +33,7 @@ import qualified Casadi.CMatrix as CM
 import Casadi.Overloading ( ArcTan2(..), Erf(..), Fmod(..), SymOrd(..) )
 import Casadi.Viewable ( Viewable(..) )
 
-import Dyno.Vectorize ( Vectorize(..), Id, devectorize, vlength )
+import Dyno.View.Vectorize ( Vectorize(..), Id, devectorize, vlength )
 
 -- | Matrix with dimensions encoded as Views.
 newtype M (f :: * -> *) (g :: * -> *) (a :: *) =

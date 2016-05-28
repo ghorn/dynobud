@@ -33,7 +33,7 @@ import Accessors ( Lookup, GATip(..), GAField(..), GASimpleEnum(..), flatten, fl
 
 import Dyno.Nlp ( NlpOut(..) )
 import Dyno.TypeVecs ( Vec )
-import Dyno.Vectorize ( Vectorize, Id(..), None(..), fill )
+import Dyno.View.Vectorize ( Vectorize, Id(..), None(..), fill )
 import Dyno.View.View ( View(..), splitJV, catJV )
 import Dyno.DirectCollocation.Formulate ( CollProblem(..), DirCollOptions(..) )
 import Dyno.DirectCollocation.Types ( CollTraj(..), CollOcpConstraints(..)

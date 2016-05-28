@@ -15,7 +15,7 @@ import Casadi.CMatrix ( CMatrix, fromDVector )
 import Dyno.View.Unsafe ( mkM, unM )
 import Dyno.View.M ( M )
 import qualified Dyno.View.M as M
-import Dyno.Vectorize ( Id(..) )
+import Dyno.View.Vectorize ( Id(..) )
 import Dyno.View.View ( View, J, S, v2d )
 
 data ScaleFuns x g a =

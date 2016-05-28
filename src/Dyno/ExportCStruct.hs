@@ -26,7 +26,7 @@ import Accessors
        ( Lookup, AccessorTree
        , GAData(..), GAConstructor(..), GASimpleEnum(..), GAField(..)
        , accessors, flatten, sameFieldType )
-import Dyno.Vectorize ( Vectorize, vlength )
+import Dyno.View.Vectorize ( Vectorize, vlength )
 
 runCStructExporter :: State CStructExporter a -> (a, String)
 runCStructExporter action =

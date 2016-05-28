@@ -15,11 +15,11 @@ import Casadi.SX ( SX )
 import Casadi.MX ( MX )
 
 import qualified Dyno.TypeVecs as TV
-import Dyno.Vectorize ( Id(..) )
 import Dyno.View.Fun ( Fun, callMX, callDM, toSXFun, toMXFun )
 import Dyno.View.MapFun ( MapStrategy(..), mapFun )
 import Dyno.View.M ( M, hcat', hsplit', vcat, vsplit )
 import Dyno.View.JVec ( JVec(..) )
+import Dyno.View.Vectorize ( Id(..) )
 import Dyno.View.View ( J, JV )
 
 type N = 300

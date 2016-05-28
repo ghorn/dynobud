@@ -23,12 +23,12 @@ import Control.Lens
 
 import Casadi.MX ( MX )
 
-import Dyno.View.View
-import Dyno.View.JVec
 import Dyno.Nlp
 import Dyno.NlpUtils
 import Dyno.Solvers
-import Dyno.Vectorize
+import Dyno.View.Vectorize
+import Dyno.View.View
+import Dyno.View.JVec
 import Dyno.MultipleShooting
 
 -- state/control/parameter definitions

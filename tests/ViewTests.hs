@@ -42,7 +42,7 @@ import Casadi.Viewable ( Viewable )
 
 import Dyno.View.Unsafe ( M(UnsafeM), mkM )
 import Dyno.TypeVecs ( Vec, Dim )
-import Dyno.Vectorize ( Vectorize(..), Id, (:.), fill )
+import Dyno.View.Vectorize ( Vectorize(..), Id, (:.), fill )
 import Dyno.View.View ( View(..), S, J, JV, JNone, JTuple, JTriple, JQuad )
 import Dyno.View.JVec ( JVec )
 import Dyno.View.M

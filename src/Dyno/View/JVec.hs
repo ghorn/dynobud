@@ -21,8 +21,8 @@ import Casadi.Viewable ( Viewable(..) )
 import Dyno.View.Unsafe ( mkM, unM )
 
 import Dyno.TypeVecs ( Vec, unVec, reifyVector )
+import Dyno.View.Vectorize ( devectorize )
 import Dyno.View.View ( View(..), J )
-import Dyno.Vectorize ( devectorize )
 
 -- | vectors in View
 newtype JVec (n :: k) f a = JVec { unJVec :: Vec n (J f a) } deriving ( Show )

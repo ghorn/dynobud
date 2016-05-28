@@ -12,7 +12,7 @@ import Linear
 
 import Accessors ( Lookup )
 
-import Dyno.Vectorize
+import Dyno.View.Vectorize
 
 atan2' :: Floating a => a -> a -> a
 atan2' y x = 2 * atan (y / (sqrt(x*x + y*y + 1e-15) + x) )

@@ -17,7 +17,7 @@
 {-# LANGUAGE OverlappingInstances #-}
 #endif
 
-module Dyno.Vectorize
+module Dyno.View.Vectorize
        ( Vectorize(..)
        , devectorize
        , (:.)(..)

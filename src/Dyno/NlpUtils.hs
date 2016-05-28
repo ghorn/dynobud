@@ -22,7 +22,7 @@ import Casadi.MX ( MX )
 
 import Dyno.View.M ( vcat, vsplit )
 import Dyno.View.Unsafe ( mkM, unM )
-import Dyno.Vectorize ( Vectorize(..), Id(..) )
+import Dyno.View.Vectorize ( Vectorize(..), Id(..) )
 import Dyno.View.View ( View(..), J, S, JV, JNone(..), catJV, splitJV )
 import Dyno.Nlp ( Nlp(..), NlpIn(..), NlpOut(..), Bounds )
 import Dyno.Solvers ( Solver )

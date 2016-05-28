@@ -17,7 +17,7 @@ import Text.Printf ( printf )
 
 import Accessors ( Lookup )
 
-import Dyno.Vectorize ( Vectorize(..), None(..), Id(..) )
+import Dyno.View.Vectorize ( Vectorize(..), None(..), Id(..) )
 import Dyno.View.View ( View(..), J, splitJV, catJV )
 import Dyno.Solvers
 import Dyno.Nlp ( NlpOut(..), Bounds )

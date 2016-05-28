@@ -21,7 +21,7 @@ import System.Environment ( getArgs )
 
 import Dyno.KalmanFilter
 import Dyno.Random
-import Dyno.Vectorize
+import Dyno.View.Vectorize
 import Linear
 
 data SpringX a =

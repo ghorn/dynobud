@@ -36,7 +36,7 @@ import Accessors ( AccessorTree, Lookup(..), GAData(..), GAConstructor(..), acce
 import PlotHo ( Plotter, addChannel )
 
 import Dyno.View.Unsafe ( unM, unM' )
-import Dyno.Vectorize ( Vectorize(..), Id(..), fill )
+import Dyno.View.Vectorize ( Vectorize(..), Id(..), fill )
 import Dyno.View.View ( View(..), JV, splitJV )
 import Dyno.View.M ( M )
 import Dyno.View.JVec ( JVec(..) )

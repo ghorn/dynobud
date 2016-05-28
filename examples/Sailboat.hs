@@ -30,7 +30,7 @@ import Text.Printf ( printf )
 
 import Accessors ( Lookup )
 
-import Dyno.Vectorize
+import Dyno.View.Vectorize
 import Dyno.View.View ( View(..), J, catJV, splitJV )
 import Dyno.Solvers
 import Dyno.NlpUtils

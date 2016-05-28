@@ -12,7 +12,7 @@ import Text.Printf ( printf )
 
 import Casadi.MX ( MX )
 
-import Dyno.Vectorize ( Vectorize, Id(..), None(..), fill )
+import Dyno.View.Vectorize ( Vectorize, Id(..), None(..), fill )
 import Dyno.View.View
 import Dyno.View.M ( vcat, vsplit )
 import Dyno.Nlp

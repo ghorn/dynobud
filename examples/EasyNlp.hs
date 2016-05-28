@@ -9,7 +9,7 @@ module Main where
 
 import GHC.Generics ( Generic1 )
 
-import Dyno.Vectorize ( Vectorize )
+import Dyno.View.Vectorize ( Vectorize )
 import Dyno.Nlp ( Bounds )
 import Dyno.NlpUtils ( solveNlpV )
 import Dyno.Solvers ( Solver, ipoptSolver )

@@ -12,10 +12,10 @@ import Data.Vector ( Vector )
 
 import Accessors ( Lookup )
 
+import Dyno.View.Vectorize ( Vectorize, None(..), fill )
 import Dyno.View.View ( J, jfill, catJV )
 import Dyno.Nlp ( NlpOut(..), Bounds )
 import Dyno.Ocp
-import Dyno.Vectorize ( Vectorize, None(..), fill )
 import Dyno.Solvers ( Solver(..), GType(..), ipoptSolver )
 import Dyno.NlpUtils ( solveNlp )
 import Dyno.DirectCollocation.ActiveConstraints

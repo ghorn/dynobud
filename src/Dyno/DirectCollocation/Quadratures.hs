@@ -26,7 +26,7 @@ import JacobiRoots ( shiftedLegendreRoots, shiftedRadauRoots )
 
 import Dyno.View.View ( View, J )
 import Dyno.TypeVecs ( Vec )
-import Dyno.Vectorize ( devectorize )
+import Dyno.View.Vectorize ( devectorize )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeXis )
 

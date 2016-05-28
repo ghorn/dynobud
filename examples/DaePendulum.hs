@@ -14,7 +14,7 @@ import Data.Vector ( Vector )
 
 import Accessors
 
-import Dyno.Vectorize
+import Dyno.View.Vectorize
 import Dyno.View.View ( View(..), J, catJV )
 import Dyno.Solvers
 import Dyno.Nlp

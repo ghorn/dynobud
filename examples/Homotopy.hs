@@ -13,7 +13,6 @@ import Text.Printf ( printf )
 import Casadi.MX ( MX )
 
 import Dyno.View
-import Dyno.Vectorize ( Vectorize )
 import Dyno.Nlp ( Nlp(..), NlpIn(..), Bounds )
 import Dyno.NlpUtils ( HomotopyParams(..), solveNlpHomotopy )
 import Dyno.Solvers

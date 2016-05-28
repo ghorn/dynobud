@@ -15,7 +15,7 @@ import System.Random.MWC.Distributions
 import qualified Numeric.LinearAlgebra.Data as D
 import qualified Numeric.LinearAlgebra.HMatrix as HM
 
-import Dyno.Vectorize ( Vectorize(..), devectorize, vlength )
+import Dyno.View.Vectorize ( Vectorize(..), devectorize, vlength )
 
 initRandomIO :: forall w . (Vectorize w, Foldable w) => w (w Double) -> IO (IO (w Double))
 initRandomIO sq = do

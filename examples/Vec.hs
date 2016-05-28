@@ -15,7 +15,7 @@ import GHC.Generics ( Generic1 )
 import qualified Data.Foldable as F
 import qualified Data.Vector as V
 
-import Dyno.Vectorize
+import Dyno.View.Vectorize
 import Dyno.TypeVecs
 
 data Params a = Params a a deriving (Functor, Generic1, Show)

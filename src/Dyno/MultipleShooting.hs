@@ -23,11 +23,11 @@ import Casadi.MX ( MX )
 
 import Dyno.Nlp ( Bounds, Nlp(..), NlpIn(..) )
 import Dyno.TypeVecs
-import Dyno.Vectorize ( Vectorize )
 import Dyno.View.Fun ( Fun, toMXFun, callMX )
 import Dyno.View.JVec ( JVec(..) )
 import Dyno.View.M ( vcat, vsplit )
 import Dyno.View.Scheme ( Scheme )
+import Dyno.View.Vectorize ( Vectorize )
 import Dyno.View.View ( View(..), J, S, JV, JNone(..), JTuple(..), jfill, catJV )
 
 

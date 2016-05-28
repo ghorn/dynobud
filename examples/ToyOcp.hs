@@ -6,7 +6,7 @@ module Main where
 
 import GHC.Generics ( Generic1 )
 
-import Dyno.Vectorize
+import Dyno.View.Vectorize
 import Dyno.SimpleOcp
 
 -- state

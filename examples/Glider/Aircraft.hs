@@ -11,7 +11,7 @@ import Linear
 
 import Accessors ( Lookup )
 
-import Dyno.Vectorize
+import Dyno.View.Vectorize
 
 import Glider.AeroCoeffs
 

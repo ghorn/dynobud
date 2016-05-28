@@ -21,7 +21,7 @@ import Dyno.View.Unsafe ( mkM, unM )
 import Dyno.View.View ( View(..), J, JV, jfill )
 import Dyno.View.JVec
 import Dyno.TypeVecs ( Vec )
-import Dyno.Vectorize ( Vectorize )
+import Dyno.View.Vectorize ( Vectorize )
 import qualified Dyno.TypeVecs as TV
 import qualified Dyno.LagrangePolynomials as LP
 import Dyno.DirectCollocation.Types ( CollTraj(..), CollStage(..), CollPoint(..), CollOcpConstraints(..) )

@@ -37,7 +37,7 @@ import Dyno.View.HList
 import Dyno.View.JVec ( JVec )
 import Dyno.View.M ( M )
 import Dyno.View.Scheme ( Scheme )
-import Dyno.Vectorize ( Id )
+import Dyno.View.Vectorize ( Id )
 import Dyno.View.View ( View, JV )
 
 data MapStrategy = Unroll | Serial | Parallel deriving (Show, Eq, Ord, Generic)

@@ -61,7 +61,7 @@ import Prelude -- BBP workaround
 
 import Accessors ( Lookup(..), GAData(..), GAConstructor(..) )
 
-import Dyno.Vectorize
+import Dyno.View.Vectorize
 
 -- length-indexed vectors using phantom types
 newtype Vec (n :: k) a = MkVec (V.Vector a)

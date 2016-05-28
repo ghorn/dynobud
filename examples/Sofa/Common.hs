@@ -21,7 +21,7 @@ import Data.Serialize
 
 import Dyno.TypeVecs ( Vec, Dim )
 import qualified Dyno.TypeVecs as TV
-import Dyno.Vectorize
+import Dyno.View.Vectorize
 
 
 data Point a = Point a a deriving (Functor, Generic, Generic1, Show)

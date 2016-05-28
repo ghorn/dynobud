@@ -14,4 +14,5 @@ import Dyno.View.JVec as X
 import Dyno.View.M as X
 import Dyno.View.MapFun as X
 import Dyno.View.Scheme as X
+import Dyno.View.Vectorize as X
 import Dyno.View.View as X

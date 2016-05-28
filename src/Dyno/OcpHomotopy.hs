@@ -13,7 +13,7 @@ import Casadi.MX ( MX )
 
 import qualified Data.Map as M
 import Dyno.Ocp
-import Dyno.Vectorize ( Vectorize )
+import Dyno.View.Vectorize ( Vectorize )
 import Dyno.View.View ( J, JV, catJV )
 import Dyno.TypeVecs ( Dim )
 import Dyno.Solvers ( Solver )
