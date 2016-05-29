@@ -6,6 +6,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE TypeOperators #-}
 
 module VectorizeTests
        ( Vectorizes(..)
@@ -212,6 +213,49 @@ test_vdiag' = HUnit.assertEqual "" x y
     y = vdiag' (V3 7 8 9) 3
 
 
+test_vectorizeO :: HUnit.Assertion
+test_vectorizeO = HUnit.assertEqual "" (vectorize x) y
+  where
+    x :: (V3 :. V2) Int
+    x =
+      O $
+      V3
+      (V2 0 1)
+      (V2 2 3)
+      (V2 4 5)
+
+    y :: V.Vector Int
+    y = V.fromList [0,1,2,3,4,5]
+
+test_devectorizeO :: HUnit.Assertion
+test_devectorizeO = HUnit.assertEqual "" x (devectorize y)
+  where
+    x :: (V3 :. V2) Int
+    x =
+      O $
+      V3
+      (V2 0 1)
+      (V2 2 3)
+      (V2 4 5)
+
+    y :: V.Vector Int
+    y = V.fromList [0,1,2,3,4,5]
+
+test_fillO :: HUnit.Assertion
+test_fillO = HUnit.assertEqual "" x y
+  where
+    x :: (V3 :. V2) Int
+    x = fill 0
+
+    y :: (V3 :. V2) Int
+    y =
+      O $
+      V3
+      (V2 0 0)
+      (V2 0 0)
+      (V2 0 0)
+
+
 vectorizeTests :: Test
 vectorizeTests =
   testGroup "vectorize tests"
@@ -220,4 +264,7 @@ vectorizeTests =
   , testProperty "vlengthEqLengthOfPure" prop_vlengthEqLengthOfPure
   , testCase "vdiag" test_vdiag
   , testCase "vdiag'" test_vdiag'
+  , testCase "vectorize (:.)'" test_vectorizeO
+  , testCase "devectorize (:.)'" test_devectorizeO
+  , testCase "fill (:.)'" test_fillO
   ]

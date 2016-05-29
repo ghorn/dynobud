@@ -15,7 +15,7 @@ packages:
 
 - location:
     git: https://github.com/ghorn/spatial-math
-    commit: 6f70cd4b3fc21ba93c2e5b6155bc962809fcb3b5
+    commit: 30f5d42c0bbe400ca9d7ecc21d24769f4eef9ffb
   extra-dep: true
 
 - location:

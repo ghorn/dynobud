@@ -131,7 +131,7 @@ instance (Vectorize g, Vectorize f) => Vectorize (g :. f) where
       devectorize'' x = case devectorize' x of
         Right y -> y
         Left msg -> error $ "fill (g :. f) devectorize error: " ++ msg
-      k = vlength (Proxy :: Proxy f)
+      k = vlength (Proxy :: Proxy g)
 
   vectorize = V.concatMap vectorize . vectorize . unO
 
@@ -140,17 +140,15 @@ instance (Vectorize g, Vectorize f) => Vectorize (g :. f) where
     (bad, good) -> Left $ printf "devectorize (g :. f): got %d failures and %d successes"
                           (length bad) (length good)
     where
-      kf = vlength (Proxy :: Proxy f)
       kg = vlength (Proxy :: Proxy g)
+      kf = vlength (Proxy :: Proxy f)
 
-      evs = fmap devectorize' (splitsAt kg kf v)
+      evs = fmap devectorize' (splitsAt kf kg v)
 
   vlength = const (nf * ng)
     where
       nf = vlength (Proxy :: Proxy f)
       ng = vlength (Proxy :: Proxy g)
-
-
 
 instance Lookup (None a)
 instance (Lookup (f a), Lookup (g a)) => Lookup (Tuple f g a)
