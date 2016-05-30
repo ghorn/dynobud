@@ -15,12 +15,12 @@ packages:
 
 - location:
     git: https://github.com/ghorn/spatial-math
-    commit: 30f5d42c0bbe400ca9d7ecc21d24769f4eef9ffb
+    commit: 289ab9159b9813a8f8de06d4ff6f28ec445bed6e
   extra-dep: true
 
 - location:
     git: https://github.com/ghorn/generic-accessors
-    commit: 3c60d3fc2896bab0517323875cb65f70d0b1cf48
+    commit: 393a9c8660010580c513eb75408b0507b6ded33d
   extra-dep: true
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
