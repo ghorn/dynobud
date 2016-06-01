@@ -32,7 +32,7 @@ extra-deps: [ casadi-bindings-3.0.0.1
             , not-gloss-0.7.6.5
             , Plot-ho-matic-0.9.0.8
 #            , spatial-math-0.3.0.0
-            , TypeCompose-0.9.11
+            , TypeCompose-0.9.12
             , vector-binary-instances-0.2.1.0
             ]
 

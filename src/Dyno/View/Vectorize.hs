@@ -68,13 +68,7 @@ instance Serialize (None a)
 instance FromJSON a => FromJSON (None a)
 instance ToJSON a => ToJSON (None a)
 
-instance Vectorize Id where
-  vectorize = V.singleton . unId
-  devectorize' v = case V.toList v of
-    [x] -> Right (Id x)
-    r -> Left $ "Id needed 1 entry but saw length " ++ show (length r)
-  fill = Id
-  vlength = const 1
+instance Vectorize Id
 
 
 -- | a length-2 vectorizable type
@@ -125,30 +119,7 @@ instance (FromJSON a, FromJSON (f a), FromJSON (g a), FromJSON (h a), FromJSON (
 instance (ToJSON a, ToJSON (f a), ToJSON (g a), ToJSON (h a), ToJSON (i a))
          => ToJSON (Quad f g h i a)
 
-instance (Vectorize g, Vectorize f) => Vectorize (g :. f) where
-  fill = O . devectorize'' . V.replicate k . fill
-    where
-      devectorize'' x = case devectorize' x of
-        Right y -> y
-        Left msg -> error $ "fill (g :. f) devectorize error: " ++ msg
-      k = vlength (Proxy :: Proxy g)
-
-  vectorize = V.concatMap vectorize . vectorize . unO
-
-  devectorize' v = case partitionEithers (V.toList evs) of
-    ([], vs) -> fmap O (devectorize' (V.fromList vs))
-    (bad, good) -> Left $ printf "devectorize (g :. f): got %d failures and %d successes"
-                          (length bad) (length good)
-    where
-      kg = vlength (Proxy :: Proxy g)
-      kf = vlength (Proxy :: Proxy f)
-
-      evs = fmap devectorize' (splitsAt kf kg v)
-
-  vlength = const (nf * ng)
-    where
-      nf = vlength (Proxy :: Proxy f)
-      ng = vlength (Proxy :: Proxy g)
+instance (Vectorize g, Vectorize f) => Vectorize (g :. f)
 
 instance Lookup (None a)
 instance (Lookup (f a), Lookup (g a)) => Lookup (Tuple f g a)
