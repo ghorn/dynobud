@@ -135,7 +135,9 @@ instance (View f, View g, CMatrix a) => ArcTan2 (M f g a) where
 
 instance (View f, View g, CMatrix a) => SymOrd (M f g a) where
   leq = over2 leq
+  lt = over2 lt
   geq = over2 geq
+  gt = over2 gt
   eq  = over2 eq
 
 instance (View f, View g, CMatrix a) => Erf (M f g a) where

@@ -8,6 +8,18 @@ compiler-check: newer-minor
 packages:
 - .
 
+- location:
+    git: https://github.com/ghorn/casadi-bindings
+    commit: 70d3baef12e561690be43b7d60badefa1208b19a
+  extra-dep: true
+  subdirs:
+  - casadi-bindings
+
+- location:
+    git: https://github.com/ghorn/generic-accessors
+    commit: 393a9c8660010580c513eb75408b0507b6ded33d
+  extra-dep: true
+
 #- location:
 #    git: https://github.com/ghorn/Plot-ho-matic
 #    commit: c18883ba529187c448fe6cc144dad323e78c41c2
@@ -18,14 +30,9 @@ packages:
     commit: 289ab9159b9813a8f8de06d4ff6f28ec445bed6e
   extra-dep: true
 
-- location:
-    git: https://github.com/ghorn/generic-accessors
-    commit: 393a9c8660010580c513eb75408b0507b6ded33d
-  extra-dep: true
-
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
-extra-deps: [ casadi-bindings-3.0.0.1
-            , casadi-bindings-core-3.0.0.0
+extra-deps: [ # casadi-bindings-3.0.0.2
+              casadi-bindings-core-3.0.0.0
             , casadi-bindings-internal-0.1.4.0
 #            , generic-accessors-0.6.0.1
             , jacobi-roots-0.2.0.4

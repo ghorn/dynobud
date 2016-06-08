@@ -7,6 +7,7 @@ import Test.Framework
        ( Test, ColorMode(..), RunnerOptions'(..), TestOptions'(..)
        , defaultMainWithOpts )
 
+import ConditionalTests ( conditionalTests )
 import QuadratureTests ( quadratureTests )
 import VectorizeTests ( vectorizeTests )
 import ViewTests ( viewTests )
@@ -21,7 +22,8 @@ main = defaultMainWithOpts tests opts
 
 tests :: [Test]
 tests =
-  [ fittingTests
+  [ conditionalTests
+  , fittingTests
   , functionTests
   , integrationTests
   , linearizeTests

@@ -7,8 +7,13 @@
 {-# LANGUAGE TypeOperators #-}
 
 module Dyno.View.Conditional
-       ( Conditional(..), Conditional'(..), Switch(..), toSwitch, fromSwitch
+       ( Conditional(..), Conditional'(..)
+       , Switch(..), toSwitch, fromSwitch
        , functionConditional
+         -- * SymOrd switches
+       , leq, lt, geq, gt, eq
+         -- * re-exported for convenience
+       , SymOrd
        ) where
 
 import GHC.Generics ( Generic, Generic1 )
@@ -26,6 +31,8 @@ import Casadi.SX ( SX )
 import Casadi.DM ( DM )
 import qualified Casadi.CMatrix as C
 import Casadi.Core.Classes.Function as C
+import Casadi.Overloading ( SymOrd )
+import qualified Casadi.Overloading as Overloading
 
 import Dyno.View.Fun ( Fun(..), checkFunDimensionsWith )
 import Dyno.View.HList ( (:*:) )
@@ -81,6 +88,26 @@ instance Conditional' MX where
   conditional' = cmConditional'
 instance Conditional' DM where
   conditional' = cmConditional'
+
+-- | @<=@
+leq :: SymOrd a => a -> a -> Switch Bool a
+leq x y = UnsafeSwitch (Overloading.leq x y)
+
+-- | @<@
+lt :: SymOrd a => a -> a -> Switch Bool a
+lt x y = UnsafeSwitch (Overloading.lt x y)
+
+-- | @>=@
+geq :: SymOrd a => a -> a -> Switch Bool a
+geq x y = UnsafeSwitch (Overloading.geq x y)
+
+-- | @>@
+gt :: SymOrd a => a -> a -> Switch Bool a
+gt x y = UnsafeSwitch (Overloading.gt x y)
+
+-- | @==@
+eq :: SymOrd a => a -> a -> Switch Bool a
+eq x y = UnsafeSwitch (Overloading.eq x y)
 
 
 {-# INLINABLE toSwitch #-}
@@ -234,3 +261,17 @@ _test sw (V3 x y z) = (sw, conditional True sw f)
     f FooA = V2 x (2*x)
     f FooB = V2 y (2*y)
     f FooC = V2 z (2*z)
+
+
+
+--x, y :: Switch Bool (S MX)
+--x = leq 2 3
+--y = UnsafeSwitch (fromIntegral 1) -- toSwitch True
+--
+--x', y' :: S MX
+--UnsafeSwitch x' = x
+--UnsafeSwitch y' = y
+--
+--x'', y'' :: MX
+--x'' = unM x'
+--y'' = unM y'
