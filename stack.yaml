@@ -10,7 +10,7 @@ packages:
 
 - location:
     git: https://github.com/ghorn/casadi-bindings
-    commit: 70d3baef12e561690be43b7d60badefa1208b19a
+    commit: c28bd5dc5396b36cd83935a70d2f7dc0337077e7
   extra-dep: true
   subdirs:
   - casadi-bindings
@@ -31,7 +31,7 @@ packages:
   extra-dep: true
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
-extra-deps: [ # casadi-bindings-3.0.0.2
+extra-deps: [ # casadi-bindings-3.0.0.3
               casadi-bindings-core-3.0.0.0
             , casadi-bindings-internal-0.1.4.0
 #            , generic-accessors-0.6.0.1

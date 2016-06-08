@@ -64,19 +64,32 @@ class Conditional a where
   conditional :: (Enum b, Bounded b, Show b, Vectorize f)
                  => Bool -> Switch b a -> (b -> f a) -> f a
 
+  and' :: Switch Bool a -> Switch Bool a -> Switch Bool a
+  or' :: Switch Bool a -> Switch Bool a -> Switch Bool a
+
 instance Conditional (S SX) where
   conditional = cmConditional
+  and' = cmAnd
+  or' = cmOr
 
 instance Conditional (S MX) where
   conditional = cmConditional
+  and' = cmAnd
+  or' = cmOr
 
 instance Conditional (S DM) where
   conditional = cmConditional
+  and' = cmAnd
+  or' = cmOr
 
 instance Conditional Double where
   conditional = \_ -> evaluateConditionalNative
+  and' (UnsafeSwitch x) (UnsafeSwitch y) = toSwitch $ (x /= 0 && y /= 0)
+  or'  (UnsafeSwitch x) (UnsafeSwitch y) = toSwitch $ (x /= 0 || y /= 0)
 instance Conditional Float where
   conditional = \_ -> evaluateConditionalNative
+  and' (UnsafeSwitch x) (UnsafeSwitch y) = toSwitch $ (x /= 0 && y /= 0)
+  or'  (UnsafeSwitch x) (UnsafeSwitch y) = toSwitch $ (x /= 0 || y /= 0)
 
 -- | Switches over View
 class Conditional' a where
@@ -115,7 +128,6 @@ gt x y = UnsafeSwitch (Overloading.gt x y)
 eq :: SymOrd a => a -> a -> Switch Bool a
 eq x y = UnsafeSwitch (Overloading.eq x y)
 
-
 {-# INLINABLE toSwitch #-}
 toSwitch ::  forall a b
              . (Enum b, Bounded b, Eq b, Show b, Fractional a)
@@ -152,6 +164,17 @@ fromSwitch (UnsafeSwitch index) = lookupKey (round index)
       Left $
       "fromSwitch: " ++
       "The index " ++ show (round index :: Int) ++ " didn't map to an enum."
+
+
+cmAnd :: C.CMatrix a => Switch Bool (S a) -> Switch Bool (S a) -> Switch Bool (S a)
+cmAnd (UnsafeSwitch x) (UnsafeSwitch y) = UnsafeSwitch $ case mkM' (C.cand (unM x) (unM y)) of
+  Right r -> r
+  Left r -> error $ "casadi \"and\" changed dimension: " ++ r
+
+cmOr :: C.CMatrix a => Switch Bool (S a) -> Switch Bool (S a) -> Switch Bool (S a)
+cmOr (UnsafeSwitch x) (UnsafeSwitch y) = UnsafeSwitch $ case mkM' (C.cor (unM x) (unM y)) of
+  Right r -> r
+  Left r -> error $ "casadi \"or\" changed dimension: " ++ r
 
 
 cmConditional ::

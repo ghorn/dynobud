@@ -18,11 +18,11 @@ import Test.Framework ( Test, testGroup )
 import Test.Framework.Providers.HUnit ( testCase )
 
 import Casadi.DM ( DM )
-import Casadi.MX ( MX )
+--import Casadi.MX ( MX )
 import Casadi.SX ( SX )
 
 import Dyno.View.Conditional
-import Dyno.View.View ( View(..), S )
+import Dyno.View.View ( S )
 
 data SymOrds where
   SymOrds :: (SymOrd a, Eq a, Fractional a, Show a) => String -> Proxy a -> SymOrds
@@ -31,6 +31,7 @@ conditionalTests :: Test
 conditionalTests =
   testGroup "conditional tests"
   [ symordSwitchTests
+  , logicTests
   ]
 
 symordSwitchTests :: Test
@@ -104,3 +105,40 @@ test_symord_switch _ op x y expectedBool = HUnit.assertEqual "" expectedSwitch a
 
     expectedSwitch :: Switch Bool a
     expectedSwitch = toSwitch expectedBool
+
+
+data Conditionals where
+  Conditionals :: (Conditional a, Fractional a, Eq a, Show a) => String -> Proxy a -> Conditionals
+
+logicTests :: Test
+logicTests =
+  testGroup "logic switches"
+  [ testGroup whichConditional
+    [ toGroup p "&&" and' (&&)
+    ]
+  | Conditionals whichConditional p <-
+      [ Conditionals "SX" (Proxy :: Proxy (S SX))
+      , Conditionals "DM" (Proxy :: Proxy (S DM))
+--      , Conditionals "MX" (Proxy :: Proxy (S MX))
+      , Conditionals "Double" (Proxy :: Proxy Double)
+      , Conditionals "Float" (Proxy :: Proxy Float)
+      ]
+  ]
+  where
+    toGroup ::
+      forall a
+      . (Fractional a, Eq a, Show a)
+      => Proxy a -> String
+      -> (Switch Bool a -> Switch Bool a -> Switch Bool a)
+      -> (Bool -> Bool -> Bool)
+      -> Test
+    toGroup _ opName conditionalOp haskellOp =
+      testGroup ("(" ++ opName ++ ")")
+      [ testCase (show x ++ " " ++ opName ++ " " ++ show y ++ " == " ++ show expectedBool) $
+        HUnit.assertEqual "" expectedSwitch actualSwitch
+      | x <- [False, True]
+      , y <- [False, True]
+      , let expectedBool = haskellOp x y
+            expectedSwitch = toSwitch expectedBool
+            actualSwitch = conditionalOp (toSwitch x) (toSwitch y)
+      ]
