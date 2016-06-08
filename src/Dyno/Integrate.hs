@@ -14,7 +14,7 @@ import GHC.Generics ( Generic, Generic1 )
 
 import Accessors ( Lookup(..) )
 import Data.Aeson ( FromJSON(..), ToJSON(..) )
-import Data.Serialize ( Serialize )
+import Data.Binary ( Binary )
 import qualified Data.Vector as V
 import qualified Data.Vector.Storable as SV
 import qualified Numeric.GSL.ODE as ODE
@@ -29,7 +29,7 @@ instance Lookup a => Lookup (InitialTime a) where
   toAccessorTree lens0 = toAccessorTree (lens0 . lens1)
     where
       lens1 f y = fmap InitialTime (f (unInitialTime y))
-instance Serialize a => Serialize (InitialTime a)
+instance Binary a => Binary (InitialTime a)
 
 
 newtype TimeStep a = TimeStep {unTimeStep :: a}
@@ -39,7 +39,7 @@ instance Lookup a => Lookup (TimeStep a) where
   toAccessorTree lens0 = toAccessorTree (lens0 . lens1)
     where
       lens1 f y = fmap TimeStep (f (unTimeStep y))
-instance Serialize a => Serialize (TimeStep a)
+instance Binary a => Binary (TimeStep a)
 
 rk45 :: Vectorize x
         => (Double -> x Double -> x Double)

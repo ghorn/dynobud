@@ -19,7 +19,6 @@ import Control.Exception ( ErrorCall, try, evaluate )
 import qualified Data.Map as M
 import Data.Proxy ( Proxy(..) )
 import qualified Data.Binary as B
-import qualified Data.Serialize as S
 import qualified Data.Traversable as T
 import Linear ( V1(..), V2(..), V3(..), V4(..) )
 import qualified Numeric.LinearAlgebra as Mat
@@ -373,20 +372,6 @@ prop_serializeDeserializeBinary =
         case B.decodeOrFail m1 of
          Left (_,_,msg) -> counterexample ("deserialization failure " ++ show msg) False
          Right (_,_,m2) -> beEqual m0 m2
-
-prop_serializeDeserializeCereal :: Test
-prop_serializeDeserializeCereal =
-  testProperty "(M f g DM): Cereal deserialize . serialize" $
-  \(Views {vwProxy = p1}) (Views {vwProxy = p2}) -> test p1 p2
-  where
-    test :: forall f g . (View f, View g) => Proxy f -> Proxy g -> Gen Property
-    test _ _ = do
-      m0 <- arbitrary :: Gen (M f g DM)
-      let m1 = S.encode m0
-      return $
-        case S.decode m1 of
-         Left msg -> counterexample ("deserialization failure " ++ show msg) False
-         Right m2 -> beEqual m0 m2
 
 prop_vsplitTup :: Test
 prop_vsplitTup =
@@ -855,7 +840,6 @@ viewTests =
   , prop_covFromToMat
   , prop_covToFromMat
   , prop_serializeDeserializeBinary
-  , prop_serializeDeserializeCereal
   , prop_vsplitTup
   , prop_hsplitTup
   , prop_vsplitTrip

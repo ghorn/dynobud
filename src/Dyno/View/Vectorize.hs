@@ -42,8 +42,8 @@ import Accessors ( GATip, Lookup(..), accessors, flatten, flatten' )
 import Control.Applicative
 import Control.Compose ( (:.)(..), Id(..), unO, unId )
 import Data.Aeson ( FromJSON(..), ToJSON(..) )
+import Data.Binary ( Binary(..) )
 import Data.Either ( partitionEithers )
-import Data.Serialize ( Serialize(..) )
 import qualified Data.Vector as V
 import qualified Data.Foldable as F
 import qualified Data.Traversable as T
@@ -64,7 +64,7 @@ instance Applicative None where
   pure = const None
   (<*>) = const (const None)
 instance Linear.Additive None where
-instance Serialize (None a)
+instance Binary (None a)
 instance FromJSON a => FromJSON (None a)
 instance ToJSON a => ToJSON (None a)
 

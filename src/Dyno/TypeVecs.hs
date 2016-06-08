@@ -49,9 +49,7 @@ import Control.Applicative
 import qualified Data.Traversable as T
 import qualified Data.Vector as V
 import Data.Vector.Binary () -- instances
-import Data.Vector.Cereal () -- instances
 import qualified Data.Binary as B
-import qualified Data.Serialize as S
 import Linear.Vector
 import Linear.V ( Dim(..) )
 import Data.Proxy
@@ -70,13 +68,6 @@ instance (Dim n, B.Binary a) => B.Binary (Vec n a) where
   put = B.put . unVec
   get = do
     x <- B.get
-    case devectorize' x of
-      Right y -> return y
-      Left msg -> fail msg
-instance (Dim n, S.Serialize a) => S.Serialize (Vec n a) where
-  put = S.put . unVec
-  get = do
-    x <- S.get
     case devectorize' x of
       Right y -> return y
       Left msg -> fail msg

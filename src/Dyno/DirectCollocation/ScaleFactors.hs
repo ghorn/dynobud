@@ -15,8 +15,8 @@ module Dyno.DirectCollocation.ScaleFactors
 import GHC.Generics ( Generic, Generic1 )
 
 import Control.Lens ( (.~) )
+import Data.Binary ( Binary )
 import Data.Maybe ( catMaybes, fromMaybe )
-import Data.Serialize ( Serialize )
 import qualified Data.Foldable as F
 import qualified Data.Traversable as T
 import Data.Vector ( Vector )
@@ -40,7 +40,7 @@ data ScaleFactor =
   , sfRelDiff :: Double
   , sfName :: String
   } deriving Generic
-instance Serialize ScaleFactor
+instance Binary ScaleFactor
 
 type ScaleFactors' ocp = ScaleFactors (X ocp) (Z ocp) (U ocp) (P ocp) (H ocp) (C ocp)
 
@@ -57,9 +57,9 @@ data ScaleFactors x z u p h c a =
 instance ( Lookup (x a), Lookup (z a), Lookup (u a), Lookup (p a)
          , Lookup (h a), Lookup (c a), Lookup a
          ) => Lookup (ScaleFactors x z u p h c a)
-instance ( Serialize (x a), Serialize (z a), Serialize (u a), Serialize (p a)
-         , Serialize (h a), Serialize (c a), Serialize a
-         ) => Serialize (ScaleFactors x z u p h c a)
+instance ( Binary (x a), Binary (z a), Binary (u a), Binary (p a)
+         , Binary (h a), Binary (c a), Binary a
+         ) => Binary (ScaleFactors x z u p h c a)
 instance ( Vectorize x, Vectorize z, Vectorize u, Vectorize p
          , Vectorize h, Vectorize c
          ) => Vectorize (ScaleFactors x z u p h c)

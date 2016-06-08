@@ -21,7 +21,6 @@ import Casadi.Viewable ( Viewable )
 import Data.Proxy ( Proxy(..) )
 import Data.List ( mapAccumL )
 import Data.Tree ( Tree(..) )
-import Data.Vector.Cereal ()
 import Data.Vector.Binary ()
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
@@ -29,7 +28,6 @@ import qualified Data.Foldable as F
 import qualified Data.Traversable as T
 import qualified Data.Tree as Tree
 import Data.Binary ( Binary )
-import Data.Serialize ( Serialize )
 import Linear.V
 
 import Accessors ( AccessorTree, Lookup(..), GAData(..), GAConstructor(..), accessors )
@@ -81,8 +79,7 @@ data DynPlotPoints a = DynPlotPoints
                      deriving Generic
 
 
---instance Binary a => Binary (DynPlotPoints a) -- binary is slower than serial by 2x on this
-instance Serialize a => Serialize (DynPlotPoints a)
+instance Binary a => Binary (DynPlotPoints a) -- binary used to be slower than serial by 2x on this
 
 catDynPlotPoints :: V.Vector (DynPlotPoints a) -> DynPlotPoints a
 catDynPlotPoints pps =
@@ -208,7 +205,6 @@ data NameTree = NameTreeNode (String, String) [(String, NameTree)]
               | NameTreeLeaf Int
               deriving (Show, Eq, Generic)
 instance Binary NameTree
-instance Serialize NameTree
 
 data CollTrajMeta = CollTrajMeta { ctmX :: NameTree
                                  , ctmZ :: NameTree
@@ -220,7 +216,6 @@ data CollTrajMeta = CollTrajMeta { ctmX :: NameTree
                                  , ctmPo :: NameTree
                                  } deriving (Eq, Generic, Show)
 instance Binary CollTrajMeta
-instance Serialize CollTrajMeta
 
 namesFromAccTree :: AccessorTree a -> NameTree
 namesFromAccTree x = (\(_,(_,y)) -> y) $ namesFromAccTree' 0 (Just "", x)

@@ -13,7 +13,6 @@ import GHC.Generics ( Generic )
 import Casadi.Viewable ( Viewable )
 import qualified Data.Vector as V
 import Data.Binary ( Binary )
-import Data.Serialize ( Serialize )
 
 import Dyno.View.View ( View(..), J, S )
 
@@ -58,4 +57,3 @@ data NlpOut x g a =
   , lambdaGOpt :: J g a
   } deriving (Eq, Show, Generic)
 instance (View x, View g, Binary a, Viewable a) => Binary (NlpOut x g a)
-instance (View x, View g, Serialize a, Viewable a) => Serialize (NlpOut x g a)

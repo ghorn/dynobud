@@ -13,10 +13,10 @@ import GHC.Generics ( Generic1 )
 import Data.Proxy ( Proxy(..) )
 import Data.IORef ( newIORef, readIORef, writeIORef )
 import qualified Data.Foldable as F
-import Data.Serialize
+import Data.Binary
 import qualified System.ZMQ4 as ZMQ
 import Data.ByteString.Char8 ( pack )
---import Data.ByteString.Lazy ( toStrict )
+import Data.ByteString.Lazy ( toStrict )
 
 import Dyno.View.Vectorize
 import Dyno.Nlp
@@ -240,9 +240,9 @@ solver =
   }
 --solver = snoptSolver { options = [ ("detect_linear", Opt False) ] }
 
-send :: Serialize a => ZMQ.Socket ZMQ.Pub -> String -> a -> IO ()
+send :: Binary a => ZMQ.Socket ZMQ.Pub -> String -> a -> IO ()
 send publisher chanName stuff = do
-  let bs = encode stuff
+  let bs = toStrict (encode stuff)
   ZMQ.send publisher [ZMQ.SendMore] (pack chanName)
   ZMQ.send publisher [] bs
 --  ZMQ.send publisher [] (toStrict bs)

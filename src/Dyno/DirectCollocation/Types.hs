@@ -41,8 +41,8 @@ import GHC.Generics ( Generic, Generic1 )
 
 import Linear.V ( Dim(..) )
 import Data.Aeson ( FromJSON, ToJSON )
+import Data.Binary ( Binary )
 import Data.Vector ( Vector )
-import Data.Serialize ( Serialize )
 
 import Casadi.Viewable ( Viewable )
 import Accessors ( Lookup )
@@ -365,7 +365,7 @@ data Quadratures q qo a =
   } deriving (Functor, Generic, Generic1)
 instance (Vectorize q, Vectorize qo) => Vectorize (Quadratures q qo)
 instance (Lookup a, Lookup (q a), Lookup (qo a)) => Lookup (Quadratures q qo a)
-instance (Serialize a, Serialize (q a), Serialize (qo a)) => Serialize (Quadratures q qo a)
+instance (Binary a, Binary (q a), Binary (qo a)) => Binary (Quadratures q qo a)
 instance (FromJSON a, FromJSON (q a), FromJSON (qo a)) => FromJSON (Quadratures q qo a)
 instance (ToJSON a, ToJSON (q a), ToJSON (qo a)) => ToJSON (Quadratures q qo a)
 
@@ -380,9 +380,9 @@ data StageOutputsPoint x o h q qo po a =
   , sopQs :: Quadratures q qo a -- qs
   , sopQDots :: Quadratures q qo a -- qdots
   } deriving Generic
-instance ( Serialize a, Serialize (q a), Serialize (qo a)
+instance ( Binary a, Binary (q a), Binary (qo a)
          , Vectorize x, Vectorize o, Vectorize h, Vectorize po
-         ) => (Serialize (StageOutputsPoint x o h q qo po a))
+         ) => (Binary (StageOutputsPoint x o h q qo po a))
 
 -- | for callbacks
 data StageOutputs x o h q qo po deg a =
@@ -396,7 +396,7 @@ data StageOutputs x o h q qo po deg a =
 
 type StageOutputs' ocp deg = StageOutputs (X ocp) (O ocp) (H ocp) (Q ocp) (QO ocp) (PO ocp) deg
 
-instance ( Serialize a, Serialize (q a), Serialize (qo a)
+instance ( Binary a, Binary (q a), Binary (qo a)
          , Vectorize x, Vectorize o, Vectorize h, Vectorize po
          , Dim deg
-         ) => (Serialize (StageOutputs x o h q qo po deg a))
+         ) => (Binary (StageOutputs x o h q qo po deg a))

@@ -26,7 +26,6 @@ import qualified Data.Sequence as Seq
 import Data.Proxy ( Proxy(..) )
 import qualified Data.Vector as V
 import qualified Data.Binary as B
-import qualified Data.Serialize as S
 
 import Casadi.CMatrix ( CMatrix )
 import qualified Casadi.CMatrix as CM
@@ -65,14 +64,6 @@ instance (View f, View g, Viewable a, B.Binary a) => B.Binary (M f g a) where
   put = B.put . unM
   get = do
     x <- B.get
-    case mkM' x of
-      Right y -> return y
-      Left msg -> fail msg
-
-instance (View f, View g, Viewable a, S.Serialize a) => S.Serialize (M f g a) where
-  put = S.put . unM
-  get = do
-    x <- S.get
     case mkM' x of
       Right y -> return y
       Left msg -> fail msg

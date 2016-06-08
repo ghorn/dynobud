@@ -22,7 +22,7 @@ import Accessors ( Lookup(..) )
 import Control.Lens ( Lens' )
 import Control.Compose ( Id(..), unId )
 import Data.Aeson ( ToJSON, FromJSON )
-import Data.Serialize ( Serialize )
+import Data.Binary ( Binary )
 import qualified Data.Vector as V
 import Linear ( V2(..), V3(..) )
 import System.IO.Unsafe ( unsafePerformIO )
@@ -45,7 +45,7 @@ import Dyno.View.View ( View, S, J, JV )
 
 newtype Switch f a = UnsafeSwitch a deriving (Functor, Generic, Generic1, Show)
 instance Vectorize (Switch f)
-instance Serialize a => Serialize (Switch f a)
+instance Binary a => Binary (Switch f a)
 instance ToJSON a => ToJSON (Switch f a)
 instance FromJSON a => FromJSON (Switch f a)
 

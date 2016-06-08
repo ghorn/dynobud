@@ -19,7 +19,6 @@ import Data.Proxy ( Proxy(..) )
 import qualified Data.Vector as V
 import qualified Data.Foldable as F
 import Data.Binary ( Binary )
-import Data.Serialize ( Serialize )
 import Linear.V
 
 import JacobiRoots ( shiftedLegendreRoots, shiftedRadauRoots )
@@ -32,7 +31,6 @@ import Dyno.LagrangePolynomials ( lagrangeXis )
 
 data QuadratureRoots = Legendre | Radau deriving (Show, Eq, Ord, Enum, Generic)
 instance Binary QuadratureRoots
-instance Serialize QuadratureRoots
 instance ToJSON QuadratureRoots
 instance FromJSON QuadratureRoots
 

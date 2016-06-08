@@ -25,7 +25,7 @@ module Dyno.Ocp
 
 import GHC.Generics ( Generic )
 
-import Data.Serialize ( Serialize )
+import Data.Binary ( Binary )
 import Data.Vector ( Vector )
 
 import Dyno.View.View ( J, S, JV )
@@ -159,14 +159,14 @@ data OcpPhaseInputs x z u p c h fp =
   , ocpFixedP :: fp Double
   } deriving ( Generic )
 
-instance ( Serialize (x Bounds)
-         , Serialize (z Bounds)
-         , Serialize (u Bounds)
-         , Serialize (p Bounds)
-         , Serialize (c Bounds)
-         , Serialize (h Bounds)
-         , Serialize (fp Double)
-         ) => Serialize (OcpPhaseInputs x z u p c h fp)
+instance ( Binary (x Bounds)
+         , Binary (z Bounds)
+         , Binary (u Bounds)
+         , Binary (p Bounds)
+         , Binary (c Bounds)
+         , Binary (h Bounds)
+         , Binary (fp Double)
+         ) => Binary (OcpPhaseInputs x z u p c h fp)
 
 data OcpPhaseWithCov ocp sx sz sw sr sh shr sc =
   OcpPhaseWithCov

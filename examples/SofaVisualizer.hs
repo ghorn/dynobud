@@ -8,9 +8,9 @@ import Linear.V3 ( V3(..) )
 import Linear.Quaternion ( Quaternion(..) )
 import Control.Monad ( when, forever )
 import Data.ByteString.Char8 ( pack )
---import Data.ByteString.Lazy ( fromStrict )
+import Data.ByteString.Lazy ( fromStrict )
 --import Data.Binary
-import Data.Serialize
+import Data.Binary
 import qualified System.ZMQ4 as ZMQ
 import qualified Control.Concurrent.STM as STM
 import qualified Control.Concurrent as CC
@@ -44,7 +44,7 @@ sub writeChan = ZMQ.withContext $ \context ->
       when mre $ do
         msg <- ZMQ.receive subscriber
         let decoded :: SofaMessage
-            decoded = case decode msg of
+            decoded = case decode (fromStrict msg) of
               Left err -> error $  "decode failure: " ++ err
               Right t -> t
 --            decoded = case decodeOrFail (fromStrict msg) of

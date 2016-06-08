@@ -88,7 +88,6 @@ library
                        reflection >= 1.3.2,
                        aeson,
                        binary,
-                       cereal,
                        distributive,
                        process,
                        Plot-ho-matic >= 0.9.0.0,
@@ -188,8 +187,7 @@ executable sofa-viz-2000
                        not-gloss >= 0.7.4.0,
                        stm,
                        containers,
---                       binary,
-                       cereal,
+                       binary,
                        linear,
                        bytestring,
                        zeromq4-haskell,
@@ -210,8 +208,7 @@ executable sofa-expand-o-matic
                        casadi-bindings-core,
                        zeromq4-haskell,
                        bytestring,
---                       binary,
-                       cereal,
+                       binary,
                        linear,
                        base >= 4.6 && < 5
   ghc-options:         -threaded -O2
@@ -276,8 +273,7 @@ executable spring
                      , generic-accessors
                      , bytestring
                      , zeromq4-haskell
---                     , binary
-                     , cereal
+                     , binary
   ghc-options:         -threaded -O2
 
 executable rocket
@@ -296,8 +292,7 @@ executable rocket
                      , generic-accessors
                      , bytestring
                      , zeromq4-haskell
---                     , binary
-                     , cereal
+                     , binary
 
   ghc-options:         -threaded -O2
 
@@ -353,8 +348,7 @@ executable dae-pendulum
                        generic-accessors >= 0.1.0.0,
                        bytestring,
                        zeromq4-haskell,
---                       binary,
-                       cereal,
+                       binary,
                        vector
   ghc-options:         -threaded -O2
 
@@ -374,8 +368,7 @@ executable glider
                        containers,
                        linear,
                        bytestring,
---                       binary,
-                       cereal,
+                       binary,
                        vector,
                        generic-accessors >= 0.1.0.0,
                        zeromq4-haskell
@@ -394,8 +387,7 @@ executable sailboat
                        containers,
                        linear,
                        bytestring,
---                       binary,
-                       cereal,
+                       binary,
                        vector,
                        semigroups,
                        generic-accessors >= 0.1.0.0,
@@ -414,7 +406,7 @@ executable dynoplot
                        base >=4.6 && < 5,
                        containers,
                        vector,
-                       cereal,
+                       binary,
                        bytestring,
                        zeromq4-haskell,
                        Plot-ho-matic >= 0.5.0.0,
@@ -434,8 +426,7 @@ executable quadrature-test
                        generic-accessors >= 0.1.0.0,
                        bytestring,
                        zeromq4-haskell,
---                       binary,
-                       cereal,
+                       binary,
                        vector
   ghc-options:         -threaded -O2
 
@@ -500,7 +491,6 @@ test-suite unit-tests
                        vector,
                        linear,
                        binary,
-                       cereal,
                        casadi-bindings,
                        casadi-bindings-core,
                        hmatrix,
