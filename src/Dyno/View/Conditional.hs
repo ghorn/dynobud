@@ -7,7 +7,7 @@
 {-# LANGUAGE TypeOperators #-}
 
 module Dyno.View.Conditional
-       ( Conditional(..), Conditional'(..)
+       ( Conditional(..), Conditional'(..), sconditional
        , Switch(..), toSwitch, fromSwitch
        , functionConditional
          -- * SymOrd switches
@@ -20,6 +20,7 @@ import GHC.Generics ( Generic, Generic1 )
 
 import Accessors ( Lookup(..) )
 import Control.Lens ( Lens' )
+import Control.Compose ( Id(..), unId )
 import Data.Aeson ( ToJSON, FromJSON )
 import Data.Serialize ( Serialize )
 import qualified Data.Vector as V
@@ -88,6 +89,11 @@ instance Conditional' MX where
   conditional' = cmConditional'
 instance Conditional' DM where
   conditional' = cmConditional'
+
+-- | Switches over scalar Conditional
+sconditional :: (Conditional a, Enum b, Bounded b, Show b) => Bool -> Switch b a -> (b -> a) -> a
+sconditional shortCircuit sw handleAnyCase =
+  unId $ conditional shortCircuit sw (Id . handleAnyCase)
 
 -- | @<=@
 leq :: SymOrd a => a -> a -> Switch Bool a
