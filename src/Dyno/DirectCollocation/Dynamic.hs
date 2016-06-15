@@ -7,7 +7,7 @@
 module Dyno.DirectCollocation.Dynamic
        ( DynPlotPoints(..)
        , CollTrajMeta(..)
-       , addCollocationChannel
+       , newCollocationChannel
        , MetaProxy(..)
        , toMeta
        , dynPlotPoints
@@ -31,7 +31,7 @@ import Data.Binary ( Binary )
 import Linear.V
 
 import Accessors ( AccessorTree, Lookup(..), GAData(..), GAConstructor(..), accessors )
-import PlotHo ( Plotter, addChannel )
+import PlotHo ( Channel, newChannel )
 
 import Dyno.View.Unsafe ( unM, unM' )
 import Dyno.View.Vectorize ( Vectorize(..), Id(..), fill )
@@ -50,9 +50,10 @@ unM'' msg x = case unM' x of
     "Dyno.DirectCollocation.Dynamic: unM'' " ++ msg ++ ":\n" ++ msg'
   Right r -> r
 
-addCollocationChannel ::
-  String -> (((DynPlotPoints Double, CollTrajMeta) -> IO ()) -> IO ()) -> Plotter ()
-addCollocationChannel name action = addChannel name sameMeta toSignalTree action
+newCollocationChannel ::
+  String
+  -> IO (Channel, (DynPlotPoints Double, CollTrajMeta) -> IO ())
+newCollocationChannel name = newChannel name sameMeta toSignalTree
   where
     toSignalTree ::
       (DynPlotPoints Double, CollTrajMeta)

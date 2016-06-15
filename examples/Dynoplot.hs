@@ -3,6 +3,7 @@
 
 module Main ( main ) where
 
+import Control.Concurrent ( forkIO )
 import Control.Monad ( when, forever )
 import Data.ByteString.Char8 ( pack )
 import Data.ByteString.Lazy ( fromStrict )
@@ -13,7 +14,7 @@ import qualified System.Console.CmdArgs as CA
 
 import PlotHo ( runPlotter )
 
-import Dyno.DirectCollocation.Dynamic ( DynPlotPoints, CollTrajMeta, addCollocationChannel )
+import Dyno.DirectCollocation.Dynamic ( DynPlotPoints, CollTrajMeta, newCollocationChannel )
 
 import Dynoplot.Channel ( dynoplotUrl, dynoplotChannelName )
 
@@ -41,7 +42,9 @@ main = do
   putStrLn $ "using ip \""++ip'++"\""
   putStrLn $ "using channel \""++channel'++"\""
 
-  runPlotter $ addCollocationChannel channel' (\w -> sub ip' w channel')
+  (ch, newMessage) <- newCollocationChannel channel'
+  _ <- forkIO $ sub ip' newMessage channel'
+  runPlotter [ch]
 
 
 data VisArgs = VisArgs { ip :: String
