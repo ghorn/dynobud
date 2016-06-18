@@ -57,10 +57,10 @@ newCollocationChannel name = newChannel name sameMeta toSignalTree
   where
     toSignalTree ::
       (DynPlotPoints Double, CollTrajMeta)
-      -> [Tree ( [String]
-               , Either String ((DynPlotPoints Double, CollTrajMeta) -> [[(Double, Double)]])
-               )]
-    toSignalTree = forestFromMeta . snd
+      -> Tree ( [String]
+              , Either String ((DynPlotPoints Double, CollTrajMeta) -> [[(Double, Double)]])
+              )
+    toSignalTree = treeFromMeta name . snd
 
 sameMeta :: (DynPlotPoints Double, CollTrajMeta)
             -> (DynPlotPoints Double, CollTrajMeta)
@@ -242,19 +242,21 @@ namesFromAccTree' k (mname, Right (GAData dname (GASum _))) =
       Just r -> r
 
 
-type MetaTree a = Tree.Forest ([String], Either String ((DynPlotPoints a, CollTrajMeta) -> [[(a,a)]]))
+type MetaTree a = Tree.Tree ([String], Either String ((DynPlotPoints a, CollTrajMeta) -> [[(a,a)]]))
 
-forestFromMeta :: CollTrajMeta -> MetaTree Double
-forestFromMeta meta =
-  [ blah (\(DynPlotPoints x _ _ _  _ _  _ _ _ ) ->  x) ["diff states"] (ctmX meta)
-  , blah (\(DynPlotPoints _ z _ _  _ _  _ _ _ ) ->  z) ["alg vars"] (ctmZ meta)
-  , blah (\(DynPlotPoints _ _ u _  _ _  _ _ _ ) ->  u) ["controls"] (ctmU meta)
-  , blah (\(DynPlotPoints _ _ _ o  _ _  _ _ _ ) ->  o) ["outputs"] (ctmO meta)
-  , blah (\(DynPlotPoints _ _ _ _ xd _  _ _ _ ) -> xd) ["ddt(diff states)"] (ctmX meta)
-  , blah (\(DynPlotPoints _ _ _ _  _ h  _ _ _ ) ->  h) ["path constraints"] (ctmH meta)
-  , blah (\(DynPlotPoints _ _ _ _  _ _ po _ _ ) -> po) ["plot outputs"] (ctmPo meta)
-  , blah (\(DynPlotPoints _ _ _ _  _ _  _ q _ ) ->  q) ["quadrature states"] (ctmQ meta)
-  , blah (\(DynPlotPoints _ _ _ _  _ _  _ _ qd) -> qd) ["ddt(quad states)"] (ctmQ meta)
+treeFromMeta :: String -> CollTrajMeta -> MetaTree Double
+treeFromMeta topName meta =
+  Tree.Node
+  ([topName], Left "")
+  [ blah (\(DynPlotPoints x _ _ _  _ _  _ _ _ ) ->  x) ["diff states", topName] (ctmX meta)
+  , blah (\(DynPlotPoints _ z _ _  _ _  _ _ _ ) ->  z) ["alg vars", topName] (ctmZ meta)
+  , blah (\(DynPlotPoints _ _ u _  _ _  _ _ _ ) ->  u) ["controls", topName] (ctmU meta)
+  , blah (\(DynPlotPoints _ _ _ o  _ _  _ _ _ ) ->  o) ["outputs", topName] (ctmO meta)
+  , blah (\(DynPlotPoints _ _ _ _ xd _  _ _ _ ) -> xd) ["ddt(diff states)", topName] (ctmX meta)
+  , blah (\(DynPlotPoints _ _ _ _  _ h  _ _ _ ) ->  h) ["path constraints", topName] (ctmH meta)
+  , blah (\(DynPlotPoints _ _ _ _  _ _ po _ _ ) -> po) ["plot outputs", topName] (ctmPo meta)
+  , blah (\(DynPlotPoints _ _ _ _  _ _  _ q _ ) ->  q) ["quadrature states", topName] (ctmQ meta)
+  , blah (\(DynPlotPoints _ _ _ _  _ _  _ _ qd) -> qd) ["ddt(quad states)", topName] (ctmQ meta)
   ]
   where
     blah :: forall f c t

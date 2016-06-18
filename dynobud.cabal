@@ -411,7 +411,7 @@ executable dynoplot
                        zeromq4-haskell,
                        Plot-ho-matic >= 0.5.0.0,
                        cmdargs
-  ghc-options:         -O2 -with-rtsopts=-T
+  ghc-options:         -O2 -threaded -with-rtsopts=-T
 
 executable quadrature-test
   if flag(examples)

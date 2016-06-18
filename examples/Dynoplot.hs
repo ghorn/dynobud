@@ -44,7 +44,7 @@ main = do
 
   (ch, newMessage) <- newCollocationChannel channel'
   _ <- forkIO $ sub ip' newMessage channel'
-  runPlotter [ch]
+  runPlotter Nothing [ch]
 
 
 data VisArgs = VisArgs { ip :: String

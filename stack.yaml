@@ -28,7 +28,7 @@ packages:
 - location:
 #    git: /home/greghorn/hslibs/Plot-ho-matic
     git: https://github.com/ghorn/Plot-ho-matic
-    commit: 3f3cd4dc67fbec5546d42e909c0a569677866052
+    commit: f4ad3f5a07bc7b9e98e926215473725aacb734a7
   extra-dep: true
 
 - location:
