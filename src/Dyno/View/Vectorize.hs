@@ -8,14 +8,6 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveTraversable #-}
--- these last nasty ones are for instance Vectorize f => Applicative/Additive/Metric/etc f
-{-# OPTIONS_GHC -fno-warn-orphans #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE CPP #-}
-#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ <= 708
-{-# LANGUAGE OverlappingInstances #-}
-#endif
 
 module Dyno.View.Vectorize
        ( Vectorize(..)
@@ -26,6 +18,7 @@ module Dyno.View.Vectorize
        , Tuple(..)
        , Triple(..)
        , Quad(..)
+       , vapply
        , vzipWith
        , vzipWith3
        , vzipWith4
@@ -84,6 +77,7 @@ instance (FromJSON a, FromJSON (f a), FromJSON (g a))
          => FromJSON (Tuple f g a)
 instance (ToJSON a, ToJSON (f a), ToJSON (g a))
          => ToJSON (Tuple f g a)
+instance (Binary (f a), Binary (g a)) => Binary (Tuple f g a)
 
 
 -- | a length-3 vectorizable type
@@ -101,6 +95,7 @@ instance (FromJSON a, FromJSON (f a), FromJSON (g a), FromJSON (h a))
          => FromJSON (Triple f g h a)
 instance (ToJSON a, ToJSON (f a), ToJSON (g a), ToJSON (h a))
          => ToJSON (Triple f g h a)
+instance (Binary (f a), Binary (g a), Binary (h a)) => Binary (Triple f g h a)
 
 
 -- | a length-4 vectorizable type
@@ -118,6 +113,7 @@ instance (FromJSON a, FromJSON (f a), FromJSON (g a), FromJSON (h a), FromJSON (
          => FromJSON (Quad f g h i a)
 instance (ToJSON a, ToJSON (f a), ToJSON (g a), ToJSON (h a), ToJSON (i a))
          => ToJSON (Quad f g h i a)
+instance (Binary (f a), Binary (g a), Binary (h a), Binary (i a)) => Binary (Quad f g h i a)
 
 instance (Vectorize g, Vectorize f) => Vectorize (g :. f)
 
@@ -141,6 +137,10 @@ devectorize :: Vectorize f => V.Vector a -> f a
 devectorize x = case devectorize' x of
   Right y -> y
   Left msg -> error msg
+
+-- | define Applicative in terms of Vectorize
+vapply :: Vectorize f => f (a -> b) -> f a -> f b
+vapply f x = devectorize (V.zipWith id (vectorize f) (vectorize x))
 
 vzipWith :: Vectorize f => (a -> b -> c) -> f a -> f b -> f c
 vzipWith f x y = devectorize $ V.zipWith f (vectorize x) (vectorize y)
@@ -187,60 +187,6 @@ class Functor f => Vectorize (f :: * -> *) where
   default vlength :: (Generic1 f, GVectorize (Rep1 f)) => Proxy f -> Int
   vlength = const $ gvlength (Proxy :: Proxy (Rep1 f))
 
-
--- undecidable, overlapping, orphan instances to get rid of boilerplate
-
-#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ <= 708
-instance Vectorize f => Applicative f where
-#else
-instance {-# OVERLAPPABLE #-} Vectorize f => Applicative f where
-#endif
-  pure = fill
-  x0 <*> x1 = devectorize (V.zipWith id (vectorize x0) (vectorize x1))
-
-#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ <= 708
-instance Vectorize f => Linear.Additive f where
-#else
-instance {-# OVERLAPPABLE #-} Vectorize f => Linear.Additive f where
-#endif
-  zero = fill 0
-
-#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ <= 708
-instance Vectorize f => Linear.Metric f where
-#else
-instance {-# OVERLAPPABLE #-} Vectorize f => Linear.Metric f where
-#endif
-  dot x0 x1 = V.sum $ V.zipWith (*) (vectorize x0) (vectorize x1)
-
-#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ <= 708
-instance (Vectorize f, Eq a) => Eq (f a) where
-#else
-instance {-# OVERLAPPABLE #-} (Vectorize f, Eq a) => Eq (f a) where
-#endif
-  x == y = (vectorize x) == (vectorize y)
-  x /= y = (vectorize x) /= (vectorize y)
-
-#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ <= 708
-instance (Vectorize f, Ord a) => Ord (f a) where
-#else
-instance {-# OVERLAPPABLE #-} (Vectorize f, Ord a) => Ord (f a) where
-#endif
-  compare x y = compare (vectorize x) (vectorize y)
-
-#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ <= 708
-instance Vectorize f => F.Foldable f where
-#else
-instance {-# OVERLAPPABLE #-} Vectorize f => F.Foldable f where
-#endif
-  foldMap f x = F.foldMap f (vectorize x)
-  foldr f acc0 x = F.foldr f acc0 (vectorize x)
-
-#if defined(__GLASGOW_HASKELL__) && __GLASGOW_HASKELL__ <= 708
-instance Vectorize f => T.Traversable f where
-#else
-instance {-# OVERLAPPABLE #-} Vectorize f => T.Traversable f where
-#endif
-  traverse f x = devectorize <$> T.traverse f (vectorize x)
 
 class GVectorize (f :: * -> *) where
   gvectorize :: f a -> V.Vector a

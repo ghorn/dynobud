@@ -28,7 +28,7 @@ import Linear ( Additive )
 import Text.Printf ( printf )
 
 import Dyno.Integrate
-import Dyno.View.Vectorize ( Vectorize(..), None(..), fill, unId )
+import Dyno.View.Vectorize ( Vectorize(..), None(..), fill, unId, vapply )
 import Dyno.View.View ( View(..), J, splitJV )
 import Dyno.TypeVecs ( Vec, Dim )
 import qualified Dyno.TypeVecs as TV
@@ -49,6 +49,9 @@ data CheckState x q a =
   , csQ :: q a
   } deriving (Functor, Generic, Generic1)
 instance (Vectorize x, Vectorize q) => Vectorize (CheckState x q)
+instance (Vectorize x, Vectorize q) => Applicative (CheckState x q) where
+  pure = fill
+  (<*>) = vapply
 instance (Lookup (x a), Lookup (q a), Lookup a) => Lookup (CheckState x q a)
 
 data Err a =

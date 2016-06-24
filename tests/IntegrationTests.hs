@@ -23,9 +23,9 @@ import qualified Numeric.LinearAlgebra.Data as D
 import qualified Test.HUnit.Base as HUnit
 import Test.Framework ( Test, testGroup )
 import Test.Framework.Providers.HUnit ( testCase )
-import Linear ( Additive )
+import Linear ( Additive(..) )
 
-import Dyno.View.Vectorize ( Vectorize(..), None(..), devectorize, fill )
+import Dyno.View.Vectorize ( Vectorize(..), None(..), devectorize, fill, vapply )
 import Dyno.View.View ( View(..), J, splitJV )
 import Dyno.TypeVecs ( Dim )
 import Dyno.Solvers
@@ -43,6 +43,12 @@ data PendP a = PendP a deriving (Functor, Generic, Generic1, Show)
 
 instance Vectorize PendX
 instance Vectorize PendP
+
+instance Applicative PendX where
+  pure = fill
+  (<*>) = vapply
+instance Additive PendX where
+  zero = fill 0
 
 over :: Vectorize f => (a -> a -> a) -> f a -> f a -> f a
 over f x y = devectorize $ V.zipWith f (vectorize x) (vectorize y)

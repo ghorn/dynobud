@@ -288,6 +288,7 @@ executable rocket
                      , dynobud
                      , casadi-bindings
                      , containers
+                     , linear
                      , vector
                      , generic-accessors
                      , bytestring
@@ -495,6 +496,7 @@ test-suite unit-tests
                        casadi-bindings-core,
                        hmatrix,
                        hmatrix-gsl,
+                       TypeCompose,
                        base >=4.6 && < 5
   ghc-options:         -O2
 

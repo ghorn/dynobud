@@ -24,7 +24,7 @@ import Text.Printf ( printf )
 
 import Dyno.DirectCollocation.Types
 import Dyno.Nlp ( Bounds )
-import Dyno.View.Vectorize ( Vectorize(..), unId, fill )
+import Dyno.View.Vectorize ( Vectorize(..), unId, vapply )
 import Dyno.View.View ( View(..), splitJV )
 import Dyno.View.JVec ( unJVec )
 import Dyno.TypeVecs ( Dim )
@@ -63,6 +63,11 @@ instance ( Binary (x a), Binary (z a), Binary (u a), Binary (p a)
 instance ( Vectorize x, Vectorize z, Vectorize u, Vectorize p
          , Vectorize h, Vectorize c
          ) => Vectorize (ScaleFactors x z u p h c)
+instance ( Vectorize x, Vectorize z, Vectorize u, Vectorize p
+         , Vectorize h, Vectorize c
+         ) => Applicative (ScaleFactors x z u p h c) where
+  pure = fill
+  (<*>) = vapply
 
 summarizeScaleFactors ::
   ( Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize h, Vectorize c

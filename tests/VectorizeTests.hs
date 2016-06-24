@@ -3,6 +3,8 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE PolyKinds #-}
@@ -34,15 +36,25 @@ import qualified Dyno.TypeVecs as TV
 import Utils
 
 
-data X0 a = X0 a (V3 a) a (V2 a) deriving (Show, Eq, Functor, Generic, Generic1)
-data X1 f g h a = X1 (f a) (V3 (g a)) a (V2 a) a (h a) deriving (Show, Eq, Functor, Generic, Generic1)
+data X0 a
+  = X0 a (V3 a) a (V2 a)
+  deriving (Show, Eq, Functor, Foldable, Traversable, Generic, Generic1)
+data X1 f g h a
+  = X1 (f a) (V3 (g a)) a (V2 a) a (h a)
+  deriving (Show, Eq, Functor, Foldable, Traversable, Generic, Generic1)
 
 instance Vectorize X0
+instance Applicative X0 where
+  pure = fill
+  (<*>) = vapply
 instance (Vectorize f, Vectorize g, Vectorize h) => Vectorize (X1 f g h)
+instance (Vectorize f, Vectorize g, Vectorize h) => Applicative (X1 f g h) where
+  pure = fill
+  (<*>) = vapply
 
 data Vectorizes where
   Vectorizes ::
-    (Show (f Int), Eq (f Int), Vectorize f)
+    (Show (f Int), Eq (f Int), Vectorize f, Applicative f, Traversable f)
     => { vShrinks :: [Vectorizes]
        , vName :: String
        , vProxy :: Proxy f } -> Vectorizes
@@ -188,6 +200,27 @@ transposeUnTranspose _ _ = x0 == x2
 prop_transpose :: Dims -> Dims -> Bool
 prop_transpose (Dims _ n) (Dims _ m) = transposeUnTranspose n m
 
+sequenceATwice ::
+  forall x y
+  . ( Applicative x, Applicative y
+    , Traversable x, Traversable y
+    , Vectorize x, Vectorize y
+    )
+  => Proxy x -> Proxy y -> Bool
+sequenceATwice _ _ = vectorize (O x0) == vectorize (O x2)
+  where
+    x0 :: x (y Int)
+    O x0 = fillInc
+
+    x1 :: y (x Int)
+    x1 = sequenceA x0
+
+    x2 :: x (y Int)
+    x2 = sequenceA x1
+
+prop_sequenceATwice :: Vectorizes -> Vectorizes -> Bool
+prop_sequenceATwice (Vectorizes _ _ px) (Vectorizes _ _ py) = sequenceATwice px py
+
 test_vdiag :: HUnit.Assertion
 test_vdiag = HUnit.assertEqual "" x y
   where
@@ -262,6 +295,7 @@ vectorizeTests =
   [ testProperty "vec . devec" prop_vecThenDevec
   , testProperty "transposeUnTranspose" prop_transpose
   , testProperty "vlengthEqLengthOfPure" prop_vlengthEqLengthOfPure
+  , testProperty "sequenceA . sequenceA" prop_sequenceATwice
   , testCase "vdiag" test_vdiag
   , testCase "vdiag'" test_vdiag'
   , testCase "vectorize (:.)'" test_vectorizeO

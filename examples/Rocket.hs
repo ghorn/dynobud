@@ -11,8 +11,9 @@ import GHC.Generics ( Generic, Generic1 )
 import Data.Vector ( Vector )
 
 import Accessors ( Lookup )
+import Linear ( Additive(..) )
 
-import Dyno.View.Vectorize ( Vectorize, None(..), fill )
+import Dyno.View.Vectorize ( Vectorize, None(..), fill, vapply )
 import Dyno.View.View ( J, jfill, catJV )
 import Dyno.Nlp ( NlpOut(..), Bounds )
 import Dyno.Ocp
@@ -112,7 +113,26 @@ instance Lookup a => Lookup (RocketU a)
 instance Lookup a => Lookup (RocketO a)
 instance Lookup a => Lookup (RocketBc a)
 instance Lookup a => Lookup (RocketPathC a)
-
+instance Applicative RocketX where
+  pure = fill
+  (<*>) = vapply
+instance Additive RocketX where
+  zero = fill 0
+instance Applicative RocketU where
+  pure = fill
+  (<*>) = vapply
+instance Additive RocketU where
+  zero = fill 0
+instance Applicative RocketPathC where
+  pure = fill
+  (<*>) = vapply
+instance Additive RocketPathC where
+  zero = fill 0
+instance Applicative RocketBc where
+  pure = fill
+  (<*>) = vapply
+instance Additive RocketBc where
+  zero = fill 0
 
 dae :: Floating a
        => RocketX a -> RocketX a -> None a -> RocketU a -> None a -> None a -> a

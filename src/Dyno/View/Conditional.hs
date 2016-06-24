@@ -3,6 +3,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -43,7 +45,7 @@ import Dyno.View.Unsafe ( mkM', unM )
 import Dyno.View.Vectorize ( Vectorize )
 import Dyno.View.View ( View, S, J, JV )
 
-newtype Switch f a = UnsafeSwitch a deriving (Functor, Generic, Generic1, Show)
+newtype Switch f a = UnsafeSwitch a deriving (Functor, Foldable, Traversable, Eq, Ord, Generic, Generic1, Show)
 instance Vectorize (Switch f)
 instance Binary a => Binary (Switch f a)
 instance ToJSON a => ToJSON (Switch f a)

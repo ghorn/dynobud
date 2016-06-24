@@ -50,8 +50,8 @@ import qualified Data.Traversable as T
 import qualified Data.Vector as V
 import Data.Vector.Binary () -- instances
 import qualified Data.Binary as B
-import Linear.Vector
 import Linear.V ( Dim(..) )
+import Linear ( Additive(..), Metric )
 import Data.Proxy
 import Data.Reflection as R
 import Data.Distributive ( Distributive(..) )
@@ -63,7 +63,7 @@ import Dyno.View.Vectorize
 
 -- length-indexed vectors using phantom types
 newtype Vec (n :: k) a = MkVec (V.Vector a)
-                deriving (Functor, Generic, Generic1)
+                deriving (Functor, Foldable, Traversable, Eq, Ord, Generic, Generic1)
 instance (Dim n, B.Binary a) => B.Binary (Vec n a) where
   put = B.put . unVec
   get = do
@@ -107,6 +107,8 @@ instance Dim n => Additive (Vec n) where
   zero = pure 0
   MkVec xs ^+^ MkVec ys = MkVec (V.zipWith (+) xs ys)
   MkVec xs ^-^ MkVec ys = MkVec (V.zipWith (-) xs ys)
+
+instance Dim n => Metric (Vec n)
 
 instance Dim n => Vectorize (Vec n) where
   fill = pure

@@ -20,6 +20,7 @@ import Data.Default.Class
 import Data.Colour
 import Data.Colour.Names
 import Control.Lens
+import Linear ( Additive(..) )
 
 import Casadi.MX ( MX )
 
@@ -40,6 +41,12 @@ data P a = P deriving (Functor, Generic, Generic1, Show)
 instance Vectorize X
 instance Vectorize U
 instance Vectorize P
+
+instance Applicative X where
+  pure = fill
+  (<*>) = vapply
+instance Additive X where
+  zero = fill 0
 
 -- ocp specification
 ocp :: MsOcp X U P
