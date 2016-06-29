@@ -57,6 +57,7 @@ instance Applicative None where
   pure = const None
   (<*>) = const (const None)
 instance Linear.Additive None where
+instance Linear.Metric None where
 instance Binary (None a)
 instance FromJSON a => FromJSON (None a)
 instance ToJSON a => ToJSON (None a)
@@ -73,6 +74,8 @@ instance (Applicative f, Applicative g) => Applicative (Tuple f g) where
   Tuple fx fy <*> Tuple x y = Tuple (fx <*> x) (fy <*> y)
 instance (Vectorize f, Vectorize g, Applicative f, Applicative g) => Linear.Additive (Tuple f g) where
   zero = Tuple (fill 0) (fill 0)
+instance (Foldable f, Foldable g, Vectorize f, Vectorize g, Applicative f, Applicative g)
+         => Linear.Metric (Tuple f g)
 instance (FromJSON a, FromJSON (f a), FromJSON (g a))
          => FromJSON (Tuple f g a)
 instance (ToJSON a, ToJSON (f a), ToJSON (g a))
@@ -91,6 +94,10 @@ instance (Vectorize f, Vectorize g, Vectorize h,
           Applicative f, Applicative g, Applicative h)
          => Linear.Additive (Triple f g h) where
   zero = Triple (fill 0) (fill 0) (fill 0)
+instance (Foldable f, Foldable g, Foldable h,
+          Vectorize f, Vectorize g, Vectorize h,
+          Applicative f, Applicative g, Applicative h)
+         => Linear.Metric (Triple f g h)
 instance (FromJSON a, FromJSON (f a), FromJSON (g a), FromJSON (h a))
          => FromJSON (Triple f g h a)
 instance (ToJSON a, ToJSON (f a), ToJSON (g a), ToJSON (h a))
