@@ -19,6 +19,7 @@ module Dyno.View.Vectorize
        , Triple(..)
        , Quad(..)
        , vapply
+       , vcountUp
        , vzipWith
        , vzipWith3
        , vzipWith4
@@ -336,3 +337,8 @@ vnames' = case mr of
   where
     mr = devectorize' $ V.fromList $
          fmap fst (flatten' accessors :: [([Maybe String], GATip (f ()))])
+
+vcountUp :: forall f . Vectorize f => f Int
+vcountUp = devectorize (V.fromList (take n [0..]))
+  where
+    n = vlength (Proxy :: Proxy f)
