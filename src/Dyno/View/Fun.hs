@@ -15,7 +15,7 @@ module Dyno.View.Fun
        , callMX, callMX'
        , callSX
        , expandMXFun
-       , toFunJac
+       , toFunJac, toFunHess
        , checkFunDimensions
        , checkFunDimensionsWith
        ) where
@@ -184,9 +184,20 @@ checkFunDimensions (Fun f) = unsafePerformIO $ do
 -- | make a function which also contains a jacobian
 toFunJac ::
   (View xj, View fj, Scheme x, Scheme f) =>
-  Fun (JacIn xj x) (JacOut fj f) -> IO (Fun (JacIn xj x) (Jac xj fj f))
+  Fun (JacIn xj x) (JacOut fj f)
+  -> IO (Fun (JacIn xj x) (Jac xj fj f))
 toFunJac (Fun fun) = do
   let compact = False
       symmetric = False
   funJac <- C.jacobian fun 0 0 compact symmetric
   checkFunDimensionsWith "toFunJac" (Fun funJac)
+
+-- | make a function which also contains a jacobian
+toFunHess ::
+  forall xj x f
+  . (View xj, Scheme x, Scheme f)
+  => Fun (JacIn xj x) (HessOut f)
+  -> IO (Fun (JacIn xj x) (Hess xj f))
+toFunHess (Fun fun) = do
+  funHess <- C.hessian fun 0 0
+  checkFunDimensionsWith "toFunHess" (Fun funHess)

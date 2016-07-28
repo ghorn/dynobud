@@ -2,8 +2,8 @@
 
 module Dyno.View.FunJac
        ( JacIn(..)
-       , JacOut(..)
-       , Jac(..)
+       , JacOut(..), HessOut(..)
+       , Jac(..), Hess(..)
        ) where
 
 import Data.Proxy
@@ -13,9 +13,11 @@ import Dyno.View.View
 import Dyno.View.Scheme
 import Dyno.View.M
 
-data JacIn xj x a = JacIn (J xj a) (x a)
-data JacOut fj f a = JacOut (J fj a) (f a)
-data Jac xj fj f a = Jac (M fj xj a) (J fj a) (f a)
+data JacIn xj x a = JacIn (J xj a) (x a) deriving Show
+data JacOut fj f a = JacOut (J fj a) (f a) deriving Show
+data Jac xj fj f a = Jac (M fj xj a) (J fj a) (f a) deriving Show
+data HessOut f a = HessOut (S a) (f a) deriving Show
+data Hess xj f a = Hess (M xj xj a) (J xj a) (S a) (f a) deriving Show
 
 instance (View xj, Scheme x) => Scheme (JacIn xj x) where
   numFields = (1+) . numFields . reproxy
@@ -55,6 +57,25 @@ instance (View fj, Scheme f) => Scheme (JacOut fj f) where
       reproxy' :: Proxy (JacOut fj f) -> Proxy (J fj)
       reproxy' = const Proxy
 
+instance Scheme f => Scheme (HessOut f) where
+  numFields = (1+) . numFields . reproxy
+    where
+      reproxy :: Proxy (HessOut f) -> Proxy f
+      reproxy = const Proxy
+  fromVector v = HessOut h0 (fromVector (V.tail v))
+    where
+      h0 = case fromFioMat (V.head v) of
+        Left err -> error $ "HessOut fromVector error: " ++ err
+        Right r -> r
+
+  toVector (HessOut s f) = V.cons (toFioMat s) (toVector f)
+  sizeList p = fioMatSizes (reproxy' p) : sizeList (reproxy p)
+    where
+      reproxy' :: Proxy (HessOut f) -> Proxy S
+      reproxy' = const Proxy
+      reproxy :: Proxy (HessOut f) -> Proxy f
+      reproxy = const Proxy
+
 
 instance (View xj, View fj, Scheme f) => Scheme (Jac xj fj f) where
   numFields = (2+) . numFields . reproxy
@@ -79,4 +100,40 @@ instance (View xj, View fj, Scheme f) => Scheme (Jac xj fj f) where
       reproxy' = const Proxy
 
       reproxy :: Proxy (Jac xj fj f) -> Proxy f
+      reproxy = const Proxy
+
+
+instance (View xj, Scheme f) => Scheme (Hess xj f) where
+  numFields = (3+) . numFields . reproxy
+    where
+      reproxy :: Proxy (Hess xj f) -> Proxy f
+      reproxy = const Proxy
+  fromVector v = Hess hess jac fun (fromVector (V.drop 3 v))
+    where
+      hess = case fromFioMat (v V.! 0) of
+        Left err -> error $ "Hess fromVector error: " ++ err
+        Right r -> r
+      jac = case fromFioMat (v V.! 1) of
+        Left err -> error $ "Hess fromVector error: " ++ err
+        Right r -> r
+      fun = case fromFioMat (v V.! 2) of
+        Left err -> error $ "Hess fromVector error: " ++ err
+        Right r -> r
+  toVector (Hess hess jac fun f) = V.fromList [toFioMat hess, toFioMat jac, toFioMat fun] V.++ toVector f
+  sizeList p =
+      fioMatSizes (reproxy''' p)
+    : fioMatSizes (reproxy'' p)
+    : fioMatSizes (reproxy' p)
+    : sizeList (reproxy p)
+    where
+      reproxy''' :: Proxy (Hess xj f) -> Proxy (M xj xj)
+      reproxy''' = const Proxy
+
+      reproxy'' :: Proxy (Hess xj f) -> Proxy (J xj)
+      reproxy'' = const Proxy
+
+      reproxy' :: Proxy (Hess xj f) -> Proxy S
+      reproxy' = const Proxy
+
+      reproxy :: Proxy (Hess xj f) -> Proxy f
       reproxy = const Proxy
