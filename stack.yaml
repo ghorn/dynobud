@@ -10,7 +10,7 @@ packages:
 
 - location:
     git: /home/greghorn/hslibs/casadi-bindings
-    commit: 2fdbd437b4ec90943cf3abf2b884b423ef611218
+    commit: bad4ab866dca6337023c417cb062ff9ff0622dfc
   extra-dep: true
   subdirs:
   - casadi-bindings
@@ -28,7 +28,7 @@ packages:
 - location:
 #    git: /home/greghorn/hslibs/Plot-ho-matic
     git: https://github.com/ghorn/Plot-ho-matic
-    commit: bec04f01691533e2c628be797cb94e070bb7d560
+    commit: e148ad3ec9603ed3694ea709c6e01b7d4670ff88
   extra-dep: true
 
 - location:

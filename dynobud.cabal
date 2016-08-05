@@ -90,7 +90,7 @@ library
                        binary,
                        distributive,
                        process,
-                       Plot-ho-matic >= 0.9.0.0,
+                       Plot-ho-matic >= 0.11.0.0,
                        generic-accessors >= 0.6.0.1,
                        time,
                        directory,
