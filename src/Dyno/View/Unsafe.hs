@@ -130,6 +130,8 @@ instance (View f, View g, CMatrix a) => SymOrd (M f g a) where
   geq = over2 geq
   gt = over2 gt
   eq  = over2 eq
+  max'  = over2 CM.cmax
+  min'  = over2 CM.cmin
 
 instance (View f, View g, CMatrix a) => Erf (M f g a) where
   erf = over erf
