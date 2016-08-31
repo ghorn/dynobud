@@ -11,7 +11,7 @@
 {-# LANGUAGE InstanceSigs #-}
 
 module Dyno.TypeVecs
-       ( Vec
+       ( Vec(..)
        , Succ
        , unVec
        , mkVec'
@@ -62,7 +62,7 @@ import Accessors ( Lookup(..), GAData(..), GAConstructor(..) )
 import Dyno.View.Vectorize
 
 -- length-indexed vectors using phantom types
-newtype Vec (n :: k) a = MkVec (V.Vector a)
+newtype Vec (n :: k) a = UnsafeVec (V.Vector a)
                 deriving (Functor, Foldable, Traversable, Eq, Ord, Generic, Generic1)
 instance (Dim n, B.Binary a) => B.Binary (Vec n a) where
   put = B.put . unVec
@@ -81,7 +81,7 @@ instance (Lookup a, Dim n) => Lookup (Vec n a) where
       n = reflectDim (Proxy :: Proxy n)
       child k = (Just ("[" ++ show k ++ "]"), toAccessorTree (lens0 . lensK k))
 
-      lensK k f (MkVec v) = fmap (\vk -> devectorize (v V.// [(k,vk)])) (f vk0)
+      lensK k f (UnsafeVec v) = fmap (\vk -> devectorize (v V.// [(k,vk)])) (f vk0)
         where
           vk0 = v V.! k
 
@@ -100,13 +100,13 @@ instance Dim n => Dim (Vec n a) where
 instance Dim n => Applicative (Vec n) where
   pure x = ret
     where
-      ret = MkVec $ V.replicate (tvlength ret) x
-  MkVec xs <*> MkVec ys = MkVec $ V.zipWith id xs ys
+      ret = UnsafeVec $ V.replicate (tvlength ret) x
+  UnsafeVec xs <*> UnsafeVec ys = UnsafeVec $ V.zipWith id xs ys
 
 instance Dim n => Additive (Vec n) where
   zero = pure 0
-  MkVec xs ^+^ MkVec ys = MkVec (V.zipWith (+) xs ys)
-  MkVec xs ^-^ MkVec ys = MkVec (V.zipWith (-) xs ys)
+  UnsafeVec xs ^+^ UnsafeVec ys = UnsafeVec (V.zipWith (+) xs ys)
+  UnsafeVec xs ^-^ UnsafeVec ys = UnsafeVec (V.zipWith (-) xs ys)
 
 instance Dim n => Metric (Vec n)
 
@@ -115,7 +115,7 @@ instance Dim n => Vectorize (Vec n) where
   vectorize = unVec
   devectorize' :: V.Vector a -> Either String (Vec n a)
   devectorize' x
-    | n == n' = Right (MkVec x)
+    | n == n' = Right (UnsafeVec x)
     | otherwise = Left $ "mkVec: length mismatch, type-level: "
                   ++ show n ++ ", value-level: " ++ show n'
     where
@@ -129,13 +129,13 @@ tvtranspose = T.sequenceA
 infixr 5 <|
 infixl 5 |>
 (<|) :: a -> Vec n a -> Vec (Succ n) a
-(<|) x (MkVec xs) = MkVec $ V.cons x xs
+(<|) x (UnsafeVec xs) = UnsafeVec $ V.cons x xs
 
 (|>) :: Vec n a -> a -> Vec (Succ n) a
-(|>) (MkVec xs) x = MkVec $ V.snoc xs x
+(|>) (UnsafeVec xs) x = UnsafeVec $ V.snoc xs x
 
 unVec :: forall n a . Dim n => Vec n a -> V.Vector a
-unVec (MkVec x)
+unVec (UnsafeVec x)
   | n == n' = x
   | otherwise = error $ "unVec: length mismatch, type-level: "
                 ++ show n ++ ", value-level: " ++ show n'
@@ -229,7 +229,7 @@ tvshiftr :: Dim n => a -> Vec n a -> Vec n a
 tvshiftr x xs = devectorize $ V.init (V.cons x (unVec xs))
 
 instance Show a => Show (Vec n a) where
-  showsPrec _ (MkVec v) = showV (V.toList v)
+  showsPrec _ (UnsafeVec v) = showV (V.toList v)
     where
       showV []      = showString "<>"
       showV (x:xs)  = showChar '<' . shows x . showl xs
