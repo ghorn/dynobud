@@ -1,6 +1,8 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
@@ -23,7 +25,7 @@ import qualified Numeric.LinearAlgebra.Data as D
 import Dyno.View.Vectorize ( Vectorize(..), devectorize )
 
 newtype InitialTime a = InitialTime {unInitialTime :: a}
-  deriving (Functor, Generic, Generic1, FromJSON, ToJSON, Num, Fractional, Floating, Ord, Eq, Show)
+  deriving (Functor, Foldable, Traversable, Generic, Generic1, FromJSON, ToJSON, Num, Fractional, Floating, Ord, Eq, Show)
 instance Vectorize InitialTime
 instance Lookup a => Lookup (InitialTime a) where
   toAccessorTree lens0 = toAccessorTree (lens0 . lens1)
@@ -33,7 +35,7 @@ instance Binary a => Binary (InitialTime a)
 
 
 newtype TimeStep a = TimeStep {unTimeStep :: a}
-  deriving (Functor, Generic, Generic1, FromJSON, ToJSON, Num, Fractional, Floating, Ord, Eq, Show)
+  deriving (Functor, Foldable, Traversable, Generic, Generic1, FromJSON, ToJSON, Num, Fractional, Floating, Ord, Eq, Show)
 instance Vectorize TimeStep
 instance Lookup a => Lookup (TimeStep a) where
   toAccessorTree lens0 = toAccessorTree (lens0 . lens1)
