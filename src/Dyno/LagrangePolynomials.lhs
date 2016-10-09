@@ -102,7 +102,6 @@ where
 
 \begin{code}
 {-# OPTIONS_GHC -Wall #-}
-{-# Language PolyKinds #-}
 
 module Dyno.LagrangePolynomials
        ( lagrangeDerivCoeffs, lagrangeXis, runComparison

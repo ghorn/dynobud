@@ -3,7 +3,6 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE PolyKinds #-}
 
 -- todo(greg): use this in the unit tests
 module Dyno.DirectCollocation.CheckAccuracy

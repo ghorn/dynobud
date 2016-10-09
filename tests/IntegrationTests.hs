@@ -1,8 +1,8 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE RankNTypes #-}
@@ -60,7 +60,7 @@ minus = over (-)
 --divv = over (/)
 
 
-data IntegrationOcp x p
+data IntegrationOcp (x :: * -> *) (p :: * -> *)
 type instance X (IntegrationOcp x p) = x
 type instance Z (IntegrationOcp x p) = None
 type instance U (IntegrationOcp x p) = None

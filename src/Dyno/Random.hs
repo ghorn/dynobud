@@ -1,6 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE PolyKinds #-}
 
 module Dyno.Random
        ( initRandomIO

@@ -3,7 +3,6 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE PolyKinds #-}
 
 module Dyno.Fitting
        ( l1Fit, l1Fits, withL1Fit

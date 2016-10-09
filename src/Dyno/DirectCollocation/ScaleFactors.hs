@@ -5,7 +5,6 @@
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE PolyKinds #-}
 
 module Dyno.DirectCollocation.ScaleFactors
        ( ScaleFactors(..), ScaleFactors', ScaleFactor(..)

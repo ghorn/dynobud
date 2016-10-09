@@ -4,7 +4,6 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE PolyKinds #-}
 
 module Dyno.View.M
        ( M
