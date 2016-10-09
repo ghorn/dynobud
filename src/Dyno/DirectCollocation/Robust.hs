@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE DataKinds #-}
 
 module Dyno.DirectCollocation.Robust
        ( CovarianceSensitivities(..)
@@ -16,10 +16,12 @@ module Dyno.DirectCollocation.Robust
        ) where
 
 import GHC.Generics ( Generic, Generic1 )
+import GHC.TypeLits
+import GHC.TypeLits.Witnesses
+
 import Data.Proxy ( Proxy(..) )
 import qualified Data.Foldable as F
 import qualified Data.Traversable as T
-import Linear.V
 
 import Casadi.MX ( MX )
 import Casadi.SX ( SX )
@@ -38,7 +40,7 @@ import Dyno.View.JVec ( JVec(..) )
 import Dyno.View.FunJac
 import Dyno.View.Scheme ( Scheme )
 import Dyno.View.Vectorize ( Vectorize(..), Id(..), unId, vzipWith4 )
-import Dyno.TypeVecs ( Vec )
+import Dyno.TypeVecs ( Dim, Vec, reflectDim )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs )
 
@@ -78,8 +80,10 @@ mkComputeSensitivities roots covDae = do
       taus = mkTaus roots
 
       -- coefficients for getting xdot by lagrange interpolating polynomials
-      cijs :: Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
-      cijs = lagrangeDerivCoeffs (0 TV.<| taus)
+      cijs :: Vec (deg + 1) (Vec (deg + 1) Double)
+      cijs =
+        withNatOp (%+) (Proxy :: Proxy deg) (Proxy :: Proxy 1) $
+        lagrangeDerivCoeffs (0 TV.<| taus)
 
   errorDynFun <- toSXFun "error dynamics" $ errorDynamicsFunction $
             \x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 ->
@@ -204,11 +208,14 @@ interpolateXDots' :: (Real b, Fractional (J x a), Dim deg) => Vec deg (Vec deg b
 interpolateXDots' cjks xs = fmap (`dot` xs) cjks
 
 interpolateXDots ::
-  (Real b, Dim deg, Fractional (J x a)) =>
-  Vec (TV.Succ deg) (Vec (TV.Succ deg) b)
-  -> Vec (TV.Succ deg) (J x a)
+  forall b deg x a
+  . (Real b, Dim deg, Fractional (J x a))
+  => Vec (deg + 1) (Vec (deg + 1) b)
+  -> Vec (deg + 1) (J x a)
   -> Vec deg (J x a)
-interpolateXDots cjks xs = TV.tvtail $ interpolateXDots' cjks xs
+interpolateXDots cjks xs =
+  withNatOp (%+) (Proxy :: Proxy deg) (Proxy :: Proxy 1) $
+  TV.tvtail $ interpolateXDots' cjks xs
 
 
 -- dynamics residual and outputs
@@ -245,7 +252,7 @@ errorDynStageConstraints ::
   forall x z u p sx sz sw sr deg .
   (Dim deg, View x, View z, View u, View p,
    View sr, View sw, View sz, View sx)
-  => Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
+  => Vec (deg + 1) (Vec (deg + 1) Double)
   -> Vec deg Double
   -> Fun (S :*: J p :*: J x :*: J (CollPoint x z u) :*: J sx :*: J sx :*: J sz :*: J sw)
            (J sr)

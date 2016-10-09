@@ -22,7 +22,6 @@ import Control.Lens ( (^.) )
 import Control.Monad ( unless )
 import Data.List ( intercalate )
 import Data.Proxy ( Proxy(..) )
-import Linear.V ( Dim(..) )
 import Data.Vector ( Vector )
 import qualified Data.Foldable as F
 import Control.Monad.State.Lazy ( State )
@@ -32,7 +31,7 @@ import qualified Data.Set as S
 import Accessors ( Lookup, GATip(..), GAField(..), GASimpleEnum(..), flatten, flatten', accessors )
 
 import Dyno.Nlp ( NlpOut(..) )
-import Dyno.TypeVecs ( Vec )
+import Dyno.TypeVecs ( Dim, Vec, reflectDim )
 import Dyno.View.Vectorize ( Vectorize, Id(..), None(..), fill, unId )
 import Dyno.View.View ( View(..), splitJV, catJV )
 import Dyno.DirectCollocation.Formulate ( CollProblem(..), DirCollOptions(..) )

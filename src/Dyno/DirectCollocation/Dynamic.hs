@@ -28,7 +28,6 @@ import qualified Data.Foldable as F
 import qualified Data.Traversable as T
 import qualified Data.Tree as Tree
 import Data.Binary ( Binary )
-import Linear.V
 
 import Accessors ( AccessorTree, Lookup(..), GAData(..), GAConstructor(..), accessors )
 import PlotHo ( Channel, newChannel )
@@ -39,7 +38,7 @@ import Dyno.View.View ( View(..), JV, splitJV )
 import Dyno.View.M ( M )
 import Dyno.View.JVec ( JVec(..) )
 import qualified Dyno.TypeVecs as TV
-import Dyno.TypeVecs ( Vec )
+import Dyno.TypeVecs ( Dim, Vec, reflectDim )
 import Dyno.DirectCollocation.Types
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots, mkTaus )
 

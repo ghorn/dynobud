@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE DataKinds #-}
 
 module Dyno.DirectCollocation.Formulate
        ( CollProblem(..)
@@ -19,6 +19,8 @@ module Dyno.DirectCollocation.Formulate
        ) where
 
 import GHC.Generics ( Generic, Generic1 )
+import GHC.TypeLits
+import GHC.TypeLits.Witnesses
 
 import Control.Applicative
 import Control.Monad.State ( StateT(..), runStateT )
@@ -180,8 +182,10 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
       n = reflectDim (Proxy :: Proxy n)
 
       -- coefficients for getting xdot by lagrange interpolating polynomials
-      cijs :: Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
-      cijs = lagrangeDerivCoeffs (0 TV.<| taus)
+      cijs :: Vec (deg + 1) (Vec (deg + 1) Double)
+      cijs =
+        withNatOp (%+) (Proxy :: Proxy deg) (Proxy :: Proxy 1) $
+        lagrangeDerivCoeffs (0 TV.<| taus)
 
       interpolate' :: View f => (J f :*: J (JVec deg f)) MX -> J f MX
       interpolate' (x0 :*: xs) = case roots of
@@ -848,7 +852,7 @@ toQuadratureFun ::
     )
   => Int
   -> Vec deg Double
-  -> Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
+  -> Vec (deg + 1) (Vec (deg + 1) Double)
   -> (J q MX -> Vec deg (J q MX) -> J q MX)
   -> (QuadratureIn x z u p fp MX -> J q MX)
   -> QuadratureStageIn x z u p fp deg MX
@@ -910,7 +914,7 @@ toPathCFun ::
   . ( View x, View z, View u, View p, View h, Dim deg
     )
   => Int
-  -> Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
+  -> Vec (deg + 1) (Vec (deg + 1) Double)
   -> (PathCIn x z u p fp MX -> J h MX)
   -> PathCStageIn x z u p fp deg MX
   -> Vec deg (J h MX)
@@ -944,7 +948,7 @@ genericQuadraturesFunction ::
   forall deg
   . Dim deg
   => (S MX -> Vec deg (S MX) -> S MX)
-  -> Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
+  -> Vec (deg + 1) (Vec (deg + 1) Double)
   -> Int
   -> (J (JVec deg (JV Id)) :*: S) MX
   -> S MX
@@ -993,18 +997,20 @@ interpolateXDots' :: (Real b, Fractional (J x a), Dim deg) => Vec deg (Vec deg b
 interpolateXDots' cjks xs = fmap (`dot` xs) cjks
 
 interpolateXDots ::
-  (Real b, Dim deg, Fractional (J x a)) =>
-  Vec (TV.Succ deg) (Vec (TV.Succ deg) b)
-  -> Vec (TV.Succ deg) (J x a)
+  forall b deg x a
+  . (Real b, Dim deg, Fractional (J x a))
+  => Vec (deg + 1) (Vec (deg + 1) b)
+  -> Vec (deg + 1) (J x a)
   -> Vec deg (J x a)
-interpolateXDots cjks xs = TV.tvtail $ interpolateXDots' cjks xs
-
+interpolateXDots cjks xs =
+  withNatOp (%+) (Proxy :: Proxy deg) (Proxy :: Proxy 1) $
+  TV.tvtail $ interpolateXDots' cjks xs
 
 -- return dynamics constraints and interpolated state
 toDynamicsStage ::
   forall x z u p fp r o deg . (Dim deg, View x, View z, View u, View p, View fp, View r, View o)
   => (J x MX -> Vec deg (J x MX) -> J x MX)
-  -> Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
+  -> Vec (deg + 1) (Vec (deg + 1) Double)
   -> Fun (DaeIn x z u p fp) (DaeOut r o)
   -> (J x :*: J (JVec deg (JTuple x z)) :*: J (JVec deg u) :*: S :*: J p :*: J fp :*: J (JVec deg (JV Id))) MX
   -> (J (JVec deg r) :*: J x) MX
@@ -1043,7 +1049,7 @@ outputFunction ::
   forall x z u p fp r o deg . (Dim deg, View x, View z, View u, View p, View fp, View r, View o)
   => Int
   -> (J x MX -> Vec deg (J x MX) -> J x MX)
-  -> Vec (TV.Succ deg) (Vec (TV.Succ deg) Double) -> Vec deg Double
+  -> Vec (deg + 1) (Vec (deg + 1) Double) -> Vec deg Double
   -> Fun (DaeIn x z u p fp) (DaeOut r o)
   -> (J (CollStage x z u p deg) :*: J fp :*: S) MX
   -> (J (JVec deg r) :*: J (JVec deg x) :*: J (JVec deg o) :*: J x) MX

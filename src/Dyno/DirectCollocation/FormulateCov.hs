@@ -2,7 +2,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE PolyKinds #-}
 
 module Dyno.DirectCollocation.FormulateCov
        ( CollCovProblem(..)
@@ -14,7 +13,6 @@ import Data.Maybe ( fromMaybe )
 import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 import qualified Data.Foldable as F
-import Linear.V
 
 import Casadi.DM ( DM )
 import Casadi.MX ( MX )
@@ -26,7 +24,7 @@ import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.Fun
 import Dyno.View.JVec( JVec(..), jreplicate )
 import Dyno.View.Vectorize ( Vectorize(..), Id(..), None(..), fill, unId )
-import Dyno.TypeVecs ( Vec )
+import Dyno.TypeVecs ( Dim, Vec, reflectDim )
 import qualified Dyno.TypeVecs as TV
 import Dyno.Nlp ( Nlp(..), NlpIn(..), Bounds )
 import Dyno.Ocp

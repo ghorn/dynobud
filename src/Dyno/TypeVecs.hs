@@ -7,13 +7,13 @@
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE PolyKinds #-} -- so that "Vec (n :: Nat) a" works
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE ConstraintKinds #-}
 
 module Dyno.TypeVecs
        ( Vec(..)
-       , Succ
-       , unVec
        , mkVec'
        , tvlength
        , (|>)
@@ -39,21 +39,21 @@ module Dyno.TypeVecs
        , tvlinspace
        , reifyVector
        , reifyDim
-       , Dim(..)
+       , Dim, reflectDim
        )
        where
 
 import GHC.Generics ( Generic, Generic1 )
+import GHC.TypeLits
 
 import Control.Applicative
+import Data.Reflection ( reifyNat )
 import qualified Data.Traversable as T
 import qualified Data.Vector as V
 import Data.Vector.Binary () -- instances
 import qualified Data.Binary as B
-import Linear.V ( Dim(..) )
 import Linear ( Additive(..), Metric )
 import Data.Proxy
-import Data.Reflection as R
 import Data.Distributive ( Distributive(..) )
 import Prelude -- BBP workaround
 
@@ -61,8 +61,13 @@ import Accessors ( Lookup(..), GAData(..), GAConstructor(..) )
 
 import Dyno.View.Vectorize
 
+-- for backwards compatability
+type Dim = KnownNat
+reflectDim :: Dim n => Proxy n -> Int
+reflectDim = fromInteger . natVal
+
 -- length-indexed vectors using phantom types
-newtype Vec (n :: k) a = UnsafeVec (V.Vector a)
+newtype Vec (n :: Nat) a = UnsafeVec {unVec :: V.Vector a}
                 deriving (Functor, Foldable, Traversable, Eq, Ord, Generic, Generic1)
 instance (Dim n, B.Binary a) => B.Binary (Vec n a) where
   put = B.put . unVec
@@ -89,13 +94,6 @@ instance Dim n => Distributive (Vec n) where
   distribute f = devectorize $ V.generate (reflectDim (Proxy :: Proxy n))
                  $ \i -> fmap (\v -> V.unsafeIndex (vectorize v) i) f
   {-# INLINE distribute #-}
-
-data Succ n
-instance Dim n => Dim (Succ n) where
-  reflectDim _ = 1 + reflectDim (Proxy :: Proxy n)
-
-instance Dim n => Dim (Vec n a) where
-  reflectDim _ = reflectDim (Proxy :: Proxy n)
 
 instance Dim n => Applicative (Vec n) where
   pure x = ret
@@ -128,20 +126,11 @@ tvtranspose = T.sequenceA
 
 infixr 5 <|
 infixl 5 |>
-(<|) :: a -> Vec n a -> Vec (Succ n) a
+(<|) :: a -> Vec n a -> Vec (n + 1) a
 (<|) x (UnsafeVec xs) = UnsafeVec $ V.cons x xs
 
-(|>) :: Vec n a -> a -> Vec (Succ n) a
+(|>) :: Vec n a -> a -> Vec (n + 1) a
 (|>) (UnsafeVec xs) x = UnsafeVec $ V.snoc xs x
-
-unVec :: forall n a . Dim n => Vec n a -> V.Vector a
-unVec (UnsafeVec x)
-  | n == n' = x
-  | otherwise = error $ "unVec: length mismatch, type-level: "
-                ++ show n ++ ", value-level: " ++ show n'
-  where
-    n = reflectDim (Proxy :: Proxy n)
-    n' = V.length x
 
 mkVec' :: Dim n => [a] -> Vec n a
 mkVec' = devectorize . V.fromList
@@ -208,7 +197,7 @@ tvhead x = case V.length v of
   where
     v = unVec x
 
-tvtail :: Dim n => Vec (Succ n) a -> Vec n a
+tvtail :: Dim n => Vec (n + 1) a -> Vec n a
 tvtail x = case V.length v of
   0 -> error "tvtail: empty"
   _ -> devectorize $ V.tail v
@@ -237,24 +226,14 @@ instance Show a => Show (Vec n a) where
           showl []      = showChar '>'
           showl (y:ys)  = showChar ',' . shows y . showl ys
 
-data ReifiedDim (s :: *)
 
-retagDim :: (Proxy s -> a) -> proxy (ReifiedDim s) -> a
-retagDim f _ = f Proxy
-{-# INLINE retagDim #-}
+reifyDim :: forall r.
+            Int -> (forall (n :: Nat). KnownNat n => Proxy n -> r) -> r
+reifyDim k f = reifyNat (fromIntegral k) f
 
-instance Reifies s Int => Dim (ReifiedDim s) where
-  reflectDim = retagDim reflect
-  {-# INLINE reflectDim #-}
-
-reifyDim :: Int -> (forall (n :: *). Dim n => Proxy n -> r) -> r
-reifyDim i f = R.reify i (go f) where
-  go :: Reifies n Int => (Proxy (ReifiedDim n) -> a) -> proxy n -> a
-  go g _ = g Proxy
-{-# INLINE reifyDim #-}
-
-reifyVector :: forall a r. V.Vector a -> (forall (n :: *). Dim n => Vec n a -> r) -> r
-reifyVector v f = reifyDim (V.length v) $ \(Proxy :: Proxy n) -> f (devectorize v :: Vec n a)
+reifyVector :: forall a r. V.Vector a -> (forall (n :: Nat). Dim n => Vec n a -> r) -> r
+reifyVector v f = reifyDim (V.length v)
+                  $ \(Proxy :: Proxy (n::Nat)) -> f (devectorize v :: Vec n a)
 {-# INLINE reifyVector #-}
 
 tvlinspace :: forall n a . (Dim n, Fractional a) => a -> a -> Vec n a

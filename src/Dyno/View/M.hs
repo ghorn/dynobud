@@ -78,7 +78,7 @@ import Casadi.Viewable ( Viewable(..) )
 
 import Dyno.View.Unsafe ( M(UnsafeM), mkM, mkM', unM )
 import Dyno.View.Vectorize ( Vectorize(..), Id, (:.), fill, devectorize, vlength )
-import Dyno.TypeVecs ( Vec, Dim(..) )
+import Dyno.TypeVecs ( Vec, Dim, reflectDim )
 import qualified Dyno.TypeVecs as TV
 import Dyno.View.View ( View(..), J, S, JV, JTuple, JTriple, JQuad )
 import Dyno.View.JVec ( JVec )

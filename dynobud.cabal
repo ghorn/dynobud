@@ -95,6 +95,7 @@ library
                        time,
                        directory,
                        TypeCompose >= 0.9.12,
+                       typelits-witnesses,
                        mwc-random
 --                       cplex
   hs-source-dirs:      src

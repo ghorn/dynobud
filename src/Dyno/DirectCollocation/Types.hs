@@ -3,7 +3,6 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE PolyKinds #-}
 
 module Dyno.DirectCollocation.Types
        ( CollTraj(..)
@@ -40,7 +39,6 @@ module Dyno.DirectCollocation.Types
 import GHC.Generics ( Generic, Generic1 )
 
 import Linear ( Additive(..) )
-import Linear.V ( Dim(..) )
 import Data.Aeson ( FromJSON, ToJSON )
 import Data.Binary ( Binary )
 import Data.Vector ( Vector )
@@ -53,7 +51,7 @@ import Dyno.View.View ( View(..), J, S, JV, splitJV, catJV, jfill )
 import Dyno.View.JVec ( JVec(..), jreplicate )
 import Dyno.View.Cov ( Cov )
 import Dyno.View.Vectorize ( Vectorize(..), Id(..), unId, vapply )
-import Dyno.TypeVecs ( Vec )
+import Dyno.TypeVecs ( Vec, Dim )
 import qualified Dyno.TypeVecs as TV
 
 

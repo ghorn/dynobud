@@ -3,7 +3,6 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE PolyKinds #-}
 
 module Dyno.View.JVec
        ( JVec(..)
@@ -13,7 +12,7 @@ module Dyno.View.JVec
 
 import qualified Data.Sequence as Seq
 import Data.Proxy ( Proxy(..) )
-import Linear.V ( Dim(..) )
+import Dyno.TypeVecs ( Dim, reflectDim )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
 import Casadi.Viewable ( Viewable(..) )
@@ -25,7 +24,7 @@ import Dyno.View.Vectorize ( devectorize )
 import Dyno.View.View ( View(..), J )
 
 -- | vectors in View
-newtype JVec (n :: k) f a = JVec { unJVec :: Vec n (J f a) } deriving ( Show )
+newtype JVec n f a = JVec { unJVec :: Vec n (J f a) } deriving ( Show )
 instance (Dim n, View f) => View (JVec n f) where
   cat = mkM . vvertcat . fmap unM . unVec . unJVec
   split = JVec . fmap mkM . devectorize . flip vvertsplit ks . unM
@@ -52,6 +51,6 @@ jreplicate :: forall a n f . (Dim n, View f, Viewable a) => J f a -> J (JVec n f
 jreplicate = cat . jreplicate'
 
 
-reifyJVec :: forall a f r . Vector (J f a) -> (forall (n :: *). Dim n => JVec n f a -> r) -> r
+reifyJVec :: forall a f r . Vector (J f a) -> (forall n . Dim n => JVec n f a -> r) -> r
 reifyJVec v f = reifyVector v $ \(v' :: Vec n (J f a)) -> f (JVec v' :: JVec n f a)
 {-# INLINE reifyJVec #-}

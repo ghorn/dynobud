@@ -3,7 +3,6 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE PolyKinds #-}
 
 module Dyno.DirectCollocation.Interpolate
        ( interpolateTraj
@@ -14,7 +13,6 @@ import qualified Data.Traversable as T
 import Data.Proxy ( Proxy(..) )
 import qualified Data.Vector as V
 import qualified Data.Foldable as F
-import Linear.V
 import Linear ( lerp )
 
 import Dyno.View.Unsafe ( mkM, unM )
@@ -22,6 +20,7 @@ import Dyno.View.View ( View(..), J, JV, jfill )
 import Dyno.View.JVec
 import Dyno.TypeVecs ( Vec )
 import Dyno.View.Vectorize ( Vectorize )
+import Dyno.TypeVecs ( Dim, reflectDim )
 import qualified Dyno.TypeVecs as TV
 import qualified Dyno.LagrangePolynomials as LP
 import Dyno.DirectCollocation.Types ( CollTraj(..), CollStage(..), CollPoint(..), CollOcpConstraints(..) )

@@ -3,19 +3,20 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE DataKinds #-}
 
 module Dyno.DirectCollocation.Integrate
        ( withIntegrator
        ) where
 
 import GHC.Generics ( Generic )
+import GHC.TypeLits
+import GHC.TypeLits.Witnesses
 
 import qualified Control.Concurrent as CC
 import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 import qualified Data.Foldable as F
-import Linear.V
 
 import Casadi.SX ( SX )
 import Casadi.MX ( MX )
@@ -28,7 +29,7 @@ import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.M ( vcat, vsplit )
 import qualified Dyno.View.M as M
 import Dyno.View.Vectorize ( Vectorize(..), Id(..), unId, vzipWith )
-import Dyno.TypeVecs ( Vec )
+import Dyno.TypeVecs ( Dim, Vec, reflectDim )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs )
 import Dyno.Solvers ( Solver )
@@ -83,17 +84,20 @@ interpolateXDots' :: (Real b, Fractional (J x a), Dim deg) => Vec deg (Vec deg b
 interpolateXDots' cjks xs = fmap (`dot` xs) cjks
 
 interpolateXDots ::
-  (Real b, Dim deg, Fractional (J x a)) =>
-  Vec (TV.Succ deg) (Vec (TV.Succ deg) b)
-  -> Vec (TV.Succ deg) (J x a)
+  forall b deg x a
+  . (Real b, Dim deg, Fractional (J x a))
+  => Vec (deg + 1) (Vec (deg + 1) b)
+  -> Vec (deg + 1) (J x a)
   -> Vec deg (J x a)
-interpolateXDots cjks xs = TV.tvtail $ interpolateXDots' cjks xs
+interpolateXDots cjks xs =
+  withNatOp (%+) (Proxy :: Proxy deg) (Proxy :: Proxy 1) $
+  TV.tvtail $ interpolateXDots' cjks xs
 
 
 -- return dynamics constraints, outputs, and interpolated state
 dynStageConstraints' ::
   forall x z u p r deg . (Dim deg, View x, View z, View u, View p, View r)
-  => Vec (TV.Succ deg) (Vec (TV.Succ deg) Double) -> Vec deg Double
+  => Vec (deg + 1) (Vec (deg + 1) Double) -> Vec deg Double
   -> Fun (S :*: J p :*: J x :*: J (CollPoint x z u)) (J r)
   -> (J x :*: J (JVec deg (JTuple x z)) :*: J (JVec deg u) :*: S :*: J p :*: J (JVec deg (JV Id))) MX
   -> (J (JVec deg r) :*: J x) MX
@@ -155,8 +159,10 @@ withIntegrator _ _ roots initialX dae solver = do
       n = reflectDim (Proxy :: Proxy n)
 
       -- coefficients for getting xdot by lagrange interpolating polynomials
-      cijs :: Vec (TV.Succ deg) (Vec (TV.Succ deg) Double)
-      cijs = lagrangeDerivCoeffs (0 TV.<| taus)
+      cijs :: Vec (deg + 1) (Vec (deg + 1) Double)
+      cijs =
+        withNatOp (%+) (Proxy :: Proxy deg) (Proxy :: Proxy 1) $
+        lagrangeDerivCoeffs (0 TV.<| taus)
 
   dynFun <- toSXFun "dynamics" $ dynamicsFunction' $
             \x0 x1 x2 x3 x4 x5 ->

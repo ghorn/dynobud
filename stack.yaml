@@ -1,6 +1,6 @@
 # For more information, see: https://github.com/commercialhaskell/stack/blob/release/doc/yaml_configuration.md
 
-resolver: lts-6.2
+resolver: lts-7.0
 
 compiler-check: newer-minor
 
@@ -8,12 +8,12 @@ compiler-check: newer-minor
 packages:
 - .
 
-- location:
-    git: /home/greghorn/hslibs/casadi-bindings
-    commit: 1c0aece0ed85dc518c92a9e3f4ed360f8140fb97
-  extra-dep: true
-  subdirs:
-  - casadi-bindings
+#- location:
+#    git: /home/greghorn/hslibs/casadi-bindings
+#    commit: 1c0aece0ed85dc518c92a9e3f4ed360f8140fb97
+#  extra-dep: true
+#  subdirs:
+#  - casadi-bindings
 
 - location:
     git: https://github.com/ghorn/generic-accessors
@@ -37,8 +37,8 @@ packages:
   extra-dep: true
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
-extra-deps: [ # casadi-bindings-3.0.0.5
-              casadi-bindings-core-3.0.0.0
+extra-deps: [ casadi-bindings-3.0.0.5
+            , casadi-bindings-core-3.0.0.0
             , casadi-bindings-internal-0.1.4.0
 #            , generic-accessors-0.6.0.1
             , jacobi-roots-0.2.0.4

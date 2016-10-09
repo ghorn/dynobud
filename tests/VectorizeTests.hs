@@ -6,8 +6,8 @@
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE TypeOperators #-}
 
 module VectorizeTests
@@ -17,11 +17,11 @@ module VectorizeTests
        ) where
 
 import GHC.Generics ( Generic, Generic1 )
+import GHC.TypeLits
 
 import Data.Proxy ( Proxy(..) )
 import qualified Data.Vector as V
 import Linear
-import Linear.V
 
 import qualified Test.HUnit.Base as HUnit
 import Test.QuickCheck
@@ -30,7 +30,7 @@ import Test.Framework.Providers.HUnit ( testCase )
 import Test.Framework.Providers.QuickCheck2 ( testProperty )
 
 import Dyno.View.Vectorize
-import Dyno.TypeVecs ( Vec )
+import Dyno.TypeVecs ( Dim, Vec, reflectDim )
 import qualified Dyno.TypeVecs as TV
 
 import Utils
@@ -63,7 +63,7 @@ data Vectorizes where
 data Dims where
   Dims :: Dim n =>
            { dShrinks :: [Dims]
-           , dProxy :: Proxy (n :: k)
+           , dProxy :: Proxy (n :: Nat)
            } -> Dims
 instance Show Dims where
   show (Dims _ p) = show (reflectDim p)
