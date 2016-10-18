@@ -17,6 +17,7 @@ import Dyno.View.M
 import Dyno.View.Fun
 import Dyno.View.FunJac
 
+import Casadi.MX ( MX )
 import Casadi.SX ( SX )
 import Casadi.DM ( DM )
 
@@ -172,7 +173,7 @@ evalErrorOdeJacobian (ErrorOdeJacobian fj) x0 u0 p0 sc0 = do
 
 linearize' :: forall f g h p
               . (Vectorize f, Vectorize g, Vectorize h, Vectorize p)
-              => (f (S SX) -> p (S SX) -> (g (S SX), h (S SX)))
+              => (f (S MX) -> p (S MX) -> (g (S MX), h (S MX)))
               -> IO (f Double -> p Double -> IO (g (f Double), g Double, h Double))
 linearize' userF = do
   funJac <- linearizeDM' userF
@@ -198,7 +199,7 @@ linearize' userF = do
 
 linearize :: forall f g
              . (Vectorize f, Vectorize g)
-             => (f (S SX) -> g (S SX))
+             => (f (S MX) -> g (S MX))
              -> IO (f Double -> IO (g (f Double), g Double))
 linearize userF = do
   jac <- linearize' (\x None -> (userF x, None))
@@ -209,15 +210,15 @@ linearize userF = do
 
 linearizeDM' :: forall f g h p
               . (Vectorize f, Vectorize g, Vectorize h, Vectorize p)
-              => (f (S SX) -> p (S SX) -> (g (S SX), h (S SX)))
+              => (f (S MX) -> p (S MX) -> (g (S MX), h (S MX)))
               -> IO (f Double -> p Double -> IO (M (JV g) (JV f) DM, J (JV g) DM, J (JV h) DM))
 linearizeDM' userF = do
-  let userF' :: JacIn (JV f) (J (JV p)) SX -> JacOut (JV g) (J (JV h)) SX
+  let userF' :: JacIn (JV f) (J (JV p)) MX -> JacOut (JV g) (J (JV h)) MX
       userF' (JacIn x p) = JacOut (vcat g) (vcat h)
         where
           (g, h) = userF (vsplit x) (vsplit p)
 
-  sxUserF <- toSXFun "yolo" userF'
+  sxUserF <- toMXFun "yolo" userF'
   jacUserF <- toFunJac sxUserF
 
   let callFun :: f Double -> p Double -> IO (M (JV g) (JV f) DM, J (JV g) DM, J (JV h) DM)
@@ -233,7 +234,7 @@ linearizeDM' userF = do
 
 linearizeDM :: forall f g
              . (Vectorize f, Vectorize g)
-             => (f (S SX) -> g (S SX))
+             => (f (S MX) -> g (S MX))
              -> IO (f Double -> IO (M (JV g) (JV f) DM, J (JV g) DM))
 linearizeDM userF = do
   jac <- linearizeDM' (\x None -> (userF x, None))
