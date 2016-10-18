@@ -76,7 +76,7 @@ type instance PO (IntegrationOcp x p) = None
 
 runIntegration ::
   forall x p deg n
-  . ( Vectorize x, Vectorize p, Additive x, Dim deg, Dim n )
+  . ( Vectorize x, Vectorize p, Dim deg, Dim n )
   => Proxy n -> Proxy deg
   -> DirCollOptions
   -> (forall a . Floating a => x a -> p a -> a -> x a)
@@ -146,7 +146,7 @@ pendP :: PendP Double
 pendP = PendP 2.3
 
 
-rk45 :: (Vectorize x, Vectorize p)
+rk45 :: Vectorize x
         => (x Double -> p Double -> Double -> x Double)
         -> Double -> p Double -> x Double -> x Double
 rk45 f h p x0 = devectorize $ sv $ last sol

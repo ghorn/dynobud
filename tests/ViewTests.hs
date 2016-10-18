@@ -291,7 +291,7 @@ prop_testSplitJ  =
   \(Vectorizes _ _ p) (CMatrices {cmProxy = pm}) -> test p pm
   where
     test :: forall f a
-            . (Vectorize f, CMatrix a, Viewable a, MyEq a)
+            . (Vectorize f, CMatrix a, MyEq a)
             => Proxy f -> Proxy a -> Gen Property
     test _ _ = do
       UnsafeM xm0 <- arbitrary :: Gen (M (JV f) (JV Id) a)
@@ -332,12 +332,12 @@ prop_fromToHMat =
 prop_covToFromMat :: Test
 prop_covToFromMat =
   testProperty "fromMat . toMat" $
-  \(Views {vwProxy = p1}) (Views {vwProxy = p2}) -> test p1 p2
+  \(Views {vwProxy = p}) -> test p
   where
-    test :: forall f g
-            . (View f, View g)
-            => Proxy f -> Proxy g -> Gen Property
-    test _ _ = do
+    test :: forall f
+            . View f
+            => Proxy f -> Gen Property
+    test _ = do
       m0 <- arbitrary :: Gen (J (Cov f) DM)
       let m1 = toMat m0 :: M f f DM
           m2 = fromMat m1 :: J (Cov f) DM
@@ -346,12 +346,12 @@ prop_covToFromMat =
 prop_covFromToMat :: Test
 prop_covFromToMat =
   testProperty "toMat . fromMat" $
-  \(Views {vwProxy = p1}) (Views {vwProxy = p2}) -> test p1 p2
+  \(Views {vwProxy = p}) -> test p
   where
-    test :: forall f g
-            . (View f, View g)
-            => Proxy f -> Proxy g -> Gen Property
-    test _ _ = do
+    test :: forall f
+            . View f
+            => Proxy f -> Gen Property
+    test _ = do
       m0' <- arbitrary :: Gen (M f f DM)
       let m0 = 0.5 * (m0' + trans m0') -- make it symmetric
           m1 = fromMat m0 :: J (Cov f) DM

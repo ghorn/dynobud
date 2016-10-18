@@ -152,7 +152,7 @@ getScaleFactors x g ocp inputs =
 getMagnitude ::
   forall x z u p h c n deg r
   . ( Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize h, Vectorize c
-    , Applicative x, Applicative z, Applicative u, Applicative p, Applicative h, Applicative c
+    , Applicative x, Applicative z, Applicative u, Applicative h
     , Dim n, Dim deg
     )
   => CollTraj x z u p n deg (Vector Double)

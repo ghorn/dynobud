@@ -85,12 +85,11 @@ lagrange _ TestQuadratures _ _ _ _ _ _ _ _ = 0
 lagrange TestState TestLagrangeTerm (QuadX _ v) _ _ _ _ _ _ _ = v
 lagrange TestOutput TestLagrangeTerm _ _ _ _ _ (QuadO v) _ _ = v
 
-quadratures :: Floating a =>
-               StateOrOutput -> QuadX a -> QuadZ a -> QuadU a -> QuadP a -> None a -> QuadO a -> a -> a -> QuadQ a
+quadratures :: StateOrOutput -> QuadX a -> QuadZ a -> QuadU a -> QuadP a -> None a -> QuadO a -> a -> a -> QuadQ a
 quadratures TestState (QuadX _ v) _ _ _ _ _ _ _ = QuadQ v
 quadratures TestOutput _ _ _ _ _ (QuadO v) _ _ = QuadQ v
 
-dae :: Floating a => QuadX a -> QuadX a -> QuadZ a -> QuadU a -> QuadP a -> None a -> a -> (QuadR a, QuadO a)
+dae :: Num a => QuadX a -> QuadX a -> QuadZ a -> QuadU a -> QuadP a -> None a -> a -> (QuadR a, QuadO a)
 dae (QuadX p' v') (QuadX _ v) _ _ _ _ _ = (residual, outputs)
   where
     residual =
@@ -100,7 +99,7 @@ dae (QuadX p' v') (QuadX _ v) _ _ _ _ _ = (residual, outputs)
             }
     outputs = QuadO v
 
-alpha :: Fractional a => a
+alpha :: Num a => a
 alpha = 1
 
 tf :: Fractional a => a
@@ -141,7 +140,7 @@ quadOcpInputs =
   , ocpFixedP = None
   }
 
-pathc :: Floating a => QuadX a -> QuadZ a -> QuadU a -> QuadP a -> None a -> QuadO a -> a -> None a
+pathc :: QuadX a -> QuadZ a -> QuadU a -> QuadP a -> None a -> QuadO a -> a -> None a
 pathc _ _ _ _ _ _ _ = None
 
 xbnd :: QuadX Bounds
@@ -152,7 +151,7 @@ xbnd = QuadX { xP =  (Nothing, Nothing)
 ubnd :: QuadU Bounds
 ubnd = QuadU
 
-bc :: Floating a => QuadX a -> QuadX a -> QuadQ a -> QuadP a -> None a -> a -> QuadBc a
+bc :: QuadX a -> QuadX a -> QuadQ a -> QuadP a -> None a -> a -> QuadBc a
 bc x0 _ _ _ _ _ = QuadBc x0
 
 bcBnds :: QuadBc Bounds

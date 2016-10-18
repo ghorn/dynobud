@@ -133,7 +133,7 @@ dynStageConstraints' cijs taus dynFun (x0 :*: xzs' :*: us' :*: h :*: p :*: stage
 
 -- dynamics residual and outputs
 dynamicsFunction' ::
-  forall x z u p r a . (View x, View z, View u, View r, Viewable a)
+  forall x z u p r a . (View x, View z, View u, Viewable a)
   => (J x a -> J x a -> J z a -> J u a -> J p a -> S a -> J r a)
   -> (S :*: J p :*: J x :*: J (CollPoint x z u)) a
   -> J r a

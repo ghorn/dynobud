@@ -24,7 +24,7 @@ instance Vectorize Params
 instance Dim n => Vectorize (X n)
 
 -- some random function
-obj :: forall n a . (Num a, Dim n) => X n a -> a
+obj :: forall n a . Num a => X n a -> a
 obj (X vec' b) = b*b + sum lol
   where
     lol :: [a]
@@ -34,15 +34,15 @@ obj (X vec' b) = b*b + sum lol
     vec = F.toList vec'
 
 -- you don't know the length at compile time
-unknownLength :: (Num a, Show a) => V.Vector (Params a)
+unknownLength :: Num a => V.Vector (Params a)
 unknownLength = V.fromList [Params 1 2, Params 3 4, Params 5 6, Params 7 8]
 
 -- you do know the length at compile time
-knownLength :: (Num a, Show a) => Vec 4 (Params a)
+knownLength :: Num a => Vec 4 (Params a)
 knownLength = devectorize unknownLength
 
 -- do something on type-safe vec data
-doSomething :: (Dim n, Num a) => Vec n (Params a) -> a
+doSomething :: Num a => Vec n (Params a) -> a
 doSomething vec = obj (X vec 5)
 
 -- apply the type-safe operation on a vector of unknown length

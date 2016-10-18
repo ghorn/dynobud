@@ -149,7 +149,7 @@ fillInc = devectorize $ V.fromList $ take (vlength (Proxy :: Proxy x)) [0..]
 
 vectorizeThenDevectorize ::
   forall x
-  . (Show (x Int), Eq (x Int), Vectorize x)
+  . (Eq (x Int), Vectorize x)
   => Proxy x -> Bool
 vectorizeThenDevectorize _ = case ex1 of
   Right x1 -> x0 == x1
@@ -166,7 +166,7 @@ prop_vecThenDevec (Vectorizes _ _ p) = vectorizeThenDevectorize p
 
 vlengthEqLengthOfPure ::
   forall f
-  . (Show (f Int), Eq (f Int), Vectorize f)
+  . Vectorize f
   => Proxy f -> Bool
 vlengthEqLengthOfPure p = vlength p == V.length x1
   where
@@ -181,7 +181,7 @@ prop_vlengthEqLengthOfPure (Vectorizes _ _ p) = vlengthEqLengthOfPure p
 
 transposeUnTranspose ::
   forall n m
-  . (Eq (Vec n (Vec m Int)), Show (Vec n (Vec m Int)), Dim n, Dim m)
+  . (Eq (Vec n (Vec m Int)), Dim n, Dim m)
   => Proxy n -> Proxy m -> Bool
 transposeUnTranspose _ _ = x0 == x2
   where

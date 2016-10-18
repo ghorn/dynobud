@@ -38,7 +38,7 @@ import Dyno.View.JVec ( JVec )
 import Dyno.View.M ( M )
 import Dyno.View.Scheme ( Scheme )
 import Dyno.View.Vectorize ( Id )
-import Dyno.View.View ( View, JV )
+import Dyno.View.View ( JV )
 
 data MapStrategy = Unroll | Serial | Parallel deriving (Show, Eq, Ord, Generic)
 
@@ -51,11 +51,11 @@ class ParScheme f where
   type Par f (n :: k) :: * -> *
 
 -- normal
-instance (View f, View g) => ParScheme (M f g) where
+instance ParScheme (M f g) where
   type Par (M f g) n = M f (JVec n g)
 
 -- multiple inputs/outputs
-instance (ParScheme f, ParScheme g) => ParScheme (f :*: g) where
+instance ParScheme (f :*: g) where
   type Par (f :*: g) n = (Par f n) :*: (Par g n)
 
 -- | symbolic fmap
@@ -79,14 +79,14 @@ class ParScheme' f0 f1 where
   repeated :: Proxy f0 -> Proxy f1 -> Seq Bool
 
 -- normal
-instance (View f, View g) => ParScheme' (M f g) (M f (JVec n g)) where
+instance ParScheme' (M f g) (M f (JVec n g)) where
   repeated _ _ = S.singleton True
 
-instance (View f) => ParScheme' (M f (JV Id)) (M f (JV (Vec n))) where
+instance ParScheme' (M f (JV Id)) (M f (JV (Vec n))) where
   repeated _ _ = S.singleton True
 
 -- non-repeated
-instance View f => ParScheme' (M f g) (M f g) where
+instance ParScheme' (M f g) (M f g) where
   repeated _ _ = S.singleton False
 
 -- multiple inputs/output

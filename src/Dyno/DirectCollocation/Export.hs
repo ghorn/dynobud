@@ -62,7 +62,7 @@ exportTraj ::
     , Lookup (p Double), Vectorize p
     , Lookup (c Double), Vectorize c
     , Vectorize r
-    , Lookup (fp Double), Vectorize fp
+    , Vectorize fp
     , Lookup (h Double), Vectorize h
     , Lookup (q Double), Vectorize q
     , Lookup (po Double), Vectorize po
@@ -87,13 +87,13 @@ exportTraj' ::
     , Lookup (p Double), Vectorize p
     , Lookup (c Double), Vectorize c
     , Vectorize r
-    , Lookup (fp Double), Vectorize fp
+    , Vectorize fp
     , Lookup (h Double), Vectorize h
     , Lookup (q Double), Vectorize q
     , Lookup (po Double), Vectorize po
     , Lookup (qo Double), Vectorize qo
     , Dim n, Dim deg
-    , Lookup (e Double), Vectorize e
+    , Lookup (e Double)
     )
   => Maybe ([String], e Double)
   -> ExportConfig
@@ -257,7 +257,7 @@ toDub (GATipField FieldSorry) = const (read "NaN")
 toDub (GATipSimpleEnum enum) = realToFrac . eToIndex enum
 
 
-pythonParam :: forall p . (Vectorize p, Lookup (p Double))
+pythonParam :: forall p . Lookup (p Double)
               => String -> [String] -> p Double -> State PythonExporter ()
 pythonParam pyRetName topNames p = mapM_ pyParam at'
   where
@@ -270,7 +270,7 @@ pythonParam pyRetName topNames p = mapM_ pyParam at'
 fromMNames :: [Maybe String] -> [String]
 fromMNames = map (maybe "()" id)
 
-pythonTraj :: forall x . (Vectorize x, Lookup (x Double))
+pythonTraj :: forall x . Lookup (x Double)
               => String -> [String] -> [x Double] -> State PythonExporter ()
 pythonTraj pyRetName topNames xs = mapM_ pyArray at'
   where
@@ -281,7 +281,7 @@ pythonTraj pyRetName topNames xs = mapM_ pyArray at'
     at' = map (\(fn, f) -> (fn, toDub f)) $ flatten' accessors
 
 
-matlabParam :: forall p . (Vectorize p, Lookup (p Double)) => String -> p Double -> [String]
+matlabParam :: forall p . Lookup (p Double) => String -> p Double -> [String]
 matlabParam topName p = map (uncurry mlParam) at
   where
     mlParam :: String -> (p Double -> Double) -> String
@@ -290,7 +290,7 @@ matlabParam topName p = map (uncurry mlParam) at
     at :: [(String, p Double -> Double)]
     at = map (\(fn, f) -> (fn, toDub f)) $ flatten accessors
 
-matlabTraj :: forall x . (Vectorize x, Lookup (x Double)) => String -> [x Double] -> [String]
+matlabTraj :: forall x . Lookup (x Double) => String -> [x Double] -> [String]
 matlabTraj topName xs = map (uncurry mlArray) at
   where
     mlArray :: String -> (x Double -> Double) -> String

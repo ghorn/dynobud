@@ -24,7 +24,7 @@ import Data.Binary ( Binary )
 
 import JacobiRoots ( shiftedLegendreRoots, shiftedRadauRoots )
 
-import Dyno.View.View ( View, J )
+import Dyno.View.View ( J )
 import Dyno.TypeVecs ( Vec, Dim, reflectDim )
 import Dyno.View.Vectorize ( devectorize )
 import qualified Dyno.TypeVecs as TV
@@ -62,7 +62,7 @@ dot cks xs = F.sum $ TV.unVec elemwise
 
 -- todo: code duplication
 interpolate :: forall deg b x a
-            . (Dim deg, Real b, Fractional b, Fractional (J x a), View x)
+            . (Dim deg, Real b, Fractional b, Fractional (J x a))
             => Vec deg b -> J x a -> Vec deg (J x a) -> J x a
 interpolate taus x0 xs =
   withNatOp (%+) (Proxy :: Proxy deg) (Proxy :: Proxy 1) $
@@ -74,7 +74,7 @@ interpolate taus x0 xs =
 
 timesFromTaus ::
   forall n deg a
-  . (Num a, Dim n, Dim deg)
+  . (Num a, Dim n)
   => a -> Vec deg a -> a -> Vec n (a, Vec deg a)
 timesFromTaus t0 taus dt = times
   where

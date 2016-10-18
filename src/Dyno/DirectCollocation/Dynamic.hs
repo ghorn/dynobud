@@ -97,7 +97,7 @@ catDynPlotPoints pps =
 
 dynPlotPoints ::
   forall x z u p h o q qo po n deg a .
-  ( Dim n, Dim deg, Real a, Fractional a, Show a
+  ( Dim n, Dim deg, Real a, Fractional a
   , Vectorize x, Vectorize z, Vectorize u, Vectorize o, Vectorize p, Vectorize h, Vectorize q
   , Vectorize po, Vectorize qo
   )
@@ -279,8 +279,6 @@ data MetaProxy x z u p o q qo po h = MetaProxy
 toMeta :: forall x z u p o q qo po h .
           ( Lookup (x ()), Lookup (z ()), Lookup (u ()), Lookup (p ()), Lookup (o ()), Lookup (q ())
           , Lookup (h ()), Lookup (po ()), Lookup (qo ())
-          , Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize o, Vectorize q
-          , Vectorize h, Vectorize po, Vectorize qo
           )
           => MetaProxy x z u p o q qo po h -> CollTrajMeta
 toMeta _ =

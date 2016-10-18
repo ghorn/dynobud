@@ -133,7 +133,7 @@ pendOcpInputs =
 pendXScale :: PendX Double
 pendXScale = PendX 0.3 0.3 1 1 10
 
-pathc :: Floating a => PendX a -> PendZ a -> PendU a -> PendP a -> None a -> PendO a -> a -> None a
+pathc :: PendX a -> PendZ a -> PendU a -> PendP a -> None a -> PendO a -> a -> None a
 pathc _ _ _ _ _ _ _ = None
 
 xbnd :: PendX Bounds
@@ -147,7 +147,7 @@ xbnd = PendX { pX =  (Nothing, Nothing)
 ubnd :: PendU Bounds
 ubnd = PendU (Just (-100), Just 100)
 
-bc :: Floating a => PendX a -> PendX a -> None a -> PendP a -> None a -> a -> PendBc a
+bc :: PendX a -> PendX a -> None a -> PendP a -> None a -> a -> PendBc a
 bc x0 xf _ _ _ _ = PendBc x0 xf
 
 bcBnds :: PendBc Bounds

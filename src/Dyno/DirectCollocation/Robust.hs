@@ -221,7 +221,7 @@ interpolateXDots cjks xs =
 -- dynamics residual and outputs
 errorDynamicsFunction ::
   forall x z u p r sx sz sw a .
-  (View x, View z, View u, View r, View sx, View sz, View sw, Viewable a)
+  (View x, View z, View u, Viewable a)
   => (J x a -> J x a -> J z a -> J u a -> J p a -> S a
       -> J sx a -> J sx a -> J sz a -> J sw a -> J r a)
   -> (S :*: J p :*: J x :*: J (CollPoint x z u) :*: J sx :*: J sx :*: J sz :*: J sw) a
@@ -319,7 +319,7 @@ continuousToDiscreetNoiseApprox _dsx1_dsx0 dsx1_dsw0 qs h = qd
 
 propOneCov ::
   forall sx sw
-  . (View sx, View sw)
+  . View sx
   => (M sx sx MX -> M sx sw MX -> J (Cov sw) MX -> S MX -> M sx sx MX)
   -> (M sx sx :*: M sx sw :*: J (Cov sx) :*: J (Cov sw) :*: S) MX
   -> J (Cov sx) MX

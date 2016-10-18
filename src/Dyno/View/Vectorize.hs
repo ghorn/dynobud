@@ -192,7 +192,7 @@ class Functor f => Vectorize (f :: * -> *) where
   default fill :: (Generic1 f, GVectorize (Rep1 f)) => a -> f a
   fill = to1 . gfill
 
-  default vlength :: (Generic1 f, GVectorize (Rep1 f)) => Proxy f -> Int
+  default vlength :: GVectorize (Rep1 f) => Proxy f -> Int
   vlength = const $ gvlength (Proxy :: Proxy (Rep1 f))
 
 

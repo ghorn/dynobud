@@ -39,8 +39,7 @@ data ScaleFuns x g a =
 
 scaledFG ::
   forall x p g a .
-  (View x, View g, CMatrix a)
-  => ScaleFuns x g a
+  ScaleFuns x g a
   -> (J x a -> J p a -> (S a, J g a))
   -> J x a
   -> J p a

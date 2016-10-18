@@ -60,14 +60,14 @@ class Scheme (f :: * -> *) where
   toVector :: f a -> V.Vector a
   sizeList :: Proxy f -> [(Int,Int)]
 
-  default numFields :: (GNumFields (Rep (f ())), Generic (f ()))
+  default numFields :: GNumFields (Rep (f ()))
                        => Proxy f -> Int
   numFields = gnumFields . reproxy
     where
       reproxy :: Proxy g -> Proxy ((Rep (g ())) p)
       reproxy = const Proxy
 
-  default sizeList :: (GSizeList (Rep (f ())), Generic (f ()))
+  default sizeList :: GSizeList (Rep (f ()))
                       => Proxy f -> [(Int,Int)]
   sizeList = F.toList . gsizeList . reproxy
     where
@@ -192,14 +192,14 @@ instance FunctionIO f => GFromVector (Rec0 (f a)) a where
 
 
 --------------------- GToVector ----------------------------
-instance (GToVector f a, GToVector g a, GNumFields f, GNumFields g)
+instance (GToVector f a, GToVector g a)
          => GToVector (f :*: g) a where
   gtoVector (x :*: y) = gtoVector x Seq.>< gtoVector y
 
 instance GToVector f a => GToVector (M1 i d f) a where
   gtoVector = gtoVector . unM1
 
-instance (View f, View g) => GToVector (Rec0 (M.M f g a)) a where
+instance GToVector (Rec0 (M.M f g a)) a where
   gtoVector = Seq.singleton . unsafeUnM . unK1
 
 --instance GToVector U1 a where

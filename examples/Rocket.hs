@@ -166,7 +166,7 @@ mayer :: Floating a => a -> RocketX a -> RocketX a -> None a -> None a -> None a
 mayer _endTime _ (RocketX _ _ mf _) _ _ _ = -mf -- endTime
 
 
-pathC :: Floating a => RocketX a -> None a -> RocketU a -> None a -> None a -> RocketO a -> a -> RocketPathC a
+pathC :: RocketX a -> None a -> RocketU a -> None a -> None a -> RocketO a -> a -> RocketPathC a
 pathC _ _ _ _ _ _ = RocketPathC
 
 pathCBnds :: RocketPathC Bounds

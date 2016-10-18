@@ -122,7 +122,7 @@ import Casadi.CMatrix ( densify )
 import Dyno.TypeVecs
 
 
-interpolate :: (Additive f, Dim deg, Fractional a) => Vec deg a -> Vec deg (f a) -> a -> f a
+interpolate :: (Additive f, Fractional a) => Vec deg a -> Vec deg (f a) -> a -> f a
 interpolate taus0 xs0 tau1 = sumV [x ^* (lagrangeXis taus0' tau1 k) | (k,x) <- zip [0..] xs0']
   where
     taus0' = F.toList taus0

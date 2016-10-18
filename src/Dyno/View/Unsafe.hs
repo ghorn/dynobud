@@ -187,14 +187,14 @@ class View f where
   cat = mkM . vvertcat . V.fromList . F.toList . gcat . from
 
   size :: Proxy f -> Int
-  default size :: (GSize (Rep (f ())), Generic (f ())) => Proxy f -> Int
+  default size :: GSize (Rep (f ())) => Proxy f -> Int
   size = gsize . reproxy
     where
       reproxy :: Proxy g -> Proxy ((Rep (g ())) p)
       reproxy = const Proxy
 
   sizes :: Int -> Proxy f -> Seq.Seq Int
-  default sizes :: (GSize (Rep (f ())), Generic (f ())) => Int -> Proxy f -> Seq.Seq Int
+  default sizes :: GSize (Rep (f ())) => Int -> Proxy f -> Seq.Seq Int
   sizes k0 = gsizes k0 . reproxy
     where
       reproxy :: Proxy g -> Proxy ((Rep (g ())) p)
@@ -291,7 +291,7 @@ class GBuild f a where
   gbuild :: [String] -> [a] -> (f p, [a], [String])
 
 -- split fields recursively
-instance (GBuild f a, GBuild g a, GSize f, GSize g) => GBuild (f :*: g) a where
+instance (GBuild f a, GBuild g a) => GBuild (f :*: g) a where
   gbuild errs0 xs0 = (x :*: y, xs2, errs2)
     where
       (x,xs1,errs1) = gbuild errs0 xs0

@@ -213,16 +213,13 @@ makeCollCovProblem dirCollOpts ocp ocpInputs ocpCov guess = do
 getFgCov ::
   forall ocp x z u p r c h fp sx sh shr sc n deg .
   ( Dim deg, Dim n, Vectorize x, Vectorize z, Vectorize u, Vectorize p
-  , Vectorize h, Vectorize c, Vectorize r, Vectorize fp
+  , Vectorize h, Vectorize c, Vectorize r
   , Vectorize sx, View sc, View sh, Vectorize shr
   , X ocp ~ x
-  , Z ocp ~ z
-  , U ocp ~ u
   , P ocp ~ p
   , R ocp ~ r
   , C ocp ~ c
   , H ocp ~ h
-  , FP ocp ~ fp
   )
   -- taus
   => Vec deg Double

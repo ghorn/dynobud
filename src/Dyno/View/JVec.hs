@@ -41,7 +41,7 @@ instance (Dim n, View f) => View (JVec n f) where
       n = reflectDim (Proxy :: Proxy n)
       m = size (Proxy :: Proxy f)
 
-jreplicate' :: forall a n f . (Dim n, View f) => J f a -> JVec n f a
+jreplicate' :: forall a n f . Dim n => J f a -> JVec n f a
 jreplicate' el =  ret
   where
     ret = JVec (devectorize (V.replicate nvec el))

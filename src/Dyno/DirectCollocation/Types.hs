@@ -345,10 +345,7 @@ fmapCollPoint fx fz fu = fmapCollPointJ (fj fx) (fj fz) (fj fu)
     fj f = catJV . f . splitJV
 
 fmapCollPointJ :: forall x1 x2 z1 z2 u1 u2 a b .
-                  ( View x1, View x2
-                  , View z1, View z2
-                  , View u1, View u2 )
-                  => (J x1 a -> J x2 b)
+                     (J x1 a -> J x2 b)
                   -> (J z1 a -> J z2 b)
                   -> (J u1 a -> J u2 b)
                   -> CollPoint x1 z1 u1 a

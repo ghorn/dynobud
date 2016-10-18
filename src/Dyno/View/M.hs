@@ -436,10 +436,10 @@ blockcat = vcat . fmap hcat
 -- blockSplit :: forall f g a . (Vectorize f, Vectorize g) => M (JV f) (JV g) DMatrix -> f (g Double)
 -- blockCat :: forall f g a . (Vectorize f, Vectorize g) => f (g Double) -> M (JV f) (JV g) DMatrix
 
-sum1 :: (View f, View g, CMatrix a) => M f g a -> M (JV Id) g a
+sum1 :: (View g, CMatrix a) => M f g a -> M (JV Id) g a
 sum1 (UnsafeM x) = mkM (CM.sum1 x)
 
-sum2 :: (View f, View g, CMatrix a) => M f g a -> M f (JV Id) a
+sum2 :: (View f, CMatrix a) => M f g a -> M f (JV Id) a
 sum2 (UnsafeM x) = mkM (CM.sum2 x)
 
 inv :: (View f, CMatrix a) => M f f a -> M f f a

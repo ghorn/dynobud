@@ -754,8 +754,7 @@ getFg bcFun mayerFun lagQuadFun quadFun
     finalQuadratures = F.sum $ oneQuadStage quadFun <$> ks <*> stages
 
     oneQuadStage ::
-      View qOrSomething
-      => (QuadratureStageIn (JV x) (JV z) (JV u) (JV p) (JV fp) deg MX -> J qOrSomething MX)
+      (QuadratureStageIn (JV x) (JV z) (JV u) (JV p) (JV fp) deg MX -> J qOrSomething MX)
       -> S MX
       -> J (CollStage (JV x) (JV z) (JV u) (JV p) deg) MX
       -> J qOrSomething MX
@@ -911,7 +910,7 @@ toQuadratureFun n taus cijs interpolate' evalQuadDeriv (QuadratureStageIn k coll
 
 toPathCFun ::
   forall x z u p fp h deg
-  . ( View x, View z, View u, View p, View h, Dim deg
+  . ( View x, View z, View u, View p, Dim deg
     )
   => Int
   -> Vec (deg + 1) (Vec (deg + 1) Double)
@@ -1130,7 +1129,6 @@ makeGuessSim ::
   forall x z u p deg n .
   ( Dim n, Dim deg
   , Vectorize x, Vectorize z, Vectorize u, Vectorize p
-  , Additive x
   )
   => QuadratureRoots
   -> Double
@@ -1177,5 +1175,5 @@ makeGuessSim quadratureRoots tf x00 ode guessU p =
 
 -- http://stackoverflow.com/questions/11652809/how-to-implement-mapaccumm
 -- thanks rconner
-mapAccumM :: (Monad m, Functor m, T.Traversable t) => (a -> b -> m (c, a)) -> a -> t b -> m (t c, a)
+mapAccumM :: (Monad m, T.Traversable t) => (a -> b -> m (c, a)) -> a -> t b -> m (t c, a)
 mapAccumM f = flip (runStateT . (T.traverse (StateT . (flip f))))
