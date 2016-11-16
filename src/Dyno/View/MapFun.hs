@@ -40,12 +40,12 @@ import Dyno.View.Scheme ( Scheme )
 import Dyno.View.Vectorize ( Id )
 import Dyno.View.View ( JV )
 
-data MapStrategy = Unroll | Serial | Parallel deriving (Show, Eq, Ord, Generic)
+data MapStrategy = Unroll | Serial | OpenMP deriving (Show, Eq, Ord, Generic)
 
 mapStrategyString :: MapStrategy -> String
 mapStrategyString Unroll = "unroll"
 mapStrategyString Serial = "serial"
-mapStrategyString Parallel = "parallel"
+mapStrategyString OpenMP = "openmp"
 
 class ParScheme f where
   type Par f (n :: k) :: * -> *
@@ -70,7 +70,7 @@ mapFun :: forall f g n
 mapFun _ (Fun f) name mapStrategy opts0 = do
   opts <- T.mapM fromGType opts0 :: IO (M.Map String GenericType)
   let n = TV.reflectDim (Proxy :: Proxy n)
-  fm <- F.function_map__1 f name (mapStrategyString mapStrategy) n opts :: IO C.Function
+  fm <- F.function_map__5 f name (mapStrategyString mapStrategy) n opts :: IO C.Function
   checkFunDimensionsWith "mapFun'" (Fun fm)
 -- {-# NOINLINE mapFun #-}
 

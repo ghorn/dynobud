@@ -15,6 +15,18 @@ packages:
 #  subdirs:
 #  - casadi-bindings
 
+#- location:
+#    /home/greghorn/hslibs/casadi-bindings/genpath/casadi-bindings-core
+#  extra-dep: true
+#
+#- location:
+#    /home/greghorn/hslibs/casadi-bindings/casadi-bindings-internal
+#  extra-dep: true
+#
+#- location:
+#    /home/greghorn/hslibs/casadi-bindings/casadi-bindings
+#  extra-dep: true
+
 - location:
     git: https://github.com/ghorn/generic-accessors
     commit: 393a9c8660010580c513eb75408b0507b6ded33d
@@ -37,9 +49,9 @@ packages:
   extra-dep: true
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
-extra-deps: [ casadi-bindings-3.0.0.5
-            , casadi-bindings-core-3.0.0.0
-            , casadi-bindings-internal-0.1.4.0
+extra-deps: [ casadi-bindings-3.1.0.1
+            , casadi-bindings-core-3.1.0.0
+            , casadi-bindings-internal-0.1.5.0
 #            , generic-accessors-0.6.0.1
             , jacobi-roots-0.2.0.4
             , not-gloss-0.7.6.5

@@ -95,5 +95,5 @@ fittingTests =
     , testCase "L2 fit" (testFit (4/3) l2Fit mapStrat)
     , testCase "L-infinity fit" (testFit (3/2) lInfFit mapStrat)
     ]
-  | mapStrat <- [Unroll, Serial, Parallel]
+  | mapStrat <- [Unroll, Serial, OpenMP]
   ]

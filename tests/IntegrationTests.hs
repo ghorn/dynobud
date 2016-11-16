@@ -189,7 +189,7 @@ integrationTests =
               , unrollMapInHaskell = unrollInHaskell
               }
       ]
-    | mapStrat <- [Unroll, Serial, Parallel]
+    | mapStrat <- [Unroll, Serial, OpenMP]
     ]
   | roots <- [Radau, Legendre]
   ]

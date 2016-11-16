@@ -131,7 +131,7 @@ quadOcpInputs =
   , ocpFixedP = None
   }
 
-pathc :: Floating a => QuadX a -> QuadZ a -> QuadU a -> QuadP a -> None a -> QuadO a -> a -> None a
+pathc :: QuadX a -> QuadZ a -> QuadU a -> QuadP a -> None a -> QuadO a -> a -> None a
 pathc _ _ _ _ _ _ _ = None
 
 xbnd :: QuadX Bounds
@@ -142,7 +142,7 @@ xbnd = QuadX { xP =  (Nothing, Nothing)
 ubnd :: QuadU Bounds
 ubnd = QuadU
 
-bc :: Floating a => QuadX a -> QuadX a -> QuadQ a -> QuadP a -> None a -> a -> QuadBc a
+bc :: QuadX a -> QuadX a -> QuadQ a -> QuadP a -> None a -> a -> QuadBc a
 bc x0 _ _ _ _ _ = QuadBc x0
 
 bcBnds :: QuadBc Bounds
@@ -215,7 +215,7 @@ quadratureTests =
   , quadOrLagr <- [TestQuadratures, TestLagrangeTerm]
   , mapStrat <- [ Unroll
                 , Serial
-                , Parallel
+                , OpenMP
                 ]
   , unrollMapInHaskell' <- [True, False]
   , let input = (mapStrat, root, stateOrOutput, quadOrLagr, unrollMapInHaskell')

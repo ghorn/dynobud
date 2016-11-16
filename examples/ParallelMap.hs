@@ -77,7 +77,7 @@ main = do
          :: IO (Fun
                 (M (JV V2) (JVec N (JV Id)))
                 (M (JV V3) (JVec N (JV Id))))
-  par <- mapFun (Proxy :: Proxy N) f0 "parallel_symbolic_map" Parallel mempty
+  par <- mapFun (Proxy :: Proxy N) f0 "parallel_symbolic_map" OpenMP mempty
 
   runOne "naive map" naive
   runOne "unrolled symbolic_map" unroll
