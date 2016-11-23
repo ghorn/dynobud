@@ -16,13 +16,15 @@ import MapTests ( mapTests )
 import FittingTests ( fittingTests )
 import LinearizeTests ( linearizeTests )
 import FunctionTests ( functionTests )
+import InterpolantTests ( interpolantTests )
 
 main :: IO ()
 main = defaultMainWithOpts tests opts
 
 tests :: [Test]
 tests =
-  [ conditionalTests
+  [ interpolantTests
+  , conditionalTests
   , fittingTests
   , functionTests
   , integrationTests

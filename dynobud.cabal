@@ -52,6 +52,7 @@ library
                        Dyno.View.Fun
                        Dyno.View.FunJac
                        Dyno.View.HList
+                       Dyno.View.Interpolant
                        Dyno.View.JVec
                        Dyno.View.M
                        Dyno.View.MapFun
@@ -71,7 +72,7 @@ library
   other-modules:
 
   build-depends:       base >=4.6 && < 5,
-                       casadi-bindings >= 3.1.0.1,
+                       casadi-bindings >= 3.1.0.2,
                        casadi-bindings-core >= 3.1.0.0,
 --                       casadi-bindings-internal,
                        data-default-class,
@@ -490,6 +491,7 @@ test-suite unit-tests
                        LinearizeTests
                        QuadratureTests
                        IntegrationTests
+                       InterpolantTests
                        VectorizeTests
                        ViewTests
                        Utils

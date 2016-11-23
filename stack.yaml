@@ -10,11 +10,11 @@ packages:
 
 #- location:
 #    git: /home/greghorn/hslibs/casadi-bindings
-#    commit: 1c0aece0ed85dc518c92a9e3f4ed360f8140fb97
+#    commit: 27358c757c48eac7eef1669f8398aee1e3b3f986
 #  extra-dep: true
 #  subdirs:
 #  - casadi-bindings
-
+#
 #- location:
 #    /home/greghorn/hslibs/casadi-bindings/genpath/casadi-bindings-core
 #  extra-dep: true
@@ -49,7 +49,7 @@ packages:
   extra-dep: true
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
-extra-deps: [ casadi-bindings-3.1.0.1
+extra-deps: [ casadi-bindings-3.1.0.2
             , casadi-bindings-core-3.1.0.0
             , casadi-bindings-internal-0.1.5.0
 #            , generic-accessors-0.6.0.1
