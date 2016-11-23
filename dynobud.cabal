@@ -266,6 +266,8 @@ executable spring
     Buildable: False
   hs-source-dirs:      examples
   main-is:             Spring.hs
+  other-modules:       Dynoplot.Callback
+                       Dynoplot.Channel
   default-language:    Haskell2010
   build-depends:       base >=4.6 && < 5
                      , dynobud
@@ -284,6 +286,8 @@ executable rocket
     Buildable: False
   hs-source-dirs:      examples
   main-is:             Rocket.hs
+  other-modules:       Dynoplot.Callback
+                       Dynoplot.Channel
   default-language:    Haskell2010
   build-depends:       base >=4.6 && < 5
                      , dynobud
@@ -344,6 +348,8 @@ executable dae-pendulum
     Buildable: False
   hs-source-dirs:      examples
   main-is:             DaePendulum.hs
+  other-modules:       Dynoplot.Callback
+                       Dynoplot.Channel
   default-language:    Haskell2010
   build-depends:       dynobud,
                        base >=4.6 && < 5,
@@ -364,6 +370,8 @@ executable glider
   other-modules:       Glider.Aircraft
                        Glider.AeroCoeffs
                        Glider.Betty
+                       Dynoplot.Callback
+                       Dynoplot.Channel
   default-language:    Haskell2010
   build-depends:       dynobud,
                        base >=4.6 && < 5,
@@ -402,6 +410,7 @@ executable dynoplot
   else
     Buildable: False
   hs-source-dirs:      examples
+  other-modules:       Dynoplot.Channel
   main-is:             Dynoplot.hs
   default-language:    Haskell2010
   build-depends:       dynobud,
@@ -422,6 +431,8 @@ executable quadrature-test
     Buildable: False
   hs-source-dirs:      examples
   main-is:             Quadrature.hs
+  other-modules:       Dynoplot.Callback
+                       Dynoplot.Channel
   default-language:    Haskell2010
   build-depends:       dynobud,
                        base >=4.6 && < 5,
