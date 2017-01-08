@@ -77,7 +77,7 @@ library
 --                       casadi-bindings-internal,
                        data-default-class,
                        jacobi-roots >=0.2 && <0.3,
-                       spatial-math >= 0.3.0.0,
+                       spatial-math >= 0.4.0.0,
                        vector >=0.10,
                        vector-binary-instances,
                        mtl >=2.2.1,

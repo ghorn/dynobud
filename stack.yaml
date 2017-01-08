@@ -1,6 +1,6 @@
 # For more information, see: https://github.com/commercialhaskell/stack/blob/release/doc/yaml_configuration.md
 
-resolver: lts-7.0
+resolver: lts-7.14
 
 compiler-check: newer-minor
 
@@ -27,36 +27,36 @@ packages:
 #    /home/greghorn/hslibs/casadi-bindings/casadi-bindings
 #  extra-dep: true
 
-- location:
-    git: https://github.com/ghorn/generic-accessors
-    commit: 393a9c8660010580c513eb75408b0507b6ded33d
-  extra-dep: true
+# - location:
+#     git: https://github.com/ghorn/generic-accessors
+#     commit: 393a9c8660010580c513eb75408b0507b6ded33d
+#   extra-dep: true
 
 #- location:
 #    git: https://github.com/ghorn/Plot-ho-matic
 #    commit: c18883ba529187c448fe6cc144dad323e78c41c2
 #  extra-dep: true
 
-- location:
-#    git: /home/greghorn/hslibs/Plot-ho-matic
-    git: https://github.com/ghorn/Plot-ho-matic
-    commit: e148ad3ec9603ed3694ea709c6e01b7d4670ff88
-  extra-dep: true
+#- location:
+##    git: /home/greghorn/hslibs/Plot-ho-matic
+#    git: https://github.com/ghorn/Plot-ho-matic
+#    commit: e148ad3ec9603ed3694ea709c6e01b7d4670ff88
+#  extra-dep: true
 
-- location:
-    git: https://github.com/ghorn/spatial-math
-    commit: 289ab9159b9813a8f8de06d4ff6f28ec445bed6e
-  extra-dep: true
+#- location:
+#    git: https://github.com/ghorn/spatial-math
+#    commit: 289ab9159b9813a8f8de06d4ff6f28ec445bed6e
+#  extra-dep: true
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
 extra-deps: [ casadi-bindings-3.1.0.2
             , casadi-bindings-core-3.1.0.0
             , casadi-bindings-internal-0.1.5.0
-#            , generic-accessors-0.6.0.1
+            , generic-accessors-0.6.0.1
             , jacobi-roots-0.2.0.4
             , not-gloss-0.7.6.5
-#            , Plot-ho-matic-0.9.0.8
-#            , spatial-math-0.3.0.0
+            , Plot-ho-matic-0.11.0.0
+            , spatial-math-0.4.0.0
             , TypeCompose-0.9.12
             , vector-binary-instances-0.2.1.0
             ]
