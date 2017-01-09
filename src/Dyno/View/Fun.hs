@@ -6,7 +6,7 @@ module Dyno.View.Fun
        ( AlwaysInline(..)
        , NeverInline(..)
        , Fun(..)
-       , Symbolic(..)
+       , Symbolic(..), toMXFun, toSXFun
        , callDM, callMX, callMX', callSX
        , expandFun
        , toFunJac, toFunHess
