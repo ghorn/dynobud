@@ -14,6 +14,7 @@ module Dyno.Fitting
 import GHC.Generics ( Generic )
 
 import Casadi.MX ( MX )
+import Casadi.SX ( SX )
 import Casadi.Overloading ( ArcTan2 )
 import qualified Data.Map as M
 import Data.Vector ( Vector )
@@ -24,7 +25,7 @@ import Dyno.NlpSolver ( GType, toNlpSol, callNlpsol )
 import Dyno.Solvers ( Solver )
 import Dyno.TypeVecs ( Dim, Vec )
 import qualified Dyno.TypeVecs as TV
-import Dyno.View.Fun ( Fun, callMX, toSXFun )
+import Dyno.View.Fun ( Fun, Symbolic(..), callMX )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.M ( M, mm, ones, flatten, unflatten, sm, sum1, trans, vcat, vsplit, vcat'' )
 import Dyno.View.MapFun ( MapStrategy, mapFun' )
@@ -110,11 +111,13 @@ withL1Fit ::
       ) -> IO b
      ) -> IO b
 withL1Fit eps solver fitModel qConstraints mapStrat mapOpts userFun = do
-  let fitModel' (q :*: x :*: y :*: s) = f - y + s
+  let fitModel' :: (J (JV q) :*: J (JV x) :*: J (JV y) :*: J (JV y)) SX
+                -> J (JV y) SX
+      fitModel' (q :*: x :*: y :*: s) = f - y + s
         where
           f = vcat $ fitModel (vsplit q) (vsplit x)
 
-  fitModelFun <- toSXFun "fit_model" fitModel'
+  fitModelFun <- toFun "fit_model" fitModel' mempty
                  :: IO (Fun
                         (J (JV q) :*: J (JV x) :*: J (JV y) :*: J (JV y))
                         (J (JV y))
@@ -267,11 +270,13 @@ withL2Fit ::
       ) -> IO b
      ) -> IO b
 withL2Fit eps solver fitModel qConstraints mapStrat mapOpts userFun = do
-  let fitModel' (q :*: x :*: y) = err * err
+  let fitModel' :: (J (JV q) :*: J (JV x) :*: J (JV y)) SX
+                -> J (JV y) SX
+      fitModel' (q :*: x :*: y) = err * err
         where
           err = f - y
           f = vcat $ fitModel (vsplit q) (vsplit x)
-  fitModelFun <- toSXFun "fit_model" fitModel'
+  fitModelFun <- toFun "fit_model" fitModel' mempty
                  :: IO (Fun (J (JV q) :*: J (JV x) :*: J (JV y)) (J (JV y)))
 
   mapFitModel <- mapFun' (Proxy :: Proxy n) fitModelFun "map_fit_model" mapStrat mapOpts
@@ -408,12 +413,14 @@ withLInfFit ::
       ) -> IO b
      ) -> IO b
 withLInfFit eps solver fitModel qConstraints mapStrat mapOpts userFun = do
-  let fitModel' (q :*: x :*: y :*: s0) = f - y + s
+  let fitModel' :: (J (JV q) :*: J (JV x) :*: J (JV y) :*: S) SX
+                -> J (JV y) SX
+      fitModel' (q :*: x :*: y :*: s0) = f - y + s
         where
           s = s0 `sm` ones
           f = vcat $ fitModel (vsplit q) (vsplit x)
 
-  fitModelFun <- toSXFun "fit_model" fitModel'
+  fitModelFun <- toFun "fit_model" fitModel' mempty
                  :: IO (Fun
                         (J (JV q) :*: J (JV x) :*: J (JV y) :*: S)
                         (J (JV y))

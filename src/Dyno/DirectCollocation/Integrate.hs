@@ -23,7 +23,7 @@ import Casadi.MX ( MX )
 import Casadi.Viewable ( Viewable )
 
 import Dyno.View.View ( View(..), J, S, JV, JNone, JTuple(..), splitJV, catJV, jfill, fmapJ )
-import Dyno.View.Fun ( Fun, callMX, toSXFun, toMXFun, expandMXFun )
+import Dyno.View.Fun ( Fun, Symbolic(..), callMX, expandFun )
 import Dyno.View.JVec ( JVec(..), jreplicate )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.M ( vcat, vsplit )
@@ -164,15 +164,15 @@ withIntegrator _ _ roots initialX dae solver = do
         withNatOp (%+) (Proxy :: Proxy deg) (Proxy :: Proxy 1) $
         lagrangeDerivCoeffs (0 TV.<| taus)
 
-  dynFun <- toSXFun "dynamics" $ dynamicsFunction' $
+  dynFun <- flip (toFun "dynamics") mempty $ dynamicsFunction' $
             \x0 x1 x2 x3 x4 x5 ->
             let r = dae (vsplit x0) (vsplit x1) (vsplit x2) (vsplit x3)
                     (vsplit x4) (unId (vsplit x5))
             in vcat r
 
-  dynStageConFun <- toMXFun "dynamicsStageCon" (dynStageConstraints' cijs taus dynFun)
+  dynStageConFun <- toFun "dynamicsStageCon" (dynStageConstraints' cijs taus dynFun) mempty
 --  let callDynStageConFun = callMX dynStageConFun
-  callDynStageConFun <- fmap callMX (expandMXFun dynStageConFun)
+  callDynStageConFun <- callMX <$> expandFun dynStageConFun
 
   let fg :: J (IntegratorX x z n deg) MX
             -> J (IntegratorP u p n deg) MX

@@ -80,7 +80,7 @@ makeOdeJacobian ::
       -> (x (S SX), o (S SX)))
   -> IO (OdeJacobian x u w p sc o)
 makeOdeJacobian ode = do
-  f <- toSXFun "odeSX" (toOdeSX ode)
+  f <- toFun "odeSX" (toOdeSX ode) mempty
   fmap OdeJacobian (toFunJac f)
 
 makeErrorOdeJacobian ::
@@ -90,7 +90,7 @@ makeErrorOdeJacobian ::
       -> sc (S SX) -> (e (S SX), o (S SX)))
   -> IO (ErrorOdeJacobian x e u w p sc o)
 makeErrorOdeJacobian errorOde = do
-  f <- toSXFun "errorOdeSX" (toErrorOdeSX errorOde)
+  f <- toFun "errorOdeSX" (toErrorOdeSX errorOde) mempty
   fmap ErrorOdeJacobian (toFunJac f)
 
 
@@ -218,7 +218,7 @@ linearizeDM' userF = do
         where
           (g, h) = userF (vsplit x) (vsplit p)
 
-  sxUserF <- toMXFun "yolo" userF'
+  sxUserF <- toFun "yolo" userF' mempty
   jacUserF <- toFunJac sxUserF
 
   let callFun :: f Double -> p Double -> IO (M (JV g) (JV f) DM, J (JV g) DM, J (JV h) DM)

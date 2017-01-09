@@ -61,13 +61,13 @@ compileModel model = do
       odeX (JacIn x _) = JacOut (vcat xdot) (vcat None)
         where
           xdot = kfOde model (vsplit x) (fill 0)
-  jacOdeX <- toSXFun "ode_x" odeX >>= toFunJac
+  jacOdeX <- toFun "ode_x" odeX mempty >>= toFunJac
 
   let odeQ :: JacIn (JV q) (J (JV x)) SX -> JacOut (JV x) (J (JV None)) SX
       odeQ (JacIn q x) = JacOut (vcat xdot) (vcat None)
         where
           xdot = kfOde model (vsplit x) (vsplit q)
-  jacOdeQ <- toSXFun "ode_q" odeQ >>= toFunJac
+  jacOdeQ <- toFun "ode_q" odeQ mempty >>= toFunJac
 
   let evalOde' :: J (JV x) DM -> (M (JV x) (JV x) DM, M (JV x) (JV q) DM, J (JV x) DM)
       evalOde' x = unsafePerformIO $ do
@@ -83,7 +83,7 @@ compileModel model = do
         where
           y = kfSensors model (vsplit x) (vsplit ym)
 
-  jacSensors <- toSXFun "sensors" sensors >>= toFunJac
+  jacSensors <- toFun "sensors" sensors mempty >>= toFunJac
 
   let evalSensors' :: J (JV x) DM -> J (JV ym) DM -> (M (JV y) (JV x) DM, J (JV y) DM)
       evalSensors' x ym = unsafePerformIO $ do

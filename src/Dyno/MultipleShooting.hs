@@ -22,7 +22,7 @@ import Casadi.MX ( MX )
 
 import Dyno.Nlp ( Bounds, Nlp(..), NlpIn(..) )
 import Dyno.TypeVecs
-import Dyno.View.Fun ( Fun, toMXFun, callMX )
+import Dyno.View.Fun ( Fun, Symbolic(..), callMX )
 import Dyno.View.JVec ( JVec(..) )
 import Dyno.View.M ( vcat, vsplit )
 import Dyno.View.Scheme ( Scheme )
@@ -102,7 +102,7 @@ makeMsNlp msOcp = do
           x0' = vsplit x0
           u' = vsplit u
           p' = vsplit p
-  integrator <- toMXFun "my_integrator" integrate
+  integrator <- toFun "my_integrator" integrate mempty
   let _ = integrator :: Fun (IntegratorIn x u p) (IntegratorOut x) -- just for type signature
 
   let nlp =

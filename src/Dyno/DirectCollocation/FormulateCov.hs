@@ -99,12 +99,16 @@ makeCollCovProblem dirCollOpts ocp ocpInputs ocpCov guess = do
   computeCovariances <- mkComputeCovariances continuousToDiscreetNoiseApprox
                         (computeSensitivities) (ocpCovSq ocpCov)
 
-  sbcFun <- toSXFun "sbc" $ \(x0:*:x1) -> ocpCovSbc ocpCov x0 x1
-  shFun <- toSXFun "sh" $ \(x0:*:x1) -> ocpCovSh ocpCov (vsplit x0) x1
-  mayerFun <- toSXFun "cov mayer" $ \(x0:*:x1:*:x2:*:x3:*:x4) ->
-    vcat $ Id $ ocpCovMayer ocpCov (unId (vsplit x0)) (vsplit x1) (vsplit x2) x3 x4
-  lagrangeFun <- toSXFun "cov lagrange" $ \(x0:*:x1:*:x2:*:x3) ->
-    vcat $ Id $ ocpCovLagrange ocpCov (unId (vsplit x0)) (vsplit x1) x2 (unId (vsplit x3))
+  sbcFun <- toFun "sbc" (\(x0:*:x1) -> ocpCovSbc ocpCov x0 x1) mempty
+  shFun <- toFun "sh" (\(x0:*:x1) -> ocpCovSh ocpCov (vsplit x0) x1) mempty
+  mayerFun <- toFun "cov mayer"
+    (\(x0:*:x1:*:x2:*:x3:*:x4) ->
+       vcat $ Id $ ocpCovMayer ocpCov (unId (vsplit x0)) (vsplit x1) (vsplit x2) x3 x4)
+    mempty
+  lagrangeFun <- toFun "cov lagrange"
+    (\(x0:*:x1:*:x2:*:x3) ->
+    vcat $ Id $ ocpCovLagrange ocpCov (unId (vsplit x0)) (vsplit x1) x2 (unId (vsplit x3)))
+    mempty
 
   cp0 <- makeCollProblem dirCollOpts ocp ocpInputs guess
 
@@ -136,7 +140,7 @@ makeCollCovProblem dirCollOpts ocp ocpInputs ocpCov guess = do
         (mayerFun :: Fun (S :*: (J (JV x) :*: (J (JV x) :*: (J (Cov (JV sx)) :*: J (Cov (JV sx)))))) S)
         (nlpFG nlp0)
 
-  computeCovariancesFun' <- toMXFun "compute covariances" (\(x :*: y) -> computeCovariances x y)
+  computeCovariancesFun' <- toFun "compute covariances" (\(x :*: y) -> computeCovariances x y) mempty
   -- callbacks
   let getPlotPoints :: J (CollTrajCov sx x z u p n deg) (Vector Double)
                        -> IO (DynPlotPoints Double)
@@ -200,7 +204,7 @@ makeCollCovProblem dirCollOpts ocp ocpInputs ocpCov guess = do
                       , cocSbc = fromMaybe (jfill 1) (ocpCovSbcScale ocpCov)
                       }
         }
-  computeSensitivitiesFun' <- toMXFun "compute sensitivities" computeSensitivities
+  computeSensitivitiesFun' <- toFun "compute sensitivities" computeSensitivities mempty
   return $ CollCovProblem { ccpNlp = nlp
                           , ccpPlotPoints = getPlotPoints
                           , ccpOutputs = getOutputs

@@ -53,7 +53,7 @@ testFun0 theMapFun = toHUnit $ do
         where
           V2 x0 x1 = vsplit x
 
-  fun <- toSXFun "v2_in_v3_out" f :: IO (Fun (J (JV V2)) (J (JV V3)))
+  fun <- toFun "v2_in_v3_out" f mempty :: IO (Fun (J (JV V2)) (J (JV V3)))
   mapF <- theMapFun Proxy fun "map_v2_in_v3_out" Serial mempty
 
   let input :: M (JV V2) (JVec 4 (JV Id)) DM
@@ -92,7 +92,7 @@ testFun1 theMapFun = toHUnit $ do
           V2 x0 x1 = vsplit x
           Id y0 = vsplit y
 
-  fun <- toSXFun "v2id_in_v3id_out" f
+  fun <- toFun "v2id_in_v3id_out" f mempty
   mapF <- theMapFun Proxy fun "map_v2id_in_v3id_out" Serial mempty
 
   let input0 :: M (JV V2) (JVec 4 (JV Id)) DM
@@ -143,7 +143,7 @@ testFun2 theMapFun = toHUnit $ do
           o1 = hcat $ V4 (x10) (2*x11) (3*x12) 9
           o2 = hcat $ V4 (4*x00) (5*x01) (6*x02) 10
 
-  fun <- toSXFun "f" f
+  fun <- toFun "f" f mempty
   mapF <- theMapFun Proxy fun "map_f" Serial mempty
 
   let input :: M (JV V2) (JVec 2 (JV V3)) DM
@@ -173,7 +173,7 @@ testFunNonRepeated = toHUnit $ do
           V2 x0 x1 = vsplit x
           Id y0 = vsplit y
 
-  fun <- toSXFun "f" f
+  fun <- toFun "f" f mempty
   mapF <- mapFun' (Proxy :: Proxy 5) fun "map_f" Serial mempty
 
   let input0 :: M (JV V2) (JV Id) DM

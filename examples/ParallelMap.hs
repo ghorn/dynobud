@@ -15,7 +15,7 @@ import Casadi.SX ( SX )
 import Casadi.MX ( MX )
 
 import qualified Dyno.TypeVecs as TV
-import Dyno.View.Fun ( Fun, callMX, callDM, toSXFun, toMXFun )
+import Dyno.View.Fun ( Fun, Symbolic(..), callMX, callDM )
 import Dyno.View.MapFun ( MapStrategy(..), mapFun )
 import Dyno.View.M ( M, hcat', hsplit', vcat, vsplit )
 import Dyno.View.JVec ( JVec(..) )
@@ -43,7 +43,7 @@ main = do
 
   -- make a dummy function that's moderately expensive to evaluate
   putStrLn "creating dummy function..."
-  f0 <- toSXFun "f0" f0'
+  f0 <- toFun "f0" f0' mempty
         :: IO (Fun (J (JV V2)) (J (JV V3)))
 
   let runOne :: String
@@ -68,7 +68,7 @@ main = do
           xs' :: TV.Vec N (M (JV V2) (JV Id) MX)
           xs' = hsplit' xs
 
-  naive <- toMXFun "naive_map" naiveFun
+  naive <- toFun "naive_map" naiveFun mempty
   unroll <- mapFun (Proxy :: Proxy N) f0 "unrolled_symbolic_map" Unroll mempty
          :: IO (Fun
                 (M (JV V2) (JVec N (JV Id)))

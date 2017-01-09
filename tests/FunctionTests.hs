@@ -27,7 +27,7 @@ simpleFun'' = vcat . simpleFun' . vsplit
 
 testSXFun :: Test
 testSXFun = testCase "SXFun" $ HUnit.assert $ do
-  f <- toSXFun "simple_sx_fun" simpleFun''
+  f <- toFun "simple_sx_fun" simpleFun'' mempty
   out <- callDM f 2.2
   return $ HUnit.assertEqual "simple function" (42 * 2.2) out
 
@@ -43,7 +43,7 @@ testFunJac :: Test
 testFunJac = testCase "toFunJac" $ HUnit.assert $ do
   let f :: JacIn (JV V2) (J (JV V3)) SX -> JacOut (JV V2) (J (JV V3)) SX
       f (JacIn xj x) = JacOut (2 * xj) (3 * x)
-  sxf <- toSXFun "f" f
+  sxf <- toFun "f" f mempty
   fj <- toFunJac sxf
   out <- callDM fj (JacIn (vcat (V2 2 3)) (vcat (V3 4 5 6)))
 
@@ -53,7 +53,7 @@ testFunHess :: Test
 testFunHess = testCase "toFunHess" $ HUnit.assert $ do
   let f :: JacIn (JV V2) (J (JV V3)) SX -> HessOut (J (JV V3)) SX
       f (JacIn xj x) = HessOut (0.5 * sum1 (xj * xj)) (2 * x)
-  sxf <- toSXFun "f" f
+  sxf <- toFun "f" f mempty
   fj <- toFunHess sxf
   print fj
   out <- callDM fj (JacIn (vcat (V2 1 2)) (vcat (V3 1 2 3)))

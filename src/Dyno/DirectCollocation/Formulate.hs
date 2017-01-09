@@ -200,10 +200,10 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
                   (vsplit x') (vsplit x) (vsplit z) (vsplit u)
                   (vsplit parm) (vsplit fixedParm) (unId (vsplit t))
 
-  interpolateFun <- toMXFun "interpolate_JV_x" interpolate' >>= expandMXFun
-  interpolateQFun <- toMXFun "interpolate_JV_q" interpolate' >>= expandMXFun
-  interpolateQoFun <- toMXFun "interpolate_JV_qo" interpolate' >>= expandMXFun
-  interpolateScalarFun <- toMXFun "interpolate_JV_Id" interpolate' >>= expandMXFun
+  interpolateFun <- toFun "interpolate_JV_x" interpolate' mempty >>= expandFun
+  interpolateQFun <- toFun "interpolate_JV_q" interpolate' mempty >>= expandFun
+  interpolateQoFun <- toFun "interpolate_JV_qo" interpolate' mempty >>= expandFun
+  interpolateScalarFun <- toFun "interpolate_JV_Id" interpolate' mempty >>= expandFun
 
   let callInterpolateScalar :: S MX -> Vec deg (S MX) -> S MX
       callInterpolateScalar x0 xs = callMX interpolateScalarFun (x0 :*: cat (JVec xs))
@@ -261,10 +261,10 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
               (vsplit x) (vsplit z) (vsplit u) (vsplit p) (vsplit fp) (vsplit o)
               (unId (vsplit t))
 
-  quadFunSX <- toSXFun "quadFun" quadFun
-  quadOutFunSX <- toSXFun "quadOutFun" quadOutFun
-  lagFunSX <- toSXFun "lagFun" lagFun
-  pathCFunSX <- toSXFun "pathCFun" pathCFun
+  quadFunSX <- toFun "quadFun" quadFun mempty
+  quadOutFunSX <- toFun "quadOutFun" quadOutFun mempty
+  lagFunSX <- toFun "lagFun" lagFun mempty
+  pathCFunSX <- toFun "pathCFun" pathCFun mempty
 
   let quadraturePlottingFun ::
         QuadraturePlottingIn (JV x) (JV z) (JV u) (JV p) (JV o) (JV q) (JV qo) (JV fp) SX
@@ -274,7 +274,7 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
         (vsplit x) (vsplit z) (vsplit u) (vsplit p)
         (vsplit o) (vsplit q) (vsplit qo) (vsplit fp)
         (unId (vsplit t)) (unId (vsplit tf))
-  quadPlotFunSX <- toSXFun "quadPlotFun" quadraturePlottingFun
+  quadPlotFunSX <- toFun "quadPlotFun" quadraturePlottingFun mempty
 
   let -- later we could use the intermediate points as outputs, or in path cosntraints
       lagrangeStageFun :: QuadratureStageIn (JV x) (JV z) (JV u) (JV p) (JV fp) deg MX
@@ -295,34 +295,36 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
       pathCStageFun pcIn = cat (JVec hs)
         where
           hs = toPathCFun n cijs (callMX pathCFunSX) pcIn
-  lagrangeStageFunMX   <- toMXFun "lagrangeStageFun" $
-    (\(QuadratureStageOut _ _ q) -> q) . lagrangeStageFun
-  quadratureStageFunMX <- toMXFun "quadratureStageFun" $
-    (\(QuadratureStageOut _ _ q) -> q) . quadratureStageFun
-  pathCStageFunMX <- toMXFun "pathCStageFun" pathCStageFun
+  lagrangeStageFunMX   <- toFun "lagrangeStageFun"
+    ((\(QuadratureStageOut _ _ q) -> q) . lagrangeStageFun) mempty
+  quadratureStageFunMX <- toFun "quadratureStageFun"
+    ((\(QuadratureStageOut _ _ q) -> q) . quadratureStageFun) mempty
+  pathCStageFunMX <- toFun "pathCStageFun" pathCStageFun mempty
 
 
-  bcFun <- toSXFun "bc" $ \(x0:*:x1:*:x2:*:x3:*:x4:*:x5) -> vcat $ ocpBc ocp (vsplit x0) (vsplit x1) (vsplit x2) (vsplit x3) (vsplit x4) (unId (vsplit x5))
-  mayerFun <- toSXFun "mayer" $ \(x0:*:x1:*:x2:*:x3:*:x4:*:x5) ->
-    vcat $ Id $ ocpMayer ocp (unId (vsplit x0)) (vsplit x1) (vsplit x2) (vsplit x3) (vsplit x4) (vsplit x5)
+  bcFun <- toFun "bc" (\(x0:*:x1:*:x2:*:x3:*:x4:*:x5) -> vcat $ ocpBc ocp (vsplit x0) (vsplit x1) (vsplit x2) (vsplit x3) (vsplit x4) (unId (vsplit x5))) mempty
+  mayerFun <- toFun "mayer"
+    (\(x0:*:x1:*:x2:*:x3:*:x4:*:x5) ->
+       vcat $ Id $ ocpMayer ocp (unId (vsplit x0)) (vsplit x1) (vsplit x2) (vsplit x3) (vsplit x4) (vsplit x5)) mempty
 
-  dynFun <- toSXFun "dynamics" dynamicsFunction
+  dynFun <- toFun "dynamics" dynamicsFunction mempty
 
-  dynamicsStageFun <- toMXFun "dynamicsStageFunction" (toDynamicsStage callInterpolate cijs dynFun)
-                      >>= expandMXFun
-                      :: IO (Fun
-                             (J (JV x)
-                              :*: J (JVec deg (JTuple (JV x) (JV z)))
-                              :*: J (JVec deg (JV u))
-                              :*: S
-                              :*: J (JV p)
-                              :*: J (JV fp)
-                              :*: J (JVec deg (JV Id))
-                             )
-                             (J (JVec deg (JV r))
-                              :*: J (JV x)
-                             )
-                            )
+  dynamicsStageFun <-
+    toFun "dynamicsStageFunction" (toDynamicsStage callInterpolate cijs dynFun) mempty
+    >>= expandFun
+    :: IO (Fun
+           (J (JV x)
+            :*: J (JVec deg (JTuple (JV x) (JV z)))
+            :*: J (JVec deg (JV u))
+            :*: S
+            :*: J (JV p)
+            :*: J (JV fp)
+            :*: J (JVec deg (JV Id))
+           )
+           (J (JVec deg (JV r))
+            :*: J (JV x)
+           )
+          )
 --  let callDynamicsStageFun = callMX dynamicsStageFun
 
   -- fixedParm has to be repeated
@@ -363,7 +365,7 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
           toTuple xzu = (cat (JTuple x z), u)
             where
               CollPoint x z u = split xzu
-  stageFunMX <- toMXFun "stageFun" stageFun
+  stageFunMX <- toFun "stageFun" stageFun mempty
 
   mapStageFunMX <- mapFun' (Proxy :: Proxy n) stageFunMX "mapDynamicsStageFun"
     (mapStrategy dirCollOpts) (mapOptions dirCollOpts)
@@ -474,13 +476,14 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
         }
 
   -- callbacks and quadrature outputs
-  lagrangeStageFunFullMX   <- toMXFun "lagrangeStageFunFull"   lagrangeStageFun
-  quadratureStageFunFullMX <- toMXFun "quadratureStageFunFull" quadratureStageFun
-  quadratureOutStageFunFullMX <- toMXFun "quadratureOutStageFunFull" quadratureOutStageFun
+  lagrangeStageFunFullMX   <- toFun "lagrangeStageFunFull"   lagrangeStageFun mempty
+  quadratureStageFunFullMX <- toFun "quadratureStageFunFull" quadratureStageFun mempty
+  quadratureOutStageFunFullMX <- toFun "quadratureOutStageFunFull" quadratureOutStageFun mempty
 
-  outputFun <- toMXFun "stageOutputs" $ outputFunction n callInterpolate cijs taus dynFun
-  genericQuadraturesFun <- toMXFun "generic_quadratures" $
-                           genericQuadraturesFunction callInterpolateScalar cijs n
+  outputFun <- toFun "stageOutputs" (outputFunction n callInterpolate cijs taus dynFun) mempty
+  genericQuadraturesFun <- toFun "generic_quadratures"
+                           (genericQuadraturesFunction callInterpolateScalar cijs n)
+                           mempty
 
   let (getHellaOutputs, getPlotPoints, getOutputs) = toCallbacks n roots taus outputFun pathCStageFunMX lagrangeStageFunFullMX quadratureStageFunFullMX quadratureOutStageFunFullMX quadPlotFunSX
 
@@ -499,7 +502,7 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
         return (F.sum stageIntegrals)
 
 
-  nlpConstraints <- toMXFun "nlp_constraints" (\(x:*:p) -> snd (nlpFG nlp x p))
+  nlpConstraints <- toFun "nlp_constraints" (\(x:*:p) -> snd (nlpFG nlp x p)) mempty
   let evalConstraints x p = do
         g <- callDM nlpConstraints (v2d x :*: v2d p)
         return (d2v g)

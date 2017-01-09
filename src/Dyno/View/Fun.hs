@@ -6,14 +6,9 @@ module Dyno.View.Fun
        ( AlwaysInline(..)
        , NeverInline(..)
        , Fun(..)
-       , toMXFun
-       , toMXFun'
-       , toSXFun
-       , toSXFun'
-       , callDM
-       , callMX, callMX'
-       , callSX
-       , expandMXFun
+       , Symbolic(..)
+       , callDM, callMX, callMX', callSX
+       , expandFun
        , toFunJac, toFunHess
        , checkFunDimensions
        , checkFunDimensionsWith
@@ -38,13 +33,24 @@ import qualified Casadi.Core.Classes.Function as F
 import qualified Casadi.Core.Classes.Sparsity as C
 
 import Dyno.View.FunJac
-import Dyno.View.Scheme
+import Dyno.View.Scheme ( Scheme(..) )
 import Dyno.View.View ( View )
 
 newtype Fun (f :: * -> *) (g :: * -> *) = Fun { unFun :: C.Function }
 
 instance Show (Fun f g) where
   showsPrec k (Fun f) = showsPrec k f
+
+class Symbolic a where
+  toFun :: (Scheme f, Scheme g)
+        => String -> (f a -> g a) -> M.Map String GType
+        -> IO (Fun f g)
+
+instance Symbolic MX where
+  toFun = toMXFun
+
+instance Symbolic SX where
+  toFun = toSXFun
 
 -- | call a Function on numeric inputs, getting numeric outputs
 callDM :: (Scheme f, Scheme g) => Fun f g -> f DM -> IO (g DM)
@@ -77,46 +83,32 @@ mkSym mk name _ = do
   ms <- zipWithM f sizes [(0::Int)..]
   return $ fromVector (V.fromList ms)
 
--- | make an MXFunction with name
-toMXFun :: forall f g
-           . (Scheme f, Scheme g)
-           => String -> (f MX -> g MX)
-           -> IO (Fun f g)
-toMXFun n f = toMXFun' n f M.empty
-
 -- | make an MXFunction with name and options
-toMXFun' :: forall f g
-           . (Scheme f, Scheme g)
-           => String -> (f MX -> g MX) -> M.Map String GType
-           -> IO (Fun f g)
-toMXFun' name userf opts = do
+toMXFun :: forall f g
+          . (Scheme f, Scheme g)
+          => String -> (f MX -> g MX) -> M.Map String GType
+          -> IO (Fun f g)
+toMXFun name userf opts = do
   inputs <- mkSym symM "x" (Proxy :: Proxy f)
   fun <- C.mxFunction name (toVector inputs) (toVector (userf inputs)) opts
   checkFunDimensionsWith ("toMXFun' (" ++ name ++ ")") (Fun fun)
 
--- | make an SXFunction with name
-toSXFun :: forall f g
-           . (Scheme f, Scheme g)
-           => String -> (f SX -> g SX)
-           -> IO (Fun f g)
-toSXFun n f = toSXFun' n f M.empty
-
 -- | make an SXFunction with name and options
-toSXFun' :: forall f g
-           . (Scheme f, Scheme g)
-           => String -> (f SX -> g SX) -> M.Map String GType
-           -> IO (Fun f g)
-toSXFun' name userf opts = do
+toSXFun :: forall f g
+          . (Scheme f, Scheme g)
+          => String -> (f SX -> g SX) -> M.Map String GType
+          -> IO (Fun f g)
+toSXFun name userf opts = do
   inputs <- mkSym ssymM "x" (Proxy :: Proxy f)
   fun <- C.sxFunction name (toVector inputs) (toVector (userf inputs)) opts
   checkFunDimensionsWith ("toSXFun' (" ++ name ++ ")") (Fun fun)
 
 
--- | expand an MXFunction
-expandMXFun :: (Scheme f, Scheme g) => Fun f g -> IO (Fun f g)
-expandMXFun (Fun mxf) = do
+-- | expand a Function
+expandFun :: (Scheme f, Scheme g) => Fun f g -> IO (Fun f g)
+expandFun (Fun mxf) = do
   sxf <- F.function_expand__2 mxf
-  checkFunDimensionsWith "expandMXFun" (Fun sxf)
+  checkFunDimensionsWith "expandFun" (Fun sxf)
 
 -- partial version of checkFunDimensions which throws an error
 checkFunDimensionsWith ::
