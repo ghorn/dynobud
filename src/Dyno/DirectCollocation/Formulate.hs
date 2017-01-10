@@ -6,7 +6,7 @@
 {-# LANGUAGE DataKinds #-}
 
 module Dyno.DirectCollocation.Formulate
-       ( CollProblem(..)
+       ( CollProblem(..), CollProblem'
        , DirCollOptions(..)
        , MapStrategy(..)
        , makeCollProblem
@@ -90,6 +90,21 @@ data CollProblem x z u p r o c h q qo po fp n deg =
 --  , cpJacSparsitySpy :: String
 --  , cpHessSparsitySpy :: String
   }
+
+type CollProblem' ocp =
+  CollProblem
+  (X ocp)
+  (Z ocp)
+  (U ocp)
+  (P ocp)
+  (R ocp)
+  (O ocp)
+  (C ocp)
+  (H ocp)
+  (Q ocp)
+  (QO ocp)
+  (PO ocp)
+  (FP ocp)
 
 data DirCollOptions =
   DirCollOptions
