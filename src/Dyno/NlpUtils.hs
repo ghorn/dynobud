@@ -1,6 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RankNTypes #-}
 
 module Dyno.NlpUtils
        ( HomotopyParams(..)
@@ -160,7 +159,7 @@ solveNlpHomotopy userStep hp
 solveNlpV :: forall x g .
   (Vectorize x, Vectorize g)
   => Solver
-  -> (forall a . Floating a => x a -> (a, g a))
+  -> (x (S MX) -> (S MX, g (S MX)))
   -> x Bounds
   -> g Bounds
   -> x Double
