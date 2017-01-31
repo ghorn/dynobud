@@ -235,7 +235,9 @@ reifyVector v f = reifyDim (V.length v)
 {-# INLINE reifyVector #-}
 
 tvlinspace :: forall n a . (Dim n, Fractional a) => a -> a -> Vec n a
-tvlinspace x0 xf = mkVec' [x0 + h * fromIntegral k  | k <- take n [(0::Int)..]]
+tvlinspace x0 xf
+  | n == 1 = mkVec' [x0] -- numpy behavior
+  | otherwise = mkVec' [x0 + h * fromIntegral k  | k <- take n [(0::Int)..]]
   where
     n = reflectDim (Proxy :: Proxy n)
     h = (xf - x0) / fromIntegral (n - 1)
