@@ -27,8 +27,8 @@ import Data.Proxy ( Proxy(..) )
 import qualified Data.Vector as V
 import qualified Data.Binary as B
 
-import Casadi.CMatrix ( CMatrix )
-import qualified Casadi.CMatrix as CM
+import Casadi.Matrix ( CMatrix )
+import qualified Casadi.Matrix as CM
 import Casadi.Overloading ( ArcTan2(..), Erf(..), Fmod(..), SymOrd(..) )
 import Casadi.Viewable ( Viewable(..) )
 
@@ -130,6 +130,7 @@ instance (View f, View g, CMatrix a) => SymOrd (M f g a) where
   geq = over2 geq
   gt = over2 gt
   eq  = over2 eq
+  ne  = over2 ne
   max'  = over2 CM.cmax
   min'  = over2 CM.cmin
 

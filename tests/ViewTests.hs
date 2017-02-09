@@ -30,9 +30,9 @@ import Test.Framework ( Test, testGroup )
 import Test.Framework.Providers.HUnit ( testCase )
 import Test.Framework.Providers.QuickCheck2 ( testProperty )
 
-import Casadi.Function ( callDM, mxFunction )
-import Casadi.CMatrix ( CMatrix )
-import qualified Casadi.CMatrix as CM
+import Casadi.Function ( callDM )
+import Casadi.Matrix ( CMatrix, toFunction )
+import qualified Casadi.Matrix as CM
 import Casadi.DM ( DM )
 import Casadi.MX ( MX )
 import Casadi.SX ( SX )
@@ -105,7 +105,7 @@ instance (Arbitrary a, Dim n) => Arbitrary (Vec n a) where
 
 evalMX :: MX -> DM
 evalMX x = unsafePerformIO $ do
-  f <- mxFunction "evalMX" V.empty (V.singleton x) M.empty
+  f <- toFunction "evalMX" V.empty (V.singleton x) M.empty
   ret <- callDM f V.empty
   return (V.head ret)
 

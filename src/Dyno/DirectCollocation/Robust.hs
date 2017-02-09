@@ -30,14 +30,13 @@ import Casadi.Viewable ( Viewable )
 
 import Dyno.View.Unsafe ( mkM )
 
-import Dyno.View.View ( View(..), J, S, JV, JNone(..), JTuple(..) )
+import Dyno.View.View ( View(..), J, S, JV, JTuple(..) )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.Cov ( Cov, toMat, fromMat )
 import Dyno.View.Fun
 import Dyno.View.M ( M, vcat, vsplit )
 import qualified Dyno.View.M as M
 import Dyno.View.JVec ( JVec(..) )
-import Dyno.View.FunJac
 import Dyno.View.Scheme ( Scheme )
 import Dyno.View.Vectorize ( Vectorize(..), Id(..), unId, vzipWith4 )
 import Dyno.TypeVecs ( Dim, Vec, reflectDim )
@@ -92,12 +91,26 @@ mkComputeSensitivities roots covDae = do
                     (unId (vsplit x5)) (vsplit x6) (vsplit x7) (vsplit x8) (vsplit x9)
             in vcat r
 
-  edscf <- toFun "errorDynamicsStageCon" (errorDynStageConstraints cijs taus errorDynFun) mempty
-  errorDynStageConFunJac <- toFunJac edscf
+  let edscf :: (J (ErrorInD (JV sx) (JV sw) (JV sz) deg) :*:
+                (ErrorIn0 (JV x) (JV z) (JV u) (JV p) deg)) MX
+            -> M (ErrorOut (JV sr) (JV sx) deg)
+                 (ErrorInD (JV sx) (JV sw) (JV sz) deg)
+                 MX
+      edscf (inputD :*: input0) = M.jacobian edo inputD
+        where
+          edo = errorDynStageConstraints cijs taus errorDynFun inputD input0
 
-  sensitivityStageFun' <- flip (toFun "sensitivity stage function") mempty $
-                          sensitivityStageFunction (callMX errorDynStageConFunJac)
-  let sensitivityStageFun = sensitivityStageFun'
+  errorDynStageConFunJac <- toFun "errorDynamicsStageCon" edscf mempty
+
+  let _ = errorDynStageConFunJac :: Fun
+                                    (J (ErrorInD (JV sx) (JV sw) (JV sz) deg) :*:
+                                     (ErrorIn0 (JV x) (JV z) (JV u) (JV p) deg))
+                                    (M (ErrorOut (JV sr) (JV sx) deg)
+                                     (ErrorInD (JV sx) (JV sw) (JV sz) deg))
+
+  sensitivityStageFun <- flip (toFun "sensitivity stage function") mempty $
+                         sensitivityStageFunction (\x y -> callSym errorDynStageConFunJac (cat x :*: y))
+
   let sens :: S MX
               -> J (JV p) MX
               -> J (JVec deg (JV Id)) MX
@@ -106,7 +119,7 @@ mkComputeSensitivities roots covDae = do
               -> (M (JV sx) (JV sx) MX, M (JV sx) (JV sw) MX)
       sens dt p stagetimes x0 xzus = (y0,y1)
         where
-          y0 :*: y1 = callMX sensitivityStageFun (dt :*: p :*: stagetimes :*: x0 :*: xzus)
+          y0 :*: y1 = callSym sensitivityStageFun (dt :*: p :*: stagetimes :*: x0 :*: xzus)
 
   let computeAllSensitivities :: J (CollTraj x z u p n deg) MX
              -> CovarianceSensitivities (JV sx) (JV sw) n MX
@@ -181,7 +194,7 @@ mkComputeCovariances c2d computeSens qc' = do
                 -> (J (Cov (JV sx)) MX, J (Cov (JV sx)) MX)
           ffs p0' (f, g) = (p1', p0')
             where
-              p1' = callMX propOneCovFun (f :*: g :*: p0' :*: qc :*: dt)
+              p1' = callSym propOneCovFun (f :*: g :*: p0' :*: qc :*: dt)
 
           -- split up the design vars
           CollTraj tf _ _ _ = split collTraj
@@ -236,9 +249,11 @@ errorDynamicsFunction dae (t :*: parm :*: x' :*: collPoint :*: sx' :*: sx :*: sz
 data ErrorIn0 x z u p deg a =
   ErrorIn0 (J x a) (J (JVec deg (CollPoint x z u)) a) (S a) (J p a) (J (JVec deg (JV Id)) a)
   deriving Generic
+
 data ErrorInD sx sw sz deg a =
   ErrorInD (J sx a) (J sw a) (J (JVec deg (JTuple sx sz)) a)
   deriving Generic
+
 data ErrorOut sr sx deg a =
   ErrorOut (J (JVec deg sr) a) (J sx a)
   deriving Generic
@@ -256,11 +271,11 @@ errorDynStageConstraints ::
   -> Vec deg Double
   -> Fun (S :*: J p :*: J x :*: J (CollPoint x z u) :*: J sx :*: J sx :*: J sz :*: J sw)
            (J sr)
-  -> JacIn (ErrorInD sx sw sz deg) (ErrorIn0 x z u p deg) MX
-  -> JacOut (ErrorOut sr sx deg) (J JNone) MX
-errorDynStageConstraints cijs taus dynFun
-  (JacIn errorInD (ErrorIn0 x0 xzus' h p stageTimes'))
-  = JacOut (cat (ErrorOut (cat (JVec dynConstrs)) sxnext)) (cat JNone)
+  -> J (ErrorInD sx sw sz deg) MX
+  -> ErrorIn0 x z u p deg MX
+  -> J (ErrorOut sr sx deg) MX
+errorDynStageConstraints cijs taus dynFun errorInD (ErrorIn0 x0 xzus' h p stageTimes')
+  = cat (ErrorOut (cat (JVec dynConstrs)) sxnext)
   where
     ErrorInD sx0 sw0 sxzs' = split errorInD
 
@@ -291,7 +306,7 @@ errorDynStageConstraints cijs taus dynFun
          -> J x MX -> J (CollPoint x z u) MX -> S MX
          -> J sr MX
     applyDae sx' sx sz x' xzu t =
-      callMX dynFun
+      callSym dynFun
       (t :*: p :*: x' :*: xzu :*: sx' :*: sx :*: sz :*: sw0)
 
     -- error state derivatives
@@ -334,8 +349,8 @@ propOneCov c2d (dsx1_dsx0 :*: dsx1_dsw0 :*: p0 :*: qs :*: h) = fromMat p1
 sensitivityStageFunction ::
   forall x z u p sx sz sw deg sr
   . (Dim deg, View x, View z, View u, View p, View sx, View sz, View sw, View sr)
-  => (JacIn (ErrorInD sx sw sz deg) (ErrorIn0 x z u p deg) MX
-      -> Jac (ErrorInD sx sw sz deg) (ErrorOut sr sx deg) (J JNone) MX)
+  => (ErrorInD sx sw sz deg MX -> ErrorIn0 x z u p deg MX
+      -> M (ErrorOut sr sx deg) (ErrorInD sx sw sz deg) MX)
   -> (S :*: J p :*: J (JVec deg (JV Id)) :*: J x :*: J (JVec deg (CollPoint x z u))) MX
   -> (M sx sx :*: M sx sw) MX
 sensitivityStageFunction dynStageConJac
@@ -349,9 +364,10 @@ sensitivityStageFunction dynStageConJac
     sxzs = M.zeros
 
     mat :: M.M (ErrorOut sr sx deg) (ErrorInD sx sw sz deg) MX
-    Jac mat _ _ =
-      dynStageConJac $
-      JacIn (cat (ErrorInD sx0 sw0 sxzs)) (ErrorIn0 x0' xzus' dt parm stageTimes)
+    mat =
+      dynStageConJac
+      (ErrorInD sx0 sw0 sxzs)
+      (ErrorIn0 x0' xzus' dt parm stageTimes)
 
     df_dsx0 :: M (JVec deg sr) sx MX
     df_dsw0 :: M (JVec deg sr) sw MX
@@ -382,53 +398,48 @@ mkRobustifyFunction ::
   -> (x Sxe -> sx Sxe -> p Sxe -> shr Sxe)
   -> IO (J (JV shr) MX -> J (JV p) MX -> J (JV x) MX -> J (Cov (JV sx)) MX -> J (JV shr) MX)
 mkRobustifyFunction project robustifyPathC = do
-  proj <- toFun "errorSpaceProjection"
-          (\(JacIn x0 x1) -> JacOut (vcat (project (vsplit x1) (vsplit x0))) (cat JNone))
-          mempty
-  let _ = proj :: Fun
-                  (JacIn (JV sx) (J (JV x)))
-                  (JacOut (JV x) (J JNone))
+  let proj :: (J (JV sx) :*: J (JV x)) SX
+           -> M (JV x) (JV sx) SX
+      proj (x0 :*: x1) = M.jacobian (vcat (project (vsplit x1) (vsplit x0))) x0
 
-  projJac <- toFunJac proj
+  projJac <- toFun "errorSpaceProjectionJac" proj mempty
   let _ = projJac :: Fun
-                     (JacIn (JV sx) (J (JV x)))
-                     (Jac (JV sx) (JV x) (J JNone))
+                     (J (JV sx) :*: J (JV x))
+                     (M (JV x) (JV sx))
 
   let zerosx = M.zeros :: J (JV sx) SX
   simplifiedPropJac <- toFun "simplified error space projection jacobian"
-                       (\x0 -> (\(Jac j0 _ _) -> j0) (callSX projJac (JacIn zerosx x0)))
+                       (\x0 -> callSym projJac (zerosx :*: x0))
                        mempty
   let _ = simplifiedPropJac :: Fun
                                (J (JV x))
                                (M.M (JV x) (JV sx))
 
-  let rpc (JacIn xe parm) = JacOut (vcat lol) (cat JNone)
+  let rpc :: (J (JTuple (JV x) (JV sx)) :*: J (JV p)) SX
+          -> (M (JV shr) (JTuple (JV x) (JV sx)) :*: J (JV shr)) SX
+      rpc (xe :*: parm) = M.jacobian lol xe :*: lol
         where
-          lol = robustifyPathC (vsplit x) (vsplit e) (vsplit parm)
+          lol :: J (JV shr) SX
+          lol = vcat $ robustifyPathC (vsplit x) (vsplit e) (vsplit parm)
           JTuple x e = split xe
-  robustH <- toFun "robust constraint" rpc mempty
-  let _ = robustH :: Fun
-                     (JacIn (JTuple (JV x) (JV sx)) (J (JV p)))
-                     (JacOut (JV shr) (J JNone))
-  robustHJac <- toFunJac robustH
-  let _ = robustHJac :: Fun
-                        (JacIn (JTuple (JV x) (JV sx)) (J (JV p)))
-                        (Jac (JTuple (JV x) (JV sx)) (JV shr) (J JNone))
+  robustHJac <- toFun "robust constraint" rpc mempty
+  let _ = robustHJac :: Fun (J (JTuple (JV x) (JV sx)) :*: J (JV p))
+                            (M (JV shr) (JTuple (JV x) (JV sx)) :*: J (JV shr))
 
-      srh :: (J (JV x) :*: J (JV p)) SX -> Jac (JTuple (JV x) (JV sx)) (JV shr) (J JNone) SX
+  let srh :: (J (JV x) :*: J (JV p)) SX -> (M (JV shr) (JTuple (JV x) (JV sx)) :*: J (JV shr)) SX
       srh (x :*: p) = ret
         where
 
           xe = M.zeros :: J (JV sx) SX
           xxe = cat (JTuple x xe) :: J (JTuple (JV x) (JV sx)) SX
 
-          ret :: Jac (JTuple (JV x) (JV sx)) (JV shr) (J JNone) SX
-          ret = callSX robustHJac (JacIn xxe p)
+          ret :: (M (JV shr) (JTuple (JV x) (JV sx)) :*: J (JV shr)) SX
+          ret = callSym robustHJac (xxe :*: p)
 
   simplifiedHJac <- toFun "simplified robust constraint jacobian" srh mempty
   let _ = simplifiedHJac :: Fun
                             (J (JV x) :*: J (JV p))
-                            (Jac (JTuple (JV x) (JV sx)) (JV shr) (J JNone))
+                            (M (JV shr) (JTuple (JV x) (JV sx)) :*: J (JV shr))
 
   let gogo :: J (JV shr) MX -> J (JV p) MX -> J (JV x) MX -> J (Cov (JV sx)) MX -> J (JV shr) MX
       gogo gammas' theta x pe' = rcs'
@@ -441,10 +452,10 @@ mkRobustifyFunction project robustifyPathC = do
 
             jacH' :: M (JV shr) (JTuple (JV x) (JV sx)) MX
             h0vec :: J (JV shr) MX
-            Jac jacH' h0vec _ = callMX simplifiedHJac (x :*: theta)
+            jacH' :*: h0vec = callSym simplifiedHJac (x :*: theta)
 
             f :: M.M (JV x) (JV sx) MX
-            f = callMX simplifiedPropJac x
+            f = callSym simplifiedPropJac x
 
             pe :: M.M (JV sx) (JV sx) MX
             pe = toMat pe'
@@ -485,4 +496,4 @@ mkRobustifyFunction project robustifyPathC = do
   retFun <- toFun "robust constraint violations"
             (\(x0 :*: x1 :*: x2 :*: x3) -> gogo x0 x1 x2 x3) mempty -- >>= expandFun
 
-  return (\x y z w -> callMX retFun (x :*: y :*: z :*: w))
+  return (\x y z w -> callSym retFun (x :*: y :*: z :*: w))

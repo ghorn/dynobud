@@ -25,10 +25,8 @@ import qualified Data.Sequence as S
 import qualified Data.Traversable as T
 import qualified Data.Vector as V
 
-import qualified Casadi.Function as C
+import qualified Casadi.Core.Classes.Function as C
 import Casadi.GenericType ( GenericType, GType, fromGType )
-
-import qualified Casadi.Core.Classes.Function as F
 
 import Dyno.TypeVecs ( Dim, Vec )
 import qualified Dyno.TypeVecs as TV
@@ -63,14 +61,11 @@ mapFun :: forall f g n
           . ( Scheme (Par f n), Scheme (Par g n), Dim n )
           => Proxy n
           -> Fun f g
-          -> String
           -> MapStrategy
-          -> M.Map String GType
           -> IO (Fun (Par f n) (Par g n))
-mapFun _ (Fun f) name mapStrategy opts0 = do
-  opts <- T.mapM fromGType opts0 :: IO (M.Map String GenericType)
+mapFun _ (Fun f) mapStrategy = do
   let n = TV.reflectDim (Proxy :: Proxy n)
-  fm <- F.function_map__5 f name (mapStrategyString mapStrategy) n opts :: IO C.Function
+  fm <- C.function_map__5 f n (mapStrategyString mapStrategy) :: IO C.Function
   checkFunDimensionsWith "mapFun'" (Fun fm)
 -- {-# NOINLINE mapFun #-}
 
@@ -138,6 +133,6 @@ mapFun' _ f0 name mapStrategy opts0 = do
 --  putStrLn $ "repeated in: " ++ show repeatedIn
 --  putStrLn $ "repeated out: " ++ show repeatedOut
 
-  fm <- F.function_map__3 (unFun f0) name (mapStrategyString mapStrategy) n (toIndices repeatedIn) (toIndices repeatedOut) opts :: IO C.Function
+  fm <- C.function_map__3 (unFun f0) name (mapStrategyString mapStrategy) n (toIndices repeatedIn) (toIndices repeatedOut) opts :: IO C.Function
   checkFunDimensionsWith "mapFun''" (Fun fm)
 -- {-# NOINLINE mapFun' #-}

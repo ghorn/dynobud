@@ -13,9 +13,9 @@ module Dyno.Fitting
 
 import GHC.Generics ( Generic )
 
+import Casadi.Matrix ( SMatrix )
 import Casadi.MX ( MX )
 import Casadi.SX ( SX )
-import Casadi.Overloading ( ArcTan2 )
 import qualified Data.Map as M
 import Data.Vector ( Vector )
 import Data.Proxy ( Proxy(..) )
@@ -25,7 +25,7 @@ import Dyno.NlpSolver ( GType, toNlpSol, callNlpsol )
 import Dyno.Solvers ( Solver )
 import Dyno.TypeVecs ( Dim, Vec )
 import qualified Dyno.TypeVecs as TV
-import Dyno.View.Fun ( Fun, Symbolic(..), callMX )
+import Dyno.View.Fun ( Fun, callSym, toFun )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.M ( M, mm, ones, flatten, unflatten, sm, sum1, trans, vcat, vsplit, vcat'' )
 import Dyno.View.MapFun ( MapStrategy, mapFun' )
@@ -67,8 +67,8 @@ l1Fit ::
   . (Vectorize q, Vectorize g, Vectorize x, Vectorize y, Dim n)
   => Double
   -> Solver
-  -> (forall a . (Floating a, ArcTan2 a) => q a -> x a -> y a)
-  -> (forall a . (Floating a, ArcTan2 a) => q a -> g a)
+  -> (forall a . SMatrix a => q (S a) -> x (S a) -> y (S a))
+  -> (forall a . SMatrix a => q (S a) -> g (S a))
   -> Maybe (q Double) -> q Bounds -> g Bounds -> MapStrategy -> M.Map String GType
   -> Vec n (x Double, y Double) -> IO (Either String (q Double))
 l1Fit eps solver fitModel qConstraints mq0 qbnds gbnds mapStrat mapOpts featuresData =
@@ -86,8 +86,8 @@ l1Fits ::
   . (Vectorize q, Vectorize g, Vectorize x, Vectorize y, Traversable t, Dim n)
   => Double
   -> Solver
-  -> (forall a . (Floating a, ArcTan2 a) => q a -> x a -> y a)
-  -> (forall a . (Floating a, ArcTan2 a) => q a -> g a)
+  -> (forall a . SMatrix a => q (S a) -> x (S a) -> y (S a))
+  -> (forall a . SMatrix a => q (S a) -> g (S a))
   -> MapStrategy
   -> M.Map String GType
   -> t (Maybe (q Double), q Bounds, g Bounds, Vec n (x Double, y Double))
@@ -102,8 +102,8 @@ withL1Fit ::
   . (Vectorize q, Vectorize g, Vectorize x, Vectorize y, Dim n)
   => Double
   -> Solver
-  -> (forall a . (Floating a, ArcTan2 a) => q a -> x a -> y a)
-  -> (forall a . (Floating a, ArcTan2 a) => q a -> g a)
+  -> (forall a . SMatrix a => q (S a) -> x (S a) -> y (S a))
+  -> (forall a . SMatrix a => q (S a) -> g (S a))
   -> MapStrategy
   -> M.Map String GType
   -> (((Maybe (q Double), q Bounds, g Bounds, Vec n (x Double, y Double))
@@ -155,10 +155,10 @@ withL1Fit eps solver fitModel qConstraints mapStrat mapOpts userFun = do
           xs = unflatten fitFeatures
 
           gs0 :: J (JV (Vec n :. y)) MX
-          gs0 = flatten $ callMX mapFitModel (q :*: xs :*: ys :*: (-s))
+          gs0 = flatten $ callSym mapFitModel (q :*: xs :*: ys :*: (-s))
 
           gs1 :: J (JV (Vec n :. y)) MX
-          gs1 = flatten $ callMX mapFitModel (q :*: xs :*: ys :*: s)
+          gs1 = flatten $ callSym mapFitModel (q :*: xs :*: ys :*: s)
 
           f = realToFrac eps `sm` trans q `mm` q + sum1 s'
 
@@ -226,8 +226,8 @@ l2Fit ::
   . (Vectorize q, Vectorize g, Vectorize x, Vectorize y, Dim n)
   => Double
   -> Solver
-  -> (forall a . (Floating a, ArcTan2 a) => q a -> x a -> y a)
-  -> (forall a . (Floating a, ArcTan2 a) => q a -> g a)
+  -> (forall a . SMatrix a => q (S a) -> x (S a) -> y (S a))
+  -> (forall a . SMatrix a => q (S a) -> g (S a))
   -> Maybe (q Double) -> q Bounds -> g Bounds -> MapStrategy -> M.Map String GType
   -> Vec n (x Double, y Double) -> IO (Either String (q Double))
 l2Fit eps solver fitModel qConstraints mq0 qbnds gbnds mapStrat mapOpts featuresData = do
@@ -245,8 +245,8 @@ l2Fits ::
   . (Vectorize q, Vectorize g, Vectorize x, Vectorize y, Traversable t, Dim n)
   => Double
   -> Solver
-  -> (forall a . (Floating a, ArcTan2 a) => q a -> x a -> y a)
-  -> (forall a . (Floating a, ArcTan2 a) => q a -> g a)
+  -> (forall a . SMatrix a => q (S a) -> x (S a) -> y (S a))
+  -> (forall a . SMatrix a => q (S a) -> g (S a))
   -> MapStrategy
   -> M.Map String GType
   -> t (Maybe (q Double), q Bounds, g Bounds, Vec n (x Double, y Double))
@@ -261,8 +261,8 @@ withL2Fit ::
   . (Vectorize q, Vectorize g, Vectorize x, Vectorize y, Dim n)
   => Double
   -> Solver
-  -> (forall a . (Floating a, ArcTan2 a) => q a -> x a -> y a)
-  -> (forall a . (Floating a, ArcTan2 a) => q a -> g a)
+  -> (forall a . SMatrix a => q (S a) -> x (S a) -> y (S a))
+  -> (forall a . SMatrix a => q (S a) -> g (S a))
   -> MapStrategy
   -> M.Map String GType
   -> (((Maybe (q Double), q Bounds, g Bounds, Vec n (x Double, y Double))
@@ -305,7 +305,7 @@ withL2Fit eps solver fitModel qConstraints mapStrat mapOpts userFun = do
 
           -- objective function
           f :: S MX
-          f = realToFrac eps `sm` trans q `mm` q + sum1 (callMX mapFitModel (q :*: xs :*: ys))
+          f = realToFrac eps `sm` trans q `mm` q + sum1 (callSym mapFitModel (q :*: xs :*: ys))
 
           -- nonlinear parameter constraints
           g :: J (JV g) MX
@@ -369,8 +369,8 @@ lInfFit ::
   . (Vectorize q, Vectorize g, Vectorize x, Vectorize y, Dim n)
   => Double
   -> Solver
-  -> (forall a . (Floating a, ArcTan2 a) => q a -> x a -> y a)
-  -> (forall a . (Floating a, ArcTan2 a) => q a -> g a)
+  -> (forall a . SMatrix a => q (S a) -> x (S a) -> y (S a))
+  -> (forall a . SMatrix a => q (S a) -> g (S a))
   -> Maybe (q Double) -> q Bounds -> g Bounds -> MapStrategy -> M.Map String GType
   -> Vec n (x Double, y Double) -> IO (Either String (q Double))
 lInfFit eps solver fitModel qConstraints mq0 qbnds gbnds mapStrat mapOpts featuresData =
@@ -388,8 +388,8 @@ lInfFits ::
   . (Vectorize q, Vectorize g, Vectorize x, Vectorize y, Traversable t, Dim n)
   => Double
   -> Solver
-  -> (forall a . (Floating a, ArcTan2 a) => q a -> x a -> y a)
-  -> (forall a . (Floating a, ArcTan2 a) => q a -> g a)
+  -> (forall a . SMatrix a => q (S a) -> x (S a) -> y (S a))
+  -> (forall a . SMatrix a => q (S a) -> g (S a))
   -> MapStrategy
   -> M.Map String GType
   -> t (Maybe (q Double), q Bounds, g Bounds, Vec n (x Double, y Double))
@@ -404,8 +404,8 @@ withLInfFit ::
   . (Vectorize q, Vectorize g, Vectorize x, Vectorize y, Dim n)
   => Double
   -> Solver
-  -> (forall a . (Floating a, ArcTan2 a) => q a -> x a -> y a)
-  -> (forall a . (Floating a, ArcTan2 a) => q a -> g a)
+  -> (forall a . SMatrix a => q (S a) -> x (S a) -> y (S a))
+  -> (forall a . SMatrix a => q (S a) -> g (S a))
   -> MapStrategy
   -> M.Map String GType
   -> (((Maybe (q Double), q Bounds, g Bounds, Vec n (x Double, y Double))
@@ -457,10 +457,10 @@ withLInfFit eps solver fitModel qConstraints mapStrat mapOpts userFun = do
           xs = unflatten fitFeatures
 
           gs0 :: J (JV (Vec n :. y)) MX
-          gs0 = flatten $ callMX mapFitModel (q :*: xs :*: ys :*: (-s))
+          gs0 = flatten $ callSym mapFitModel (q :*: xs :*: ys :*: (-s))
 
           gs1 :: J (JV (Vec n :. y)) MX
-          gs1 = flatten $ callMX mapFitModel (q :*: xs :*: ys :*: s)
+          gs1 = flatten $ callSym mapFitModel (q :*: xs :*: ys :*: s)
 
           g :: GSlacks g y n MX
           g = GSlacks (vcat (qConstraints (vsplit q))) gs0 gs1

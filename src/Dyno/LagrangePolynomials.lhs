@@ -113,11 +113,10 @@ import qualified Data.Foldable as F
 import qualified Data.Vector as V
 import Linear ( Additive, (^*), sumV )
 
-import Casadi.Function ( sxFunction )
-import Casadi.Function ( callDM )
-import Casadi.SX ( SX, ssym, sgradient )
+import Casadi.SX ( SX )
 import Casadi.DM ( DM, dnonzeros )
-import Casadi.CMatrix ( densify )
+import Casadi.Matrix ( sym, gradient, densify, toFunction )
+import Casadi.Function ( callDM )
 
 import Dyno.TypeVecs
 
@@ -268,8 +267,8 @@ lagrangeDerivCoeffs taus' = mkVec' [mkVec' [cjk j k | k <- [0..deg]] | j <- [0..
 
 Testing code:
 \begin{code}
-ssyms :: String -> Int -> IO [SX]
-ssyms name k = mapM (ssym . (name ++) . show) $ take k [(0::Int)..]
+syms :: String -> Int -> IO [SX]
+syms name n = mapM (\k -> sym (name ++ show k) 1 1) $ take n [(0::Int)..]
 
 runComparison :: IO ()
 runComparison = do
@@ -277,14 +276,14 @@ runComparison = do
       sampleTaus = take (deg+1) [0.1,0.2..]
       sampleTaus' = map realToFrac sampleTaus
 
-  tau <- ssym "t"
-  taus <- ssyms "t" (deg + 1)
+  tau <- sym "t" 1 1
+  taus <- syms "t" (deg + 1)
 
   let zs :: [SX]
       zs = map (lagrangeXis taus tau) [0..deg]
       inputs = tau : taus
-      zdot = map (`sgradient` tau) zs
-  zdotAlg <- sxFunction "zdotAlg" (V.fromList inputs) (V.fromList zdot) M.empty
+      zdot = map (`gradient` tau) zs
+  zdotAlg <- toFunction "zdotAlg" (V.fromList inputs) (V.fromList zdot) M.empty
 
   --mapM_ print zdot'
   

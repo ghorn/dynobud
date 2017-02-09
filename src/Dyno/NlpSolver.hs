@@ -28,12 +28,12 @@ import qualified Casadi.Core.Classes.Function as C
 import qualified Casadi.Core.Tools as C
 
 import Casadi.Callback ( makeCallback )
-import Casadi.CMatrix ( CMatrix )
-import qualified Casadi.CMatrix as CM
+import Casadi.Matrix ( CMatrix )
+import qualified Casadi.Matrix as CM
 import Casadi.DM ( DM )
 import Casadi.Function ( Function, callDM' )
 import Casadi.GenericType ( GType(..), fromGType, toGType )
-import Casadi.MX ( MX, symV )
+import Casadi.MX ( MX )
 import Casadi.Sparsity ( Sparsity, dense, scalar )
 
 import Dyno.FormatTime ( formatSeconds )
@@ -197,8 +197,8 @@ toNlpSol ::
   -> Maybe (J x (Vector Double) -> J p (Vector Double) -> M.Map String GType -> IO Bool)
   -> IO (NlpSol x p g)
 toNlpSol solverStuff nlpFun scaleX scaleG scaleF userCallback = do
-  inputsX <- mkM <$> symV "x" (size (Proxy :: Proxy x))
-  inputsP <- mkM <$> symV "p" (size (Proxy :: Proxy p))
+  inputsX <- mkM <$> CM.sym "x" (size (Proxy :: Proxy x)) 1
+  inputsP <- mkM <$> CM.sym "p" (size (Proxy :: Proxy p)) 1
 
   let scale :: forall sfa . CMatrix sfa => ScaleFuns x g sfa
       scale = mkScaleFuns scaleX scaleG scaleF

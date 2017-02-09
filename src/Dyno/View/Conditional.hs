@@ -32,7 +32,7 @@ import System.IO.Unsafe ( unsafePerformIO )
 import Casadi.MX ( MX )
 import Casadi.SX ( SX )
 import Casadi.DM ( DM )
-import qualified Casadi.CMatrix as C
+import qualified Casadi.Matrix as C
 import Casadi.Core.Classes.Function as C
 import Casadi.Overloading ( SymOrd )
 import qualified Casadi.Overloading as Overloading

@@ -20,8 +20,10 @@ import Data.Colour.SRGB
 import Control.Lens
 import System.Environment ( getArgs )
 
+import Casadi.SX ( SX )
 import Dyno.KalmanFilter
 import Dyno.Random
+import Dyno.View ( S )
 import Dyno.View.Vectorize
 import Linear
 
@@ -72,7 +74,7 @@ springModel =
 
 main :: IO ()
 main = do
-  runner <- compileModel springModel
+  runner <- compileModel (springModel :: KFModel SpringX SpringQ SpringY None (S SX))
   args <- getArgs
   let sensorNoiseCovarianceDiag = SpringY {yPos = 0.5**2}
       processNoiseCovarianceDiag = SpringQ {qDisturbanceForce = 1.0**2}

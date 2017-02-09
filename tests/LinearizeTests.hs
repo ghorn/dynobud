@@ -1,20 +1,25 @@
 {-# OPTIONS_GHC -Wall #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module LinearizeTests
        ( linearizeTests
        ) where
 
+import Data.Proxy ( Proxy(..) )
 import qualified Test.HUnit.Base as HUnit
 import Test.Framework ( Test, testGroup )
 import Test.Framework.Providers.HUnit ( testCase )
 import Linear ( V2(..), V3(..), V4(..) )
 
-import Dyno.View.Vectorize ( Id(..) )
+import Casadi.MX ( MX )
+import Casadi.SX ( SX )
+import qualified Casadi.Matrix as CM
+import Dyno.View ( S, Id(..) )
 import Dyno.Linearize ( linearize', linearize )
 
-testLinearize' :: HUnit.Assertion
-testLinearize' = HUnit.assert $ do
-  let fun :: Floating a => V2 a -> Id a -> (V3 a, V4 a)
+testLinearize' :: forall a . CM.SMatrix a => Proxy a -> HUnit.Assertion
+testLinearize' _ = HUnit.assert $ do
+  let fun :: V2 (S a) -> Id (S a) -> (V3 (S a), V4 (S a))
       fun (V2 f0 f1) (Id p) = (V3 (f0*f0*p) 0 (42*f1), V4 p (2*p) (3*f0) (4*f1))
 
   funjac <- linearize' fun
@@ -39,9 +44,9 @@ testLinearize' = HUnit.assert $ do
   HUnit.assertEqual "h" trueH h
 
 
-testLinearize :: HUnit.Assertion
-testLinearize = HUnit.assert $ do
-  let fun :: Floating a => V2 a -> V3 a
+testLinearize :: forall a . CM.SMatrix a => Proxy a -> HUnit.Assertion
+testLinearize _ = HUnit.assert $ do
+  let fun :: V2 (S a) -> V3 (S a)
       fun (V2 f0 f1) = V3 (f0*f0) 0 (42*f1)
 
   funjac <- linearize fun
@@ -65,6 +70,14 @@ testLinearize = HUnit.assert $ do
 linearizeTests :: Test
 linearizeTests =
   testGroup "linearize tests"
-  [ testCase "simple linearize test" testLinearize
-  , testCase "simple linearize' test" testLinearize'
+  [ linearizeTests' "SX" (Proxy :: Proxy SX)
+  , linearizeTests' "MX" (Proxy :: Proxy MX)
+  ]
+
+
+linearizeTests' :: CM.SMatrix a => String -> Proxy a -> Test
+linearizeTests' name p =
+  testGroup name
+  [ testCase ("simple linearize test " ++ name) (testLinearize p)
+  , testCase ("simple linearize' test " ++ name) (testLinearize' p)
   ]

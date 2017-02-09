@@ -50,7 +50,6 @@ library
                        Dyno.View.Cov
 --                       Dyno.View.CustomFunction
                        Dyno.View.Fun
-                       Dyno.View.FunJac
                        Dyno.View.HList
                        Dyno.View.Interpolant
                        Dyno.View.JVec
@@ -72,8 +71,8 @@ library
   other-modules:
 
   build-depends:       base >=4.6 && < 5,
-                       casadi-bindings >= 3.1.0.2,
-                       casadi-bindings-core >= 3.1.0.0,
+                       casadi-bindings >= 3.1.0.22,
+                       casadi-bindings-core >= 3.1.0.22,
 --                       casadi-bindings-internal,
                        data-default-class,
                        jacobi-roots >=0.2 && <0.3,
@@ -101,9 +100,7 @@ library
 --                       cplex
   hs-source-dirs:      src
   default-language:    Haskell2010
-  ghc-options:         -O2 -Wall -fwarn-redundant-constraints
---  ghc-options:         -O2 -rtsopts
-  ghc-prof-options:    -O2 -Wall -fwarn-redundant-constraints -fprof-auto -fprof-cafs -fprof-auto-calls
+  ghc-options:         -O2 -Wall -Werror -fwarn-redundant-constraints
 
 flag examples
     description:    build the examples
@@ -126,7 +123,7 @@ executable kalman-filter
                        , lens
                        , colour
                        , data-default-class
-  ghc-options:         -O2
+  ghc-options:         -O2 -Wall -Werror -fwarn-redundant-constraints
 
 executable nlp-solver
   if flag(examples)
@@ -139,7 +136,7 @@ executable nlp-solver
   build-depends:       dynobud
                        , base >=4.6 && < 5
                        , casadi-bindings
-  ghc-options:         -O2
+  ghc-options:         -O2 -Wall -Werror -fwarn-redundant-constraints
 
 executable toy-ocp
   if flag(examples)
@@ -151,7 +148,7 @@ executable toy-ocp
   default-language:    Haskell2010
   build-depends:       dynobud
                        , base >=4.6 && < 5
-  ghc-options:         -O2
+  ghc-options:         -O2 -Wall -Werror -fwarn-redundant-constraints
 
 
 executable multiple_shooting
@@ -172,7 +169,7 @@ executable multiple_shooting
                        , lens
                        , colour
                        , data-default-class
-  ghc-options:         -O2
+  ghc-options:         -O2 -Wall -Werror -fwarn-redundant-constraints
 
 
 executable sofa-viz-2000
@@ -194,7 +191,7 @@ executable sofa-viz-2000
                        bytestring,
                        zeromq4-haskell,
                        vector
-  ghc-options:         -O2 -threaded
+  ghc-options:         -O2 -Wall -Werror -threaded -fwarn-redundant-constraints
 
 executable sofa-expand-o-matic
   if flag(examples)
@@ -213,7 +210,7 @@ executable sofa-expand-o-matic
                        binary,
                        linear,
                        base >= 4.6 && < 5
-  ghc-options:         -threaded -O2
+  ghc-options:         -threaded -O2 -Wall -Werror -fwarn-redundant-constraints
 
 executable homotopy
   if flag(examples)
@@ -227,7 +224,7 @@ executable homotopy
                        vector,
                        casadi-bindings,
                        base >= 4.6 && < 5
-  ghc-options:         -threaded -O2
+  ghc-options:         -threaded -O2 -Wall -Werror -fwarn-redundant-constraints
 
 executable vec
   if flag(examples)
@@ -241,7 +238,7 @@ executable vec
                        vector >=0.10,
                        base >=4.6 && < 5
 
-  ghc-options:         -threaded -O2
+  ghc-options:         -threaded -O2 -Wall -Werror -fwarn-redundant-constraints
 
 executable parallel-map
   if flag(examples)
@@ -258,7 +255,7 @@ executable parallel-map
                        time,
                        base >=4.6 && < 5
 
-  ghc-options:         -threaded -O2
+  ghc-options:         -threaded -O2 -Wall -Werror -fwarn-redundant-constraints
 
 executable spring
   if flag(examples)
@@ -278,7 +275,7 @@ executable spring
                      , bytestring
                      , zeromq4-haskell
                      , binary
-  ghc-options:         -threaded -O2
+  ghc-options:         -threaded -O2 -Wall -Werror -fwarn-redundant-constraints
 
 executable rocket
   if flag(examples)
@@ -301,7 +298,7 @@ executable rocket
                      , zeromq4-haskell
                      , binary
 
-  ghc-options:         -threaded -O2
+  ghc-options:         -threaded -O2 -Wall -Werror -fwarn-redundant-constraints
 
 executable easy-nlp
   if flag(examples)
@@ -314,7 +311,7 @@ executable easy-nlp
   build-depends:       dynobud,
                        vector >=0.10,
                        base >=4.6 && < 5
-  ghc-options:         -threaded -O2
+  ghc-options:         -threaded -O2 -Wall -Werror -fwarn-redundant-constraints
 
 executable basic-nlp
   if flag(examples)
@@ -328,7 +325,7 @@ executable basic-nlp
                        vector >=0.10,
                        casadi-bindings,
                        base >=4.6 && < 5
-  ghc-options:         -threaded -O2
+  ghc-options:         -threaded -O2 -Wall -Werror -fwarn-redundant-constraints
 
 executable beginner-qp
   if flag(examples)
@@ -340,7 +337,7 @@ executable beginner-qp
   default-language:    Haskell2010
   build-depends:       dynobud,
                        base >=4.6 && < 5
-  ghc-options:         -O2
+  ghc-options:         -O2 -Wall -Werror -fwarn-redundant-constraints
 
 executable dae-pendulum
   if flag(examples)
@@ -359,7 +356,7 @@ executable dae-pendulum
                        zeromq4-haskell,
                        binary,
                        vector
-  ghc-options:         -threaded -O2
+  ghc-options:         -threaded -O2 -Wall -Werror -fwarn-redundant-constraints
 
 executable glider
   if flag(examples)
@@ -383,7 +380,7 @@ executable glider
                        vector,
                        generic-accessors >= 0.1.0.0,
                        zeromq4-haskell
-  ghc-options:         -threaded -O2
+  ghc-options:         -threaded -O2 -Wall -Werror -fwarn-redundant-constraints
 
 executable sailboat
   if flag(examples)
@@ -403,7 +400,7 @@ executable sailboat
                        semigroups,
                        generic-accessors >= 0.1.0.0,
                        zeromq4-haskell
-  ghc-options:         -threaded -O2
+  ghc-options:         -threaded -O2 -Wall -Werror -fwarn-redundant-constraints
 
 executable dynoplot
   if flag(examples)
@@ -423,7 +420,7 @@ executable dynoplot
                        zeromq4-haskell,
                        Plot-ho-matic >= 0.5.0.0,
                        cmdargs
-  ghc-options:         -O2 -threaded -with-rtsopts=-T
+  ghc-options:         -O2 -threaded -Wall -Werror -with-rtsopts=-T -fwarn-redundant-constraints
 
 executable quadrature-test
   if flag(examples)
@@ -442,7 +439,7 @@ executable quadrature-test
                        zeromq4-haskell,
                        binary,
                        vector
-  ghc-options:         -threaded -O2
+  ghc-options:         -threaded -Wall -Werror -O2 -fwarn-redundant-constraints
 
 --test-suite lp_tests
 --  type: exitcode-stdio-1.0
@@ -459,7 +456,7 @@ executable quadrature-test
 --                       test-framework-hunit,
 --                       test-framework-quickcheck2,
 --                       base >=4.6 && < 5
---  ghc-options:         -O2
+--  ghc-options:         -O2 -Wall -Werror -fwarn-redundant-constraints
 
 --test-suite old-unit-tests
 --  type: exitcode-stdio-1.0
@@ -478,7 +475,7 @@ executable quadrature-test
 --                       linear,
 --                       MemoTrie,
 --                       base >=4.6 && < 5
-----  ghc-options:         -O2
+--  ghc-options:         -O2 -Wall -Werror -fwarn-redundant-constraints
 
 test-suite unit-tests
   type:                exitcode-stdio-1.0
@@ -512,7 +509,7 @@ test-suite unit-tests
                        hmatrix-gsl,
                        TypeCompose,
                        base >=4.6 && < 5
-  ghc-options:         -O2
+  ghc-options:         -O2 -Wall -Werror -fwarn-redundant-constraints
 
 test-suite doctests
   type:                exitcode-stdio-1.0
@@ -520,5 +517,5 @@ test-suite doctests
   build-depends:       base >= 4 && < 5,
                        doctest >= 0.8
   default-language:    Haskell2010
-  ghc-options:         -threaded
+  ghc-options:         -threaded -Wall -Werror -fwarn-redundant-constraints
   hs-source-dirs:      tests

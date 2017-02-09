@@ -57,6 +57,7 @@ module Dyno.View.M
        , junflatten
        , repmat
        , inv
+       , gradient, jacobian, hessian
          -- * hmatrix wrappers
        , rcond
        , rank
@@ -69,10 +70,10 @@ import Data.Vector ( Vector )
 import qualified Data.Vector as V
 import qualified Numeric.LinearAlgebra as HMat
 
-import Casadi.CMatrix ( CMatrix )
 import Casadi.DM ( DM, dnonzeros, dsparsify )
-import qualified Casadi.CMatrix as CM
-import Casadi.GenericType ( GenericType )
+import Casadi.GenericType ( GType )
+import Casadi.Matrix ( CMatrix, SMatrix )
+import qualified Casadi.Matrix as CM
 import Casadi.Viewable ( Viewable(..) )
 
 import Dyno.View.Unsafe ( M(UnsafeM), mkM, mkM', unM )
@@ -91,7 +92,7 @@ dense :: (View f, View g, CMatrix a) => M f g a -> M f g a
 dense (UnsafeM m) = mkM (CM.densify m)
 
 mm :: (View f, View h, CMatrix a) => M f g a -> M g h a -> M f h a
-mm (UnsafeM m0) (UnsafeM m1) = mkM (CM.mm m0 m1)
+mm (UnsafeM m0) (UnsafeM m1) = mkM (CM.mtimes m0 m1)
 
 ms :: (View f, View g, CMatrix a) => M f g a -> S a -> M f g a
 ms m0 m1 = mkM $ (unM m0) * (unM m1)
@@ -102,6 +103,16 @@ sm m0 m1 = mkM $ (unM m0) * (unM m1)
 trans :: (View f, View g, CMatrix a) => M f g a -> M g f a
 trans (UnsafeM m) = mkM (CM.trans m)
 
+gradient :: (View f, SMatrix a) => S a -> J f a -> J f a
+gradient (UnsafeM expr) (UnsafeM args) = mkM (CM.gradient expr args)
+
+jacobian :: (View f, View x, SMatrix a) => J f a -> J x a -> M f x a
+jacobian (UnsafeM expr) (UnsafeM args) = mkM (CM.jacobian expr args)
+
+hessian :: (View x, SMatrix a) => S a -> J x a -> (M x x a, J x a)
+hessian (UnsafeM expr) (UnsafeM args) = (mkM hess, mkM grad)
+  where
+    (hess, grad) = CM.hessian expr args
 
 vcat ::
   forall f g a .
@@ -366,7 +377,7 @@ countUp = mkM z
     cols = size (Proxy :: Proxy g)
 
 solve :: (View g, View h, CMatrix a)
-         => M f g a -> M f h a -> String -> M.Map String GenericType
+         => M f g a -> M f h a -> String -> M.Map String GType
          -> M g h a
 solve (UnsafeM x) (UnsafeM y) n options = mkM (CM.solve x y n options)
 

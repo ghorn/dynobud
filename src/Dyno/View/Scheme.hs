@@ -16,17 +16,15 @@ module Dyno.View.Scheme
 
 import GHC.Generics
 
+import Casadi.Matrix ( CMatrix )
 import Data.Proxy
 import qualified Data.Foldable as F
 import qualified Data.Sequence as Seq
 import qualified Data.Vector as V
 import Data.Vector ( Vector )
 
-import Casadi.CMatrix ( CMatrix )
-
 import Dyno.View.Unsafe ( mkM', unsafeUnM )
 import qualified Dyno.View.M as M
-
 import Dyno.View.View ( View(..), JQuad, JTriple, JTuple )
 
 instance (View f0, View f1, View f2, View f3) => Scheme (JQuad f0 f1 f2 f3)

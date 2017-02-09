@@ -8,7 +8,6 @@ module Dyno.View
 import Dyno.View.Conditional as X
 import Dyno.View.Cov as X
 import Dyno.View.Fun as X
-import Dyno.View.FunJac as X
 import Dyno.View.HList as X
 import Dyno.View.Interpolant as X
 import Dyno.View.JVec as X

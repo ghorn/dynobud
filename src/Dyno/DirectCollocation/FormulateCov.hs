@@ -261,14 +261,14 @@ getFgCov
         { cocNormal = g0
         , cocCovPathC = cat (JVec covPathConstraints)
         , cocCovRobustPathC = cat (JVec robustifiedPathC)
-        , cocSbc = callMX sbcFun (p0 :*: pF)
+        , cocSbc = callSym sbcFun (p0 :*: pF)
         }
     -- split up the design vars
     CollTraj tf parm stages' xf = split collTraj
     stages = unJVec (split stages') :: Vec n (J (CollStage (JV x) (JV z) (JV u) (JV p) deg) MX)
     spstages = fmap split stages :: Vec n (CollStage (JV x) (JV z) (JV u) (JV p) deg MX)
 
-    objectiveMayerCov = callMX mayerFun (tf :*: x0 :*: xf :*: p0 :*: pF)
+    objectiveMayerCov = callSym mayerFun (tf :*: x0 :*: xf :*: p0 :*: pF)
 
     -- timestep
     dt = tf / fromIntegral n
@@ -284,7 +284,7 @@ getFgCov
 
     x0 = (\(CollStage x0' _ _ _) -> x0') (TV.tvhead spstages) -- todo(greg): lift out ps/tfs for turbo graph coloring
 
---    sensitivities = callMX computeSensitivities collTraj
+--    sensitivities = callSym computeSensitivities collTraj
 
     covs :: Vec n (J (Cov (JV sx)) MX)
     covs = unJVec (split covs')
@@ -296,13 +296,13 @@ getFgCov
     -- lagrange term
     objectiveLagrangeCov = (lagrangeF + lagrange0s) / fromIntegral n
       where
-      lagrangeF = callMX lagrangeFun (tf :*: xf :*: pF :*: tf)
+      lagrangeF = callSym lagrangeFun (tf :*: xf :*: pF :*: tf)
       lagrange0s =
         sum $ F.toList $
-        TV.tvzipWith3 (\tk xk pk -> callMX lagrangeFun (tk :*: xk :*: pk :*: tf)) t0s x0s covs
+        TV.tvzipWith3 (\tk xk pk -> callSym lagrangeFun (tk :*: xk :*: pk :*: tf)) t0s x0s covs
 
     covPathConstraints :: Vec n (J sh MX)
-    covPathConstraints = TV.tvzipWith (\xk pk -> callMX shFun (xk:*:pk)) x0s covs
+    covPathConstraints = TV.tvzipWith (\xk pk -> callSym shFun (xk:*:pk)) x0s covs
 
     robustifiedPathC :: Vec n (J (JV shr) MX)
     robustifiedPathC = TV.tvzipWith (robustify gammas parm) x0s covs

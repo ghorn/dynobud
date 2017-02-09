@@ -3,13 +3,10 @@
 {-# LANGUAGE KindSignatures #-}
 
 module Dyno.View.Fun
-       ( AlwaysInline(..)
-       , NeverInline(..)
-       , Fun(..)
-       , Symbolic(..), toMXFun, toSXFun
-       , callDM, callMX, callMX', callSX
+       ( Fun(..)
+       , toFun
+       , callSym, callDM
        , expandFun
-       , toFunJac, toFunHess
        , checkFunDimensions
        , checkFunDimensionsWith
        ) where
@@ -22,87 +19,44 @@ import qualified Data.Vector as V
 import Text.Printf ( printf )
 import System.IO.Unsafe ( unsafePerformIO )
 
-import Casadi.MX ( MX, symM )
-import Casadi.SX ( SX, ssymM )
-import Casadi.Function ( AlwaysInline(..), NeverInline(..) )
-import qualified Casadi.Function as C
-import Casadi.GenericType ( GType )
-import Casadi.DM ( DM )
-import Casadi.CMatrix ( CMatrix )
 import qualified Casadi.Core.Classes.Function as F
 import qualified Casadi.Core.Classes.Sparsity as C
+import           Casadi.DM ( DM )
+import qualified Casadi.Function as C
+import           Casadi.GenericType ( GType )
+import qualified Casadi.Matrix as CM
 
-import Dyno.View.FunJac
 import Dyno.View.Scheme ( Scheme(..) )
-import Dyno.View.View ( View )
 
 newtype Fun (f :: * -> *) (g :: * -> *) = Fun { unFun :: C.Function }
 
 instance Show (Fun f g) where
   showsPrec k (Fun f) = showsPrec k f
 
-class Symbolic a where
-  toFun :: (Scheme f, Scheme g)
-        => String -> (f a -> g a) -> M.Map String GType
-        -> IO (Fun f g)
-
-instance Symbolic MX where
-  toFun = toMXFun
-
-instance Symbolic SX where
-  toFun = toSXFun
+-- | call a Function on symbolic inputs, getting symbolic outputs
+callSym :: (Scheme f, Scheme g, CM.SMatrix a) => Fun f g -> f a -> g a
+callSym (Fun f) = fromVector . CM.callSym f . toVector
 
 -- | call a Function on numeric inputs, getting numeric outputs
 callDM :: (Scheme f, Scheme g) => Fun f g -> f DM -> IO (g DM)
-callDM (Fun f) = fmap fromVector . C.callDM f . toVector
+callDM (Fun f) = (fmap fromVector) . C.callDM f . toVector
 
--- | call a function on MX inputs, yielding MX outputs
-callMX :: (Scheme f, Scheme g) => Fun f g -> f MX -> g MX
-callMX f x = callMX' f x (AlwaysInline False) (NeverInline False)
+-- | make a Function with name and options
+toFun :: forall f g a
+         . (Scheme f, Scheme g, CM.SMatrix a)
+      => String -> (f a -> g a) -> M.Map String GType
+      -> IO (Fun f g)
+toFun name userf opts = do
+  let xsizes :: [(Int, Int)]
+      xsizes = sizeList (Proxy :: Proxy f)
 
--- | call a function on MX inputs, yielding MX outputs
-callMX' :: (Scheme f, Scheme g)
-           => Fun f g -> f MX -> AlwaysInline -> NeverInline -> g MX
-callMX' (Fun f) x ai ni = fromVector $ C.callMX f (toVector x) ai ni
+      mkSym :: (Int, Int) -> Int -> IO a
+      mkSym (nrow, ncol) k = CM.sym ("x" ++ show k) nrow ncol
 
--- TODO(greg): remove this
--- | call an SXFunction on symbolic inputs, getting symbolic outputs
-callSX :: (Scheme f, Scheme g) => Fun f g -> f SX -> g SX
-callSX (Fun sxf) x =
-  fromVector $ C.callSX sxf (toVector x) (AlwaysInline False) (NeverInline False)
+  inputs <- (fromVector . V.fromList) <$> zipWithM mkSym xsizes [(0::Int)..] :: IO (f a)
 
-mkSym :: forall a f .
-         (Scheme f, CMatrix a)
-         => (String -> Int -> Int -> IO a)
-         -> String -> Proxy f -> IO (f a)
-mkSym mk name _ = do
-  let sizes :: [(Int,Int)]
-      sizes = sizeList (Proxy :: Proxy f)
-      f :: (Int, Int) -> Int -> IO a
-      f (nrow,ncol) k = mk (name ++ show k) nrow ncol
-  ms <- zipWithM f sizes [(0::Int)..]
-  return $ fromVector (V.fromList ms)
-
--- | make an MXFunction with name and options
-toMXFun :: forall f g
-          . (Scheme f, Scheme g)
-          => String -> (f MX -> g MX) -> M.Map String GType
-          -> IO (Fun f g)
-toMXFun name userf opts = do
-  inputs <- mkSym symM "x" (Proxy :: Proxy f)
-  fun <- C.mxFunction name (toVector inputs) (toVector (userf inputs)) opts
-  checkFunDimensionsWith ("toMXFun' (" ++ name ++ ")") (Fun fun)
-
--- | make an SXFunction with name and options
-toSXFun :: forall f g
-          . (Scheme f, Scheme g)
-          => String -> (f SX -> g SX) -> M.Map String GType
-          -> IO (Fun f g)
-toSXFun name userf opts = do
-  inputs <- mkSym ssymM "x" (Proxy :: Proxy f)
-  fun <- C.sxFunction name (toVector inputs) (toVector (userf inputs)) opts
-  checkFunDimensionsWith ("toSXFun' (" ++ name ++ ")") (Fun fun)
-
+  fun <- CM.toFunction name (toVector inputs) (toVector (userf inputs)) opts
+  checkFunDimensionsWith ("toFun' (" ++ name ++ ")") (Fun fun)
 
 -- | expand a Function
 expandFun :: (Scheme f, Scheme g) => Fun f g -> IO (Fun f g)
@@ -171,24 +125,3 @@ checkFunDimensions (Fun f) = unsafePerformIO $ do
             ]
       errs -> Left $ unlines
               ("checkFunDimensions got ill-dimensioned function:":errs)
-
--- | make a function which also contains a jacobian
-toFunJac ::
-  (View xj, View fj, Scheme x, Scheme f) =>
-  Fun (JacIn xj x) (JacOut fj f)
-  -> IO (Fun (JacIn xj x) (Jac xj fj f))
-toFunJac (Fun fun) = do
-  let compact = False
-      symmetric = False
-  funJac <- C.jacobian fun 0 0 compact symmetric
-  checkFunDimensionsWith "toFunJac" (Fun funJac)
-
--- | make a function which also contains a jacobian
-toFunHess ::
-  forall xj x f
-  . (View xj, Scheme x, Scheme f)
-  => Fun (JacIn xj x) (HessOut f)
-  -> IO (Fun (JacIn xj x) (Hess xj f))
-toFunHess (Fun fun) = do
-  funHess <- C.hessian fun 0 0
-  checkFunDimensionsWith "toFunHess" (Fun funHess)

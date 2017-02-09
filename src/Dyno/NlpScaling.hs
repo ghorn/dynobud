@@ -10,7 +10,7 @@ module Dyno.NlpScaling
 import Data.Maybe ( fromMaybe )
 import qualified Data.Vector as V
 
-import Casadi.CMatrix ( CMatrix, fromDVector )
+import Casadi.Matrix ( CMatrix, fromDVector )
 
 import Dyno.View.Unsafe ( mkM, unM )
 import Dyno.View.M ( M )

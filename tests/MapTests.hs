@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -6,9 +7,10 @@ module MapTests
        ( mapTests
        ) where
 
-import qualified Casadi.CMatrix as CM
+import qualified Casadi.Matrix as CM
 import Casadi.DM ( DM )
 import Casadi.GenericType ( GType )
+import Casadi.MX ( MX )
 import Casadi.SX ( SX )
 import qualified Data.Map as M
 import Data.Proxy ( Proxy(..) )
@@ -39,16 +41,19 @@ blockcat' :: [[DM]] -> DM
 blockcat' = CM.blockcat . fmap V.fromList . V.fromList
 
 testFun0 ::
-  (Proxy 4 -> Fun (J (JV V2)) (J (JV V3)) -> String
-   -> MapStrategy -> M.Map String GType
-   -> IO (Fun
-          (M (JV V2) (JVec 4 (JV Id)))
-          (M (JV V3) (JVec 4 (JV Id)))
-         )
-  )
+  forall a
+  . CM.SMatrix a
+  => Proxy a
+  -> (Proxy 4 -> Fun (J (JV V2)) (J (JV V3)) -> String
+      -> MapStrategy -> M.Map String GType
+      -> IO (Fun
+             (M (JV V2) (JVec 4 (JV Id)))
+             (M (JV V3) (JVec 4 (JV Id)))
+            )
+     )
   -> HUnit.Assertion
-testFun0 theMapFun = toHUnit $ do
-  let f :: J (JV V2) SX -> J (JV V3) SX
+testFun0 _ theMapFun = toHUnit $ do
+  let f :: J (JV V2) a -> J (JV V3) a
       f x = vcat $ V3 (10*x0) (100*x1) (1000*x1)
         where
           V2 x0 x1 = vsplit x
@@ -75,16 +80,19 @@ testFun0 theMapFun = toHUnit $ do
     else Just $ printf "expected: %s\nactual: %s" (show expectedOut) (show out)
 
 testFun1 ::
-  (Proxy 4 -> Fun (J (JV V2) :*: S) (J (JV V3) :*: S) -> String
-   -> MapStrategy -> M.Map String GType
-   -> IO (Fun
-          (M (JV V2) (JVec 4 (JV Id)) :*: M (JV Id) (JVec 4 (JV Id)))
-          (M (JV V3) (JVec 4 (JV Id)) :*: M (JV Id) (JVec 4 (JV Id)))
-         )
-  )
+  forall a
+  . CM.SMatrix a
+  => Proxy a
+  -> (Proxy 4 -> Fun (J (JV V2) :*: S) (J (JV V3) :*: S) -> String
+      -> MapStrategy -> M.Map String GType
+      -> IO (Fun
+             (M (JV V2) (JVec 4 (JV Id)) :*: M (JV Id) (JVec 4 (JV Id)))
+             (M (JV V3) (JVec 4 (JV Id)) :*: M (JV Id) (JVec 4 (JV Id)))
+            )
+     )
   -> HUnit.Assertion
-testFun1 theMapFun = toHUnit $ do
-  let f :: (J (JV V2) :*: S) SX -> (J (JV V3) :*: S) SX
+testFun1 _ theMapFun = toHUnit $ do
+  let f :: (J (JV V2) :*: S) a -> (J (JV V3) :*: S) a
       f (x :*: y) = o0 :*: o1
         where
           o0 = vcat $ V3 (10*x0) (100*x1) (1000*x1)
@@ -123,16 +131,19 @@ testFun1 theMapFun = toHUnit $ do
 
 
 testFun2 ::
-  (Proxy 2 -> Fun (M (JV V2) (JV V3)) (M (JV V3) (JV V4)) -> String
-   -> MapStrategy -> M.Map String GType
-   -> IO (Fun
-          (M (JV V2) (JVec 2 (JV V3)))
-          (M (JV V3) (JVec 2 (JV V4)))
-         )
-  )
+  forall a
+  . CM.SMatrix a
+  => Proxy a
+  -> (Proxy 2 -> Fun (M (JV V2) (JV V3)) (M (JV V3) (JV V4)) -> String
+      -> MapStrategy -> M.Map String GType
+      -> IO (Fun
+             (M (JV V2) (JVec 2 (JV V3)))
+             (M (JV V3) (JVec 2 (JV V4)))
+            )
+     )
   -> HUnit.Assertion
-testFun2 theMapFun = toHUnit $ do
-  let f :: M (JV V2) (JV V3) SX -> M (JV V3) (JV V4) SX
+testFun2 _ theMapFun = toHUnit $ do
+  let f :: M (JV V2) (JV V3) a -> M (JV V3) (JV V4) a
       f x = vcat (V3 o0 o1 o2)
         where
           V2 x0 x1 = vsplit x
@@ -163,9 +174,10 @@ testFun2 theMapFun = toHUnit $ do
     then Nothing
     else Just $ printf "expected: %s\nactual: %s" (show expectedOut) (show out)
 
-testFunNonRepeated :: HUnit.Assertion
-testFunNonRepeated = toHUnit $ do
-  let f :: (J (JV V2) :*: S) SX -> (J (JV V3) :*: S) SX
+
+testFunNonRepeated :: forall a . CM.SMatrix a => Proxy a -> HUnit.Assertion
+testFunNonRepeated _ = toHUnit $ do
+  let f :: (J (JV V2) :*: S) a -> (J (JV V3) :*: S) a
       f (x :*: y) = o0 :*: o1
         where
           o0 = vcat $ V3 (10*x0) (100*x1) (1000*x1)
@@ -208,17 +220,24 @@ testFunNonRepeated = toHUnit $ do
 mapTests :: Test
 mapTests =
   testGroup "map tests"
+  [ mapTests' "SX" (Proxy :: Proxy SX)
+  , mapTests' "MX" (Proxy :: Proxy MX)
+  ]
+
+mapTests' :: CM.SMatrix a => String -> Proxy a -> Test
+mapTests' name p =
+  testGroup ("map tests " ++ name)
   [ testGroup "V2 in, V3 out"
-    [ testCase "mapFun"  $ testFun0 mapFun
-    , testCase "mapFun'" $ testFun0 mapFun'
+    [ testCase "mapFun"  $ testFun0 p (\n f _ s _ -> mapFun n f s)
+    , testCase "mapFun'" $ testFun0 p mapFun'
     ]
   , testGroup "(V2 :*: Id) in, (V3 :*: Id) out"
-    [ testCase "mapFun"  $ testFun1 mapFun
-    , testCase "mapFun'" $ testFun1 mapFun'
+    [ testCase "mapFun"  $ testFun1 p (\n f _ s _ -> mapFun n f s)
+    , testCase "mapFun'" $ testFun1 p mapFun'
     ]
   , testGroup "(M V2 V3) in, (M V3 V4) out"
-    [ testCase "mapFun"  $ testFun2 mapFun
-    , testCase "mapFun'" $ testFun2 mapFun'
+    [ testCase "mapFun"  $ testFun2 p (\n f _ s _ -> mapFun n f s)
+    , testCase "mapFun'" $ testFun2 p mapFun'
     ]
-  , testCase "non-repeated" testFunNonRepeated
+  , testCase "non-repeated" $ testFunNonRepeated p
   ]

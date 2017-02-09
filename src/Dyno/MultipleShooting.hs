@@ -22,7 +22,7 @@ import Casadi.MX ( MX )
 
 import Dyno.Nlp ( Bounds, Nlp(..), NlpIn(..) )
 import Dyno.TypeVecs
-import Dyno.View.Fun ( Fun, Symbolic(..), callMX )
+import Dyno.View.Fun ( Fun, callSym, toFun )
 import Dyno.View.JVec ( JVec(..) )
 import Dyno.View.M ( vcat, vsplit )
 import Dyno.View.Scheme ( Scheme )
@@ -102,8 +102,8 @@ makeMsNlp msOcp = do
           x0' = vsplit x0
           u' = vsplit u
           p' = vsplit p
-  integrator <- toFun "my_integrator" integrate mempty
-  let _ = integrator :: Fun (IntegratorIn x u p) (IntegratorOut x) -- just for type signature
+
+  integrator <- toFun "my_integrator" integrate mempty :: IO (Fun (IntegratorIn x u p) (IntegratorOut x))
 
   let nlp =
         Nlp
@@ -155,7 +155,7 @@ makeMsNlp msOcp = do
           x1s = fmap (callIntegrate . split) $ unJVec $ split xus
           callIntegrate (JTuple x0' u) = x1
             where
-              IntegratorOut x1 = callMX integrator (IntegratorIn x0' u p)
+              IntegratorOut x1 = callSym integrator (IntegratorIn x0' u p)
 
           lagrangeSum = F.sum $ fmap callLagrangeSum (unJVec (split xus))
             where

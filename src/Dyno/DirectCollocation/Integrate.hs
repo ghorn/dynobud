@@ -23,7 +23,7 @@ import Casadi.MX ( MX )
 import Casadi.Viewable ( Viewable )
 
 import Dyno.View.View ( View(..), J, S, JV, JNone, JTuple(..), splitJV, catJV, jfill, fmapJ )
-import Dyno.View.Fun ( Fun, Symbolic(..), callMX, expandFun )
+import Dyno.View.Fun ( Fun, callSym, expandFun, toFun )
 import Dyno.View.JVec ( JVec(..), jreplicate )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.M ( vcat, vsplit )
@@ -120,7 +120,7 @@ dynStageConstraints' cijs taus dynFun (x0 :*: xzs' :*: us' :*: h :*: p :*: stage
     applyDae :: J x MX -> JTuple x z MX -> J u MX -> S MX -> J r MX
     applyDae x' (JTuple x z) u t = r
       where
-        r = callMX dynFun (t :*: p :*: x' :*: collPoint)
+        r = callSym dynFun (t :*: p :*: x' :*: collPoint)
         collPoint = cat (CollPoint x z u)
 
     -- state derivatives, maybe these could be useful as outputs
@@ -171,8 +171,8 @@ withIntegrator _ _ roots initialX dae solver = do
             in vcat r
 
   dynStageConFun <- toFun "dynamicsStageCon" (dynStageConstraints' cijs taus dynFun) mempty
---  let callDynStageConFun = callMX dynStageConFun
-  callDynStageConFun <- callMX <$> expandFun dynStageConFun
+--  let callDynStageConFun = callSym dynStageConFun
+  callDynStageConFun <- callSym <$> expandFun dynStageConFun
 
   let fg :: J (IntegratorX x z n deg) MX
             -> J (IntegratorP u p n deg) MX

@@ -24,7 +24,7 @@ import Data.Vector ( Vector )
 import qualified Data.Vector as V
 
 import qualified Casadi.DM as DM
-import qualified Casadi.CMatrix as CM
+import qualified Casadi.Matrix as CM
 
 import Dyno.View.Vectorize ( Vectorize(..) )
 import Dyno.View.Unsafe ( View(..), J, S, JV, mkM, unM, catJV, splitJV )

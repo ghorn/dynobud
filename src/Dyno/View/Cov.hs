@@ -24,8 +24,8 @@ import qualified Numeric.LinearAlgebra as Mat
 import qualified Casadi.Sparsity as Sparsity
 import Casadi.Slice ( slice' )
 import Casadi.DM ( DM )
-import Casadi.CMatrix ( CMatrix )
-import qualified Casadi.CMatrix as CM
+import Casadi.Matrix ( CMatrix )
+import qualified Casadi.Matrix as CM
 
 import Dyno.View.Unsafe ( M(UnsafeM), mkM, unM )
 import Dyno.View.Vectorize ( Vectorize(..) )

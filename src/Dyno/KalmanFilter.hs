@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 
@@ -23,7 +24,7 @@ module Dyno.KalmanFilter
        ) where
 
 import Casadi.DM ( DM )
-import Casadi.SX ( SX )
+import Casadi.Matrix ( SMatrix )
 import Dyno.View
 import System.IO.Unsafe ( unsafePerformIO )
 
@@ -52,42 +53,42 @@ data KFModel x q y ym a
     }
 
 compileModel ::
-  forall x q y ym
-  . (Vectorize x, Vectorize q, Vectorize y, Vectorize ym)
-  => KFModel x q y ym (S SX)
+  forall x q y ym a
+  . (Vectorize x, Vectorize q, Vectorize y, Vectorize ym, SMatrix a)
+  => KFModel x q y ym (S a)
   -> IO (KFRunner x q y ym)
 compileModel model = do
-  let odeX :: JacIn (JV x) (J (JV None)) SX -> JacOut (JV x) (J (JV None)) SX
-      odeX (JacIn x _) = JacOut (vcat xdot) (vcat None)
+  let odeX :: J (JV x) a -> (M (JV x) (JV x) :*: J (JV x)) a
+      odeX x = jacobian xdot x :*: xdot
         where
-          xdot = kfOde model (vsplit x) (fill 0)
-  jacOdeX <- toFun "ode_x" odeX mempty >>= toFunJac
+          xdot = vcat $ kfOde model (vsplit x) (fill 0)
+  jacOdeX <- toFun "ode_x" odeX mempty
 
-  let odeQ :: JacIn (JV q) (J (JV x)) SX -> JacOut (JV x) (J (JV None)) SX
-      odeQ (JacIn q x) = JacOut (vcat xdot) (vcat None)
+  let odeQ :: (J (JV x) :*: J (JV q)) a -> M (JV x) (JV q) a
+      odeQ (x :*: q) = jacobian xdot q
         where
-          xdot = kfOde model (vsplit x) (vsplit q)
-  jacOdeQ <- toFun "ode_q" odeQ mempty >>= toFunJac
+          xdot = vcat $ kfOde model (vsplit x) (vsplit q)
+  jacOdeQ <- toFun "ode_q" odeQ mempty
 
   let evalOde' :: J (JV x) DM -> (M (JV x) (JV x) DM, M (JV x) (JV q) DM, J (JV x) DM)
       evalOde' x = unsafePerformIO $ do
-        Jac dxdx xdot _ <- callDM jacOdeX (JacIn x (vcat None))
+        dxdx :*: xdot <- callDM jacOdeX x
         let q :: J (JV q) DM
             q = 0
-        Jac dxdq _ _ <- callDM jacOdeQ (JacIn q x)
+        dxdq <- callDM jacOdeQ (x :*: q)
 
         return (dxdx, dxdq, xdot)
 
-  let sensors :: JacIn (JV x) (J (JV ym)) SX -> JacOut (JV y) (J (JV None)) SX
-      sensors (JacIn x ym) = JacOut (vcat y) (vcat None)
+  let sensors :: (J (JV x) :*: J (JV ym)) a -> (M (JV y) (JV x) :*: J (JV y)) a
+      sensors (x :*: ym) = jacobian y x :*: y
         where
-          y = kfSensors model (vsplit x) (vsplit ym)
+          y = vcat $ kfSensors model (vsplit x) (vsplit ym)
 
-  jacSensors <- toFun "sensors" sensors mempty >>= toFunJac
+  jacSensors <- toFun "sensors" sensors mempty
 
   let evalSensors' :: J (JV x) DM -> J (JV ym) DM -> (M (JV y) (JV x) DM, J (JV y) DM)
       evalSensors' x ym = unsafePerformIO $ do
-        Jac dydx y _ <- callDM jacSensors (JacIn x ym)
+        dydx :*: y <- callDM jacSensors (x :*: ym)
         return (dydx, y)
 
   return

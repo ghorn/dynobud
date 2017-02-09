@@ -15,7 +15,7 @@ import Casadi.SX ( SX )
 import Casadi.MX ( MX )
 
 import qualified Dyno.TypeVecs as TV
-import Dyno.View.Fun ( Fun, Symbolic(..), callMX, callDM )
+import Dyno.View.Fun ( Fun, callDM, callSym, toFun )
 import Dyno.View.MapFun ( MapStrategy(..), mapFun )
 import Dyno.View.M ( M, hcat', hsplit', vcat, vsplit )
 import Dyno.View.JVec ( JVec(..) )
@@ -63,21 +63,21 @@ main = do
       naiveFun xs = hcat' ys
         where
           ys :: TV.Vec N (M (JV V3) (JV Id) MX)
-          ys = fmap (callMX f0) xs'
+          ys = fmap (callSym f0) xs'
 
           xs' :: TV.Vec N (M (JV V2) (JV Id) MX)
           xs' = hsplit' xs
 
   naive <- toFun "naive_map" naiveFun mempty
-  unroll <- mapFun (Proxy :: Proxy N) f0 "unrolled_symbolic_map" Unroll mempty
+  unroll <- mapFun (Proxy :: Proxy N) f0 Unroll
          :: IO (Fun
                 (M (JV V2) (JVec N (JV Id)))
                 (M (JV V3) (JVec N (JV Id))))
-  ser <- mapFun (Proxy :: Proxy N) f0 "serial_symbolic_map" Serial mempty
+  ser <- mapFun (Proxy :: Proxy N) f0 Serial
          :: IO (Fun
                 (M (JV V2) (JVec N (JV Id)))
                 (M (JV V3) (JVec N (JV Id))))
-  par <- mapFun (Proxy :: Proxy N) f0 "parallel_symbolic_map" OpenMP mempty
+  par <- mapFun (Proxy :: Proxy N) f0 OpenMP
 
   runOne "naive map" naive
   runOne "unrolled symbolic_map" unroll
