@@ -71,7 +71,7 @@ library
   other-modules:
 
   build-depends:       base >=4.6 && < 5,
-                       casadi-bindings >= 3.1.0.22,
+                       casadi-bindings >= 3.1.0.23,
                        casadi-bindings-core >= 3.1.0.22,
 --                       casadi-bindings-internal,
                        data-default-class,

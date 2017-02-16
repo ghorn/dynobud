@@ -14,7 +14,7 @@ import Control.Concurrent ( MVar, forkIO, newEmptyMVar, takeMVar, putMVar )
 import Control.Monad ( when, void )
 import Data.IORef ( newIORef, readIORef, writeIORef )
 import qualified Data.Map as M
-import Data.Maybe ( catMaybes, fromMaybe )
+import Data.Maybe ( fromMaybe )
 import Data.Proxy ( Proxy(..) )
 import qualified Data.Traversable as T
 import Data.Time.Clock ( getCurrentTime, diffUTCTime )
@@ -30,8 +30,8 @@ import qualified Casadi.Core.Tools as C
 import Casadi.Callback ( makeCallback )
 import Casadi.Matrix ( CMatrix )
 import qualified Casadi.Matrix as CM
-import Casadi.DM ( DM )
-import Casadi.Function ( Function, callDM' )
+import Casadi.DM ( DM, dnonzeros )
+import Casadi.Function ( Function, callV' )
 import Casadi.GenericType ( GType(..), fromGType, toGType )
 import Casadi.MX ( MX )
 import Casadi.Sparsity ( Sparsity, dense, scalar )
@@ -41,7 +41,7 @@ import Dyno.Nlp ( NlpOut(..), NlpIn(..), Bounds )
 import Dyno.NlpScaling ( ScaleFuns(..), scaledFG, mkScaleFuns )
 import Dyno.SolverInternal ( SolverInternal(..) )
 import Dyno.Solvers ( Solver(..), RunNlpOptions(..), getSolverInternal )
-import Dyno.View.View ( View(..), J, S, d2v, fmapJ, jfill, v2d )
+import Dyno.View.View ( View(..), J, S, fmapJ, jfill )
 import Dyno.View.Unsafe ( mkM, unM )
 
 timeIt :: IO a -> IO (a, Double)
@@ -51,7 +51,12 @@ timeIt action = do
   t1 <- getCurrentTime
   return (ret, realToFrac (diffUTCTime t1 t0))
 
-fromNlpSolIn :: (View x, View p, View g) => NlpSol x p g -> NlpIn x p g -> M.Map String DM
+
+fromNlpSolIn :: forall x p g
+             . (View x, View p, View g)
+             => NlpSol x p g
+             -> NlpIn x p g
+             -> M.Map String (Vector Double)
 fromNlpSolIn nlpSol nsi =
   M.fromList $
   [ toInput xToXBar isNx "x0" nlpSol (nlpX0 nsi)
@@ -60,29 +65,34 @@ fromNlpSolIn nlpSol nsi =
   , toInput gToGBar isNg "lbg" nlpSol (toLb (nlpBG nsi))
   , toInput gToGBar isNg "ubg" nlpSol (toUb (nlpBG nsi))
   , toInput (const id) isNp "p" nlpSol (nlpP nsi)
-  ] ++
-  catMaybes
-  [ toInput lamXToLamXBar isNx "lam_x0" nlpSol <$> (nlpLamX0 nsi)
-  , toInput lamGToLamGBar isNg "lam_g0" nlpSol <$> (nlpLamG0 nsi)
+  , toInput lamXToLamXBar isNx "lam_x0" nlpSol (fromMaybe defaultLamX0 (nlpLamX0 nsi))
+  , toInput lamGToLamGBar isNg "lam_g0" nlpSol (fromMaybe defaultLamG0 (nlpLamG0 nsi))
   ]
   where
     inf :: Double
     inf = read "Infinity"
 
-    toLb :: View x => J x (Vector Bounds) -> J x (Vector Double)
+    toLb :: View xpg => J xpg (Vector Bounds) -> J xpg (Vector Double)
     toLb = fmapJ (fromMaybe (-inf) . fst)
 
-    toUb :: View x => J x (Vector Bounds) -> J x (Vector Double)
+    toUb :: View xpg => J xpg (Vector Bounds) -> J xpg (Vector Double)
     toUb = fmapJ (fromMaybe   inf  . snd)
+
+    defaultLamX0 :: J x (Vector Double)
+    defaultLamX0 = mkM $ V.replicate (isNx nlpSol) 0
+
+    defaultLamG0 :: J g (Vector Double)
+    defaultLamG0 = mkM $ V.replicate (isNg nlpSol) 0
+
 
 toInput ::
   View xg
-  => (ScaleFuns x g DM -> (J xg DM -> J xg DM))
+  => (ScaleFuns x g DM -> (J xg (Vector Double) -> J xg (Vector Double)))
   -> (NlpSol x p g -> Int)
   -> String
   -> NlpSol x p g
-  -> J xg (V.Vector Double)
-  -> (String, DM)
+  -> J xg (Vector Double)
+  -> (String, Vector Double)
 toInput scaleFun getLen name nlpSol x0
   | nTypeLevel == nActual = (name, x)
   | otherwise =
@@ -90,28 +100,28 @@ toInput scaleFun getLen name nlpSol x0
       name ++ " dimension mismatch, " ++ show nTypeLevel ++
       " (type-level) /= " ++ show nActual ++ " (given)"
   where
-    x = unM $ scaleFun (isScale nlpSol) (v2d x0)
-    nActual = (CM.size1 x, CM.size2 x)
-    nTypeLevel = (getLen nlpSol, 1)
+    x = unM $ scaleFun (isScale nlpSol) x0
+    nActual = V.length x
+    nTypeLevel = getLen nlpSol
 
 
-toNlpSolOut :: (View x, View g) => NlpSol x p g -> M.Map String DM -> NlpOut x g (V.Vector Double)
-toNlpSolOut nlpSol dmMap =
+toNlpSolOut :: (View x, View g) => NlpSol x p g -> M.Map String (Vector Double) -> NlpOut x g (Vector Double)
+toNlpSolOut nlpSol oMap =
   NlpOut
-  { fOpt = toOutput fbarToF "f" nlpSol dmMap
-  , xOpt = toOutput xbarToX "x" nlpSol dmMap
-  , gOpt = toOutput gbarToG "g" nlpSol dmMap
-  , lambdaXOpt = toOutput lamXBarToLamX "lam_x" nlpSol dmMap
-  , lambdaGOpt = toOutput lamGBarToLamG "lam_g" nlpSol dmMap
+  { fOpt = toOutput fbarToF "f" nlpSol oMap
+  , xOpt = toOutput xbarToX "x" nlpSol oMap
+  , gOpt = toOutput gbarToG "g" nlpSol oMap
+  , lambdaXOpt = toOutput lamXBarToLamX "lam_x" nlpSol oMap
+  , lambdaGOpt = toOutput lamGBarToLamG "lam_g" nlpSol oMap
   }
 
 toOutput ::
   View xg
-  => (ScaleFuns x g DM -> (J xg DM -> J xg DM))
-  -> String -> NlpSol x p g -> M.Map String DM -> J xg (V.Vector Double)
+  => (ScaleFuns x g DM -> (J xg (Vector Double) -> J xg (Vector Double)))
+  -> String -> NlpSol x p g -> M.Map String (Vector Double) -> J xg (Vector Double)
 toOutput scaleFun name nlpSol dmMap = case M.lookup name dmMap of
   Nothing -> error $ "couldn't find output " ++ show name ++ " in outputs " ++ show (M.keys dmMap)
-  Just r -> d2v $ scaleFun (isScale nlpSol) (mkM r)
+  Just r -> scaleFun (isScale nlpSol) (mkM r)
   -- (d2v used to be dnonzeros)
 
 data NlpSol x p g =
@@ -138,41 +148,32 @@ callNlpsol nlpSol nlpInputs = do
   isSetParam nlpSol (nlpP nlpInputs)
 
   -- mvar that will be filled when nlp finishes
-  stop <- newEmptyMVar :: IO (MVar (Maybe (M.Map String DM)))
+  stop <- newEmptyMVar :: IO (MVar (Either String (M.Map String (Vector Double))))
   -- Flush stdout so that solver output comes after user output
   -- See https://github.com/haskell/process/issues/53
   hFlush stdout
   _ <- forkIO $ do
-    when (isVerbose nlpSol) $
-      putStrLn "calling nlpsol..."
-    eoutputMap' <- try $ callDM' solver (fromNlpSolIn nlpSol nlpInputs)
-
-    case eoutputMap' of
-      Left (e :: SomeException) -> do
-        when (isVerbose nlpSol) $
-          putStrLn $ "solver caught exception: " ++ show e
-        putMVar stop Nothing
-      Right outputMap' -> do
-        when (isVerbose nlpSol) $
-          putStrLn "solver returned without exception"
-        putMVar stop (Just outputMap')
+    when (isVerbose nlpSol) (putStrLn "calling nlpsol...")
+    eoutputMap' <- try $ callV' solver (fromNlpSolIn nlpSol nlpInputs)
+    putMVar stop $ case eoutputMap' of
+      Left (e :: SomeException) -> Left (show e)
+      Right outputMap' -> Right outputMap'
 
   -- wait until nlp finishes
-  when (isVerbose nlpSol) $
-    putStrLn "waiting until nlp finishes..."
-  ret <- try (takeMVar stop) :: IO (Either AsyncException (Maybe (M.Map String DM)))
-  when (isVerbose nlpSol) $
-    putStrLn "took stop var"
+  when (isVerbose nlpSol) (putStrLn "waiting until nlp finishes...")
+  ret <- try (takeMVar stop) :: IO (Either AsyncException (Either String (M.Map String (Vector Double))))
+  when (isVerbose nlpSol) (putStrLn "took stop var")
 
   moutputMap <- case ret of
     Right r -> return r -- no exceptions
     Left UserInterrupt -> do -- got ctrl-C
       isInterrupt nlpSol -- tell nlp to stop iterations
       _ <- takeMVar stop -- wait for nlp to return
-      return Nothing
-    Left _ -> do
+      return (Left "dynobud caught ctrl-C")
+    Left e -> do
       void (takeMVar stop) -- don't handle this one
-      return Nothing
+      return (Left ("dynobud caught " ++ (show e)))
+
   stats <- C.function_stats__0 solver >>= mapM toGType
   let solveStatus = case M.lookup "return_status" stats of
         Nothing -> error "no \"return_status\" in stats"
@@ -181,9 +182,10 @@ callNlpsol nlpSol nlpInputs = do
         Just r -> error $ "nlp solver error: return status is not {string,int}, it's " ++ show r
 
   return $ case (solveStatus `elem` (isSuccessCodes nlpSol), moutputMap) of
-    (True, Just outputMap) -> (stats, Right $ toNlpSolOut nlpSol outputMap)
-    (False, _) -> (stats, Left solveStatus)
-    (_, Nothing) -> (stats, Left "(Solver didn't return any answers)")
+    (True, Right outputMap) -> (stats, Right $ toNlpSolOut nlpSol outputMap)
+    (True, Left err) -> (stats, Left err)
+    (False, Left err) -> (stats, Left ("solve status: " ++ solveStatus ++ "\n" ++ err))
+    (False, Right _) -> (stats, Left ("solve status: " ++ solveStatus))
 
 
 toNlpSol ::
@@ -226,8 +228,8 @@ toNlpSol solverStuff nlpFun scaleX scaleG scaleF userCallback = do
                 "length of callback inputs " ++ show (V.length cbInputs) ++
                 " /= length of nlpsol outputs " ++ show (V.length nlpsolOut)
             | otherwise -> do
-                let inputMap :: M.Map String DM
-                    inputMap = M.fromList $ zip (V.toList nlpsolOut) (V.toList cbInputs)
+                let inputMap :: M.Map String (Vector Double)
+                    inputMap = M.fromList $ zip (V.toList nlpsolOut) (map dnonzeros (V.toList cbInputs))
 
                     lookupError name =
                       error $
@@ -235,7 +237,7 @@ toNlpSol solverStuff nlpFun scaleX scaleG scaleF userCallback = do
                       "available keys: " ++ show (V.toList nlpsolOut)
                     xval = case M.lookup "x" inputMap of
                       Nothing -> lookupError "x"
-                      Just r -> d2v (xbarToX scale (mkM r))
+                      Just r -> xbarToX (scale :: ScaleFuns x g DM) (mkM r)
                 pval <- readIORef paramRef
 --                    pval = case M.lookup "p" inputMap of
 --                      Nothing -> lookupError "p"

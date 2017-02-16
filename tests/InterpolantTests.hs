@@ -17,10 +17,10 @@ import Test.Framework.Providers.HUnit ( testCase )
 import Dyno.View
 
 call1 :: Fun S S -> Double -> IO Double
-call1 f x = (unId . splitJV . d2v) <$> callDM f (v2d (catJV (Id x)))
+call1 f x = (unId . splitJV) <$> callV f (catJV (Id x))
 
 call2 :: Fun (J (JV V2)) S -> Double -> Double -> IO Double
-call2 f x0 x1 = (unId . splitJV . d2v) <$> callDM f (v2d (catJV (V2 x0 x1)))
+call2 f x0 x1 = (unId . splitJV) <$> callV f (catJV (V2 x0 x1))
 
 test_knots_interpolant1 :: HUnit.Assertion
 test_knots_interpolant1 = HUnit.assert $ do

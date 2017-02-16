@@ -16,7 +16,7 @@ module Dyno.View.Scheme
 
 import GHC.Generics
 
-import Casadi.Matrix ( CMatrix )
+import Casadi.Viewable ( Viewable )
 import Data.Proxy
 import qualified Data.Foldable as F
 import qualified Data.Sequence as Seq
@@ -32,8 +32,8 @@ instance (View f0, View f1, View f2) => Scheme (JTriple f0 f1 f2)
 instance (View f0, View f1) => Scheme (JTuple f0 f1)
 
 class FunctionIO (f :: * -> *) where
-  fromFioMat :: CMatrix a => a -> Either String (f a)
-  toFioMat :: f a -> a
+  fromFioMat :: Viewable a => a -> Either String (f a)
+  toFioMat :: Viewable a => f a -> a
   fioMatSizes :: Proxy f -> (Int,Int)
 
 instance (View f, View g) => Scheme (M.M f g) where
@@ -54,8 +54,8 @@ instance (View f, View g) => FunctionIO (M.M f g) where
 
 class Scheme (f :: * -> *) where
   numFields :: Proxy f -> Int
-  fromVector :: CMatrix a => V.Vector a -> f a
-  toVector :: f a -> V.Vector a
+  fromVector :: Viewable a => V.Vector a -> f a
+  toVector :: Viewable a => f a -> V.Vector a
   sizeList :: Proxy f -> [(Int,Int)]
 
   default numFields :: GNumFields (Rep (f ()))
@@ -73,7 +73,7 @@ class Scheme (f :: * -> *) where
       reproxy = const Proxy
 
   default fromVector :: ( Rep (f a) aa ~ M1 t d ff aa, GFromVector (Rep (f a)) a
-                        , Generic (f a), Datatype d, CMatrix a )
+                        , Generic (f a), Datatype d, Viewable a )
                         => Vector a -> f a
   fromVector vs = out'
     where
@@ -95,7 +95,7 @@ class GNumFields f where
 class GSizeList f where
   gsizeList :: Proxy (f p) -> Seq.Seq (Int,Int)
 class GFromVector f a where
-  gfromVector :: CMatrix a => String -> Vector a -> Proxy (f a) -> f a
+  gfromVector :: Viewable a => String -> Vector a -> Proxy (f a) -> f a
 class GToVector f a where
   gtoVector :: f a -> Seq.Seq a
 

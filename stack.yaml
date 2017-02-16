@@ -10,7 +10,7 @@ packages:
 
 - location:
     git: https://github.com/ghorn/casadi-bindings
-    commit: 01bfbaa0743ec5db1a74bacfb6f88c56d70f490f
+    commit: ee999a2f3dec1bb815929b63d6d3de51eedd4214
   extra-dep: true
   subdirs:
   - casadi-bindings

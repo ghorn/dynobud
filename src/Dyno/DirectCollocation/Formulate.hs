@@ -35,7 +35,6 @@ import qualified Numeric.LinearAlgebra as Mat
 import Linear hiding ( dot )
 import Prelude -- BBP workaround
 
-import Casadi.DM ( DM )
 import Casadi.MX ( MX )
 import Casadi.GenericType ( GType(..) )
 import Casadi.SX ( SX )
@@ -43,11 +42,11 @@ import Casadi.SX ( SX )
 import Dyno.Integrate ( InitialTime(..), TimeStep(..), rk45 )
 import Dyno.View.View
        ( View(..), JTuple(..), J, S, JV
-       , splitJV, catJV, jfill, v2d, d2v )
+       , splitJV, catJV, jfill )
 import Dyno.View.M ( M, vcat, vsplit )
 import qualified Dyno.View.M as M
 import Dyno.View.HList ( (:*:)(..) )
-import Dyno.View.Fun
+import Dyno.View.Fun ( Fun, callSym, callV, expandFun, toFun )
 import Dyno.View.MapFun
 import Dyno.View.JVec( JVec(..), jreplicate )
 import Dyno.View.Scheme ( Scheme )
@@ -152,7 +151,7 @@ data PathCIn x z u p fp a =
 
 data PathCStageIn x z u p fp deg a =
   -- xzusp fp ts
-  PathCStageIn (J (CollStage x z u p deg) a) (J fp a) (J (JVec deg (JV Id)) a)
+  PathCStageIn (J (CollStage x z u p deg) a) (J fp a) (J (JV (Vec deg)) a)
   deriving (Generic, Generic1)
 
 data DaeIn x z u p fp a =
@@ -334,7 +333,7 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
             :*: S
             :*: J (JV p)
             :*: J (JV fp)
-            :*: J (JVec deg (JV Id))
+            :*: J (JV (Vec deg))
            )
            (J (JVec deg (JV r))
             :*: J (JV x)
@@ -359,8 +358,8 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
 
           dt = tf / fromIntegral n
 
-          stageTimes :: J (JVec deg (JV Id)) MX
-          stageTimes = cat (JVec stageTimes')
+          stageTimes :: J (JV (Vec deg)) MX
+          stageTimes = vcat stageTimes'
             where
               stageT0 = k * dt
               stageTimes' = pure stageT0 ^+^ dt *^ fmap realToFrac taus
@@ -386,7 +385,7 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
     (mapStrategy dirCollOpts) (mapOptions dirCollOpts)
 -- use repeated outputs for now
     :: IO (Fun
-           (   M (JV Id) (JVec n (JV Id))
+           (   M (JV Id) (JV (Vec n))
            :*: M (JV Id) (JVec n (CollStage (JV x) (JV z) (JV u) (JV p) deg))
            :*: M (JV Id) (JVec n (JV fp))
            )
@@ -399,7 +398,7 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
 --    :: IO (Fun
 --           (S
 --            :*: M (JV Id) (JVec n (CollStage (JV x) (JV z) (JV u) deg))
---            :*: M (JV Id) (JVec n (JVec deg (JV Id)))
+--            :*: M (JV Id) (JVec n (JV (Vec deg)))
 --            :*: M (JV Id) (JV p)
 --            :*: M (JV Id) (JV fp)
 --           )
@@ -436,7 +435,7 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
             let fixedParm = jreplicate fixedParm' :: J (JVec n (JV fp)) MX
                 dcs :*: hs :*: xnexts =
                   callSym mapStageFunMX $
-                  M.trans (cat (JVec ks)) :*: M.trans stages :*: M.trans fixedParm
+                  M.trans (vcat ks) :*: M.trans stages :*: M.trans fixedParm
             in (M.trans dcs, M.trans hs, M.trans xnexts)
 
   let nlp :: Nlp (CollTraj x z u p n deg) (JV fp) (CollOcpConstraints x p r c h n deg) MX
@@ -503,24 +502,17 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
   let (getHellaOutputs, getPlotPoints, getOutputs) = toCallbacks n roots taus outputFun pathCStageFunMX lagrangeStageFunFullMX quadratureStageFunFullMX quadratureOutStageFunFullMX quadPlotFunSX
 
       evalQuadratures :: Vec n (Vec deg Double) -> Double -> IO Double
-      evalQuadratures qs' tf' = do
-        let d2d :: Double -> S DM
-            d2d = realToFrac
-            qs :: Vec n (J (JVec deg (JV Id)) DM)
-            qs = fmap (cat . JVec . fmap d2d) qs'
-            tf :: S DM
-            tf = realToFrac tf'
-            evalq :: J (JVec deg (JV Id)) DM -> IO (S DM)
-            evalq q = callDM genericQuadraturesFun (q :*: tf)
-        stageIntegrals' <- T.mapM evalq qs :: IO (Vec n (S DM))
-        let stageIntegrals = fmap (unId . splitJV . d2v) stageIntegrals' :: Vec n Double
+      evalQuadratures qs' tf = do
+        let qs :: Vec n (J (JV (Vec deg)) (Vector Double))
+            qs = fmap catJV qs'
+            evalq :: J (JV (Vec deg)) (Vector Double) -> IO Double
+            evalq q = (unId . splitJV) <$> callV genericQuadraturesFun (q :*: catJV (Id tf))
+        stageIntegrals <- T.mapM evalq qs :: IO (Vec n Double)
         return (F.sum stageIntegrals)
 
 
   nlpConstraints <- toFun "nlp_constraints" (\(x:*:p) -> snd (nlpFG nlp x p)) mempty
-  let evalConstraints x p = do
-        g <- callDM nlpConstraints (v2d x :*: v2d p)
-        return (d2v g)
+  let evalConstraints x p = callV nlpConstraints (x :*: p)
 
   return $ CollProblem { cpNlp = nlp
                        , cpOcp = ocp
@@ -577,89 +569,89 @@ toCallbacks n roots taus outputFun pathStageConFun lagQuadFun quadFun quadOutFun
   (getHellaOutputs, getPlotPoints, getOutputs)
   where
     -- prepare callbacks
-    f :: S DM
-         -> J (JV o) DM ->  J (JV x) DM -> J (JV h) DM -> J (JV po) DM
-         -> Quadratures q qo Double -> Quadratures q qo Double
-         -> StageOutputsPoint x o h q qo po Double
+    f :: Double
+      -> J (JV o) (Vector Double) -> J (JV x) (Vector Double)
+      -> J (JV h) (Vector Double) -> J (JV po) (Vector Double)
+      -> Quadratures q qo Double -> Quadratures q qo Double
+      -> StageOutputsPoint x o h q qo po Double
     f t o' x' h' po' q q' =
       StageOutputsPoint
-      { sopT = unId $ splitJV $ d2v t
-      , sopO = d2v o'
-      , sopXDot = d2v x'
-      , sopH = d2v h'
-      , sopPo = d2v po'
+      { sopT = t
+      , sopO = o'
+      , sopXDot = x'
+      , sopH = h'
+      , sopPo = po'
       , sopQs = q
       , sopQDots = q'
       }
 
 
-    callOutputFun :: (J (JV x) DM, J (JV x) DM)
+    callOutputFun :: (J (JV x) (Vector Double), J (JV x) (Vector Double))
                      -> J (JV fp) (Vector Double)
                      -> Quadratures q qo Double
                      -> ( J (CollStage (JV x) (JV z) (JV u) (JV p) deg) (Vector Double)
-                        , S (Vector Double)
+                        , Double
                         )
                      -> IO ( StageOutputs x o h q qo po deg Double
                            , Quadratures q qo Double
                            )
-    callOutputFun (x0,xF) fp previousQuadratures (stage, k) = do
-      let fp' = v2d fp
-          stage' = v2d stage
-          CollStage stageX0 xzus p tf = split stage'
+    callOutputFun (x0, xF) fp previousQuadratures (stage, k) = do
+      let CollStage stageX0 xzus p tf' = split stage
+          Id tf = splitJV tf'
           h = tf / fromIntegral n
-      (_ :*: xdot :*: out :*: xnext) <-
-        callDM outputFun $ stage' :*: fp' :*: v2d k
+      (_ :*: xdot :*: out :*: xnext) <- callV outputFun $ stage :*: fp :*: (catJV (Id k))
 
-      let stageTimes :: Vec deg (S DM)
-          stageTimes = fmap (\tau -> stageT0 + realToFrac tau * h) taus
-          stageT0 = h * v2d k
-          stageTimes' = cat (JVec stageTimes)
-          pathCStageIn = PathCStageIn stage' fp' stageTimes'
-          quadratureStageIn = QuadratureStageIn (v2d k) stage' fp'
-      hs <- callDM pathStageConFun pathCStageIn
-      QuadratureStageOut lagrQdots lagrQs lagrQNext <- callDM lagQuadFun quadratureStageIn
-      QuadratureStageOut userQdots userQs userQNext <- callDM quadFun quadratureStageIn
-      QuadratureStageOut outQdots   outQs  outQNext <- callDM quadOutFun quadratureStageIn
+      let stageTimes :: Vec deg Double
+          stageTimes = fmap (\tau -> stageT0 + tau * h) taus
+          stageT0 = h * k
+          stageTimes' :: J (JV (Vec deg)) (Vector Double)
+          stageTimes' = catJV stageTimes
+          pathCStageIn = PathCStageIn stage fp stageTimes'
+          quadratureStageIn = QuadratureStageIn (catJV (Id k)) stage fp
+      hs <- callV pathStageConFun pathCStageIn
+      QuadratureStageOut lagrQdots lagrQs lagrQNext <- callV lagQuadFun quadratureStageIn
+      QuadratureStageOut userQdots userQs userQNext <- callV quadFun    quadratureStageIn
+      QuadratureStageOut outQdots   outQs  outQNext <- callV quadOutFun quadratureStageIn
 
-      let outs0 = unJVec (split out) :: Vec deg (J (JV o) DM)
-          xdots0 = unJVec (split xdot) :: Vec deg (J (JV x) DM)
-          hs0 = unJVec (split hs) :: Vec deg (J (JV h) DM)
-          lagrQs0 = fmap (unId . splitJV . d2v) $ unJVec (split lagrQs) :: Vec deg Double
-          userQs0 = fmap        (splitJV . d2v) $ unJVec (split userQs) :: Vec deg (q Double)
-          outQs0  = fmap        (splitJV . d2v) $ unJVec (split  outQs) :: Vec deg (qo Double)
-          lagrQdots0 = fmap (unId . splitJV . d2v) $ unJVec (split lagrQdots) :: Vec deg Double
-          userQdots0 = fmap (splitJV . d2v) $ unJVec (split userQdots) :: Vec deg (q Double)
-          outQdots0  = fmap (splitJV . d2v) $ unJVec (split  outQdots) :: Vec deg (qo Double)
+      let outs0 = unJVec (split out) :: Vec deg (J (JV o) (Vector Double))
+          xdots0 = unJVec (split xdot) :: Vec deg (J (JV x) (Vector Double))
+          hs0 = unJVec (split hs) :: Vec deg (J (JV h) (Vector Double))
+          lagrQs0 =    fmap (unId . splitJV) $ unJVec (split lagrQs) :: Vec deg Double
+          userQs0 =    fmap         splitJV  $ unJVec (split userQs) :: Vec deg (q Double)
+          outQs0  =    fmap         splitJV  $ unJVec (split  outQs) :: Vec deg (qo Double)
+          lagrQdots0 = fmap (unId . splitJV) $ unJVec (split lagrQdots) :: Vec deg Double
+          userQdots0 = fmap splitJV $ unJVec (split userQdots) :: Vec deg (q Double)
+          outQdots0  = fmap splitJV $ unJVec (split  outQdots) :: Vec deg (qo Double)
           qdots = TV.tvzipWith3 Quadratures lagrQdots0 userQdots0 outQdots0
           qs    = fmap (previousQuadratures ^+^) $ TV.tvzipWith3 Quadratures lagrQs0 userQs0 outQs0
 
           nextQuadratures =
             Quadratures
-            { qLagrange = unId (splitJV (d2v lagrQNext))
-            , qUser = splitJV (d2v userQNext)
-            , qOutputs = splitJV (d2v outQNext)
+            { qLagrange = unId (splitJV lagrQNext)
+            , qUser = splitJV userQNext
+            , qOutputs = splitJV outQNext
             } ^+^ previousQuadratures
 
       let quadPlotInputs ::
             Vec deg
-            (QuadraturePlottingIn (JV x) (JV z) (JV u) (JV p) (JV o) (JV q) (JV qo) (JV fp) DM)
+            (QuadraturePlottingIn (JV x) (JV z) (JV u) (JV p) (JV o) (JV q) (JV qo) (JV fp) (Vector Double))
           quadPlotInputs =
             toQuadPlotIn <$> xs <*> zs <*> us <*> outs0 <*> qUsers <*> qOuts <*> stageTimes
-          qUsers = fmap (v2d . catJV . qUser) qs
-          qOuts = fmap (v2d . catJV . qOutputs) qs
+          qUsers = fmap (catJV . qUser) qs
+          qOuts = fmap (catJV . qOutputs) qs
           (xs,zs,us) = TV.tvunzip3 $ fmap (toXzu . split) (unJVec (split xzus))
             where
               toXzu (CollPoint x z u) = (x, z, u)
-          toQuadPlotIn x z u o q qo t = QuadraturePlottingIn x0 xF x z u p o q qo fp' t tf
+          toQuadPlotIn x z u o q qo t = QuadraturePlottingIn x0 xF x z u p o q qo fp (catJV (Id t)) tf'
 
-      pos <- T.mapM (callDM quadPlotFun) quadPlotInputs
+      pos <- T.mapM (callV quadPlotFun) quadPlotInputs
 
       let stageOutputs =
             StageOutputs
-            { soX0 = d2v stageX0
-            , soT0 = unId $ splitJV $ d2v stageT0
+            { soX0 = stageX0
+            , soT0 = stageT0
             , soVec = f <$> stageTimes <*> outs0 <*> xdots0 <*> hs0 <*> pos <*> qs <*> qdots
-            , soXNext = d2v xnext
+            , soXNext = xnext
             , soQNext = nextQuadratures
             }
 
@@ -675,13 +667,13 @@ toCallbacks n roots taus outputFun pathStageConFun lagQuadFun quadFun quadOutFun
 
           vstages = unJVec (split stages)
               :: Vec n (J (CollStage (JV x) (JV z) (JV u) (JV p) deg) (Vector Double))
-          ks :: Vec n (S (Vector Double))
-          ks = TV.mkVec' $ map (catJV . Id . realToFrac) (take n [(0::Int)..])
+          ks :: Vec n Double
+          ks = TV.mkVec' $ map realToFrac (take n [(0::Int)..])
 
           CollStage x0 _ _ _ = split (TV.tvhead vstages)
           quadratures0 :: Quadratures q qo Double
           quadratures0 = fill 0
-      mapAccumM (callOutputFun (v2d x0, v2d xF) fp) quadratures0 (TV.tvzip vstages ks)
+      mapAccumM (callOutputFun (x0, xF) fp) quadratures0 (TV.tvzip vstages ks)
 
     getHellaOutputs ::
       J (CollTraj x z u p n deg) (Vector Double)
@@ -956,7 +948,7 @@ toPathCFun n cijs evalPathC (PathCStageIn collStage fp stageTimes') = hs
     hs = fmap evalPathC pathCIns
 
     stageTimes :: Vec deg (S MX)
-    stageTimes = unJVec (split stageTimes')
+    stageTimes = vsplit stageTimes'
 
 
 -- todo: merging this with evaluateQuadraturesFunction would reduce duplication,
@@ -967,7 +959,7 @@ genericQuadraturesFunction ::
   => (S MX -> Vec deg (S MX) -> S MX)
   -> Vec (deg + 1) (Vec (deg + 1) Double)
   -> Int
-  -> (J (JVec deg (JV Id)) :*: S) MX
+  -> (J (JV (Vec deg)) :*: S) MX
   -> S MX
 genericQuadraturesFunction interpolate' cijs' n (qdots' :*: tf) =
   dt * qnext
@@ -975,7 +967,7 @@ genericQuadraturesFunction interpolate' cijs' n (qdots' :*: tf) =
     dt = tf / fromIntegral n
 
     qdots :: Vec deg (S MX)
-    qdots = unJVec $ split qdots'
+    qdots = vsplit qdots'
 
     qnext :: S MX
     qnext = interpolate' 0 qs
@@ -1029,7 +1021,7 @@ toDynamicsStage ::
   => (J x MX -> Vec deg (J x MX) -> J x MX)
   -> Vec (deg + 1) (Vec (deg + 1) Double)
   -> Fun (DaeIn x z u p fp) (DaeOut r o)
-  -> (J x :*: J (JVec deg (JTuple x z)) :*: J (JVec deg u) :*: S :*: J p :*: J fp :*: J (JVec deg (JV Id))) MX
+  -> (J x :*: J (JVec deg (JTuple x z)) :*: J (JVec deg u) :*: S :*: J p :*: J fp :*: J (JV (Vec deg))) MX
   -> (J (JVec deg r) :*: J x) MX
 toDynamicsStage interpolate' cijs dynFun (x0 :*: xzs' :*: us' :*: h :*: p :*: fp :*: stageTimes') =
   cat (JVec dynConstrs) :*: xnext
@@ -1041,7 +1033,7 @@ toDynamicsStage interpolate' cijs dynFun (x0 :*: xzs' :*: us' :*: h :*: p :*: fp
     xnext :: J x MX
     xnext = interpolate' x0 xs
 
-    stageTimes = unJVec $ split stageTimes'
+    stageTimes = vsplit stageTimes'
 
     -- dae constraints (dynamics)
     dynConstrs :: Vec deg (J r MX)

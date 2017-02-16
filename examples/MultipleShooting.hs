@@ -73,7 +73,7 @@ main = do
   myNlp <- makeMsNlp ocp :: IO (Nlp (MsDvs X U P 40) JNone (MsConstraints X 40) MX)
   (_, eopt) <- solveNlp ipoptSolver myNlp Nothing
   opt <- case eopt of
-          Left err -> error err
+          Left err -> error $ "nlp solver returned status " ++ show err
           Right r -> return r
   let xopt = split $ xOpt opt
       splitXU xu = (splitJV x, splitJV u)

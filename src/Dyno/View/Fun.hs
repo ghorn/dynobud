@@ -5,7 +5,9 @@
 module Dyno.View.Fun
        ( Fun(..)
        , toFun
-       , callSym, callDM
+       , callSym
+       , callDM
+       , callV
        , expandFun
        , checkFunDimensions
        , checkFunDimensionsWith
@@ -40,6 +42,10 @@ callSym (Fun f) = fromVector . CM.callSym f . toVector
 -- | call a Function on numeric inputs, getting numeric outputs
 callDM :: (Scheme f, Scheme g) => Fun f g -> f DM -> IO (g DM)
 callDM (Fun f) = (fmap fromVector) . C.callDM f . toVector
+
+-- | call a Function on numeric inputs, getting numeric outputs
+callV :: (Scheme f, Scheme g) => Fun f g -> f (V.Vector Double) -> IO (g (V.Vector Double))
+callV (Fun f) = (fmap fromVector) . C.callV f . toVector
 
 -- | make a Function with name and options
 toFun :: forall f g a
