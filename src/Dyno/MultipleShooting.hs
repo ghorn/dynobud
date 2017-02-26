@@ -10,6 +10,7 @@ module Dyno.MultipleShooting
        ) where
 
 import GHC.Generics ( Generic, Generic1 )
+import GHC.TypeLits ( KnownNat, natVal )
 
 import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
@@ -61,14 +62,14 @@ data MsDvs x u p n a =
   , dvXf :: J (JV x) a
   , dvP :: J (JV p) a
   } deriving (Generic, Generic1)
-instance (Vectorize x, Vectorize u, Vectorize p, Dim n) => View (MsDvs x u p n)
+instance (Vectorize x, Vectorize u, Vectorize p, KnownNat n) => View (MsDvs x u p n)
 
 -- constraints
 data MsConstraints x n a =
   MsConstraints
   { gContinuity :: J (JVec n (JV x)) a
   } deriving (Generic, Generic1)
-instance (Vectorize x, Dim n) => View (MsConstraints x n)
+instance (Vectorize x, KnownNat n) => View (MsConstraints x n)
 
 rk4 :: (Floating a, Additive x) => (x a -> u a -> p a -> a -> x a) -> x a -> u a -> p a -> a -> a -> x a
 rk4 f x0 u p t h =  x0 ^+^ h/6*^(k1 ^+^ 2 *^ k2 ^+^ 2 *^ k3 ^+^ k4)
@@ -89,10 +90,10 @@ simulate n ode x0' u p t h = xf
 
 makeMsNlp ::
   forall x u p n
-  . (Dim n, Vectorize x, Vectorize u, Vectorize p, Additive x)
+  . (KnownNat n, Vectorize x, Vectorize u, Vectorize p, Additive x)
   => MsOcp x u p -> IO (Nlp (MsDvs x u p n) JNone (MsConstraints x n) MX)
 makeMsNlp msOcp = do
-  let n = reflectDim (Proxy :: Proxy n)
+  let n = fromIntegral (natVal (Proxy :: Proxy n))
       integrate (IntegratorIn x0 u p) = IntegratorOut (vcat (simulate nsteps ode x0' u' p' 0 dt))
         where
           endTime = msEndTime msOcp

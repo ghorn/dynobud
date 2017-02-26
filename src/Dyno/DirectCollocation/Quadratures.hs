@@ -14,6 +14,7 @@ module Dyno.DirectCollocation.Quadratures
        ) where
 
 import GHC.Generics ( Generic )
+import GHC.TypeLits ( KnownNat, natVal )
 import GHC.TypeLits.Witnesses
 
 import Data.Aeson ( FromJSON, ToJSON )
@@ -25,7 +26,7 @@ import Data.Binary ( Binary )
 import JacobiRoots ( shiftedLegendreRoots, shiftedRadauRoots )
 
 import Dyno.View.View ( J )
-import Dyno.TypeVecs ( Vec, Dim, reflectDim )
+import Dyno.TypeVecs ( Vec )
 import Dyno.View.Vectorize ( devectorize )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeXis )
@@ -37,13 +38,13 @@ instance FromJSON QuadratureRoots
 
 mkTaus ::
   forall deg a
-  . (Dim deg, Fractional a)
+  . (KnownNat deg, Fractional a)
   => QuadratureRoots -> Vec deg a
 mkTaus quadratureRoots = case taus of
   Just taus' -> devectorize $ V.map (fromRational . toRational) taus'
   Nothing -> error "makeTaus: too high degree"
   where
-    deg = reflectDim (Proxy :: Proxy deg)
+    deg = fromIntegral (natVal (Proxy :: Proxy deg))
     taus :: Maybe (V.Vector Double)
     taus = case quadratureRoots of
       Legendre -> shiftedLegendreRoots deg
@@ -51,7 +52,7 @@ mkTaus quadratureRoots = case taus of
 
 
 -- todo: code duplication
-dot :: forall x deg a b. (Fractional (J x a), Real b, Dim deg) => Vec deg b -> Vec deg (J x a) -> J x a
+dot :: forall x deg a b. (Fractional (J x a), Real b, KnownNat deg) => Vec deg b -> Vec deg (J x a) -> J x a
 dot cks xs = F.sum $ TV.unVec elemwise
   where
     elemwise :: Vec deg (J x a)
@@ -62,7 +63,7 @@ dot cks xs = F.sum $ TV.unVec elemwise
 
 -- todo: code duplication
 interpolate :: forall deg b x a
-            . (Dim deg, Real b, Fractional b, Fractional (J x a))
+            . (KnownNat deg, Real b, Fractional b, Fractional (J x a))
             => Vec deg b -> J x a -> Vec deg (J x a) -> J x a
 interpolate taus x0 xs =
   withNatOp (%+) (Proxy :: Proxy deg) (Proxy :: Proxy 1) $
@@ -74,11 +75,11 @@ interpolate taus x0 xs =
 
 timesFromTaus ::
   forall n deg a
-  . (Num a, Dim n)
+  . (Num a, KnownNat n)
   => a -> Vec deg a -> a -> Vec n (a, Vec deg a)
 timesFromTaus t0 taus dt = times
   where
-    n = reflectDim (Proxy :: Proxy n)
+    n = fromIntegral (natVal (Proxy :: Proxy n))
 
     -- initial time at each collocation stage
     t0s :: Vec n a
@@ -89,5 +90,5 @@ timesFromTaus t0 taus dt = times
     times = fmap (\t0' -> (t0', fmap (\tau -> t0' + tau * dt) taus)) t0s
 
 collocationTimes ::
-  (Dim n, Dim deg, Fractional a) => a -> QuadratureRoots -> a -> Vec n (a, Vec deg a)
+  (KnownNat n, KnownNat deg, Fractional a) => a -> QuadratureRoots -> a -> Vec n (a, Vec deg a)
 collocationTimes t0 qr dt = timesFromTaus t0 (mkTaus qr) dt

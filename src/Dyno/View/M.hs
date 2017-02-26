@@ -63,6 +63,8 @@ module Dyno.View.M
        , rank
        ) where
 
+import GHC.TypeLits ( KnownNat, natVal )
+
 import Data.Proxy ( Proxy(..) )
 import qualified Data.Foldable as F
 import qualified Data.Map as M
@@ -78,8 +80,7 @@ import Casadi.Viewable ( Viewable(..) )
 
 import Dyno.View.Unsafe ( M(UnsafeM), mkM, mkM', unM )
 import Dyno.View.Vectorize ( Vectorize(..), Id, (:.), fill, devectorize, vlength )
-import Dyno.TypeVecs ( Vec, Dim, reflectDim )
-import qualified Dyno.TypeVecs as TV
+import Dyno.TypeVecs ( Vec )
 import Dyno.View.View ( View(..), J, S, JV, JTuple, JTriple, JQuad )
 import Dyno.View.JVec ( JVec )
 
@@ -122,7 +123,7 @@ vcat x = mkM $ vvertcat $ V.map unM (vectorize x)
 
 vcat' ::
   forall f g n a .
-  (View f, View g, Dim n, CMatrix a)
+  (View f, View g, KnownNat n, CMatrix a)
   => Vec n (M f g a) -> M (JVec n f) g a
 vcat' x = mkM $ CM.vertcat $ V.map unM (vectorize x)
 
@@ -143,14 +144,14 @@ vsplit (UnsafeM x) = fmap mkM $ devectorize $ vvertsplit x nrs
 
 vsplit' ::
   forall f g n a .
-  (View f, View g, Dim n, CMatrix a)
+  (View f, View g, KnownNat n, CMatrix a)
   => M (JVec n f) g a -> Vec n (M f g a)
 vsplit' (UnsafeM x)
   | n == 0 = fill zeros
   | nr == 0 = fill zeros
   | otherwise = fmap mkM $ devectorize $ CM.vertsplit x nrs
   where
-    n = reflectDim (Proxy :: Proxy n)
+    n = fromIntegral (natVal (Proxy :: Proxy n))
     nr = size (Proxy :: Proxy f)
     nrs = V.fromList [0,nr..n*nr]
 
@@ -172,7 +173,7 @@ hcat x = mkM $ CM.horzcat $ V.map unM (vectorize x)
 
 hcat' ::
   forall f g n a .
-  (View f, View g, Dim n, CMatrix a)
+  (View f, View g, KnownNat n, CMatrix a)
   => Vec n (M f g a) -> M f (JVec n g) a
 hcat' x = mkM $ CM.horzcat $ V.map unM (vectorize x)
 
@@ -193,14 +194,14 @@ hsplit (UnsafeM x) = fmap mkM $ devectorize $ CM.horzsplit x ncs
 
 hsplit' ::
   forall f g n a .
-  (View f, View g, Dim n, CMatrix a)
+  (View f, View g, KnownNat n, CMatrix a)
   => M f (JVec n g) a -> Vec n (M f g a)
 hsplit' (UnsafeM x)
   | n == 0 = fill zeros
   | nc == 0 = fill zeros
   | otherwise = fmap mkM $ devectorize $ CM.horzsplit x ncs
   where
-    n = reflectDim (Proxy :: Proxy n)
+    n = fromIntegral (natVal (Proxy :: Proxy n))
     nc = size (Proxy :: Proxy g)
     ncs = V.fromList [0,nc..n*nc]
 
@@ -459,22 +460,22 @@ inv (UnsafeM x) = mkM (CM.inv x)
 -- | reshape a column-major matrix into a vector
 jflatten ::
   forall n f a
-  . (Dim n, View f, CMatrix a)
+  . (KnownNat n, View f, CMatrix a)
   => M f (JVec n (JV Id)) a -> J (JVec n f) a
 jflatten (UnsafeM x) = mkM (CM.reshape x (nx*ny, 1))
   where
     nx = size (Proxy :: Proxy f)
-    ny = TV.reflectDim (Proxy :: Proxy n)
+    ny = fromIntegral (natVal (Proxy :: Proxy n))
 
 -- | reshape a vector into a column-major matrix
 junflatten ::
   forall n f a
-  . (Dim n, View f, CMatrix a)
+  . (KnownNat n, View f, CMatrix a)
   => J (JVec n f) a -> M f (JVec n (JV Id)) a
 junflatten (UnsafeM x) = mkM (CM.reshape x (nx, ny))
   where
     nx = size (Proxy :: Proxy f)
-    ny = TV.reflectDim (Proxy :: Proxy n)
+    ny = fromIntegral (natVal (Proxy :: Proxy n))
 
 -- | reshape a column-major matrix into a vector
 flatten ::

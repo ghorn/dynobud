@@ -12,15 +12,15 @@ module Dyno.SimpleOcp
        ) where
 
 import GHC.Generics ( Generic, Generic1 )
-
-import qualified Data.Foldable as F
-import Data.Proxy
-import Data.Vector ( Vector )
+import GHC.TypeLits ( KnownNat )
 
 import Accessors ( Lookup )
 import Casadi.SX ( SX )
+import qualified Data.Foldable as F
+import Data.Proxy
+import Data.Reflection ( reifyNat )
+import Data.Vector ( Vector )
 
-import Dyno.TypeVecs
 import Dyno.Ocp
 import Dyno.Solvers
 import Dyno.NlpUtils
@@ -101,7 +101,7 @@ toOcpInputs simple =
     toBounds (lb,ub) = (Just lb, Just ub)
 
 solveOcp :: (Vectorize x, Vectorize u) => SimpleOcp x u -> IO (Either String [(x Double, u Double)])
-solveOcp simple = reifyDim deg $ reifyDim n $ solveOcp' simple
+solveOcp simple = reifyNat deg $ reifyNat n $ solveOcp' simple
   where
     n = 50
     deg = 2
@@ -111,7 +111,7 @@ solver = ipoptSolver
 
 solveOcp' ::
   forall x u n deg
-  . (Vectorize x, Vectorize u, Dim deg, Dim n)
+  . (Vectorize x, Vectorize u, KnownNat deg, KnownNat n)
   => SimpleOcp x u -> Proxy n -> Proxy deg -> IO (Either String [(x Double, u Double)])
 solveOcp' simple _ _ = do
   let ocp = toOcp simple

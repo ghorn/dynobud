@@ -16,6 +16,7 @@ module Dyno.DirectCollocation.Dynamic
        ) where
 
 import GHC.Generics ( Generic )
+import GHC.TypeLits ( KnownNat, natVal )
 
 import Casadi.Viewable ( Viewable )
 import Data.Proxy ( Proxy(..) )
@@ -38,7 +39,7 @@ import Dyno.View.View ( View(..), JV, splitJV )
 import Dyno.View.M ( M )
 import Dyno.View.JVec ( JVec(..) )
 import qualified Dyno.TypeVecs as TV
-import Dyno.TypeVecs ( Dim, Vec, reflectDim )
+import Dyno.TypeVecs ( Vec )
 import Dyno.DirectCollocation.Types
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots, mkTaus )
 
@@ -97,7 +98,7 @@ catDynPlotPoints pps =
 
 dynPlotPoints ::
   forall x z u p h o q qo po n deg a .
-  ( Dim n, Dim deg, Real a, Fractional a
+  ( KnownNat n, KnownNat deg, Real a, Fractional a
   , Vectorize x, Vectorize z, Vectorize u, Vectorize o, Vectorize p, Vectorize h, Vectorize q
   , Vectorize po, Vectorize qo
   )
@@ -110,7 +111,7 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
   -- see https://github.com/ghorn/dynobud/issues/72
   --     https://github.com/ghorn/Plot-ho-matic/issues/10
   --     https://github.com/timbod7/haskell-chart/issues/81
-  | reflectDim (Proxy :: Proxy deg) == 1 =
+  | natVal (Proxy :: Proxy deg) == 1 =
                 DynPlotPoints xss (singleArc zss) (singleArc uss) (singleArc oss) (singleArc xdss)
                               (singleArc hss) (singleArc poss) (singleArc qss) (singleArc qdss)
   | otherwise = DynPlotPoints xss zss uss oss xdss hss poss (singleArc qss) qdss

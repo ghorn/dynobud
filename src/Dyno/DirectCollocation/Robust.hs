@@ -39,7 +39,7 @@ import qualified Dyno.View.M as M
 import Dyno.View.JVec ( JVec(..) )
 import Dyno.View.Scheme ( Scheme )
 import Dyno.View.Vectorize ( Vectorize(..), Id(..), unId, vzipWith4 )
-import Dyno.TypeVecs ( Dim, Vec, reflectDim )
+import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs )
 
@@ -51,7 +51,7 @@ data CovTraj sx n a =
   { ctAllButLast :: J (JVec n (Cov (JV sx))) a
   , ctLast :: J (Cov (JV sx)) a
   } deriving (Eq, Show, Generic, Generic1)
-instance (Vectorize sx, Dim n) => View (CovTraj sx n)
+instance (Vectorize sx, KnownNat n) => View (CovTraj sx n)
 
 
 data CovarianceSensitivities xe we n a =
@@ -59,13 +59,13 @@ data CovarianceSensitivities xe we n a =
   { csFs :: M (JVec n xe) xe a
   , csWs :: M (JVec n xe) we a
   } deriving (Eq, Show, Generic, Generic1)
-instance (View xe, View we, Dim n) => Scheme (CovarianceSensitivities xe we n)
+instance (View xe, View we, KnownNat n) => Scheme (CovarianceSensitivities xe we n)
 
 type Sxe = S SX
 
 mkComputeSensitivities ::
   forall x z u p sx sz sw sr deg n .
-  ( Dim deg, Dim n, Vectorize x, Vectorize p, Vectorize u, Vectorize z
+  ( KnownNat deg, KnownNat n, Vectorize x, Vectorize p, Vectorize u, Vectorize z
   , Vectorize sr, Vectorize sw, Vectorize sz, Vectorize sx
   )
   => QuadratureRoots
@@ -131,7 +131,7 @@ mkComputeSensitivities roots covDae = do
           spstages = fmap split stages :: Vec n (CollStage (JV x) (JV z) (JV u) (JV p) deg MX)
 
           -- timestep
-          n = reflectDim (Proxy :: Proxy n)
+          n = fromIntegral (natVal (Proxy :: Proxy n))
 
           -- times at each collocation point
           times :: Int -> S MX -> Vec deg (S MX)
@@ -158,7 +158,7 @@ mkComputeSensitivities roots covDae = do
 -- todo: calculate by first multiplying all the Fs
 mkComputeCovariances ::
   forall x z u p sx sw n deg .
-  ( Dim deg, Dim n
+  ( KnownNat deg, KnownNat n
   , Vectorize x, Vectorize z, Vectorize u, Vectorize p
   , Vectorize sx, Vectorize sw
   )
@@ -201,13 +201,13 @@ mkComputeCovariances c2d computeSens qc' = do
 
           -- timestep
           dt = tf / fromIntegral n
-          n = reflectDim (Proxy :: Proxy n)
+          n = natVal (Proxy :: Proxy n)
 
   return computeCovs
 --  toFun "compute all covariances" computeCovs mempty
 
 -- todo: code duplication
-dot :: forall x deg a b. (Fractional (J x a), Real b, Dim deg) => Vec deg b -> Vec deg (J x a) -> J x a
+dot :: forall x deg a b. (Fractional (J x a), Real b, KnownNat deg) => Vec deg b -> Vec deg (J x a) -> J x a
 dot cks xs = F.sum $ TV.unVec elemwise
   where
     elemwise :: Vec deg (J x a)
@@ -217,12 +217,12 @@ dot cks xs = F.sum $ TV.unVec elemwise
     smul x y = realToFrac x * y
 
 -- todo: code duplication
-interpolateXDots' :: (Real b, Fractional (J x a), Dim deg) => Vec deg (Vec deg b) -> Vec deg (J x a) -> Vec deg (J x a)
+interpolateXDots' :: (Real b, Fractional (J x a), KnownNat deg) => Vec deg (Vec deg b) -> Vec deg (J x a) -> Vec deg (J x a)
 interpolateXDots' cjks xs = fmap (`dot` xs) cjks
 
 interpolateXDots ::
   forall b deg x a
-  . (Real b, Dim deg, Fractional (J x a))
+  . (Real b, KnownNat deg, Fractional (J x a))
   => Vec (deg + 1) (Vec (deg + 1) b)
   -> Vec (deg + 1) (J x a)
   -> Vec deg (J x a)
@@ -258,14 +258,14 @@ data ErrorOut sr sx deg a =
   ErrorOut (J (JVec deg sr) a) (J sx a)
   deriving Generic
 
-instance (View x, View z, View u, View p, Dim deg) => Scheme (ErrorIn0 x z u p deg)
-instance (View sx, View sw, View sz, Dim deg) => View (ErrorInD sx sw sz deg)
-instance (View sr, View sx, Dim deg) => View (ErrorOut sr sx deg)
+instance (View x, View z, View u, View p, KnownNat deg) => Scheme (ErrorIn0 x z u p deg)
+instance (View sx, View sw, View sz, KnownNat deg) => View (ErrorInD sx sw sz deg)
+instance (View sr, View sx, KnownNat deg) => View (ErrorOut sr sx deg)
 
 -- return error dynamics constraints and interpolated state
 errorDynStageConstraints ::
   forall x z u p sx sz sw sr deg .
-  (Dim deg, View x, View z, View u, View p,
+  (KnownNat deg, View x, View z, View u, View p,
    View sr, View sw, View sz, View sx)
   => Vec (deg + 1) (Vec (deg + 1) Double)
   -> Vec deg Double
@@ -348,7 +348,7 @@ propOneCov c2d (dsx1_dsx0 :*: dsx1_dsw0 :*: p0 :*: qs :*: h) = fromMat p1
 
 sensitivityStageFunction ::
   forall x z u p sx sz sw deg sr
-  . (Dim deg, View x, View z, View u, View p, View sx, View sz, View sw, View sr)
+  . (KnownNat deg, View x, View z, View u, View p, View sx, View sz, View sw, View sr)
   => (ErrorInD sx sw sz deg MX -> ErrorIn0 x z u p deg MX
       -> M (ErrorOut sr sx deg) (ErrorInD sx sw sz deg) MX)
   -> (S :*: J p :*: J (JVec deg (JV Id)) :*: J x :*: J (JVec deg (CollPoint x z u))) MX

@@ -33,7 +33,6 @@ module Dyno.View.Vectorize
 import GHC.Generics
 
 import Accessors ( GATip, Lookup(..), accessors, flatten, flatten' )
-import Control.Applicative
 import Control.Compose ( (:.)(..), Id(..), unO, unId )
 import Data.Aeson ( FromJSON(..), ToJSON(..) )
 import Data.Binary ( Binary(..) )
@@ -46,8 +45,6 @@ import qualified Linear
 import SpatialMath ( Euler )
 import SpatialMathT ( V3T, Rot )
 import Text.Printf ( printf )
-import Prelude -- BBP workaround
-
 
 
 -- | a length-0 vectorizable type

@@ -10,6 +10,7 @@
 module Main where
 
 import GHC.Generics ( Generic1 )
+import GHC.TypeLits ( KnownNat )
 
 import qualified Data.Foldable as F
 import qualified Data.Vector as V
@@ -21,7 +22,7 @@ data Params a = Params a a deriving (Functor, Generic1, Show)
 data X n a = X (Vec n (Params a)) a deriving (Functor, Generic1, Show)
 
 instance Vectorize Params
-instance Dim n => Vectorize (X n)
+instance KnownNat n => Vectorize (X n)
 
 -- some random function
 obj :: forall n a . Num a => X n a -> a

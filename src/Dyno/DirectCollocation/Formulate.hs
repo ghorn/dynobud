@@ -22,7 +22,6 @@ import GHC.Generics ( Generic, Generic1 )
 import GHC.TypeLits
 import GHC.TypeLits.Witnesses
 
-import Control.Applicative
 import Control.Monad.State ( StateT(..), runStateT )
 import Data.Default.Class ( Default(..) )
 import qualified Data.Map as M
@@ -33,7 +32,6 @@ import qualified Data.Foldable as F
 import qualified Data.Traversable as T
 import qualified Numeric.LinearAlgebra as Mat
 import Linear hiding ( dot )
-import Prelude -- BBP workaround
 
 import Casadi.MX ( MX )
 import Casadi.GenericType ( GType(..) )
@@ -51,7 +49,7 @@ import Dyno.View.MapFun
 import Dyno.View.JVec( JVec(..), jreplicate )
 import Dyno.View.Scheme ( Scheme )
 import Dyno.View.Vectorize ( Vectorize(..), Id(..), fill, vlength, unId )
-import Dyno.TypeVecs ( Vec, Dim, reflectDim )
+import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs )
 import Dyno.Nlp ( Nlp(..), NlpIn(..), Bounds )
@@ -167,17 +165,17 @@ data DaeOut r o a =
 instance (View x, View z, View u, View p, View o, View q, View qo, View fp)
          => Scheme (QuadraturePlottingIn x z u p o q qo fp)
 instance (View x, View z, View u, View p, View fp) => Scheme (QuadratureIn x z u p fp)
-instance (View x, View z, View u, View p, View fp, Dim deg) => Scheme (QuadratureStageIn x z u p fp deg)
-instance (View q, Dim deg) => Scheme (QuadratureStageOut q deg)
+instance (View x, View z, View u, View p, View fp, KnownNat deg) => Scheme (QuadratureStageIn x z u p fp deg)
+instance (View q, KnownNat deg) => Scheme (QuadratureStageOut q deg)
 instance (View x, View z, View u, View p, View fp) => Scheme (PathCIn x z u p fp)
-instance (View x, View z, View u, View p, View fp, Dim deg) => Scheme (PathCStageIn x z u p fp deg)
+instance (View x, View z, View u, View p, View fp, KnownNat deg) => Scheme (PathCStageIn x z u p fp deg)
 instance (View x, View z, View u, View p, View fp) => Scheme (DaeIn x z u p fp)
 instance (View r, View o) => Scheme (DaeOut r o)
 
 
 makeCollProblem ::
   forall x z u p r o c h q qo po fp deg n .
-  ( Dim deg, Dim n
+  ( KnownNat deg, KnownNat n
   , Vectorize x, Vectorize p, Vectorize u, Vectorize z
   , Vectorize r, Vectorize o, Vectorize h, Vectorize c, Vectorize q
   , Vectorize po, Vectorize fp, Vectorize qo
@@ -193,7 +191,7 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
       taus :: Vec deg Double
       taus = mkTaus roots
 
-      n = reflectDim (Proxy :: Proxy n)
+      n = fromIntegral (natVal (Proxy :: Proxy n))
 
       -- coefficients for getting xdot by lagrange interpolating polynomials
       cijs :: Vec (deg + 1) (Vec (deg + 1) Double)
@@ -533,7 +531,7 @@ toCallbacks ::
     , Vectorize o, Vectorize h, Vectorize r, Vectorize q
     , Vectorize po, Vectorize qo
     , Vectorize fp
-    , Dim n, Dim deg
+    , KnownNat n, KnownNat deg
     )
   => Int
   -> QuadratureRoots
@@ -703,7 +701,7 @@ toCallbacks n roots taus outputFun pathStageConFun lagQuadFun quadFun quadOutFun
 
 getFg ::
   forall x z u p r c h q fp n deg .
-  ( Dim deg, Dim n
+  ( KnownNat deg, KnownNat n
   , Vectorize x, Vectorize z, Vectorize u, Vectorize p
   , Vectorize r, Vectorize c, Vectorize h, Vectorize q, Vectorize fp
   )
@@ -776,7 +774,7 @@ getFg bcFun mayerFun lagQuadFun quadFun
     ks :: Vec n (S MX)
     ks = fmap realToFrac $ TV.mkVec' $ take n [(0::Int)..]
       where
-        n = reflectDim (Proxy :: Proxy n)
+        n = fromIntegral (natVal (Proxy :: Proxy n))
 
     -- initial point at each stage
     x0s :: Vec n (J (JV x) MX)
@@ -810,7 +808,7 @@ getFg bcFun mayerFun lagQuadFun quadFun
 
 
 ocpPhaseBx :: forall x z u p c h fp n deg .
-  ( Dim n, Dim deg
+  ( KnownNat n, KnownNat deg
   , Vectorize x, Vectorize z, Vectorize u, Vectorize p
   )
   => OcpPhaseInputs x z u p c h fp
@@ -837,7 +835,7 @@ ocpPhaseBx ocpInputs =
                   (catJV (ocpUbnd ocpInputs))
 
 ocpPhaseBg :: forall x z u p r c h fp n deg .
-  ( Dim n, Dim deg
+  ( KnownNat n, KnownNat deg
   , Vectorize x, Vectorize p, Vectorize r, Vectorize c, Vectorize h
   )
   => OcpPhaseInputs x z u p c h fp
@@ -857,7 +855,7 @@ ocpPhaseBg ocpInputs =
 
 toQuadratureFun ::
   forall x z u p fp q deg
-  . ( View q, View x, View z, View u, View p, Dim deg
+  . ( View q, View x, View z, View u, View p, KnownNat deg
     )
   => Int
   -> Vec deg Double
@@ -920,7 +918,7 @@ toQuadratureFun n taus cijs interpolate' evalQuadDeriv (QuadratureStageIn k coll
 
 toPathCFun ::
   forall x z u p fp h deg
-  . ( View x, View z, View u, View p, Dim deg
+  . ( View x, View z, View u, View p, KnownNat deg
     )
   => Int
   -> Vec (deg + 1) (Vec (deg + 1) Double)
@@ -955,7 +953,7 @@ toPathCFun n cijs evalPathC (PathCStageIn collStage fp stageTimes') = hs
 -- but could be inefficient
 genericQuadraturesFunction ::
   forall deg
-  . Dim deg
+  . KnownNat deg
   => (S MX -> Vec deg (S MX) -> S MX)
   -> Vec (deg + 1) (Vec (deg + 1) Double)
   -> Int
@@ -991,7 +989,7 @@ genericQuadraturesFunction interpolate' cijs' n (qdots' :*: tf) =
 
 
 -- todo: code duplication
-dot :: forall x deg a b. (Fractional (J x a), Real b, Dim deg) => Vec deg b -> Vec deg (J x a) -> J x a
+dot :: forall x deg a b. (Fractional (J x a), Real b, KnownNat deg) => Vec deg b -> Vec deg (J x a) -> J x a
 dot cks xs = F.sum $ TV.unVec elemwise
   where
     elemwise :: Vec deg (J x a)
@@ -1002,12 +1000,12 @@ dot cks xs = F.sum $ TV.unVec elemwise
 
 
 -- todo: code duplication
-interpolateXDots' :: (Real b, Fractional (J x a), Dim deg) => Vec deg (Vec deg b) -> Vec deg (J x a) -> Vec deg (J x a)
+interpolateXDots' :: (Real b, Fractional (J x a), KnownNat deg) => Vec deg (Vec deg b) -> Vec deg (J x a) -> Vec deg (J x a)
 interpolateXDots' cjks xs = fmap (`dot` xs) cjks
 
 interpolateXDots ::
   forall b deg x a
-  . (Real b, Dim deg, Fractional (J x a))
+  . (Real b, KnownNat deg, Fractional (J x a))
   => Vec (deg + 1) (Vec (deg + 1) b)
   -> Vec (deg + 1) (J x a)
   -> Vec deg (J x a)
@@ -1017,7 +1015,7 @@ interpolateXDots cjks xs =
 
 -- return dynamics constraints and interpolated state
 toDynamicsStage ::
-  forall x z u p fp r o deg . (Dim deg, View x, View z, View u, View p, View fp, View r, View o)
+  forall x z u p fp r o deg . (KnownNat deg, View x, View z, View u, View p, View fp, View r, View o)
   => (J x MX -> Vec deg (J x MX) -> J x MX)
   -> Vec (deg + 1) (Vec (deg + 1) Double)
   -> Fun (DaeIn x z u p fp) (DaeOut r o)
@@ -1055,7 +1053,7 @@ toDynamicsStage interpolate' cijs dynFun (x0 :*: xzs' :*: us' :*: h :*: p :*: fp
 
 -- outputs
 outputFunction ::
-  forall x z u p fp r o deg . (Dim deg, View x, View z, View u, View p, View fp, View r, View o)
+  forall x z u p fp r o deg . (KnownNat deg, View x, View z, View u, View p, View fp, View r, View o)
   => Int
   -> (J x MX -> Vec deg (J x MX) -> J x MX)
   -> Vec (deg + 1) (Vec (deg + 1) Double) -> Vec deg Double
@@ -1097,7 +1095,7 @@ outputFunction n callInterpolate cijs taus dynFun (collStage :*: fp :*: k) =
 -- | make an initial guess
 makeGuess ::
   forall x z u p deg n .
-  ( Dim n, Dim deg
+  ( KnownNat n, KnownNat deg
   , Vectorize x, Vectorize z, Vectorize u, Vectorize p
   )
   => QuadratureRoots
@@ -1137,7 +1135,7 @@ makeGuess quadratureRoots tf guessX guessZ guessU parm =
 -- | make an initial guess
 makeGuessSim ::
   forall x z u p deg n .
-  ( Dim n, Dim deg
+  ( KnownNat n, KnownNat deg
   , Vectorize x, Vectorize z, Vectorize u, Vectorize p
   )
   => QuadratureRoots

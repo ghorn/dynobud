@@ -5,6 +5,8 @@ module Dyno.OcpHomotopy
        ( runOcpHomotopy
        ) where
 
+import GHC.TypeLits ( KnownNat )
+
 import Data.Vector ( Vector )
 import qualified Data.Traversable as T
 
@@ -14,7 +16,6 @@ import qualified Data.Map as M
 import Dyno.Ocp
 import Dyno.View.Vectorize ( Vectorize )
 import Dyno.View.View ( J, JV, catJV )
-import Dyno.TypeVecs ( Dim )
 import Dyno.Solvers ( Solver )
 import Dyno.Nlp ( Nlp(..), NlpIn(..), NlpOut(..) )
 import Dyno.NlpSolver ( GType )
@@ -26,7 +27,7 @@ import Dyno.DirectCollocation.Formulate
 
 runOcpHomotopy ::
   forall x z u p r o c h q qo po fp n deg t
-  . ( Dim n, Dim deg
+  . ( KnownNat n, KnownNat deg
     , Vectorize x, Vectorize z, Vectorize u, Vectorize p
     , Vectorize r, Vectorize o, Vectorize c, Vectorize h
     , Vectorize q, Vectorize po, Vectorize qo

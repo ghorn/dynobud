@@ -16,6 +16,7 @@ module Dyno.View.MapFun
        ) where
 
 import GHC.Generics ( Generic )
+import GHC.TypeLits ( KnownNat, natVal )
 
 import qualified Data.Foldable as F
 import qualified Data.Map as M
@@ -28,8 +29,7 @@ import qualified Data.Vector as V
 import qualified Casadi.Core.Classes.Function as C
 import Casadi.GenericType ( GenericType, GType, fromGType )
 
-import Dyno.TypeVecs ( Dim, Vec )
-import qualified Dyno.TypeVecs as TV
+import Dyno.TypeVecs ( Vec )
 import Dyno.View.Fun
 import Dyno.View.HList
 import Dyno.View.JVec ( JVec )
@@ -58,13 +58,13 @@ instance ParScheme (f :*: g) where
 
 -- | symbolic fmap
 mapFun :: forall f g n
-          . ( Scheme (Par f n), Scheme (Par g n), Dim n )
+          . ( Scheme (Par f n), Scheme (Par g n), KnownNat n )
           => Proxy n
           -> Fun f g
           -> MapStrategy
           -> IO (Fun (Par f n) (Par g n))
 mapFun _ (Fun f) mapStrategy = do
-  let n = TV.reflectDim (Proxy :: Proxy n)
+  let n = fromIntegral (natVal (Proxy :: Proxy n))
   fm <- C.function_map__5 f n (mapStrategyString mapStrategy) :: IO C.Function
   checkFunDimensionsWith "mapFun'" (Fun fm)
 -- {-# NOINLINE mapFun #-}
@@ -99,7 +99,7 @@ mapFun' :: forall i0 i1 o0 o1 n
           . ( ParScheme' i0 i1, ParScheme' o0 o1
             , Scheme i0, Scheme o0
             , Scheme i1, Scheme o1
-            , Dim n
+            , KnownNat n
             )
           => Proxy n
           -> Fun i0 o0
@@ -115,7 +115,7 @@ mapFun' _ f0 name mapStrategy opts0 = do
 --   Right msg -> putStrLn msg
   _ <- checkFunDimensionsWith "mapFun'' input fun" f0
   opts <- T.mapM fromGType opts0 :: IO (M.Map String GenericType)
-  let n = TV.reflectDim (Proxy :: Proxy n)
+  let n = fromIntegral (natVal (Proxy :: Proxy n))
       repeatedIn :: V.Vector Bool
       repeatedIn =
         V.fromList $ F.toList $ repeated (Proxy :: Proxy i0) (Proxy :: Proxy i1)

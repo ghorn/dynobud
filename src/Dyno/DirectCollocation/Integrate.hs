@@ -29,7 +29,7 @@ import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.M ( vcat, vsplit )
 import qualified Dyno.View.M as M
 import Dyno.View.Vectorize ( Vectorize(..), Id(..), unId, vzipWith )
-import Dyno.TypeVecs ( Dim, Vec, reflectDim )
+import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs )
 import Dyno.Solvers ( Solver )
@@ -60,16 +60,16 @@ data IntegratorG x r n deg a =
  } deriving (Generic)
 
 
-instance (Vectorize x, Vectorize z, Dim n, Dim deg)
+instance (Vectorize x, Vectorize z, KnownNat n, KnownNat deg)
          => View (IntegratorX x z n deg)
-instance (Vectorize u, Vectorize p, Dim n, Dim deg)
+instance (Vectorize u, Vectorize p, KnownNat n, KnownNat deg)
          => View (IntegratorP u p n deg)
-instance (Vectorize x, Vectorize r, Dim n, Dim deg)
+instance (Vectorize x, Vectorize r, KnownNat n, KnownNat deg)
          => View (IntegratorG x r n deg)
 
 
 -- todo: code duplication
-dot :: forall x deg a b. (Fractional (J x a), Real b, Dim deg) => Vec deg b -> Vec deg (J x a) -> J x a
+dot :: forall x deg a b. (Fractional (J x a), Real b, KnownNat deg) => Vec deg b -> Vec deg (J x a) -> J x a
 dot cks xs = F.sum $ TV.unVec elemwise
   where
     elemwise :: Vec deg (J x a)
@@ -80,12 +80,12 @@ dot cks xs = F.sum $ TV.unVec elemwise
 
 
 -- todo: code duplication
-interpolateXDots' :: (Real b, Fractional (J x a), Dim deg) => Vec deg (Vec deg b) -> Vec deg (J x a) -> Vec deg (J x a)
+interpolateXDots' :: (Real b, Fractional (J x a), KnownNat deg) => Vec deg (Vec deg b) -> Vec deg (J x a) -> Vec deg (J x a)
 interpolateXDots' cjks xs = fmap (`dot` xs) cjks
 
 interpolateXDots ::
   forall b deg x a
-  . (Real b, Dim deg, Fractional (J x a))
+  . (Real b, KnownNat deg, Fractional (J x a))
   => Vec (deg + 1) (Vec (deg + 1) b)
   -> Vec (deg + 1) (J x a)
   -> Vec deg (J x a)
@@ -96,7 +96,7 @@ interpolateXDots cjks xs =
 
 -- return dynamics constraints, outputs, and interpolated state
 dynStageConstraints' ::
-  forall x z u p r deg . (Dim deg, View x, View z, View u, View p, View r)
+  forall x z u p r deg . (KnownNat deg, View x, View z, View u, View p, View r)
   => Vec (deg + 1) (Vec (deg + 1) Double) -> Vec deg Double
   -> Fun (S :*: J p :*: J x :*: J (CollPoint x z u)) (J r)
   -> (J x :*: J (JVec deg (JTuple x z)) :*: J (JVec deg u) :*: S :*: J p :*: J (JVec deg (JV Id))) MX
@@ -143,7 +143,7 @@ dynamicsFunction' dae (t :*: parm :*: x' :*: collPoint) = dae x' x z u parm t
 
 withIntegrator ::
   forall x z u p r deg n .
-  (Dim n, Dim deg, Vectorize x, Vectorize p, Vectorize u, Vectorize z, Vectorize r)
+  (KnownNat n, KnownNat deg, Vectorize x, Vectorize p, Vectorize u, Vectorize z, Vectorize r)
   => Proxy n
   -> Proxy deg
   -> QuadratureRoots
@@ -156,7 +156,7 @@ withIntegrator _ _ roots initialX dae solver = do
       taus :: Vec deg Double
       taus = mkTaus roots
 
-      n = reflectDim (Proxy :: Proxy n)
+      n = fromIntegral (natVal (Proxy :: Proxy n))
 
       -- coefficients for getting xdot by lagrange interpolating polynomials
       cijs :: Vec (deg + 1) (Vec (deg + 1) Double)
@@ -258,7 +258,7 @@ withIntegrator _ _ roots initialX dae solver = do
 
 getFgIntegrator ::
   forall x z u p r n deg .
-  (Dim deg, Dim n, Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize r)
+  (KnownNat deg, KnownNat n, Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize r)
   => Vec deg Double
   -> ((J (JV x) :*: J (JVec deg (JTuple (JV x) (JV z))) :*: J (JVec deg (JV u)) :*: S :*: J (JV p) :*: J (JVec deg (JV Id))) MX -> (J (JVec deg (JV r)) :*: J (JV x)) MX)
   -> J (IntegratorX x z n deg) MX
@@ -282,7 +282,7 @@ getFgIntegrator taus stageFun ix' ip' = (0, cat g)
 
     -- timestep
     dt = tf / fromIntegral n
-    n = reflectDim (Proxy :: Proxy n)
+    n = natVal (Proxy :: Proxy n)
 
     -- times at each collocation point
     times :: Vec n (Vec deg (S MX))

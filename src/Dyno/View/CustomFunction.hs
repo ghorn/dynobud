@@ -21,7 +21,7 @@ import Casadi.DMatrix ( DMatrix )
 import Casadi.CMatrix ( sparsity )
 
 import qualified Dyno.TypeVecs as TV
-import Dyno.TypeVecs ( Vec, Dim, reifyDim )
+import Dyno.TypeVecs ( Vec, KnownNat, reifyKnownNat )
 import Dyno.View.Scheme ( Scheme(..) )
 import Dyno.View.Fun ( Fun(..) )
 import Casadi.Callback ( makeCustomEvaluate, makeDerivativeGenerator )
@@ -43,7 +43,7 @@ data CustomFun f g =
 data DerivGen f g =
   DerivGen
   { dgGetSeeds :: forall nfwd nadj
-                  . (Dim nfwd, Dim nadj)
+                  . (KnownNat nfwd, KnownNat nadj)
                   => f DMatrix -> Vec nfwd (f DMatrix) -> Vec nadj (g DMatrix)
                   -> IO (g DMatrix, Vec nfwd (g DMatrix), Vec nadj (f DMatrix))
   , dgOptions :: [(String, Opt)]
@@ -69,7 +69,7 @@ toDerivGen dg = makeDerivativeGenerator $ \originalFun nfwd nadj -> do
             ng = numFields (Proxy :: Proxy g)
 
         let f' :: forall nfwd nadj
-                  . (Dim nfwd, Dim nadj)
+                  . (KnownNat nfwd, KnownNat nadj)
                   => Proxy nfwd -> Proxy nadj -> IO (Vector DMatrix)
             f' _ _ = do
               let (inputs0', inputs12') = splitAt nf inputs
@@ -89,8 +89,8 @@ toDerivGen dg = makeDerivativeGenerator $ \originalFun nfwd nadj -> do
                   out2' = V.concat $ F.toList (fmap toVector out2)
               return (V.concat [out0', out1', out2'])
 
-        outs <- reifyDim nfwd $ \pnfwd ->
-          reifyDim nadj $ \pnadj -> f' pnfwd pnadj
+        outs <- reifyKnownNat nfwd $ \pnfwd ->
+          reifyKnownNat nadj $ \pnadj -> f' pnfwd pnadj
         _ <- zipWithM (C.ioInterfaceFunction_setOutput__2 fun) (V.toList outs) [0..]
         return ()
 

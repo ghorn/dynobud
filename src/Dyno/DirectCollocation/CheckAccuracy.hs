@@ -15,6 +15,7 @@ module Dyno.DirectCollocation.CheckAccuracy
        ) where
 
 import GHC.Generics ( Generic, Generic1 )
+import GHC.TypeLits ( KnownNat, natVal )
 
 import Accessors ( Lookup, GATip(..), GAField(..), accessors, describeGAField, flatten  )
 import Control.Lens ( (^.) )
@@ -29,7 +30,7 @@ import Text.Printf ( printf )
 import Dyno.Integrate
 import Dyno.View.Vectorize ( Vectorize(..), None(..), fill, unId, vapply )
 import Dyno.View.View ( View(..), J, splitJV )
-import Dyno.TypeVecs ( Vec, Dim )
+import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.DirectCollocation.Quadratures ( QuadratureRoots, collocationTimes )
 import Dyno.DirectCollocation.Types
@@ -63,7 +64,7 @@ data Err a =
 
 summarizeAccuracy ::
   forall x n
-  . (Vectorize x, Lookup (x Double), Dim n)
+  . (Vectorize x, Lookup (x Double), KnownNat n)
   => Checks x n -> String
 summarizeAccuracy (Checks _ worstStageMismatch trajMismatch) =
   unlines $
@@ -111,7 +112,7 @@ toErr mscale ref val =
 
 checkIntegrationAccuracy
   :: forall x q u p n deg
-  . (Vectorize x, Vectorize q, Vectorize u, Additive u, Vectorize p, Dim n, Dim deg)
+  . (Vectorize x, Vectorize q, Vectorize u, Additive u, Vectorize p, KnownNat n, KnownNat deg)
   => x (Maybe Double)
   -> QuadratureRoots
   -> J (CollTraj x None u p n deg) (V.Vector Double)
@@ -172,7 +173,7 @@ checkIntegrationAccuracy xscale roots traj' ode qfs =
     times :: Vec n (Double, Vec deg Double)
     times = collocationTimes 0 roots h
 
-    h = unId (splitJV tf) / fromIntegral (TV.reflectDim (Proxy :: Proxy n))
+    h = unId (splitJV tf) / fromIntegral (natVal (Proxy :: Proxy n))
 
     q0s :: Vec n (q Double)
     q0s = TV.tvshiftr (fill 0) (qfs)

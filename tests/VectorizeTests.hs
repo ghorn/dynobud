@@ -30,7 +30,7 @@ import Test.Framework.Providers.HUnit ( testCase )
 import Test.Framework.Providers.QuickCheck2 ( testProperty )
 
 import Dyno.View.Vectorize
-import Dyno.TypeVecs ( Dim, Vec, reflectDim )
+import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 
 import Utils
@@ -61,12 +61,12 @@ data Vectorizes where
 
 
 data Dims where
-  Dims :: Dim n =>
+  Dims :: KnownNat n =>
            { dShrinks :: [Dims]
            , dProxy :: Proxy (n :: Nat)
            } -> Dims
 instance Show Dims where
-  show (Dims _ p) = show (reflectDim p)
+  show (Dims _ p) = show (natVal p)
 
 instance Arbitrary Dims where
   arbitrary = elements [ d0, d1, d2, d3, d4, d10, d100 ]
@@ -181,12 +181,12 @@ prop_vlengthEqLengthOfPure (Vectorizes _ _ p) = vlengthEqLengthOfPure p
 
 transposeUnTranspose ::
   forall n m
-  . (Eq (Vec n (Vec m Int)), Dim n, Dim m)
+  . (Eq (Vec n (Vec m Int)), KnownNat n, KnownNat m)
   => Proxy n -> Proxy m -> Bool
 transposeUnTranspose _ _ = x0 == x2
   where
-    n = TV.reflectDim (Proxy :: Proxy n)
-    m = TV.reflectDim (Proxy :: Proxy m)
+    n = fromIntegral (natVal (Proxy :: Proxy n))
+    m = fromIntegral (natVal (Proxy :: Proxy m))
 
     x0 :: Vec n (Vec m Int)
     x0 = TV.mkVec' [TV.mkVec' [(j*m + k) | k <- [0..(m-1)]] | j <- [0..(n-1)]]

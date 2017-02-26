@@ -43,7 +43,7 @@ import Dyno.Casadi.SXElement
 -- when ipopt fails but snopt succeeds, i reject the test, but this should be reported for this LP case
 -- tighten the bounds from 0.4 to 1e-6 or so, 0.4 is just to get a smoking gun for Elizabeth
 
-instance (Arbitrary a, Dim n) => Arbitrary (Vec n a) where
+instance (Arbitrary a, KnownNat n) => Arbitrary (Vec n a) where
   arbitrary = do
     let n = tvlength (undefined :: Vec n a)
     contents <- vector n
@@ -129,7 +129,7 @@ instance IsLp (FLp n m) n m where
 instance IsLp (ILp n m) n m where
   getLp (ILp lp) = lp
 
---instance (Dim nx, Dim ng) => Show (Lp nx ng) where
+--instance (KnownNat nx, KnownNat ng) => Show (Lp nx ng) where
 -- show = prettyPrint
 
 asNumber :: Num a => Coef a -> a
@@ -185,7 +185,7 @@ data Valid = Valid { vfErr :: Double
                    , vxErr :: Double
                    , vgErr :: Double
                    } deriving Show
-validSol :: forall nx ng . (Dim nx, Dim ng) =>
+validSol :: forall nx ng . (KnownNat nx, KnownNat ng) =>
             Lp nx ng -> Vec nx Double -> Double -> Valid
 validSol lp xopt fopt =
   Valid { vfErr = abs (fopt - fopt')
@@ -212,7 +212,7 @@ validSol lp xopt fopt =
         f = sum (F.toList (vzipWith (*) xopt (fmap asNumber coeffs))) + goffset
 
 
-solveWithGlpk :: (Dim nx, Dim ng) => Lp nx ng -> GLPK.Solution
+solveWithGlpk :: (KnownNat nx, KnownNat ng) => Lp nx ng -> GLPK.Solution
 solveWithGlpk lp = GLPK.simplex prob constraints bounds
   where
     -- unpack lp
@@ -241,7 +241,7 @@ solveWithGlpk lp = GLPK.simplex prob constraints bounds
     bounds = zipWith (GLPK.:&:) [0..] bxs
 
 
-instance (Dim nx, Dim ng) => Arbitrary (Lp nx ng) where
+instance (KnownNat nx, KnownNat ng) => Arbitrary (Lp nx ng) where
   arbitrary = do
     --x0 <- arbitrary :: Gen (Vec nx Double)
     let x0 = fill 0
@@ -280,7 +280,7 @@ instance (Dim nx, Dim ng) => Arbitrary (Lp nx ng) where
 justs :: (a, a) -> (Maybe a, Maybe a)
 justs (x,y) = (Just x, Just y)
 
-instance (Dim nx, Dim ng) => Arbitrary (FLp nx ng) where
+instance (KnownNat nx, KnownNat ng) => Arbitrary (FLp nx ng) where
   arbitrary = do
     objCoeffs'' <- arbitrary :: Gen (Vec nx (Coef Double))
     let objCoeffs' = fmap absnl objCoeffs''
@@ -330,7 +330,7 @@ createBounds xb
     end <- createBounds txb
     return $ (realToFrac low, realToFrac high):end
 
-instance (Dim nx, Dim ng) => Arbitrary (ILp nx ng) where
+instance (KnownNat nx, KnownNat ng) => Arbitrary (ILp nx ng) where
   arbitrary = do
     objCoeffs'' <- arbitrary :: Gen (Vec nx (Coef Double))
     let objCoeffs' = fmap absnl objCoeffs''
@@ -368,14 +368,14 @@ instance (Dim nx, Dim ng) => Arbitrary (ILp nx ng) where
 
 
 newtype LpNlp nx ng = LpNlp (Nlp (Vec nx) None (Vec ng) SXElement)
-instance (Dim nx, Dim ng) => Show (Lp nx ng) where
+instance (KnownNat nx, KnownNat ng) => Show (Lp nx ng) where
   show = prettyPrint
-instance (Dim nx, Dim ng) => Show (FLp nx ng) where
+instance (KnownNat nx, KnownNat ng) => Show (FLp nx ng) where
   show (FLp flp) = prettyPrint flp
-instance (Dim nx, Dim ng) => Show (ILp nx ng) where
+instance (KnownNat nx, KnownNat ng) => Show (ILp nx ng) where
   show (ILp ilp) = prettyPrint ilp
 
-nlpOfLp :: forall nx ng . (Dim nx, Dim ng) => Lp nx ng -> LpNlp nx ng
+nlpOfLp :: forall nx ng . (KnownNat nx, KnownNat ng) => Lp nx ng -> LpNlp nx ng
 nlpOfLp (Lp x0 bx bg goffset objCoeffs jacCoeffs) =
   LpNlp $
     Nlp { nlpFG = fg
@@ -392,7 +392,7 @@ nlpOfLp (Lp x0 bx bg goffset objCoeffs jacCoeffs) =
         g' = fmap (runSum . tvzip xs) (fmap (fmap (fmap realToFrac)) jacCoeffs)
         g = tvzipWith (+) g' (fmap realToFrac goffset)
 
-glpkUnsolved :: (Dim nx, Dim ng) => ILp nx ng -> Property
+glpkUnsolved :: (KnownNat nx, KnownNat ng) => ILp nx ng -> Property
 glpkUnsolved lp = monadicIO $ do
   let nlp = (getLp lp)
   (_,_) <- case solveWithGlpk nlp of
@@ -401,7 +401,7 @@ glpkUnsolved lp = monadicIO $ do
     _ -> stop (succeeded {reason = "Not solvable !"})
   return ()
 
-glpkSolved :: (Dim nx, Dim ng) => FLp nx ng -> Property
+glpkSolved :: (KnownNat nx, KnownNat ng) => FLp nx ng -> Property
 glpkSolved lp = monadicIO $ do
   let nlp = (getLp lp)
   (_,_) <- case solveWithGlpk nlp of
@@ -413,7 +413,7 @@ glpkSolved lp = monadicIO $ do
     GLPK.Optimal _ -> stop (succeeded {reason = "Optimal !"})
   return ()
 
-ipoptSolved :: (Dim nx, Dim ng) => NlpSolverStuff -> FLp nx ng -> Property
+ipoptSolved :: (KnownNat nx, KnownNat ng) => NlpSolverStuff -> FLp nx ng -> Property
 ipoptSolved solver lp = monadicIO $ do
   let LpNlp nlp = nlpOfLp (getLp lp)
   (ret,_) <- run $ solveNlp solver nlp Nothing
@@ -424,7 +424,7 @@ ipoptSolved solver lp = monadicIO $ do
     Right "Solve_Succeeded" -> stop (succeeded {reason = "Optimal !"})
     Right _ -> stop (failed {reason = "feasible but not optimal !"})
 
-ipoptUnsolved :: (Dim nx, Dim ng) => NlpSolverStuff -> ILp nx ng -> Property
+ipoptUnsolved :: (KnownNat nx, KnownNat ng) => NlpSolverStuff -> ILp nx ng -> Property
 ipoptUnsolved solver lp = monadicIO $ do
   let LpNlp nlp = nlpOfLp (getLp lp)
   (ret,_) <- run $ solveNlp solver nlp Nothing
@@ -435,11 +435,11 @@ ipoptUnsolved solver lp = monadicIO $ do
     Right "Solve_Succeeded" -> stop (failed {reason = "Optimal ?!"})
     Right _ -> stop (failed {reason = "feasible but not optimal ?!"})
 
-matchesGlpk' :: (Dim nx, Dim ng) => NlpSolverStuff -> FLp nx ng -> Property
+matchesGlpk' :: (KnownNat nx, KnownNat ng) => NlpSolverStuff -> FLp nx ng -> Property
 matchesGlpk' solver flp = matchesGlpk solver (getLp flp)
 
 
-matchesGlpk :: (Dim nx, Dim ng) => NlpSolverStuff -> Lp nx ng -> Property
+matchesGlpk :: (KnownNat nx, KnownNat ng) => NlpSolverStuff -> Lp nx ng -> Property
 matchesGlpk solver lp = monadicIO $ do
   let LpNlp nlp = nlpOfLp lp
   (fopt,xopt) <- case solveWithGlpk lp of
@@ -482,7 +482,7 @@ matchesGlpk solver lp = monadicIO $ do
              --run $ writeFile "counterexample.py" (toPython params)
              stop $ failed { reason = "======== solution doesn't match glpk! ========\n" ++ summary }
 
-prettyPrint :: (Dim nx, Dim ng) => Lp nx ng -> String
+prettyPrint :: (KnownNat nx, KnownNat ng) => Lp nx ng -> String
 prettyPrint (Lp x0' bx' bg' goffset' objCoeffs' jacCoeffs') =
   init $ unlines $
   [ "minimize:"

@@ -13,6 +13,7 @@ module ViewTests
        ) where
 
 import GHC.Generics ( Generic, Generic1 )
+import GHC.TypeLits ( KnownNat )
 
 import Control.Exception ( ErrorCall, try, evaluate )
 import qualified Data.Map as M
@@ -39,7 +40,7 @@ import Casadi.SX ( SX )
 import Casadi.Viewable ( Viewable )
 
 import Dyno.View.Unsafe ( M(UnsafeM), mkM )
-import Dyno.TypeVecs ( Vec, Dim )
+import Dyno.TypeVecs ( Vec )
 import Dyno.View.Vectorize ( Vectorize(..), Id, (:.), fill )
 import Dyno.View.View ( View(..), S, J, JV, JNone, JTuple, JTriple, JQuad )
 import Dyno.View.JVec ( JVec )
@@ -100,7 +101,7 @@ instance (View f, View g, CMatrix a) => Arbitrary (M f g a) where
           , fmap trans (arbitrary :: Gen (M g f a))
           ]
 
-instance (Arbitrary a, Dim n) => Arbitrary (Vec n a) where
+instance (Arbitrary a, KnownNat n) => Arbitrary (Vec n a) where
   arbitrary = T.sequence (fill arbitrary)
 
 evalMX :: MX -> DM
@@ -136,7 +137,7 @@ instance MyEq DM where
   myEq = (==)
 instance MyEq MX where
   myEq x y = myEq (evalMX x) (evalMX y)
-instance (Dim n, MyEq a) => MyEq (Vec n a) where
+instance (KnownNat n, MyEq a) => MyEq (Vec n a) where
   myEq f g = V.and $ V.zipWith myEq (vectorize f) (vectorize g)
 instance MyEq (Mat.Matrix Double) where
   myEq x y
@@ -264,7 +265,7 @@ prop_VSplitVCat'  =
    test pd p1 p2 pm
   where
     test :: forall f g n a
-            . (View f, View g, Dim n, CMatrix a, MyEq a)
+            . (View f, View g, KnownNat n, CMatrix a, MyEq a)
             => Proxy n -> Proxy f -> Proxy g -> Proxy a -> Gen Property
     test _ _ _ _ = do
       x0 <- arbitrary :: Gen (Vec n (M f g a))
@@ -278,7 +279,7 @@ prop_HSplitHCat' =
    test pd p1 p2 pm
   where
     test :: forall f g n a
-            . (View f, View g, Dim n, CMatrix a, MyEq a)
+            . (View f, View g, KnownNat n, CMatrix a, MyEq a)
             => Proxy n -> Proxy f -> Proxy g -> Proxy a -> Gen Property
     test _ _ _ _ = do
       x0 <- arbitrary :: Gen (Vec n (M f g a))

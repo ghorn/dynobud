@@ -37,6 +37,7 @@ module Dyno.DirectCollocation.Types
        ) where
 
 import GHC.Generics ( Generic, Generic1 )
+import GHC.TypeLits ( KnownNat )
 
 import Linear ( Additive(..) )
 import Data.Aeson ( FromJSON, ToJSON )
@@ -51,7 +52,7 @@ import Dyno.View.View ( View(..), J, S, JV, splitJV, catJV, jfill )
 import Dyno.View.JVec ( JVec(..), jreplicate )
 import Dyno.View.Cov ( Cov )
 import Dyno.View.Vectorize ( Vectorize(..), Id(..), unId, vapply )
-import Dyno.TypeVecs ( Vec, Dim )
+import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 
 
@@ -108,26 +109,26 @@ data CollOcpCovConstraints ocp n deg sh shr sc a =
 
 -- View instances
 instance (View x, View z, View u) => View (CollPoint x z u)
-instance (View x, View z, View u, View p, Dim deg) => View (CollStage x z u p deg)
+instance (View x, View z, View u, View p, KnownNat deg) => View (CollStage x z u p deg)
 instance ( Vectorize x, Vectorize z, Vectorize u, Vectorize p
-         , Dim n, Dim deg
+         , KnownNat n, KnownNat deg
          ) =>  View (CollTraj x z u p n deg)
 instance ( Vectorize sx, Vectorize x, Vectorize z, Vectorize u, Vectorize p
-         , Dim n, Dim deg
+         , KnownNat n, KnownNat deg
          ) => View (CollTrajCov sx x z u p n deg)
 
-instance (Vectorize x, Vectorize r, Dim deg) => View (CollStageConstraints x deg r)
+instance (Vectorize x, Vectorize r, KnownNat deg) => View (CollStageConstraints x deg r)
 instance ( Vectorize x, Vectorize p, Vectorize r, Vectorize c, Vectorize h
-         , Dim n, Dim deg
+         , KnownNat n, KnownNat deg
          ) => View (CollOcpConstraints x p r c h n deg)
 instance ( Vectorize (X ocp), Vectorize (P ocp), Vectorize (R ocp), Vectorize (C ocp), Vectorize (H ocp)
-         , Dim n, Dim deg
+         , KnownNat n, KnownNat deg
          , View sh, Vectorize shr, View sc
          ) => View (CollOcpCovConstraints ocp n deg sh shr sc)
 
 -- todo(greg): unit test to ensure this is the inverse of getXzus'
 fromXzus :: forall x z u p n deg a
-            . (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Dim n, Dim deg)
+            . (Vectorize x, Vectorize z, Vectorize u, Vectorize p, KnownNat n, KnownNat deg)
             => a -> p a -> Vec n (x a, Vec deg (x a, z a, u a)) -> x a
             -> CollTraj x z u p n deg (Vector a)
 fromXzus t' p' xzus xf = CollTraj t p (cat (JVec traj)) (catJV xf)
@@ -145,7 +146,7 @@ fromXzus t' p' xzus xf = CollTraj t p (cat (JVec traj)) (catJV xf)
     toCollPoint (x,z,u) = cat $ CollPoint (catJV x) (catJV z) (catJV u)
 
 getXzus ::
-  (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Dim n, Dim deg)
+  (Vectorize x, Vectorize z, Vectorize u, Vectorize p, KnownNat n, KnownNat deg)
   => CollTraj x z u p n deg (Vector a)
   -> (Vec n (Vec deg (x a, z a, u a)))
 getXzus traj = fmap snd4 $ fst $ getXzus' traj
@@ -153,7 +154,7 @@ getXzus traj = fmap snd4 $ fst $ getXzus' traj
     snd4 (_,x,_,_) = x
 
 getXzus' ::
-  (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Dim n, Dim deg)
+  (Vectorize x, Vectorize z, Vectorize u, Vectorize p, KnownNat n, KnownNat deg)
   => CollTraj x z u p n deg (Vector a)
   -> (Vec n (x a, Vec deg (x a, z a, u a), p a, a), x a)
 getXzus' (CollTraj _ _ stages xf) =
@@ -161,7 +162,7 @@ getXzus' (CollTraj _ _ stages xf) =
 
 getXzus'' ::
   forall x z u p n deg a
-  . (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Dim n, Dim deg)
+  . (Vectorize x, Vectorize z, Vectorize u, Vectorize p, KnownNat n, KnownNat deg)
   => CollTraj x z u p n deg (Vector a)
   -> ( Vec n (Vec deg (x a))
      , Vec n (Vec deg (z a))
@@ -173,7 +174,7 @@ getXzus'' traj = (fmap snd xs, zs, us)
 
 getXzus''' ::
   forall x z u p n deg a
-  . (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Dim n, Dim deg)
+  . (Vectorize x, Vectorize z, Vectorize u, Vectorize p, KnownNat n, KnownNat deg)
   => CollTraj x z u p n deg (Vector a)
   -> ( ( Vec n (x a, Vec deg (x a))
        , x a
@@ -190,7 +191,7 @@ getXzus''' traj = ((xs, xf), zs, us)
           where
             (xs',zs',us') = TV.tvunzip3 xzus'
 
-getXzusFromStage :: (Vectorize x, Vectorize z, Vectorize u, Vectorize p, Dim deg)
+getXzusFromStage :: (Vectorize x, Vectorize z, Vectorize u, Vectorize p, KnownNat deg)
                     => CollStage (JV x) (JV z) (JV u) (JV p) deg (Vector a)
                     -> (x a, Vec deg (x a, z a, u a), p a, a)
 getXzusFromStage (CollStage x0 xzus p tf) = (splitJV x0, fmap (f . split) (unJVec (split xzus)), splitJV p, unId (splitJV tf))
@@ -201,7 +202,7 @@ getXzusFromStage (CollStage x0 xzus p tf) = (splitJV x0, fmap (f . split) (unJVe
 fillCollConstraints ::
   forall x p r c h n deg a .
   ( Vectorize x, Vectorize p, Vectorize r, Vectorize c, Vectorize h
-  , Dim n, Dim deg )
+  , KnownNat n, KnownNat deg )
   => x a -> p a -> r a -> c a -> h a -> a -> CollOcpConstraints x p r c h n deg (Vector a)
 fillCollConstraints x p r c h tf =
   CollOcpConstraints
@@ -217,7 +218,7 @@ fillCollConstraints x p r c h tf =
 fillCollTraj ::
   forall x z u p n deg a .
   ( Vectorize x, Vectorize z, Vectorize u, Vectorize p
-  , Dim n, Dim deg )
+  , KnownNat n, KnownNat deg )
   => x a -> z a -> u a -> p a -> a
   -> CollTraj x z u p n deg (Vector a)
 fillCollTraj x = fillCollTraj' x x
@@ -226,7 +227,7 @@ fillCollTraj x = fillCollTraj' x x
 fillCollTraj' ::
   forall x z u p n deg a .
   ( Vectorize x, Vectorize z, Vectorize u, Vectorize p
-  , Dim n, Dim deg )
+  , KnownNat n, KnownNat deg )
   => x a -> x a -> z a -> u a -> p a -> a
   -> CollTraj x z u p n deg (Vector a)
 fillCollTraj' x' x z u p t =
@@ -245,7 +246,7 @@ fmapCollTraj ::
   , Vectorize z0, Vectorize z1
   , Vectorize u0, Vectorize u1
   , Vectorize p0, Vectorize p1
-  , Dim n, Dim deg )
+  , KnownNat n, KnownNat deg )
   => (x0 a -> x1 b)
   -> (z0 a -> z1 b)
   -> (u0 a -> u1 b)
@@ -262,7 +263,7 @@ fmapCollTraj' ::
   , Vectorize z0, Vectorize z1
   , Vectorize u0, Vectorize u1
   , Vectorize p0, Vectorize p1
-  , Dim n, Dim deg )
+  , KnownNat n, KnownNat deg )
   => (x0 a -> x1 b)
   -> (x0 a -> x1 b)
   -> (z0 a -> z1 b)
@@ -292,7 +293,7 @@ fmapStage :: forall x1 x2 z1 z2 u1 u2 p1 p2 deg a b .
              , Vectorize z1, Vectorize z2
              , Vectorize u1, Vectorize u2
              , Vectorize p1, Vectorize p2
-             , Dim deg )
+             , KnownNat deg )
              => (x1 a -> x2 b)
              -> (x1 a -> x2 b)
              -> (z1 a -> z2 b)
@@ -314,7 +315,7 @@ fmapStageJ :: forall x1 x2 z1 z2 u1 u2 p1 p2 deg a b .
               , View x1, View x2
               , View z1, View z2
               , View u1, View u2
-              , Dim deg )
+              , KnownNat deg )
               => (J x1 a -> J x2 b)
               -> (J x1 a -> J x2 b)
               -> (J z1 a -> J z2 b)
@@ -399,5 +400,5 @@ type StageOutputs' ocp deg = StageOutputs (X ocp) (O ocp) (H ocp) (Q ocp) (QO oc
 
 instance ( Binary a, Binary (q a), Binary (qo a)
          , Vectorize x, Vectorize o, Vectorize h, Vectorize po
-         , Dim deg
+         , KnownNat deg
          ) => (Binary (StageOutputs x o h q qo po deg a))

@@ -17,6 +17,7 @@ module Dyno.DirectCollocation.ActiveConstraints
        ) where
 
 import GHC.Generics ( Generic )
+import GHC.TypeLits ( KnownNat )
 
 import Accessors ( Lookup, GATip(..), GAField(..), flatten', accessors, describeGAField )
 import Control.Applicative
@@ -34,7 +35,6 @@ import Dyno.Nlp ( Bounds )
 import Dyno.View.Vectorize ( Vectorize, unId )
 import Dyno.View.View ( View(..), J, JV, splitJV )
 import Dyno.View.JVec ( unJVec )
-import Dyno.TypeVecs ( Dim )
 
 data Active a = Active { activeLower :: a, activeUpper :: a }
               deriving (Functor, F.Foldable, T.Traversable, Generic)
@@ -135,7 +135,7 @@ getActiveConstraints ::
   forall x z u p h c n deg r fp o q qo po
   . ( Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize h, Vectorize c, Vectorize r
     , Applicative x, Applicative z, Applicative u, Applicative p, Applicative h, Applicative c
-    , Dim n, Dim deg
+    , KnownNat n, KnownNat deg
     )
   => (J (CollTraj x z u p n deg) (Vector Double)
       -> J (JV fp) (Vector Double)
@@ -155,7 +155,7 @@ whatsActive ::
   forall x z u p h c n deg r fp o q qo po
   . ( Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize h, Vectorize c
     , Applicative x, Applicative z, Applicative u, Applicative p, Applicative h, Applicative c
-    , Dim n, Dim deg
+    , KnownNat n, KnownNat deg
     )
   => Double
   -> CollTraj x z u p n deg (Vector Double)

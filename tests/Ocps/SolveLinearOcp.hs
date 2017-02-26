@@ -34,9 +34,9 @@ data Bcs n a = Bcs (Vec n a) (Vec n a) deriving (Functor, Generic1, Show)
 data X n a = X (Vec n a) deriving (Functor, Generic1, Show)
 data U m a = U (Vec m a) deriving (Functor, Generic1, Show)
 
-instance Dim n => Vectorize (X n)
-instance Dim m => Vectorize (U m)
-instance Dim n => Vectorize (Bcs n)
+instance KnownNat n => Vectorize (X n)
+instance KnownNat m => Vectorize (U m)
+instance KnownNat n => Vectorize (Bcs n)
 
 mayer :: Floating a => a -> x -> x -> J (Cov JNone) SX -> J (Cov JNone) SX -> a
 mayer _ _ _ _ _ = 0
@@ -44,7 +44,7 @@ mayer _ _ _ _ _ = 0
 lagrange :: Floating a => X n a -> None a -> U m a -> None a -> None a -> a -> a
 lagrange _ _ (U vec) _ _ _ = F.sum $ fmap (\x -> x*x) vec
 
-myDae :: forall n m a . (Dim n, Dim m, Floating a)
+myDae :: forall n m a . (KnownNat n, KnownNat m, Floating a)
          => LinearOcp n m -> Dae (X n) None (U m) None (X n) None a
 myDae myOcp (X x') (X x) _ (U u) _ _ = (X (x' ^-^ force), None)
   where
@@ -57,7 +57,7 @@ myDae myOcp (X x') (X x) _ (U u) _ _ = (X (x' ^-^ force), None)
     force :: Vec n a
     force = (a' !* x)  ^+^  (b' !* u)
 
-bc :: forall n m a . (Dim n, Floating a) => LinearOcp n m -> X n a -> X n a -> Bcs n a
+bc :: forall n m a . (KnownNat n, Floating a) => LinearOcp n m -> X n a -> X n a -> Bcs n a
 bc myOcp (X x0) (X xF) = Bcs
                          (x0 ^-^ x0')
                          (xF ^-^ xF')
@@ -69,7 +69,7 @@ bc myOcp (X x0) (X xF) = Bcs
 pathc :: x a -> z a -> u a -> p a -> None a -> a -> None a
 pathc _ _ _ _ _ _ = None
 
-toOcpPhase :: (Dim n, Dim m, IsLinearOcp a n m)
+toOcpPhase :: (KnownNat n, KnownNat m, IsLinearOcp a n m)
               => a -> OcpPhase (X n) None (U m) None (X n) None (Bcs n) None JNone JNone JNone
 toOcpPhase myOcp' =
   OcpPhase { ocpMayer = mayer
@@ -96,14 +96,14 @@ toOcpPhase myOcp' =
     myOcp = getLinearOcp myOcp'
 
 
-solveLinearOcp :: forall n m a . (IsLinearOcp a n m, Dim n, Dim m)
+solveLinearOcp :: forall n m a . (IsLinearOcp a n m, KnownNat n, KnownNat m)
                   => NlpSolverStuff -> a -> IO (Either String String)
 solveLinearOcp solver ocp = do
   let guess = jfill 0 :: J (CollTraj (X n) None (U m) None JNone D10 D2) (Vector Double)
   nlp <- makeCollNlp (toOcpPhase (getLinearOcp ocp))
   fmap fst $ solveNlp' solver (nlp { nlpX0' = guess }) Nothing
 
-feasibleOcpIsFeasible :: (Dim n, Dim m)
+feasibleOcpIsFeasible :: (KnownNat n, KnownNat m)
                          => NlpSolverStuff -> FeasibleLinearOcp n m -> Property
 feasibleOcpIsFeasible solver (FeasibleLinearOcp ocp) = monadicIO $ do
   ret <- run $ solveLinearOcp solver ocp
@@ -111,7 +111,7 @@ feasibleOcpIsFeasible solver (FeasibleLinearOcp ocp) = monadicIO $ do
     Right msg -> stop (succeeded {reason = msg})
     Left msg -> stop (failed {reason = msg})
 
-infeasibleOcpIsInfeasible :: (Dim n, Dim m)
+infeasibleOcpIsInfeasible :: (KnownNat n, KnownNat m)
                              => NlpSolverStuff -> InfeasibleLinearOcp n m -> Property
 infeasibleOcpIsInfeasible solver (InfeasibleLinearOcp ocp) = monadicIO $ do
   ret <- run $ solveLinearOcp solver ocp

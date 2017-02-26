@@ -12,6 +12,7 @@ module Dyno.Fitting
        ) where
 
 import GHC.Generics ( Generic )
+import GHC.TypeLits ( KnownNat )
 
 import Casadi.Matrix ( SMatrix )
 import Casadi.MX ( MX )
@@ -23,7 +24,7 @@ import Data.Proxy ( Proxy(..) )
 import Dyno.Nlp ( Bounds, NlpIn(..), NlpOut(..) )
 import Dyno.NlpSolver ( GType, toNlpSol, callNlpsol )
 import Dyno.Solvers ( Solver )
-import Dyno.TypeVecs ( Dim, Vec )
+import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.View.Fun ( Fun, callSym, toFun )
 import Dyno.View.HList ( (:*:)(..) )
@@ -35,12 +36,12 @@ import Dyno.View.View ( J, S, View(..), JTuple(..), JV, catJV, splitJV, jfill)
 data L1X q y n a =
   L1X (J (JV q) a) (J (JV (Vec n :. y)) a)
   deriving Generic
-instance (Vectorize q, Vectorize y, Dim n) => View (L1X q y n)
+instance (Vectorize q, Vectorize y, KnownNat n) => View (L1X q y n)
 
 data GSlacks g y n a =
   GSlacks (J (JV g) a) (J (JV (Vec n :. y)) a) (J (JV (Vec n :. y)) a)
   deriving Generic
-instance (Vectorize g, Vectorize y, Dim n) => View (GSlacks g y n)
+instance (Vectorize g, Vectorize y, KnownNat n) => View (GSlacks g y n)
 
 
 -- | Minimize the L1 norm of model mismatch.
@@ -64,7 +65,7 @@ instance (Vectorize g, Vectorize y, Dim n) => View (GSlacks g y n)
 -- and g is a nonlinear constraint on the parameters.
 l1Fit ::
   forall n q g x y
-  . (Vectorize q, Vectorize g, Vectorize x, Vectorize y, Dim n)
+  . (Vectorize q, Vectorize g, Vectorize x, Vectorize y, KnownNat n)
   => Double
   -> Solver
   -> (forall a . SMatrix a => q (S a) -> x (S a) -> y (S a))
@@ -83,7 +84,7 @@ l1Fit eps solver fitModel qConstraints mq0 qbnds gbnds mapStrat mapOpts features
 -- 'l1Fit' many times.
 l1Fits ::
   forall n q g x y t
-  . (Vectorize q, Vectorize g, Vectorize x, Vectorize y, Traversable t, Dim n)
+  . (Vectorize q, Vectorize g, Vectorize x, Vectorize y, Traversable t, KnownNat n)
   => Double
   -> Solver
   -> (forall a . SMatrix a => q (S a) -> x (S a) -> y (S a))
@@ -99,7 +100,7 @@ l1Fits eps solver fitModel qConstraints mapStrat mapOpts inputs =
 -- | Low level interface to L1 fitting.
 withL1Fit ::
   forall n q g x y b
-  . (Vectorize q, Vectorize g, Vectorize x, Vectorize y, Dim n)
+  . (Vectorize q, Vectorize g, Vectorize x, Vectorize y, KnownNat n)
   => Double
   -> Solver
   -> (forall a . SMatrix a => q (S a) -> x (S a) -> y (S a))
@@ -223,7 +224,7 @@ withL1Fit eps solver fitModel qConstraints mapStrat mapOpts userFun = do
 -- and g is a nonlinear constraint on the parameters.
 l2Fit ::
   forall n q g x y
-  . (Vectorize q, Vectorize g, Vectorize x, Vectorize y, Dim n)
+  . (Vectorize q, Vectorize g, Vectorize x, Vectorize y, KnownNat n)
   => Double
   -> Solver
   -> (forall a . SMatrix a => q (S a) -> x (S a) -> y (S a))
@@ -242,7 +243,7 @@ l2Fit eps solver fitModel qConstraints mq0 qbnds gbnds mapStrat mapOpts features
 -- 'l2Fit' many times.
 l2Fits ::
   forall n q g x y t
-  . (Vectorize q, Vectorize g, Vectorize x, Vectorize y, Traversable t, Dim n)
+  . (Vectorize q, Vectorize g, Vectorize x, Vectorize y, Traversable t, KnownNat n)
   => Double
   -> Solver
   -> (forall a . SMatrix a => q (S a) -> x (S a) -> y (S a))
@@ -258,7 +259,7 @@ l2Fits eps solver fitModel qConstraints mapStrat mapOpts inputs =
 -- | Low level interface to L2 fitting.
 withL2Fit ::
   forall n q g x y b
-  . (Vectorize q, Vectorize g, Vectorize x, Vectorize y, Dim n)
+  . (Vectorize q, Vectorize g, Vectorize x, Vectorize y, KnownNat n)
   => Double
   -> Solver
   -> (forall a . SMatrix a => q (S a) -> x (S a) -> y (S a))
@@ -366,7 +367,7 @@ withL2Fit eps solver fitModel qConstraints mapStrat mapOpts userFun = do
 -- and g is a nonlinear constraint on the parameters.
 lInfFit ::
   forall n q g x y
-  . (Vectorize q, Vectorize g, Vectorize x, Vectorize y, Dim n)
+  . (Vectorize q, Vectorize g, Vectorize x, Vectorize y, KnownNat n)
   => Double
   -> Solver
   -> (forall a . SMatrix a => q (S a) -> x (S a) -> y (S a))
@@ -385,7 +386,7 @@ lInfFit eps solver fitModel qConstraints mq0 qbnds gbnds mapStrat mapOpts featur
 -- 'lInfFit' many times.
 lInfFits ::
   forall n q g x y t
-  . (Vectorize q, Vectorize g, Vectorize x, Vectorize y, Traversable t, Dim n)
+  . (Vectorize q, Vectorize g, Vectorize x, Vectorize y, Traversable t, KnownNat n)
   => Double
   -> Solver
   -> (forall a . SMatrix a => q (S a) -> x (S a) -> y (S a))
@@ -401,7 +402,7 @@ lInfFits eps solver fitModel qConstraints mapStrat mapOpts inputs = do
 -- | Low-level interface to L-infinity fitting.
 withLInfFit ::
   forall n q g x y b
-  . (Vectorize q, Vectorize g, Vectorize x, Vectorize y, Dim n)
+  . (Vectorize q, Vectorize g, Vectorize x, Vectorize y, KnownNat n)
   => Double
   -> Solver
   -> (forall a . SMatrix a => q (S a) -> x (S a) -> y (S a))

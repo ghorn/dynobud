@@ -9,6 +9,8 @@ module Dyno.DirectCollocation.FormulateCov
        , makeCollCovProblem
        ) where
 
+import GHC.TypeLits ( KnownNat, natVal )
+
 import Data.Maybe ( fromMaybe )
 import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
@@ -24,7 +26,7 @@ import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.Fun
 import Dyno.View.JVec( JVec(..), jreplicate )
 import Dyno.View.Vectorize ( Vectorize(..), Id(..), None(..), fill, unId )
-import Dyno.TypeVecs ( Dim, Vec, reflectDim )
+import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.Nlp ( Nlp(..), NlpIn(..), Bounds )
 import Dyno.Ocp
@@ -64,7 +66,7 @@ data CollCovProblem ocp n deg sx sw sh shr sc =
 
 makeCollCovProblem ::
   forall ocp x z u p fp r o c h q qo po sx sz sw sr sh shr sc deg n .
-  ( Dim deg, Dim n, Vectorize x, Vectorize p, Vectorize u, Vectorize z
+  ( KnownNat deg, KnownNat n, Vectorize x, Vectorize p, Vectorize u, Vectorize z
   , Vectorize sr, Vectorize sw, Vectorize sz, Vectorize sx
   , Vectorize r, Vectorize o, Vectorize h, Vectorize c, Vectorize q, Vectorize po
   , Vectorize qo
@@ -216,7 +218,7 @@ makeCollCovProblem dirCollOpts ocp ocpInputs ocpCov guess = do
 
 getFgCov ::
   forall ocp x z u p r c h fp sx sh shr sc n deg .
-  ( Dim deg, Dim n, Vectorize x, Vectorize z, Vectorize u, Vectorize p
+  ( KnownNat deg, KnownNat n, Vectorize x, Vectorize z, Vectorize u, Vectorize p
   , Vectorize h, Vectorize c, Vectorize r
   , Vectorize sx, View sc, View sh, Vectorize shr
   , X ocp ~ x
@@ -272,7 +274,7 @@ getFgCov
 
     -- timestep
     dt = tf / fromIntegral n
-    n = reflectDim (Proxy :: Proxy n)
+    n = natVal (Proxy :: Proxy n)
 
     -- times at each collocation point
     t0s :: Vec n (S MX)

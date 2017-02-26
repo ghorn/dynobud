@@ -13,6 +13,7 @@ module IntegrationTests
        ) where
 
 import GHC.Generics ( Generic, Generic1 )
+import GHC.TypeLits ( KnownNat )
 
 import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
@@ -27,7 +28,6 @@ import Linear ( Additive(..) )
 
 import Dyno.View.Vectorize ( Vectorize(..), None(..), devectorize, fill, vapply )
 import Dyno.View.View ( View(..), J, splitJV )
-import Dyno.TypeVecs ( Dim )
 import Dyno.Solvers
 import Dyno.Nlp ( NlpOut(..) )
 import Dyno.NlpUtils
@@ -76,7 +76,7 @@ type instance PO (IntegrationOcp x p) = None
 
 runIntegration ::
   forall x p deg n
-  . ( Vectorize x, Vectorize p, Dim deg, Dim n )
+  . ( Vectorize x, Vectorize p, KnownNat deg, KnownNat n )
   => Proxy n -> Proxy deg
   -> DirCollOptions
   -> (forall a . Floating a => x a -> p a -> a -> x a)
@@ -166,7 +166,7 @@ rk45 f h p x0 = devectorize $ sv $ last sol
     f' t x = vs $ vectorize $ f (devectorize (sv x)) p t
 
 toXf :: ( Vectorize x, Vectorize z, Vectorize u, Vectorize p
-        , Dim n, Dim deg
+        , KnownNat n, KnownNat deg
         ) => J (CollTraj x z u p n deg) (Vector Double)-> x Double
 toXf traj = splitJV xf
   where
@@ -199,7 +199,7 @@ integrationTests =
 
 compareIntegration ::
   forall x p n deg
-  . (Vectorize x, Vectorize p, Additive x, Dim n, Dim deg)
+  . (Vectorize x, Vectorize p, Additive x, KnownNat n, KnownNat deg)
   => Proxy n -> Proxy deg
   -> DirCollOptions
   -> (forall a . Floating a => x a -> p a -> a -> x a)

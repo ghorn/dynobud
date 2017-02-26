@@ -9,6 +9,8 @@ module Dyno.DirectCollocation.Interpolate
        , interpolateConstraints
        ) where
 
+import GHC.TypeLits ( KnownNat, natVal )
+
 import qualified Data.Traversable as T
 import Data.Proxy ( Proxy(..) )
 import qualified Data.Vector as V
@@ -20,7 +22,6 @@ import Dyno.View.View ( View(..), J, JV, jfill )
 import Dyno.View.JVec
 import Dyno.TypeVecs ( Vec )
 import Dyno.View.Vectorize ( Vectorize )
-import Dyno.TypeVecs ( Dim, reflectDim )
 import qualified Dyno.TypeVecs as TV
 import qualified Dyno.LagrangePolynomials as LP
 import Dyno.DirectCollocation.Types ( CollTraj(..), CollStage(..), CollPoint(..), CollOcpConstraints(..) )
@@ -49,7 +50,7 @@ closestTime tz@(TimeZ _ (t0, xs, _) _) t
 
 interp ::
   forall f deg
-  . (Dim deg, View f)
+  . (KnownNat deg, View f)
   => TimeZ deg f -> Double -> (TimeZ deg f, J f (V.Vector Double))
 interp tz0 t = (tz, ret)
   where
@@ -71,7 +72,7 @@ newtype Times deg a = Times (a, Vec deg a) deriving Functor
 -- from the quadrature scheme
 interpolateTraj ::
   forall x z u p n0 n1 deg0 deg1
-  . ( Dim n0, Dim n1, Dim deg0, Dim deg1
+  . ( KnownNat n0, KnownNat n1, KnownNat deg0, KnownNat deg1
     , Vectorize x, Vectorize z, Vectorize u, Vectorize p
     )
   => Vec deg0 Double
@@ -80,8 +81,8 @@ interpolateTraj ::
   -> CollTraj x z u p n1 deg1 (V.Vector Double)
 interpolateTraj taus0 traj0 roots1 = traj0 { ctStages = cat (JVec (fmap cat stages1)) }
   where
-    n0 = reflectDim (Proxy :: Proxy n0)
-    n1 = reflectDim (Proxy :: Proxy n1)
+    n0 = natVal (Proxy :: Proxy n0)
+    n1 = natVal (Proxy :: Proxy n1)
 
     tf = 1.0 -- could be anything, returned traj doesn't use this it uses the correct tf
     dt0 = tf / fromIntegral n0
@@ -129,7 +130,7 @@ interpolateTraj taus0 traj0 roots1 = traj0 { ctStages = cat (JVec (fmap cat stag
 -- from the quadrature scheme. This is useful for lagrange multipliers.
 interpolateConstraints ::
   forall x p r c h n0 n1 deg0 deg1
-  . ( Dim n0, Dim n1, Dim deg0, Dim deg1
+  . ( KnownNat n0, KnownNat n1, KnownNat deg0, KnownNat deg1
     , Vectorize x, Vectorize p, Vectorize r, Vectorize c, Vectorize h
     )
   => Vec deg0 Double
@@ -162,8 +163,8 @@ interpolateConstraints taus0 con0 roots1 = con1
            -> J (JVec n1 (JVec deg1 (JV s))) (V.Vector Double)
     go' x = cat $ JVec $ fmap (cat . JVec) (go (fmap (unJVec . split) (unJVec (split x))))
 
-    n0 = reflectDim (Proxy :: Proxy n0)
-    n1 = reflectDim (Proxy :: Proxy n1)
+    n0 = natVal (Proxy :: Proxy n0)
+    n1 = natVal (Proxy :: Proxy n1)
 
     tf = 1.0 -- could be anything
     dt0 = tf / fromIntegral n0

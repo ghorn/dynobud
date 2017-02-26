@@ -14,11 +14,12 @@ module Sofa.Common
        ) where
 
 import GHC.Generics ( Generic, Generic1 )
+import GHC.TypeLits ( KnownNat )
 
 import qualified Data.Foldable as F
 import Data.Binary
 
-import Dyno.TypeVecs ( Vec, Dim )
+import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.View.Vectorize
 
@@ -70,7 +71,7 @@ norm2s (Point x y) = x*x + y*y
 norm2 :: Floating a => Point a -> a
 norm2 = sqrt . norm2s
 
-zipWithNext :: Dim n => (a -> a -> b) -> Vec n a -> Vec n b
+zipWithNext :: KnownNat n => (a -> a -> b) -> Vec n a -> Vec n b
 zipWithNext f v = TV.mkVec' $ diff' (v' ++ [v0])
   where
     diff' (x0:theRest@(x1:_)) = f x0 x1 : diff' theRest

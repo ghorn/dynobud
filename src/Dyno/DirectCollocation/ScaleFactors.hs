@@ -12,6 +12,7 @@ module Dyno.DirectCollocation.ScaleFactors
        ) where
 
 import GHC.Generics ( Generic, Generic1 )
+import GHC.TypeLits ( KnownNat )
 
 import Control.Lens ( (.~) )
 import Data.Binary ( Binary )
@@ -26,7 +27,6 @@ import Dyno.Nlp ( Bounds )
 import Dyno.View.Vectorize ( Vectorize(..), unId, vapply )
 import Dyno.View.View ( View(..), splitJV )
 import Dyno.View.JVec ( unJVec )
-import Dyno.TypeVecs ( Dim )
 import Dyno.Ocp
 
 import Accessors ( Lookup, GATip(..), GAField(..), accessors, describeGAField, flatten )
@@ -92,7 +92,7 @@ getScaleFactors ::
     , Applicative x, Applicative z, Applicative u, Applicative p, Applicative h, Applicative c
     , Lookup (x String), Lookup (z String), Lookup (u String), Lookup (p String)
     , Lookup (h String), Lookup (c String)
-    , Dim n, Dim deg
+    , KnownNat n, KnownNat deg
     )
   => CollTraj x z u p n deg (Vector Double)
   -> CollOcpConstraints x p r c h n deg (Vector Double)
@@ -153,7 +153,7 @@ getMagnitude ::
   forall x z u p h c n deg r
   . ( Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize h, Vectorize c
     , Applicative x, Applicative z, Applicative u, Applicative h
-    , Dim n, Dim deg
+    , KnownNat n, KnownNat deg
     )
   => CollTraj x z u p n deg (Vector Double)
   -> CollOcpConstraints x p r c h n deg (Vector Double)

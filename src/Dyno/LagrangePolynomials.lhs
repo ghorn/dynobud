@@ -108,6 +108,8 @@ module Dyno.LagrangePolynomials
        , interpolate
        ) where
 
+import GHC.TypeLits ( KnownNat )
+
 import qualified Data.Map as M
 import qualified Data.Foldable as F
 import qualified Data.Vector as V
@@ -247,7 +249,7 @@ C_{j,k} =
 \end{equation}
 
 \begin{code}
-lagrangeDerivCoeffs :: (Dim deg, Fractional a) => Vec deg a -> Vec deg (Vec deg a)
+lagrangeDerivCoeffs :: (KnownNat deg, Fractional a) => Vec deg a -> Vec deg (Vec deg a)
 lagrangeDerivCoeffs taus' = mkVec' [mkVec' [cjk j k | k <- [0..deg]] | j <- [0..deg]]
   where
     taus = unVec taus'
@@ -300,7 +302,7 @@ runComparison = do
   putStrLn "\nnumeric difference:"
   let cmp :: V.Vector Double -> V.Vector Double -> IO ()
       cmp v1s v2s = print $ V.zipWith (-) v1s v2s
-      f :: Dim n => Vec n Double -> IO ()
+      f :: KnownNat n => Vec n Double -> IO ()
       f st = V.zipWithM_ cmp vals $ fmap unVec $ unVec $ lagrangeDerivCoeffs st
   reifyVector (V.fromList sampleTaus) f
   return ()

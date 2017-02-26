@@ -43,7 +43,7 @@ data Qp nx ng = Qp { qx0 :: Vec nx Double
 data FQp nx ng = FQp (Qp nx ng) 
 data IQp nx ng = IQp (Qp nx ng)
 
-instance (Dim nx, Dim ng) => Arbitrary (FQp nx ng) where
+instance (KnownNat nx, KnownNat ng) => Arbitrary (FQp nx ng) where
   arbitrary = do
     FLp lp <- arbitrary
     objQ <- arbitrary :: Gen (Vec nx (Vec nx (Coef Double)))
@@ -57,7 +57,7 @@ instance (Dim nx, Dim ng) => Arbitrary (FQp nx ng) where
                       , qjacCoeffs = pjacCoeffs lp
                       }
 
-instance (Dim nx, Dim ng) => Arbitrary (IQp nx ng) where
+instance (KnownNat nx, KnownNat ng) => Arbitrary (IQp nx ng) where
   arbitrary = do
     ILp lp <- arbitrary
     objQ <- arbitrary :: Gen (Vec nx (Vec nx (Coef Double)))
@@ -71,11 +71,11 @@ instance (Dim nx, Dim ng) => Arbitrary (IQp nx ng) where
                       , qjacCoeffs = pjacCoeffs lp
                       }
 
-instance (Dim nx, Dim ng) => Show (Qp nx ng) where
+instance (KnownNat nx, KnownNat ng) => Show (Qp nx ng) where
   show = prettyPrintQp
-instance (Dim nx, Dim ng) => Show (FQp nx ng) where
+instance (KnownNat nx, KnownNat ng) => Show (FQp nx ng) where
   show (FQp qp) = prettyPrintQp qp
-instance (Dim nx, Dim ng) => Show (IQp nx ng) where
+instance (KnownNat nx, KnownNat ng) => Show (IQp nx ng) where
   show (IQp qp) = prettyPrintQp qp
 
 solveGlpkFlp :: IO()
@@ -85,7 +85,7 @@ solveGlpkFlp = do
   print sol
   print flp
 
-solveWithGlpk :: (Dim nx, Dim ng) => Qp nx ng -> GLPK.Solution
+solveWithGlpk :: (KnownNat nx, KnownNat ng) => Qp nx ng -> GLPK.Solution
 solveWithGlpk qp = GLPK.simplex prob constraints bounds
   where
     -- unpack qp
@@ -113,7 +113,7 @@ solveWithGlpk qp = GLPK.simplex prob constraints bounds
 
     bounds = zipWith (GLPK.:&:) [0..] bxs
 
-matchesGlpkQp :: (Dim nx, Dim ng, NLPSolverClass nlp)
+matchesGlpkQp :: (KnownNat nx, KnownNat ng, NLPSolverClass nlp)
                => NlpSolverStuff nlp -> Lp nx ng -> Property
 matchesGlpkQp solver lp = monadicIO $ do
   let LpNlp nlp = nlpOfLp lp
@@ -157,7 +157,7 @@ matchesGlpkQp solver lp = monadicIO $ do
              --run $ writeFile "counterexample.py" (toPython params)
              stop $ failed { reason = "======== solution doesn't match glpk! ========\n" ++ summary }
 
-prettyPrintQp :: (Dim nx, Dim ng) => Qp nx ng -> String
+prettyPrintQp :: (KnownNat nx, KnownNat ng) => Qp nx ng -> String
 prettyPrintQp (Qp x0' bx' bg' goffset' objLCoeffs' objQCoeffs' jacCoeffs') =
   init $ unlines $
   [ "minimize:"

@@ -17,6 +17,8 @@ module Dyno.DirectCollocation.Export
        , write
        ) where
 
+import GHC.TypeLits ( KnownNat, natVal )
+
 import Control.Lens ( (^.) )
 import Control.Monad ( unless )
 import Data.List ( intercalate )
@@ -30,7 +32,7 @@ import qualified Data.Set as S
 import Accessors ( Lookup, GATip(..), GAField(..), GASimpleEnum(..), flatten, flatten', accessors )
 
 import Dyno.Nlp ( NlpOut(..) )
-import Dyno.TypeVecs ( Dim, Vec, reflectDim )
+import Dyno.TypeVecs ( Vec )
 import Dyno.View.Vectorize ( Vectorize, Id(..), None(..), fill, unId )
 import Dyno.View.View ( View(..), splitJV, catJV )
 import Dyno.DirectCollocation.Formulate ( CollProblem(..), DirCollOptions(..) )
@@ -67,7 +69,7 @@ exportTraj ::
     , Lookup (q Double), Vectorize q
     , Lookup (po Double), Vectorize po
     , Lookup (qo Double), Vectorize qo
-    , Dim n, Dim deg
+    , KnownNat n, KnownNat deg
     )
   => ExportConfig
   -> CollProblem x z u p r o c h q qo po fp n deg
@@ -92,7 +94,7 @@ exportTraj' ::
     , Lookup (q Double), Vectorize q
     , Lookup (po Double), Vectorize po
     , Lookup (qo Double), Vectorize qo
-    , Dim n, Dim deg
+    , KnownNat n, KnownNat deg
     , Lookup (e Double)
     )
   => Maybe ([String], e Double)
@@ -118,7 +120,7 @@ exportTraj' mextra exportConfig cp fp nlpOut = do
       taus = cpTaus cp
       Id tf = splitJV tf'
 
-      n = reflectDim (Proxy :: Proxy n)
+      n = natVal (Proxy :: Proxy n)
 
       times :: Vec n (Double, Vec deg Double)
       times = timesFromTaus 0 taus dt
@@ -199,7 +201,7 @@ exportTraj' mextra exportConfig cp fp nlpOut = do
         , matlabRetName ++ ".tzuo = " ++ show zuoTimes ++ ";"
         , matlabRetName ++ ".T = " ++ show tf ++ ";"
         , matlabRetName ++ ".N = " ++ show n ++ ";"
-        , matlabRetName ++ ".deg = " ++ show (reflectDim (Proxy :: Proxy deg)) ++ ";"
+        , matlabRetName ++ ".deg = " ++ show (natVal (Proxy :: Proxy deg)) ++ ";"
         , matlabRetName ++ ".collocationRoots = '" ++ show roots ++ "';"
         ]
 
@@ -232,7 +234,7 @@ exportTraj' mextra exportConfig cp fp nlpOut = do
         putVal pyRetName ["tzuo"] (npArray (show zuoTimes))
         putVal pyRetName ["T"] (show tf)
         putVal pyRetName ["N"] (show n)
-        putVal pyRetName ["deg"] (show (reflectDim (Proxy :: Proxy deg)))
+        putVal pyRetName ["deg"] (show (natVal (Proxy :: Proxy deg)))
         putVal pyRetName ["collocationRoots"] ("'" ++ show roots ++ "'")
 
   return $ Export

@@ -89,7 +89,7 @@ tests = [ testGroup "run NLP solvers on LPs"
           ]
         ]
 
---toPython :: (Dim nx, Dim ng) => Params nx ng -> String
+--toPython :: (KnownNat nx, KnownNat ng) => Params nx ng -> String
 --toPython (Params x0' bx' bg' goffset' objCoeffs' jacCoeffs') =
 --  init $ unlines $
 --  [ "import casadi as c"
