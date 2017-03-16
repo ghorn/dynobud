@@ -68,30 +68,36 @@ class Conditional a where
 
   and' :: Switch Bool a -> Switch Bool a -> Switch Bool a
   or' :: Switch Bool a -> Switch Bool a -> Switch Bool a
+  not' :: Switch Bool a -> Switch Bool a
 
 instance Conditional (S SX) where
   conditional = cmConditional
   and' = cmAnd
   or' = cmOr
+  not' = cmNot
 
 instance Conditional (S MX) where
   conditional = cmConditional
   and' = cmAnd
   or' = cmOr
+  not' = cmNot
 
 instance Conditional (S DM) where
   conditional = cmConditional
   and' = cmAnd
   or' = cmOr
+  not' = cmNot
 
 instance Conditional Double where
   conditional = \_ -> evaluateConditionalNative
   and' (UnsafeSwitch x) (UnsafeSwitch y) = toSwitch $ (x /= 0 && y /= 0)
   or'  (UnsafeSwitch x) (UnsafeSwitch y) = toSwitch $ (x /= 0 || y /= 0)
+  not'  (UnsafeSwitch x) = toSwitch $ (x /= 1)
 instance Conditional Float where
   conditional = \_ -> evaluateConditionalNative
   and' (UnsafeSwitch x) (UnsafeSwitch y) = toSwitch $ (x /= 0 && y /= 0)
   or'  (UnsafeSwitch x) (UnsafeSwitch y) = toSwitch $ (x /= 0 || y /= 0)
+  not'  (UnsafeSwitch x) = toSwitch $ (x /= 1)
 
 -- | Switches over View
 class Conditional' a where
@@ -181,6 +187,11 @@ cmOr :: C.CMatrix a => Switch Bool (S a) -> Switch Bool (S a) -> Switch Bool (S 
 cmOr (UnsafeSwitch x) (UnsafeSwitch y) = UnsafeSwitch $ case mkM' (C.cor (unM x) (unM y)) of
   Right r -> r
   Left r -> error $ "casadi \"or\" changed dimension: " ++ r
+
+cmNot :: C.CMatrix a => Switch Bool (S a) -> Switch Bool (S a)
+cmNot (UnsafeSwitch x) = UnsafeSwitch $ case mkM' (C.cnot (unM x)) of
+  Right r -> r
+  Left r -> error $ "casadi \"not\" changed dimension: " ++ r
 
 
 cmConditional ::
