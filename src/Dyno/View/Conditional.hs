@@ -13,7 +13,7 @@ module Dyno.View.Conditional
        , Switch(..), toSwitch, fromSwitch
        , functionConditional
          -- * SymOrd switches
-       , leq, lt, geq, gt, eq
+       , leq, lt, geq, gt, eq, ne
          -- * re-exported for convenience
        , SymOrd
        ) where
@@ -129,6 +129,10 @@ gt x y = UnsafeSwitch (Overloading.gt x y)
 -- | @==@
 eq :: SymOrd a => a -> a -> Switch Bool a
 eq x y = UnsafeSwitch (Overloading.eq x y)
+
+-- | @/=@
+ne :: SymOrd a => a -> a -> Switch Bool a
+ne x y = UnsafeSwitch (Overloading.ne x y)
 
 {-# INLINABLE toSwitch #-}
 toSwitch ::  forall a b
