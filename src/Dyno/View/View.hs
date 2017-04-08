@@ -8,17 +8,15 @@
 module Dyno.View.View
        ( View(..), JV
        , J, S
-       , JNone(..), JTuple(..), JTriple(..), JQuad(..)
+       , JTuple(..), JTriple(..), JQuad(..)
        , jfill
        , v2d, d2v
        , fmapJ, unzipJ
        , splitJV, catJV
        ) where
 
-import GHC.Generics ( Generic, Generic1 )
+import GHC.Generics ( Generic )
 
-import qualified Data.Foldable as F
-import qualified Data.Traversable as T
 import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
@@ -26,16 +24,12 @@ import qualified Data.Vector as V
 import qualified Casadi.DM as DM
 import qualified Casadi.Matrix as CM
 
-import Dyno.View.Vectorize ( Vectorize(..) )
 import Dyno.View.Unsafe ( View(..), J, S, JV, mkM, unM, catJV, splitJV )
 
 -- some helper types
-data JNone a = JNone deriving ( Eq, Generic, Generic1, Show, Functor, F.Foldable, T.Traversable )
 data JTuple f g a = JTuple (J f a) (J g a) deriving ( Generic, Show )
 data JTriple f g h a = JTriple (J f a) (J g a) (J h a) deriving ( Generic, Show )
 data JQuad f0 f1 f2 f3 a = JQuad (J f0 a) (J f1 a) (J f2 a) (J f3 a) deriving ( Generic, Show )
-instance Vectorize JNone where
-instance View JNone where
 instance (View f, View g) => View (JTuple f g)
 instance (View f, View g, View h) => View (JTriple f g h)
 instance (View f0, View f1, View f2, View f3) => View (JQuad f0 f1 f2 f3)

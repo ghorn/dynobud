@@ -27,8 +27,8 @@ import Dyno.View.Fun ( Fun, callSym, toFun )
 import Dyno.View.JVec ( JVec(..) )
 import Dyno.View.M ( vcat, vsplit )
 import Dyno.View.Scheme ( Scheme )
-import Dyno.View.Vectorize ( Vectorize )
-import Dyno.View.View ( View(..), J, S, JV, JNone(..), JTuple(..), jfill, catJV )
+import Dyno.View.Vectorize ( Vectorize, None(..) )
+import Dyno.View.View ( View(..), J, S, JV, JTuple(..), jfill, catJV )
 
 
 data IntegratorIn x u p a = IntegratorIn (J (JV x) a) (J (JV u) a) (J (JV p) a)
@@ -91,7 +91,7 @@ simulate n ode x0' u p t h = xf
 makeMsNlp ::
   forall x u p n
   . (KnownNat n, Vectorize x, Vectorize u, Vectorize p, Additive x)
-  => MsOcp x u p -> IO (Nlp (MsDvs x u p n) JNone (MsConstraints x n) MX)
+  => MsOcp x u p -> IO (Nlp (MsDvs x u p n) (JV None) (MsConstraints x n) MX)
 makeMsNlp msOcp = do
   let n = fromIntegral (natVal (Proxy :: Proxy n))
       integrate (IntegratorIn x0 u p) = IntegratorOut (vcat (simulate nsteps ode x0' u' p' 0 dt))
@@ -114,7 +114,7 @@ makeMsNlp msOcp = do
           { nlpBX = bx
           , nlpBG = bg
           , nlpX0 = x0
-          , nlpP = cat JNone
+          , nlpP = catJV None
           , nlpLamX0 = Nothing
           , nlpLamG0 = Nothing
           }
@@ -148,7 +148,7 @@ makeMsNlp msOcp = do
       bg :: J (MsConstraints x n) (Vector Bounds)
       bg = cat MsConstraints { gContinuity = jfill (Just 0, Just 0) }
 
-      fg :: J (MsDvs x u p n) MX -> J JNone MX -> (S MX, J (MsConstraints x n) MX)
+      fg :: J (MsDvs x u p n) MX -> J (JV None) MX -> (S MX, J (MsConstraints x n) MX)
       fg dvs _ = (f, cat g)
         where
           MsDvs xus xf p = split dvs

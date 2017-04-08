@@ -38,7 +38,7 @@ instance KnownNat n => Vectorize (X n)
 instance KnownNat m => Vectorize (U m)
 instance KnownNat n => Vectorize (Bcs n)
 
-mayer :: Floating a => a -> x -> x -> J (Cov JNone) SX -> J (Cov JNone) SX -> a
+mayer :: Floating a => a -> x -> x -> J (Cov (JV None)) SX -> J (Cov (JV None)) SX -> a
 mayer _ _ _ _ _ = 0
 
 lagrange :: Floating a => X n a -> None a -> U m a -> None a -> None a -> a -> a
@@ -70,7 +70,7 @@ pathc :: x a -> z a -> u a -> p a -> None a -> a -> None a
 pathc _ _ _ _ _ _ = None
 
 toOcpPhase :: (KnownNat n, KnownNat m, IsLinearOcp a n m)
-              => a -> OcpPhase (X n) None (U m) None (X n) None (Bcs n) None JNone JNone JNone
+              => a -> OcpPhase (X n) None (U m) None (X n) None (Bcs n) None (JV None) (JV None) (JV None)
 toOcpPhase myOcp' =
   OcpPhase { ocpMayer = mayer
            , ocpLagrange = lagrange
@@ -87,10 +87,10 @@ toOcpPhase myOcp' =
 
            , ocpSq = 0
            , ocpSbnd = jfill (Nothing,Nothing)
-           , ocpSbc = \_ _ -> cat JNone
-           , ocpSbcBnds = cat JNone
-           , ocpSh = \_ _ -> cat JNone
-           , ocpShBnds = cat JNone
+           , ocpSbc = \_ _ -> catJV None
+           , ocpSbcBnds = catJV None
+           , ocpSh = \_ _ -> catJV None
+           , ocpShBnds = catJV None
            }
   where
     myOcp = getLinearOcp myOcp'
@@ -99,7 +99,7 @@ toOcpPhase myOcp' =
 solveLinearOcp :: forall n m a . (IsLinearOcp a n m, KnownNat n, KnownNat m)
                   => NlpSolverStuff -> a -> IO (Either String String)
 solveLinearOcp solver ocp = do
-  let guess = jfill 0 :: J (CollTraj (X n) None (U m) None JNone D10 D2) (Vector Double)
+  let guess = jfill 0 :: J (CollTraj (X n) None (U m) None (JV None) D10 D2) (Vector Double)
   nlp <- makeCollNlp (toOcpPhase (getLinearOcp ocp))
   fmap fst $ solveNlp' solver (nlp { nlpX0' = guess }) Nothing
 

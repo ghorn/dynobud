@@ -22,13 +22,13 @@ import Casadi.SX ( SX )
 import Casadi.MX ( MX )
 import Casadi.Viewable ( Viewable )
 
-import Dyno.View.View ( View(..), J, S, JV, JNone, JTuple(..), splitJV, catJV, jfill, fmapJ )
+import Dyno.View.View ( View(..), J, S, JV, JTuple(..), splitJV, catJV, jfill, fmapJ )
 import Dyno.View.Fun ( Fun, callSym, expandFun, toFun )
 import Dyno.View.JVec ( JVec(..), jreplicate )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.M ( vcat, vsplit )
 import qualified Dyno.View.M as M
-import Dyno.View.Vectorize ( Vectorize(..), Id(..), unId, vzipWith )
+import Dyno.View.Vectorize ( Vectorize(..), Id(..), None, unId, vzipWith )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs )
@@ -42,7 +42,7 @@ type Sxe = S SX
 
 data IntegratorX x z n deg a =
   IntegratorX
-  { ixStages :: J (JVec n (CollStage (JV x) (JV z) JNone JNone deg)) a
+  { ixStages :: J (JVec n (CollStage (JV x) (JV z) (JV None) (JV None) deg)) a
   , ixXf :: J (JV x) a
   } deriving (Generic)
 
@@ -214,7 +214,7 @@ withIntegrator _ _ roots initialX dae solver = do
         , ixXf = jfill Nothing
         }
         where
-          xs0 :: J (CollStage (JV x) (JV z) JNone JNone deg) (Vector (Maybe Double))
+          xs0 :: J (CollStage (JV x) (JV z) (JV None) (JV None) deg) (Vector (Maybe Double))
           xs0 = cat $ CollStage (catJV (fmap Just x0)) (jfill Nothing) (jfill Nothing) (jfill Nothing)
 
   nlpSol <- toNlpSol solver fg scaleX scaleG Nothing Nothing
@@ -272,9 +272,9 @@ getFgIntegrator taus stageFun ix' ip' = (0, cat g)
     xf = ixXf ix
     tf = ipTf ip
     parm = ipParm ip
-    stages = unJVec (split (ixStages ix)) :: Vec n (J (CollStage (JV x) (JV z) JNone JNone deg) MX)
+    stages = unJVec (split (ixStages ix)) :: Vec n (J (CollStage (JV x) (JV z) (JV None) (JV None) deg) MX)
 
-    spstages :: Vec n (CollStage (JV x) (JV z) JNone JNone deg MX)
+    spstages :: Vec n (CollStage (JV x) (JV z) (JV None) (JV None) deg MX)
     spstages = fmap split stages
 
     us :: Vec n (J (JVec deg (JV u)) MX)
@@ -309,7 +309,7 @@ getFgIntegrator taus stageFun ix' ip' = (0, cat g)
     dcs :: Vec n (J (JVec deg (JV r)) MX)
     interpolatedXs :: Vec n (J (JV x) MX)
     (dcs, interpolatedXs) = TV.tvunzip $ TV.tvzipWith3 fff spstages us times'
-    fff :: CollStage (JV x) (JV z) JNone JNone deg MX
+    fff :: CollStage (JV x) (JV z) (JV None) (JV None) deg MX
            -> J (JVec deg (JV u)) MX
            -> J (JVec deg (JV Id)) MX
            -> (J (JVec deg (JV r)) MX, J (JV x) MX)

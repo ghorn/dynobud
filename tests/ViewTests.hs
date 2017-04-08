@@ -42,7 +42,7 @@ import Casadi.Viewable ( Viewable )
 import Dyno.View.Unsafe ( M(UnsafeM), mkM )
 import Dyno.TypeVecs ( Vec )
 import Dyno.View.Vectorize ( Vectorize(..), Id, (:.), fill )
-import Dyno.View.View ( View(..), S, J, JV, JNone, JTuple, JTriple, JQuad )
+import Dyno.View.View ( View(..), S, J, JV, JTuple, JTriple, JQuad )
 import Dyno.View.JVec ( JVec )
 import Dyno.View.M
 import Dyno.View.Cov ( Cov, fromMat, toMat )
@@ -209,17 +209,12 @@ mkJV = mkJV' True
         reproxyJV = const Proxy
 
 primitives :: Gen Views
-primitives = do
-  v <- arbitrary
-  elements
-    [ Views {vwShrinks = [], vwName = "JNone", vwProxy = Proxy :: Proxy JNone}
-    , mkJV v
-    ]
+primitives = mkJV <$> arbitrary
 
 --data M1 a = M1 (M JX JX2 a) deriving (Show, Generic, Generic1)
---data M2 a = M2 (M JNone JNone a) deriving (Show, Generic, Generic1)
---data M3 a = M3 (M JX2 JNone a) deriving (Show, Generic, Generic1)
---data M4 a = M4 (M JNone JX2 a) deriving (Show, Generic, Generic1)
+--data M2 a = M2 (M (JV None) (JV None) a) deriving (Show, Generic, Generic1)
+--data M3 a = M3 (M JX2 (JV None) a) deriving (Show, Generic, Generic1)
+--data M4 a = M4 (M (JV None) JX2 a) deriving (Show, Generic, Generic1)
 
 --instance Scheme M1
 --instance Scheme M2

@@ -70,7 +70,7 @@ ode (X x v) (U u) _p _t = X v (-x -0.1*v + u)
 -- run the thing
 main :: IO ()
 main = do
-  myNlp <- makeMsNlp ocp :: IO (Nlp (MsDvs X U P 40) JNone (MsConstraints X 40) MX)
+  myNlp <- makeMsNlp ocp :: IO (Nlp (MsDvs X U P 40) (JV None) (MsConstraints X 40) MX)
   (_, eopt) <- solveNlp ipoptSolver myNlp Nothing
   opt <- case eopt of
           Left err -> error $ "nlp solver returned status " ++ show err

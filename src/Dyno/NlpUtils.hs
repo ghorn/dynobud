@@ -21,8 +21,8 @@ import Casadi.MX ( MX )
 
 import Dyno.View.M ( vcat, vsplit )
 import Dyno.View.Unsafe ( mkM, unM )
-import Dyno.View.Vectorize ( Vectorize(..), unId )
-import Dyno.View.View ( View(..), J, S, JV, JNone(..), catJV, splitJV )
+import Dyno.View.Vectorize ( Vectorize(..), None(..), unId )
+import Dyno.View.View ( View(..), J, S, JV, catJV, splitJV )
 import Dyno.Nlp ( Nlp(..), NlpIn(..), NlpOut(..), Bounds )
 import Dyno.Solvers ( Solver )
 import Dyno.NlpSolver
@@ -166,7 +166,7 @@ solveNlpV :: forall x g .
   -> Maybe (x Double -> M.Map String GType -> IO Bool)
   -> IO (Either String (Double, x Double))
 solveNlpV solverStuff fg bx bg x0 cb = do
-  let nlp :: Nlp (JV x) JNone (JV g) MX
+  let nlp :: Nlp (JV x) (JV None) (JV g) MX
       nlp =
         Nlp
         { nlpFG = \x' _ ->
@@ -181,7 +181,7 @@ solveNlpV solverStuff fg bx bg x0 cb = do
             { nlpBX = catJV bx
             , nlpBG = catJV bg
             , nlpX0 = catJV x0
-            , nlpP  = cat JNone -- mkM $ vectorize (nlpP  nlp) :: J (JV p) (V.Vector Double)
+            , nlpP  = catJV None -- mkM $ vectorize (nlpP  nlp) :: J (JV p) (V.Vector Double)
             , nlpLamX0 = Nothing --fmap (mkM . vectorize) (nlpLamX0 nlp)
                                  -- :: Maybe (J (JV x) (V.Vector Double))
             , nlpLamG0 = Nothing -- fmap (mkM . vectorize) (nlpLamG0 nlp)
@@ -194,7 +194,7 @@ solveNlpV solverStuff fg bx bg x0 cb = do
                       -- :: Maybe (J (JV g) (V.Vector Double))
         }
 
-      callback :: Maybe (J (JV x) (Vector Double) -> J JNone (Vector Double) -> M.Map String GType
+      callback :: Maybe (J (JV x) (Vector Double) -> J (JV None) (Vector Double) -> M.Map String GType
                          -> IO Bool)
       callback = case cb of
         Nothing -> Nothing

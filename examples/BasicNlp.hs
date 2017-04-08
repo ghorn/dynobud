@@ -30,14 +30,14 @@ data G a = G a deriving (Functor, Generic, Generic1, Show)
 instance Vectorize X
 instance Vectorize G
 
-myNlp :: Nlp (JV X) JNone (JV G) MX
+myNlp :: Nlp (JV X) (JV None) (JV G) MX
 myNlp = Nlp { nlpFG = fg
             , nlpIn =
               NlpIn
               { nlpBX = bx
               , nlpBG = bg
               , nlpX0 = x0
-              , nlpP = cat JNone
+              , nlpP = catJV None
               , nlpLamX0 = Nothing
               , nlpLamG0 = Nothing
               }
@@ -57,7 +57,7 @@ myNlp = Nlp { nlpFG = fg
     bg :: J (JV G) (Vector Bounds)
     bg = catJV $ G (Just (-10), Just 10)
 
-    fg :: J (JV X) MX -> J JNone MX -> (S MX, J (JV G) MX)
+    fg :: J (JV X) MX -> J (JV None) MX -> (S MX, J (JV G) MX)
     fg xy _ = (f, vcat g)
       where
         f = (1-x)**2 + 100*(y - x**2)**2
