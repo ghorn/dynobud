@@ -79,7 +79,7 @@ import qualified Casadi.Matrix as CM
 import Casadi.Viewable ( Viewable(..) )
 
 import Dyno.View.Unsafe ( M(UnsafeM), mkM, mkM', unM )
-import Dyno.View.Vectorize ( Vectorize(..), Id, (:.), fill, devectorize, vlength )
+import Dyno.View.Vectorize ( Vectorize(..), Id, (:.), devectorize, vlength )
 import Dyno.TypeVecs ( Vec )
 import Dyno.View.View ( View(..), J, S, JV, JTuple, JTriple, JQuad )
 import Dyno.View.JVec ( JVec )
@@ -147,8 +147,8 @@ vsplit' ::
   (View f, View g, KnownNat n, CMatrix a)
   => M (JVec n f) g a -> Vec n (M f g a)
 vsplit' (UnsafeM x)
-  | n == 0 = fill zeros
-  | nr == 0 = fill zeros
+  | n == 0 = pure zeros
+  | nr == 0 = pure zeros
   | otherwise = fmap mkM $ devectorize $ CM.vertsplit x nrs
   where
     n = fromIntegral (natVal (Proxy :: Proxy n))
@@ -197,8 +197,8 @@ hsplit' ::
   (View f, View g, KnownNat n, CMatrix a)
   => M f (JVec n g) a -> Vec n (M f g a)
 hsplit' (UnsafeM x)
-  | n == 0 = fill zeros
-  | nc == 0 = fill zeros
+  | n == 0 = pure zeros
+  | nc == 0 = pure zeros
   | otherwise = fmap mkM $ devectorize $ CM.horzsplit x ncs
   where
     n = fromIntegral (natVal (Proxy :: Proxy n))

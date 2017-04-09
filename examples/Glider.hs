@@ -94,7 +94,7 @@ ocpInputs :: OcpPhaseInputs' GliderOcp
 ocpInputs =
   OcpPhaseInputs
   { ocpPathCBnds = None
-  , ocpBcBnds = fill (Just 0, Just 0)
+  , ocpBcBnds = pure (Just 0, Just 0)
   , ocpXbnd = xbnd
   , ocpUbnd = ubnd
   , ocpZbnd = None
@@ -108,10 +108,10 @@ pathc :: x a -> z a -> u a -> p a -> None a -> None a -> a -> None a
 pathc _ _ _ _ _ _ _ = None
 
 xbnd :: AcX (Maybe Double, Maybe Double)
-xbnd = AcX { ac_r_n2b_n = fill (Nothing, Nothing)
-           , ac_v_bn_b = fill (Nothing,Nothing)
-           , ac_R_n2b = fill $ fill (Just (-1.2), Just 1.2)
-           , ac_w_bn_b = fill (Just (-8*2*pi), Just (8*2*pi))
+xbnd = AcX { ac_r_n2b_n = pure (Nothing, Nothing)
+           , ac_v_bn_b = pure (Nothing,Nothing)
+           , ac_R_n2b = pure $ pure (Just (-1.2), Just 1.2)
+           , ac_w_bn_b = pure (Just (-8*2*pi), Just (8*2*pi))
            , ac_u = ubnd
            }
 

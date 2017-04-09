@@ -98,7 +98,6 @@ instance KnownNat n => Additive (Vec n) where
 instance KnownNat n => Metric (Vec n)
 
 instance KnownNat n => Vectorize (Vec n) where
-  fill = pure
   vectorize = unVec
   devectorize' :: V.Vector a -> Either String (Vec n a)
   devectorize' x

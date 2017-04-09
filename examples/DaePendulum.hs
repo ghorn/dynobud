@@ -63,6 +63,14 @@ instance Vectorize PendR
 instance Vectorize PendO
 instance Vectorize PendBc
 
+instance Applicative PendX  where {pure = vpure; (<*>) = vapply}
+instance Applicative PendZ  where {pure = vpure; (<*>) = vapply}
+instance Applicative PendU  where {pure = vpure; (<*>) = vapply}
+instance Applicative PendP  where {pure = vpure; (<*>) = vapply}
+instance Applicative PendR  where {pure = vpure; (<*>) = vapply}
+instance Applicative PendO  where {pure = vpure; (<*>) = vapply}
+instance Applicative PendBc where {pure = vpure; (<*>) = vapply}
+
 instance Lookup (PendX ())
 instance Lookup (PendZ ())
 instance Lookup (PendU ())

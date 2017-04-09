@@ -17,7 +17,7 @@ import Text.Printf ( printf )
 
 import Accessors ( Lookup )
 
-import Dyno.View.Vectorize ( Vectorize(..), None(..), Id(..) )
+import Dyno.View.Vectorize ( Vectorize(..), None(..), Id(..), vpure, vapply )
 import Dyno.View.View ( View(..), J, splitJV, catJV )
 import Dyno.Solvers
 import Dyno.Nlp ( NlpOut(..), Bounds )
@@ -65,6 +65,15 @@ instance Vectorize QuadR
 instance Vectorize QuadO
 instance Vectorize QuadBc
 instance Vectorize QuadQ
+
+instance Applicative QuadX  where {pure = vpure; (<*>) = vapply}
+instance Applicative QuadZ  where {pure = vpure; (<*>) = vapply}
+instance Applicative QuadU  where {pure = vpure; (<*>) = vapply}
+instance Applicative QuadP  where {pure = vpure; (<*>) = vapply}
+instance Applicative QuadR  where {pure = vpure; (<*>) = vapply}
+instance Applicative QuadO  where {pure = vpure; (<*>) = vapply}
+instance Applicative QuadBc where {pure = vpure; (<*>) = vapply}
+instance Applicative QuadQ  where {pure = vpure; (<*>) = vapply}
 
 instance Lookup (QuadX ())
 instance Lookup (QuadZ ())

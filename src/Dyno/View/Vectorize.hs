@@ -18,6 +18,7 @@ module Dyno.View.Vectorize
        , Tuple(..)
        , Triple(..)
        , Quad(..)
+       , vpure
        , vapply
        , vcountUp
        , vzipWith
@@ -71,7 +72,7 @@ instance (Applicative f, Applicative g) => Applicative (Tuple f g) where
   pure x = Tuple (pure x) (pure x)
   Tuple fx fy <*> Tuple x y = Tuple (fx <*> x) (fy <*> y)
 instance (Vectorize f, Vectorize g, Applicative f, Applicative g) => Linear.Additive (Tuple f g) where
-  zero = Tuple (fill 0) (fill 0)
+  zero = Tuple (pure 0) (pure 0)
 instance (Foldable f, Foldable g, Vectorize f, Vectorize g, Applicative f, Applicative g)
          => Linear.Metric (Tuple f g)
 instance (FromJSON a, FromJSON (f a), FromJSON (g a))
@@ -91,7 +92,7 @@ instance (Applicative f, Applicative g, Applicative h) => Applicative (Triple f 
 instance (Vectorize f, Vectorize g, Vectorize h,
           Applicative f, Applicative g, Applicative h)
          => Linear.Additive (Triple f g h) where
-  zero = Triple (fill 0) (fill 0) (fill 0)
+  zero = Triple (pure 0) (pure 0) (pure 0)
 instance (Foldable f, Foldable g, Foldable h,
           Vectorize f, Vectorize g, Vectorize h,
           Applicative f, Applicative g, Applicative h)
@@ -113,7 +114,7 @@ instance (Applicative f, Applicative g, Applicative h, Applicative i) => Applica
 instance (Vectorize f, Vectorize g, Vectorize h, Vectorize i,
           Applicative f, Applicative g, Applicative h, Applicative i)
          => Linear.Additive (Quad f g h i) where
-  zero = Quad (fill 0) (fill 0) (fill 0) (fill 0)
+  zero = Quad (pure 0) (pure 0) (pure 0) (pure 0)
 instance (FromJSON a, FromJSON (f a), FromJSON (g a), FromJSON (h a), FromJSON (i a))
          => FromJSON (Quad f g h i a)
 instance (ToJSON a, ToJSON (f a), ToJSON (g a), ToJSON (h a), ToJSON (i a))
@@ -143,9 +144,17 @@ devectorize x = case devectorize' x of
   Right y -> y
   Left msg -> error msg
 
--- | define Applicative in terms of Vectorize
+-- | '(<*>)' in terms of 'Vectorize'
 vapply :: Vectorize f => f (a -> b) -> f a -> f b
 vapply f x = devectorize (V.zipWith id (vectorize f) (vectorize x))
+
+-- | 'pure' in terms of 'Vectorize'
+vpure :: forall f a . Vectorize f => a -> f a
+vpure x = case devectorize' (V.replicate n x) of
+  Left err -> error $ "'impossible' error in vpure: " ++ err
+  Right r -> r
+  where
+    n = vlength (Proxy :: Proxy f)
 
 vzipWith :: Vectorize f => (a -> b -> c) -> f a -> f b -> f c
 vzipWith f x y = devectorize $ V.zipWith f (vectorize x) (vectorize y)
@@ -174,10 +183,9 @@ vdiag' v0 offDiag =
       | otherwise = v V.! k
 
 -- | fmap f == devectorize . (V.map f) . vectorize
-class Functor f => Vectorize (f :: * -> *) where
+class Applicative f => Vectorize (f :: * -> *) where
   vectorize :: f a -> V.Vector a
   devectorize' :: V.Vector a -> Either String (f a)
-  fill :: a -> f a
   vlength :: Proxy f -> Int
 
   default vectorize :: (Generic1 f, GVectorize (Rep1 f)) => f a -> V.Vector a
@@ -186,9 +194,6 @@ class Functor f => Vectorize (f :: * -> *) where
   default devectorize' :: (Generic1 f, GVectorize (Rep1 f)) => V.Vector a -> Either String (f a)
   devectorize' f = fmap to1 (gdevectorize f)
 
-  default fill :: (Generic1 f, GVectorize (Rep1 f)) => a -> f a
-  fill = to1 . gfill
-
   default vlength :: GVectorize (Rep1 f) => Proxy f -> Int
   vlength = const $ gvlength (Proxy :: Proxy (Rep1 f))
 
@@ -196,7 +201,6 @@ class Functor f => Vectorize (f :: * -> *) where
 class GVectorize (f :: * -> *) where
   gvectorize :: f a -> V.Vector a
   gdevectorize :: V.Vector a -> Either String (f a)
-  gfill :: a -> f a
   gvlength :: Proxy f -> Int
 
 -- product type (concatination)
@@ -226,7 +230,6 @@ instance (GVectorize f, GVectorize g) => GVectorize (f :*: g) where
 
       (v0,v1) = V.splitAt n0 v0s
 
-  gfill x = gfill x :*: gfill x
   gvlength = const (nf + ng)
     where
       nf = gvlength (Proxy :: Proxy f)
@@ -236,7 +239,6 @@ instance (GVectorize f, GVectorize g) => GVectorize (f :*: g) where
 instance GVectorize f => GVectorize (M1 i c f) where
   gvectorize = gvectorize . unM1
   gdevectorize = fmap M1 . gdevectorize
-  gfill = M1 . gfill
   gvlength = gvlength . proxy
     where
       proxy :: Proxy (M1 i c f) -> Proxy f
@@ -249,7 +251,6 @@ instance GVectorize Par1 where
     [] -> Left "gdevectorize Par1: got empty list"
     [x] -> Right (Par1 x)
     xs -> Left $ "gdevectorize Par1: got non-1 length: " ++ show (length xs)
-  gfill = Par1
   gvlength = const 1
 
 -- data with no fields
@@ -258,14 +259,12 @@ instance GVectorize U1 where
   gdevectorize v
     | V.null v = Right U1
     | otherwise = Left $ "gdevectorize U1: got non-null vector, length: " ++ show (V.length v)
-  gfill = const U1
   gvlength = const 0
 
 -- Constants, additional parameters, and rank-1 recursion
 instance Vectorize f => GVectorize (Rec1 f) where
   gvectorize = vectorize . unRec1
   gdevectorize = fmap Rec1 . devectorize'
-  gfill = Rec1 . fill
   gvlength = vlength . proxy
     where
       proxy :: Proxy (Rec1 f) -> Proxy f
@@ -273,13 +272,6 @@ instance Vectorize f => GVectorize (Rec1 f) where
 
 -- composition
 instance (Vectorize f, GVectorize g) => GVectorize (f :.: g) where
-  gfill = Comp1 . devectorize'' . V.replicate k . gfill
-    where
-      devectorize'' x = case devectorize' x of
-        Right y -> y
-        Left msg -> error $ "gfill (f :.: g) devectorize error: " ++ msg
-      k = vlength (Proxy :: Proxy f)
-
   gvectorize = V.concatMap gvectorize . vectorize . unComp1
   gdevectorize v = case partitionEithers (V.toList evs) of
     ([], vs) -> fmap Comp1 (devectorize' (V.fromList vs))

@@ -74,6 +74,14 @@ data SbO a = SbO { oFla :: V2 a
                  , oGammaDeg :: a
                  } deriving (Functor, Generic, Generic1, Show)
 
+instance Applicative SbX where {pure = vpure; (<*>) = vapply}
+instance Applicative SbZ where {pure = vpure; (<*>) = vapply}
+instance Applicative SbU where {pure = vpure; (<*>) = vapply}
+instance Applicative SbP where {pure = vpure; (<*>) = vapply}
+instance Applicative SbR where {pure = vpure; (<*>) = vapply}
+instance Applicative SbO where {pure = vpure; (<*>) = vapply}
+instance Applicative SbBc where {pure = vpure; (<*>) = vapply}
+
 instance Vectorize SbX
 instance Vectorize SbZ
 instance Vectorize SbU
@@ -237,7 +245,7 @@ ocpInputs :: OcpPhaseInputs' SailboatOcp
 ocpInputs =
   OcpPhaseInputs
   { ocpPathCBnds = None
-  , ocpBcBnds = fill (Just 0, Just 0)
+  , ocpBcBnds = pure (Just 0, Just 0)
   , ocpXbnd = xbnd
   , ocpUbnd = ubnd
   , ocpZbnd = SbZ

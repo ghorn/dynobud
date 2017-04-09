@@ -42,6 +42,7 @@ instance Fractional a => Fractional (Point a) where
     where
       k = fromRational k'
   
+instance Applicative Point where {pure = vpure; (<*>) = vapply}
 instance Vectorize Point
 
 data SofaMessage =

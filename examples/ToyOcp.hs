@@ -12,11 +12,13 @@ import Dyno.SimpleOcp
 -- state
 data X a = X { xTheta :: a, xOmega :: a }
          deriving (Functor, Generic1, Show)
+instance Applicative X where {pure = vpure; (<*>) = vapply}
 instance Vectorize X
 
 -- controls
 data U a = U { uTorque :: a }
          deriving (Functor, Generic1, Show)
+instance Applicative U where {pure = vpure; (<*>) = vapply}
 instance Vectorize U
 
 pendOde :: Floating a => X a -> U a -> X a

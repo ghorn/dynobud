@@ -17,10 +17,16 @@ import Dyno.Solvers
 
 -- design variable
 data X a = X a a deriving (Functor, Generic, Generic1, Show)
+instance Applicative X where
+  pure = vpure
+  (<*>) = vapply
 instance Vectorize X
 
 -- constraint
 data G a = G a deriving (Functor, Generic, Generic1, Show)
+instance Applicative G where
+  pure = vpure
+  (<*>) = vapply
 instance Vectorize G
 
 -- objective/constraint function

@@ -61,7 +61,7 @@ compileModel model = do
   let odeX :: J (JV x) a -> (M (JV x) (JV x) :*: J (JV x)) a
       odeX x = jacobian xdot x :*: xdot
         where
-          xdot = vcat $ kfOde model (vsplit x) (fill 0)
+          xdot = vcat $ kfOde model (vsplit x) (pure 0)
   jacOdeX <- toFun "ode_x" odeX mempty
 
   let odeQ :: (J (JV x) :*: J (JV q)) a -> M (JV x) (JV q) a

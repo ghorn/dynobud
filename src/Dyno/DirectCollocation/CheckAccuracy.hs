@@ -28,7 +28,7 @@ import Linear ( Additive )
 import Text.Printf ( printf )
 
 import Dyno.Integrate
-import Dyno.View.Vectorize ( Vectorize(..), None(..), fill, unId, vapply )
+import Dyno.View.Vectorize ( Vectorize(..), None(..), unId )
 import Dyno.View.View ( View(..), J, splitJV )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
@@ -49,9 +49,9 @@ data CheckState x q a =
   , csQ :: q a
   } deriving (Functor, Generic, Generic1)
 instance (Vectorize x, Vectorize q) => Vectorize (CheckState x q)
-instance (Vectorize x, Vectorize q) => Applicative (CheckState x q) where
-  pure = fill
-  (<*>) = vapply
+instance (Applicative x, Applicative q) => Applicative (CheckState x q) where
+  pure x = CheckState (pure x) (pure x)
+  CheckState fx fq <*> CheckState x q = CheckState (fx <*> x) (fq <*> q)
 instance (Lookup (x a), Lookup (q a), Lookup a) => Lookup (CheckState x q a)
 
 data Err a =
@@ -134,7 +134,7 @@ checkIntegrationAccuracy xscale roots traj' ode qfs =
     scale :: CheckState x q (Maybe Double)
     scale = CheckState
             { csX = xscale
-            , csQ = fill Nothing
+            , csQ = pure Nothing
             }
 
     integrate :: Double
@@ -176,7 +176,7 @@ checkIntegrationAccuracy xscale roots traj' ode qfs =
     h = unId (splitJV tf) / fromIntegral (natVal (Proxy :: Proxy n))
 
     q0s :: Vec n (q Double)
-    q0s = TV.tvshiftr (fill 0) (qfs)
+    q0s = TV.tvshiftr (pure 0) (qfs)
 
     x0s :: Vec n (x Double)
     x0s = fmap fst xs

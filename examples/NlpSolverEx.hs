@@ -12,7 +12,7 @@ import Text.Printf ( printf )
 
 import Casadi.MX ( MX )
 
-import Dyno.View.Vectorize ( Vectorize, Id(..), None(..), fill )
+import Dyno.View.Vectorize ( Vectorize, Id(..), None(..), vpure, vapply )
 import Dyno.View.View
 import Dyno.View.M ( vcat, vsplit )
 import Dyno.Nlp
@@ -22,6 +22,9 @@ import Dyno.Solvers
 
 data X a = X a a deriving (Functor, Generic1, Show)
 data G a = G a deriving (Functor, Generic1, Show)
+
+instance Applicative X where {pure = vpure; (<*>) = vapply}
+instance Applicative G where {pure = vpure; (<*>) = vapply}
 
 instance Vectorize X
 instance Vectorize G
@@ -49,7 +52,7 @@ myNlp = Nlp { nlpFG = fg
     x0 = X 0 0
 
     bx :: X Bounds
-    bx = fill (Nothing, Nothing)
+    bx = pure (Nothing, Nothing)
 
     bg :: G Bounds
     bg = G (Just 2, Nothing)

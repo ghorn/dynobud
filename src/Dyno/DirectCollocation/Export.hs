@@ -33,7 +33,7 @@ import Accessors ( Lookup, GATip(..), GAField(..), GASimpleEnum(..), flatten, fl
 
 import Dyno.Nlp ( NlpOut(..) )
 import Dyno.TypeVecs ( Vec )
-import Dyno.View.Vectorize ( Vectorize, Id(..), None(..), fill, unId )
+import Dyno.View.Vectorize ( Vectorize, Id(..), None(..), unId )
 import Dyno.View.View ( View(..), splitJV, catJV )
 import Dyno.DirectCollocation.Formulate ( CollProblem(..), DirCollOptions(..) )
 import Dyno.DirectCollocation.Types ( CollTraj(..), CollOcpConstraints(..)
@@ -158,7 +158,7 @@ exportTraj' mextra exportConfig cp fp nlpOut = do
       pos = map (splitJV . sopPo) stageOutputsPoints
       stageOutputsPoints = F.concatMap (F.toList . soVec) outs
       qsFull :: [Quadratures q qo Double]
-      qsFull = fill 0 : F.concatMap toQFull outs
+      qsFull = pure 0 : F.concatMap toQFull outs
         where
           toQFull :: StageOutputs x o h q qo po deg Double -> [Quadratures q qo Double]
           toQFull stageOutputs = (map sopQs (F.toList (soVec stageOutputs))) ++ [soQNext stageOutputs]

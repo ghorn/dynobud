@@ -23,6 +23,7 @@ data ControlSurfaces a =
                   , csAil :: a
                   , csFlaps :: a
                   } deriving (Eq, Functor, F.Foldable, Generic, Generic1, Show)
+instance Applicative ControlSurfaces where {pure = vpure; (<*>) = vapply}
 instance Vectorize ControlSurfaces
 instance (Lookup a, Generic a) => Lookup (ControlSurfaces a)
 
@@ -56,6 +57,7 @@ data AeroForceCoeffs a =
                   , af_cY_B :: a
                   , af_cY_rudder :: a
                   } deriving (Functor, Generic, Generic1, Show)
+instance Applicative AeroForceCoeffs where {pure = vpure; (<*>) = vapply}
 instance Vectorize AeroForceCoeffs
 
 data AeroMomentCoeffs a =
@@ -84,6 +86,7 @@ data AeroMomentCoeffs a =
                    , am_cm_flaps :: a
                    , am_cn_rudder :: a
                    } deriving (Functor, Generic, Generic1, Show)
+instance Applicative AeroMomentCoeffs where {pure = vpure; (<*>) = vapply}
 instance Vectorize AeroMomentCoeffs
 
 data AeroRefs a =
@@ -91,6 +94,7 @@ data AeroRefs a =
            , ar_bref :: a
            , ar_cref :: a
            } deriving (Functor, Generic, Generic1, Show)
+instance Applicative AeroRefs where {pure = vpure; (<*>) = vapply}
 instance Vectorize AeroRefs
 
 

@@ -9,13 +9,16 @@ module Main where
 
 import GHC.Generics ( Generic1 )
 
-import Dyno.View.Vectorize ( Vectorize )
+import Dyno.View.Vectorize ( Vectorize, vpure, vapply )
 import Dyno.Nlp ( Bounds )
 import Dyno.NlpUtils ( solveNlpV )
 import Dyno.Solvers ( Solver, ipoptSolver )
 
 data X a = X a a deriving (Functor, Generic1, Show)
 data G a = G a deriving (Functor, Generic1, Show)
+
+instance Applicative X where {pure = vpure; (<*>) = vapply}
+instance Applicative G where {pure = vpure; (<*>) = vapply}
 
 instance Vectorize X
 instance Vectorize G

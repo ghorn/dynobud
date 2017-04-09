@@ -33,6 +33,12 @@ instance Vectorize AcU
 instance Vectorize AcP
 instance Vectorize AcR
 
+instance Applicative AcX where {pure = vpure; (<*>) = vapply}
+instance Applicative AcZ where {pure = vpure; (<*>) = vapply}
+instance Applicative AcU where {pure = vpure; (<*>) = vapply}
+instance Applicative AcP where {pure = vpure; (<*>) = vapply}
+instance Applicative AcR where {pure = vpure; (<*>) = vapply}
+
 instance (Lookup a, Generic a) => Lookup (AcX a)
 instance (Lookup a, Generic a) => Lookup (AcZ a)
 instance (Lookup a, Generic a) => Lookup (AcU a)

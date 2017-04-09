@@ -33,16 +33,15 @@ data SpringX a =
   , xVel :: a
   } deriving (Functor, Generic, Generic1, Show)
 instance Vectorize SpringX
-instance Applicative SpringX where
-  pure = fill
-  (<*>) = vapply
+instance Applicative SpringX where {pure = vpure; (<*>) = vapply}
 instance Additive SpringX where
-  zero = fill 0
+  zero = pure 0
 
 data SpringQ a =
   SpringQ
   { qDisturbanceForce :: a
   } deriving (Functor, Foldable, Generic, Generic1)
+instance Applicative SpringQ where {pure = vpure; (<*>) = vapply}
 instance Vectorize SpringQ
 
 data SpringY a =
@@ -50,11 +49,9 @@ data SpringY a =
   { yPos :: a
   } deriving (Functor, Foldable, Generic, Generic1)
 instance Vectorize SpringY
-instance Applicative SpringY where
-  pure = fill
-  (<*>) = vapply
+instance Applicative SpringY where {pure = vpure; (<*>) = vapply}
 instance Additive SpringY where
-  zero = fill 0
+  zero = pure 0
 
 springModel :: forall a . Floating a => KFModel SpringX SpringQ SpringY None a
 springModel =

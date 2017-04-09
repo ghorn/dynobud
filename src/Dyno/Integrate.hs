@@ -26,6 +26,9 @@ import Dyno.View.Vectorize ( Vectorize(..), devectorize )
 
 newtype InitialTime a = InitialTime {unInitialTime :: a}
   deriving (Functor, Foldable, Traversable, Generic, Generic1, FromJSON, ToJSON, Num, Fractional, Floating, Ord, Eq, Show)
+instance Applicative InitialTime where
+  pure = InitialTime
+  InitialTime f <*> InitialTime x = InitialTime (f x)
 instance Vectorize InitialTime
 instance Lookup a => Lookup (InitialTime a) where
   toAccessorTree lens0 = toAccessorTree (lens0 . lens1)
@@ -36,6 +39,9 @@ instance Binary a => Binary (InitialTime a)
 
 newtype TimeStep a = TimeStep {unTimeStep :: a}
   deriving (Functor, Foldable, Traversable, Generic, Generic1, FromJSON, ToJSON, Num, Fractional, Floating, Ord, Eq, Show)
+instance Applicative TimeStep where
+  pure = TimeStep
+  TimeStep f <*> TimeStep x = TimeStep (f x)
 instance Vectorize TimeStep
 instance Lookup a => Lookup (TimeStep a) where
   toAccessorTree lens0 = toAccessorTree (lens0 . lens1)

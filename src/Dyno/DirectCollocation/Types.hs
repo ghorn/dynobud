@@ -51,7 +51,7 @@ import Dyno.Ocp
 import Dyno.View.View ( View(..), J, S, JV, splitJV, catJV, jfill )
 import Dyno.View.JVec ( JVec(..), jreplicate )
 import Dyno.View.Cov ( Cov )
-import Dyno.View.Vectorize ( Vectorize(..), Id(..), unId, vapply )
+import Dyno.View.Vectorize ( Vectorize(..), Id(..), unId )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 
@@ -361,11 +361,11 @@ data Quadratures q qo a =
   , qOutputs :: qo a
   } deriving (Functor, Generic, Generic1)
 instance (Vectorize q, Vectorize qo) => Vectorize (Quadratures q qo)
-instance (Vectorize q, Vectorize qo) => Applicative (Quadratures q qo) where
-  pure = fill
-  (<*>) = vapply
-instance (Vectorize q, Vectorize qo) => Additive (Quadratures q qo) where
-  zero = fill 0
+instance (Applicative q, Applicative qo) => Applicative (Quadratures q qo) where
+  pure x = Quadratures x (pure x) (pure x)
+  Quadratures f fu fo <*> Quadratures x xu xo = Quadratures (f x) (fu <*> xu) (fo <*> xo)
+instance (Applicative q, Applicative qo) => Additive (Quadratures q qo) where
+  zero = pure 0
 instance (Lookup a, Lookup (q a), Lookup (qo a)) => Lookup (Quadratures q qo a)
 instance (Binary a, Binary (q a), Binary (qo a)) => Binary (Quadratures q qo a)
 instance (FromJSON a, FromJSON (q a), FromJSON (qo a)) => FromJSON (Quadratures q qo a)

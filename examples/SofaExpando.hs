@@ -61,6 +61,11 @@ data StageCon a =
   , scInners :: Vec NPoints a
   } deriving (Functor, Generic1, Show)
 
+instance Applicative X where {pure = vpure; (<*>) = vapply}
+instance Applicative G where {pure = vpure; (<*>) = vapply}
+instance Applicative Stage where {pure = vpure; (<*>) = vapply}
+instance Applicative StageCon where {pure = vpure; (<*>) = vapply}
+
 instance Vectorize X
 instance Vectorize G
 instance Vectorize Stage
@@ -121,7 +126,7 @@ guess =
   , xStages = TV.tvzipWith (\mean theta ->
                              Stage { sTheta = theta
                                    , sMean = mean
-                                   , sPhis = fill $ min 0 (max (pi/2) (atan2' mean))
+                                   , sPhis = pure $ min 0 (max (pi/2) (atan2' mean))
                                    }) means0 thetas0
   }
   where
@@ -145,7 +150,7 @@ guess =
 bx :: X Bounds
 bx = X
      { xR = (Just (segment0/2), Nothing)
-     , xPoints = fill $ Point (Just (-5), Just 5) (Just (-5), Just 5)
+     , xPoints = pure $ Point (Just (-5), Just 5) (Just (-5), Just 5)
      , xStages = TV.mkVec' $ stage0 : replicate (nsteps-1) otherStages
      }
   where
@@ -153,41 +158,41 @@ bx = X
       Stage
       { sTheta = (Just 0, Just 0)
       , sMean = Point (Just (-3), Just 3) (Just (-3), Just 3)
-      , sPhis = fill (Just 0, Just (pi/2))
+      , sPhis = pure (Just 0, Just (pi/2))
       }
     otherStages =
       Stage
       { sTheta = (Just (-4*pi), Just (4*pi))
       , sMean = Point (Just (-3), Just 3) (Just (-3), Just 3)
-      , sPhis = fill (Just 0, Just (pi/2))
+      , sPhis = pure (Just 0, Just (pi/2))
       }
 
 
 bg :: G Bounds
 bg = G
-     { gMin90 = fill (Just 0.8, Nothing)
-     , gEqualR = fill (Just 0, Just 0)
-     , gMean0 = fill (Just 0, Just 0)
+     { gMin90 = pure (Just 0.8, Nothing)
+     , gEqualR = pure (Just 0, Just 0)
+     , gMean0 = pure (Just 0, Just 0)
      , g360s = TV.mkVec' $ map (\q -> (Just (q - pi), Just (q + pi)))
                $ linspace 0 (2*pi) npoints
      , gStages = TV.mkVec' $ stage0 : replicate (nsteps-2) midStages ++ [stageF]
-     , gCloseMean = TV.mkVec' $ replicate (nsteps - 1) (fill (Just (-deltaMean), Just deltaMean)) ++ [fill (Nothing, Nothing)]
+     , gCloseMean = TV.mkVec' $ replicate (nsteps - 1) (pure (Just (-deltaMean), Just deltaMean)) ++ [pure (Nothing, Nothing)]
      , gCloseTheta = TV.mkVec' $ replicate (nsteps - 1) (Just (-deltaTheta), Just deltaTheta) ++ [(Nothing, Nothing)]
      }
   where
     deltaTheta = pi / fromIntegral nsteps
     deltaMean = 4 / fromIntegral nsteps
     stage0 = StageCon
-             { scOuters = fill $ Point (Nothing, Just 1) (Nothing, Just 0)
-             , scInners = fill (Just 0, Nothing)
+             { scOuters = pure $ Point (Nothing, Just 1) (Nothing, Just 0)
+             , scInners = pure (Just 0, Nothing)
              }
     stageF = StageCon
-             { scOuters = fill $ Point (Nothing, Just 0) (Nothing, Just 1)
-             , scInners = fill (Just 0, Nothing)
+             { scOuters = pure $ Point (Nothing, Just 0) (Nothing, Just 1)
+             , scInners = pure (Just 0, Nothing)
              }
     midStages = StageCon
-                { scOuters = fill $ Point (Nothing, Just 1) (Nothing, Just 1)
-                , scInners = fill (Just 0, Nothing)
+                { scOuters = pure $ Point (Nothing, Just 1) (Nothing, Just 1)
+                , scInners = pure (Just 0, Nothing)
                 }
 
 dot :: Num a => Point a -> Point a -> a

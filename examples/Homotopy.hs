@@ -34,6 +34,10 @@ instance Vectorize X
 instance Vectorize G
 instance Vectorize P
 
+instance Applicative X where {pure = vpure; (<*>) = vapply}
+instance Applicative G where {pure = vpure; (<*>) = vapply}
+instance Applicative P where {pure = vpure; (<*>) = vapply}
+
 myNlp :: Nlp (JV X) (JV P) (JV G) MX
 myNlp = Nlp { nlpFG = fg
             , nlpIn =

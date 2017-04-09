@@ -134,7 +134,6 @@ flattenActiveConstraints activeCons = map report $ flatten' accessors
 getActiveConstraints ::
   forall x z u p h c n deg r fp o q qo po
   . ( Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize h, Vectorize c, Vectorize r
-    , Applicative x, Applicative z, Applicative u, Applicative p, Applicative h, Applicative c
     , KnownNat n, KnownNat deg
     )
   => (J (CollTraj x z u p n deg) (Vector Double)
@@ -154,7 +153,6 @@ getActiveConstraints evalConstraints ocp eps x p inputs = do
 whatsActive ::
   forall x z u p h c n deg r fp o q qo po
   . ( Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize h, Vectorize c
-    , Applicative x, Applicative z, Applicative u, Applicative p, Applicative h, Applicative c
     , KnownNat n, KnownNat deg
     )
   => Double

@@ -25,7 +25,7 @@ import Dyno.View.Cov ( Cov )
 import Dyno.View.HList ( (:*:)(..) )
 import Dyno.View.Fun
 import Dyno.View.JVec( JVec(..), jreplicate )
-import Dyno.View.Vectorize ( Vectorize(..), Id(..), None(..), fill, unId )
+import Dyno.View.Vectorize ( Vectorize(..), Id(..), None(..), unId )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.Nlp ( Nlp(..), NlpIn(..), Bounds )
@@ -123,7 +123,7 @@ makeCollCovProblem dirCollOpts ocp ocpInputs ocpCov guess = do
       gammas = vcat (fmap realToFrac gammas')
 
       rpathCUb :: shr Bounds
-      rpathCUb = fill (Nothing, Just 0)
+      rpathCUb = pure (Nothing, Just 0)
 
       robustPathCUb :: J (JV shr) (Vector Bounds)
       robustPathCUb = catJV rpathCUb
@@ -185,19 +185,19 @@ makeCollCovProblem dirCollOpts ocp ocpInputs ocpCov guess = do
         , nlpScaleX = Just $ cat $
                       CollTrajCov (fromMaybe (jfill 1) (ocpCovSScale ocpCov)) $
                       cat $ fillCollTraj
-                      (fromMaybe (fill 1) (ocpXScale ocp))
-                      (fromMaybe (fill 1) (ocpZScale ocp))
-                      (fromMaybe (fill 1) (ocpUScale ocp))
-                      (fromMaybe (fill 1) (ocpPScale ocp))
+                      (fromMaybe (pure 1) (ocpXScale ocp))
+                      (fromMaybe (pure 1) (ocpZScale ocp))
+                      (fromMaybe (pure 1) (ocpUScale ocp))
+                      (fromMaybe (pure 1) (ocpPScale ocp))
                       (fromMaybe       1  (ocpTScale ocp))
 
         , nlpScaleG = Just $ cat $ CollOcpCovConstraints
                       { cocNormal = cat $ fillCollConstraints
-                                    (fromMaybe (fill 1) (ocpXScale ocp))
-                                    (fromMaybe (fill 1) (ocpPScale ocp))
-                                    (fromMaybe (fill 1) (ocpResidualScale ocp))
-                                    (fromMaybe (fill 1) (ocpBcScale ocp))
-                                    (fromMaybe (fill 1) (ocpPathCScale ocp))
+                                    (fromMaybe (pure 1) (ocpXScale ocp))
+                                    (fromMaybe (pure 1) (ocpPScale ocp))
+                                    (fromMaybe (pure 1) (ocpResidualScale ocp))
+                                    (fromMaybe (pure 1) (ocpBcScale ocp))
+                                    (fromMaybe (pure 1) (ocpPathCScale ocp))
                                     (fromMaybe 1 (ocpTScale ocp))
                       , cocCovPathC = jreplicate (fromMaybe (jfill 1) (ocpCovPathCScale ocpCov))
                       , cocCovRobustPathC = jreplicate $

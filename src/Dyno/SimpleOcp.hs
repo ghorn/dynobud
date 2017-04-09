@@ -27,7 +27,7 @@ import Dyno.NlpUtils
 import Dyno.Nlp
 import Dyno.DirectCollocation.Formulate
 import Dyno.DirectCollocation.Types
-import Dyno.View.Vectorize ( Vectorize(..), Tuple(..), None(..), fill, vzipWith )
+import Dyno.View.Vectorize ( Vectorize(..), Tuple(..), None(..), vzipWith )
 import Dyno.View.View -- ( View(..) )
 import Dyno.View.JVec
 
@@ -80,6 +80,9 @@ toOcp simple =
   }
 
 data SimpleBc x a = SimpleBc (x a) (x a) deriving (Functor, Generic, Generic1)
+instance Applicative x => Applicative (SimpleBc x) where
+  pure x = let f = pure x in SimpleBc f f
+  SimpleBc fx fy <*> SimpleBc x y = SimpleBc (fx <*> x) (fy <*> y)
 instance Vectorize x => Vectorize (SimpleBc x)
 instance Lookup (x a) => Lookup (SimpleBc x a)
 
@@ -91,7 +94,7 @@ toOcpInputs simple =
                 (fmap (\x -> (Just x, Just x)) (xFinal simple))
   , ocpPathCBnds = None
   , ocpXbnd = fmap toBounds $ Tuple (xBounds simple) (uBounds simple)
-  , ocpUbnd = fill (Nothing, Nothing)
+  , ocpUbnd = pure (Nothing, Nothing)
   , ocpZbnd = None
   , ocpPbnd = None
   , ocpTbnd = (Just (endTime simple), Just (endTime simple))
@@ -121,7 +124,7 @@ solveOcp' simple _ _ = do
       roots = collocationRoots dirCollOpts
 
       guess :: CollTraj (Tuple x u) None u None n deg (Vector Double)
-      guess = makeGuess roots tf (\t -> Tuple (initialGuess simple t) (fill 0)) (const None) (const (fill 0)) None
+      guess = makeGuess roots tf (\t -> Tuple (initialGuess simple t) (pure 0)) (const None) (const (pure 0)) None
   cp <- makeCollProblem dirCollOpts ocp ocpInputs (cat guess)
   let _ = cp :: CollProblem (Tuple x u) None u None (Tuple x u) None (SimpleBc x) None None None None None n deg
   (_, eopt) <- solveNlp solver (cpNlp cp) Nothing

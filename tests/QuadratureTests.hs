@@ -16,7 +16,7 @@ import Test.Framework ( Test, testGroup )
 import Test.Framework.Providers.HUnit ( testCase )
 import Text.Printf ( printf )
 
-import Dyno.View.Vectorize ( Vectorize(..), None(..), Id(..) )
+import Dyno.View.Vectorize ( Vectorize(..), None(..), Id(..), vpure, vapply )
 import Dyno.View.View ( View(..), J, splitJV )
 import Dyno.Solvers
 import Dyno.Nlp ( NlpOut(..), Bounds )
@@ -54,6 +54,15 @@ data QuadR a = QuadR (QuadX a) deriving (Functor, Generic, Generic1, Show)
 data QuadO a = QuadO a deriving (Functor, Generic, Generic1, Show)
 data QuadBc a = QuadBc (QuadX a) deriving (Functor, Generic, Generic1, Show)
 data QuadQ a = QuadQ a deriving (Functor, Generic, Generic1, Show)
+
+instance Applicative QuadX where {pure = vpure; (<*>) = vapply}
+instance Applicative QuadZ where {pure = vpure; (<*>) = vapply}
+instance Applicative QuadU where {pure = vpure; (<*>) = vapply}
+instance Applicative QuadP where {pure = vpure; (<*>) = vapply}
+instance Applicative QuadR where {pure = vpure; (<*>) = vapply}
+instance Applicative QuadO where {pure = vpure; (<*>) = vapply}
+instance Applicative QuadBc where {pure = vpure; (<*>) = vapply}
+instance Applicative QuadQ where {pure = vpure; (<*>) = vapply}
 
 instance Vectorize QuadX
 instance Vectorize QuadZ

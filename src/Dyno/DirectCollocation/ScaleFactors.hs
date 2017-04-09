@@ -24,7 +24,7 @@ import Text.Printf ( printf )
 
 import Dyno.DirectCollocation.Types
 import Dyno.Nlp ( Bounds )
-import Dyno.View.Vectorize ( Vectorize(..), unId, vapply )
+import Dyno.View.Vectorize ( Vectorize(..), unId )
 import Dyno.View.View ( View(..), splitJV )
 import Dyno.View.JVec ( unJVec )
 import Dyno.Ocp
@@ -65,8 +65,9 @@ instance ( Vectorize x, Vectorize z, Vectorize u, Vectorize p
 instance ( Vectorize x, Vectorize z, Vectorize u, Vectorize p
          , Vectorize h, Vectorize c
          ) => Applicative (ScaleFactors x z u p h c) where
-  pure = fill
-  (<*>) = vapply
+  pure x = ScaleFactors (pure x) (pure x) (pure x) (pure x) (pure x) (pure x) x
+  ScaleFactors fx fz fu fp fh fc ft <*> ScaleFactors x z u p h c t =
+    ScaleFactors (fx <*> x) (fz <*> z) (fu <*> u) (fp <*> p) (fh <*> h) (fc <*> c) (ft t)
 
 summarizeScaleFactors ::
   ( Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize h, Vectorize c
@@ -118,12 +119,12 @@ getScaleFactors x g ocp inputs =
     myScale :: ScaleFactors x z u p h c Double
     myScale =
       ScaleFactors
-      { xScale = fromMaybe (fill 1) (ocpXScale ocp)
-      , zScale = fromMaybe (fill 1) (ocpZScale ocp)
-      , uScale = fromMaybe (fill 1) (ocpUScale ocp)
-      , pScale = fromMaybe (fill 1) (ocpPScale ocp)
-      , pathConstraintScale = fromMaybe (fill 1) (ocpPathCScale ocp)
-      , boundaryConditionScale = fromMaybe (fill 1) (ocpBcScale ocp)
+      { xScale = fromMaybe (pure 1) (ocpXScale ocp)
+      , zScale = fromMaybe (pure 1) (ocpZScale ocp)
+      , uScale = fromMaybe (pure 1) (ocpUScale ocp)
+      , pScale = fromMaybe (pure 1) (ocpPScale ocp)
+      , pathConstraintScale = fromMaybe (pure 1) (ocpPathCScale ocp)
+      , boundaryConditionScale = fromMaybe (pure 1) (ocpBcScale ocp)
       , endTimeScale = fromMaybe 1 (ocpTScale ocp)
       }
     bounds :: ScaleFactors x z u p h c Bounds
@@ -139,7 +140,7 @@ getScaleFactors x g ocp inputs =
       }
 
     names :: ScaleFactors x z u p h c String
-    names = F.foldl' ff (fill "") (flatten accessors)
+    names = F.foldl' ff (pure "") (flatten accessors)
       where
         ff sf0 (name, GATipField (FieldString f)) = (f .~ name) sf0
         ff _ (name, GATipField f) =
@@ -152,7 +153,6 @@ getScaleFactors x g ocp inputs =
 getMagnitude ::
   forall x z u p h c n deg r
   . ( Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize h, Vectorize c
-    , Applicative x, Applicative z, Applicative u, Applicative h
     , KnownNat n, KnownNat deg
     )
   => CollTraj x z u p n deg (Vector Double)

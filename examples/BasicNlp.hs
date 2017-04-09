@@ -27,6 +27,8 @@ import Dyno.Solvers
 data X a = X a a deriving (Functor, Generic, Generic1, Show)
 data G a = G a deriving (Functor, Generic, Generic1, Show)
 
+instance Applicative X where {pure = vpure; (<*>) = vapply}
+instance Applicative G where {pure = vpure; (<*>) = vapply}
 instance Vectorize X
 instance Vectorize G
 

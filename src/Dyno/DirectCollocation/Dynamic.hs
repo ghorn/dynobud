@@ -34,7 +34,7 @@ import Accessors ( AccessorTree, Lookup(..), GAData(..), GAConstructor(..), acce
 import PlotHo ( Channel, newChannel )
 
 import Dyno.View.Unsafe ( unM, unM' )
-import Dyno.View.Vectorize ( Vectorize(..), Id(..), fill )
+import Dyno.View.Vectorize ( Vectorize(..), Id(..) )
 import Dyno.View.View ( View(..), JV, splitJV )
 import Dyno.View.M ( M )
 import Dyno.View.JVec ( JVec(..) )
@@ -133,7 +133,7 @@ dynPlotPoints quadratureRoots (CollTraj tf' _ stages' xf) outputs
 
     xss = xss' `V.snoc` (V.singleton (tf, unM xf))
     -- assumes initial time is 0
-    qss = V.singleton (0, vectorize (fill 0 :: Quadratures q qo a)) `V.cons` qss'
+    qss = V.singleton (0, vectorize (pure 0 :: Quadratures q qo a)) `V.cons` qss'
 
     xss',zss,uss,oss,poss,xdss,hss :: Vector (Vector (a, Vector a))
     (xss',zss,uss,oss,xdss,hss,poss,qss',qdss) = unzip9 xzuoxdhs

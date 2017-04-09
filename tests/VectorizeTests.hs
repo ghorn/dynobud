@@ -44,13 +44,10 @@ data X1 f g h a
   deriving (Show, Eq, Functor, Foldable, Traversable, Generic, Generic1)
 
 instance Vectorize X0
-instance Applicative X0 where
-  pure = fill
-  (<*>) = vapply
+instance Applicative X0 where {pure = vpure; (<*>) = vapply}
 instance (Vectorize f, Vectorize g, Vectorize h) => Vectorize (X1 f g h)
 instance (Vectorize f, Vectorize g, Vectorize h) => Applicative (X1 f g h) where
-  pure = fill
-  (<*>) = vapply
+  {pure = vpure; (<*>) = vapply}
 
 data Vectorizes where
   Vectorizes ::
@@ -171,7 +168,7 @@ vlengthEqLengthOfPure ::
 vlengthEqLengthOfPure p = vlength p == V.length x1
   where
     x0 :: f ()
-    x0 = fill ()
+    x0 = pure ()
 
     x1 :: V.Vector ()
     x1 = vectorize x0
@@ -202,8 +199,7 @@ prop_transpose (Dims _ n) (Dims _ m) = transposeUnTranspose n m
 
 sequenceATwice ::
   forall x y
-  . ( Applicative x, Applicative y
-    , Traversable x, Traversable y
+  . ( Traversable x, Traversable y
     , Vectorize x, Vectorize y
     )
   => Proxy x -> Proxy y -> Bool
@@ -274,11 +270,11 @@ test_devectorizeO = HUnit.assertEqual "" x (devectorize y)
     y :: V.Vector Int
     y = V.fromList [0,1,2,3,4,5]
 
-test_fillO :: HUnit.Assertion
-test_fillO = HUnit.assertEqual "" x y
+test_pureO :: HUnit.Assertion
+test_pureO = HUnit.assertEqual "" x y
   where
     x :: (V3 :. V2) Int
-    x = fill 0
+    x = pure 0
 
     y :: (V3 :. V2) Int
     y =
@@ -300,5 +296,5 @@ vectorizeTests =
   , testCase "vdiag'" test_vdiag'
   , testCase "vectorize (:.)'" test_vectorizeO
   , testCase "devectorize (:.)'" test_devectorizeO
-  , testCase "fill (:.)'" test_fillO
+  , testCase "pure (:.)'" test_pureO
   ]

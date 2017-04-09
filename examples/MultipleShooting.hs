@@ -41,11 +41,11 @@ instance Vectorize X
 instance Vectorize U
 instance Vectorize P
 
-instance Applicative X where
-  pure = fill
-  (<*>) = vapply
+instance Applicative X where {pure = vpure; (<*>) = vapply}
+instance Applicative U where {pure = vpure; (<*>) = vapply}
+instance Applicative P where {pure = vpure; (<*>) = vapply}
 instance Additive X where
-  zero = fill 0
+  zero = pure 0
 
 -- ocp specification
 ocp :: MsOcp X U P

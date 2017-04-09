@@ -48,7 +48,7 @@ import Dyno.View.Fun ( Fun, callSym, callV, expandFun, toFun )
 import Dyno.View.MapFun
 import Dyno.View.JVec( JVec(..), jreplicate )
 import Dyno.View.Scheme ( Scheme )
-import Dyno.View.Vectorize ( Vectorize(..), Id(..), fill, vlength, unId )
+import Dyno.View.Vectorize ( Vectorize(..), Id(..), vlength, unId )
 import Dyno.TypeVecs ( Vec )
 import qualified Dyno.TypeVecs as TV
 import Dyno.LagrangePolynomials ( lagrangeDerivCoeffs )
@@ -472,18 +472,18 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
             }
         , nlpScaleF = ocpObjScale ocp
         , nlpScaleX = Just $ cat $ fillCollTraj
-                      (fromMaybe (fill 1) (ocpXScale ocp))
-                      (fromMaybe (fill 1) (ocpZScale ocp))
-                      (fromMaybe (fill 1) (ocpUScale ocp))
-                      (fromMaybe (fill 1) (ocpPScale ocp))
+                      (fromMaybe (pure 1) (ocpXScale ocp))
+                      (fromMaybe (pure 1) (ocpZScale ocp))
+                      (fromMaybe (pure 1) (ocpUScale ocp))
+                      (fromMaybe (pure 1) (ocpPScale ocp))
                       (fromMaybe       1  (ocpTScale ocp))
 
         , nlpScaleG = Just $ cat $ fillCollConstraints
-                      (fromMaybe (fill 1) (ocpXScale ocp))
-                      (fromMaybe (fill 1) (ocpPScale ocp))
-                      (fromMaybe (fill 1) (ocpResidualScale ocp))
-                      (fromMaybe (fill 1) (ocpBcScale ocp))
-                      (fromMaybe (fill 1) (ocpPathCScale ocp))
+                      (fromMaybe (pure 1) (ocpXScale ocp))
+                      (fromMaybe (pure 1) (ocpPScale ocp))
+                      (fromMaybe (pure 1) (ocpResidualScale ocp))
+                      (fromMaybe (pure 1) (ocpBcScale ocp))
+                      (fromMaybe (pure 1) (ocpPathCScale ocp))
                       (fromMaybe 1 (ocpTScale ocp))
         }
 
@@ -670,7 +670,7 @@ toCallbacks n roots taus outputFun pathStageConFun lagQuadFun quadFun quadOutFun
 
           CollStage x0 _ _ _ = split (TV.tvhead vstages)
           quadratures0 :: Quadratures q qo Double
-          quadratures0 = fill 0
+          quadratures0 = pure 0
       mapAccumM (callOutputFun (x0, xF) fp) quadratures0 (TV.tvzip vstages ks)
 
     getHellaOutputs ::
@@ -1169,7 +1169,7 @@ makeGuessSim quadratureRoots tf x00 ode guessU p =
         f t x = ode t x u
           where
             u = guessU t x
-        toCollPoint (x,u) = cat $ CollPoint (catJV x) (catJV (fill 0 :: z Double)) (catJV u)
+        toCollPoint (x,u) = cat $ CollPoint (catJV x) (catJV (pure 0 :: z Double)) (catJV u)
         integrate localTau = (x, u)
           where
             t = localTau * dt

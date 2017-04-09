@@ -15,7 +15,7 @@ import Accessors ( Lookup )
 import Dyno.View.View ( J, jfill, catJV )
 import Dyno.Nlp ( Bounds )
 import Dyno.Ocp
-import Dyno.View.Vectorize ( Vectorize, None(..), fill )
+import Dyno.View.Vectorize ( Vectorize, None(..), vpure, vapply )
 import Dyno.Solvers ( Solver(..), GType(..), ipoptSolver )
 import Dyno.NlpUtils ( solveNlp )
 import Dyno.DirectCollocation.Formulate
@@ -52,10 +52,10 @@ springOcpInputs =
   OcpPhaseInputs
   { ocpBcBnds = bcBnds
   , ocpPathCBnds = pathCBnds
-  , ocpXbnd = fill (Nothing, Nothing)
-  , ocpZbnd = fill (Nothing, Nothing)
-  , ocpUbnd = fill (Nothing, Nothing)
-  , ocpPbnd = fill (Nothing, Nothing)
+  , ocpXbnd = pure (Nothing, Nothing)
+  , ocpZbnd = pure (Nothing, Nothing)
+  , ocpUbnd = pure (Nothing, Nothing)
+  , ocpPbnd = pure (Nothing, Nothing)
   , ocpTbnd = (Just 4, Just 4)
   , ocpFixedP = None
   }
@@ -94,11 +94,19 @@ data SpringBc a =
   , bcXF :: SpringX a
   } deriving (Functor, Generic, Generic1)
 data SpringPathC a = SpringPathC a deriving (Functor, Generic, Generic1)
+
+instance Applicative SpringX where {pure = vpure; (<*>) = vapply}
+instance Applicative SpringU where {pure = vpure; (<*>) = vapply}
+instance Applicative SpringO where {pure = vpure; (<*>) = vapply}
+instance Applicative SpringBc where {pure = vpure; (<*>) = vapply}
+instance Applicative SpringPathC where {pure = vpure; (<*>) = vapply}
+
 instance Vectorize SpringX
 instance Vectorize SpringU
 instance Vectorize SpringO
 instance Vectorize SpringBc
 instance Vectorize SpringPathC
+
 instance Lookup a => Lookup (SpringX a)
 instance Lookup a => Lookup (SpringU a)
 instance Lookup a => Lookup (SpringO a)

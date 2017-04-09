@@ -13,7 +13,7 @@ import Data.Vector ( Vector )
 import Accessors ( Lookup )
 import Linear ( Additive(..) )
 
-import Dyno.View.Vectorize ( Vectorize, None(..), fill, vapply )
+import Dyno.View.Vectorize ( Vectorize, None(..), vpure, vapply )
 import Dyno.View.View ( J, jfill, catJV )
 import Dyno.Nlp ( NlpOut(..), Bounds )
 import Dyno.Ocp
@@ -60,10 +60,10 @@ rocketOcpInputs =
               , xMass = (Just 0.01, Nothing)
               , xThrust = (Just (-200), Just 200)
               }
-  , ocpZbnd = fill (Nothing, Nothing)
+  , ocpZbnd = pure (Nothing, Nothing)
   , ocpUbnd = RocketU
               { uThrustDot = (Just (-100), Just 100) }
-  , ocpPbnd = fill (Nothing, Nothing)
+  , ocpPbnd = pure (Nothing, Nothing)
   , ocpTbnd = (Just 4, Just 4)
   , ocpFixedP = None
   }
@@ -103,36 +103,29 @@ data RocketBc a =
   , bcXF :: RocketX a
   } deriving (Functor, Generic, Generic1)
 data RocketPathC a = RocketPathC a deriving (Functor, Generic, Generic1)
+
 instance Vectorize RocketX
 instance Vectorize RocketU
 instance Vectorize RocketO
 instance Vectorize RocketBc
 instance Vectorize RocketPathC
+
 instance Lookup a => Lookup (RocketX a)
 instance Lookup a => Lookup (RocketU a)
 instance Lookup a => Lookup (RocketO a)
 instance Lookup a => Lookup (RocketBc a)
 instance Lookup a => Lookup (RocketPathC a)
-instance Applicative RocketX where
-  pure = fill
-  (<*>) = vapply
-instance Additive RocketX where
-  zero = fill 0
-instance Applicative RocketU where
-  pure = fill
-  (<*>) = vapply
-instance Additive RocketU where
-  zero = fill 0
-instance Applicative RocketPathC where
-  pure = fill
-  (<*>) = vapply
-instance Additive RocketPathC where
-  zero = fill 0
-instance Applicative RocketBc where
-  pure = fill
-  (<*>) = vapply
-instance Additive RocketBc where
-  zero = fill 0
+
+instance Applicative RocketX where {pure = vpure; (<*>) = vapply}
+instance Applicative RocketU where {pure = vpure; (<*>) = vapply}
+instance Applicative RocketO where {pure = vpure; (<*>) = vapply}
+instance Applicative RocketPathC where {pure = vpure; (<*>) = vapply}
+instance Applicative RocketBc where {pure = vpure; (<*>) = vapply}
+
+instance Additive RocketX where zero = pure 0
+instance Additive RocketU where zero = pure 0
+instance Additive RocketPathC where zero = pure 0
+instance Additive RocketBc where zero = pure 0
 
 dae :: Floating a
        => RocketX a -> RocketX a -> None a -> RocketU a -> None a -> None a -> a

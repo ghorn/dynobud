@@ -41,7 +41,7 @@ import Casadi.Viewable ( Viewable )
 
 import Dyno.View.Unsafe ( M(UnsafeM), mkM )
 import Dyno.TypeVecs ( Vec )
-import Dyno.View.Vectorize ( Vectorize(..), Id, (:.), fill )
+import Dyno.View.Vectorize ( Vectorize(..), Id, (:.) )
 import Dyno.View.View ( View(..), S, J, JV, JTuple, JTriple, JQuad )
 import Dyno.View.JVec ( JVec )
 import Dyno.View.M
@@ -102,7 +102,7 @@ instance (View f, View g, CMatrix a) => Arbitrary (M f g a) where
           ]
 
 instance (Arbitrary a, KnownNat n) => Arbitrary (Vec n a) where
-  arbitrary = T.sequence (fill arbitrary)
+  arbitrary = T.sequence (pure arbitrary)
 
 evalMX :: MX -> DM
 evalMX x = unsafePerformIO $ do

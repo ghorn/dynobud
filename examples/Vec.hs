@@ -21,6 +21,9 @@ import Dyno.TypeVecs
 data Params a = Params a a deriving (Functor, Generic1, Show)
 data X n a = X (Vec n (Params a)) a deriving (Functor, Generic1, Show)
 
+instance Applicative Params where {pure = vpure; (<*>) = vapply}
+instance KnownNat n => Applicative (X n) where {pure = vpure; (<*>) = vapply}
+
 instance Vectorize Params
 instance KnownNat n => Vectorize (X n)
 

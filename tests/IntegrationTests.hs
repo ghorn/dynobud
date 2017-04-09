@@ -26,7 +26,7 @@ import Test.Framework ( Test, testGroup )
 import Test.Framework.Providers.HUnit ( testCase )
 import Linear ( Additive(..) )
 
-import Dyno.View.Vectorize ( Vectorize(..), None(..), devectorize, fill, vapply )
+import Dyno.View.Vectorize ( Vectorize(..), None(..), devectorize, vpure, vapply )
 import Dyno.View.View ( View(..), J, splitJV )
 import Dyno.Solvers
 import Dyno.Nlp ( NlpOut(..) )
@@ -44,11 +44,11 @@ data PendP a = PendP a deriving (Functor, Generic, Generic1, Show)
 instance Vectorize PendX
 instance Vectorize PendP
 
-instance Applicative PendX where
-  pure = fill
-  (<*>) = vapply
+instance Applicative PendX where {pure = vpure; (<*>) = vapply}
+instance Applicative PendP where {pure = vpure; (<*>) = vapply}
+
 instance Additive PendX where
-  zero = fill 0
+  zero = pure 0
 
 over :: Vectorize f => (a -> a -> a) -> f a -> f a -> f a
 over f x y = devectorize $ V.zipWith f (vectorize x) (vectorize y)
@@ -109,7 +109,7 @@ runIntegration _ _ dirCollOpts ode x0 p tf = do
         OcpPhaseInputs
         { ocpPathCBnds = None
         , ocpBcBnds =  fmap (\x -> (Just x, Just x)) x0
-        , ocpXbnd = fill (Nothing, Nothing)
+        , ocpXbnd = pure (Nothing, Nothing)
         , ocpUbnd = None
         , ocpZbnd = None
         , ocpPbnd = fmap (\x -> (Just x, Just x)) p

@@ -46,6 +46,10 @@ import Dyno.View.Vectorize ( Vectorize )
 import Dyno.View.View ( View, S, J, JV )
 
 newtype Switch f a = UnsafeSwitch a deriving (Functor, Foldable, Traversable, Eq, Ord, Generic, Generic1, Show)
+-- | This is why it's called UnsafeSwitch
+instance Applicative (Switch f) where
+  pure = UnsafeSwitch
+  UnsafeSwitch f <*> UnsafeSwitch x = UnsafeSwitch (f x)
 instance Vectorize (Switch f)
 instance Binary a => Binary (Switch f a)
 instance ToJSON a => ToJSON (Switch f a)
