@@ -49,6 +49,8 @@ addons:
     - gfortran-4.8
     - git
     - cmake
+    - libzmq3
+    - libzmq3-dev
 # blocked by https://github.com/travis-ci/apt-source-whitelist/issues/149
 #            https://github.com/travis-ci/apt-source-whitelist/pull/150
 #    - libzmq3-dev=4.0.5-1chl1~precise1
