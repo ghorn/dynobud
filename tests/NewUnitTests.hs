@@ -23,16 +23,16 @@ main = defaultMainWithOpts tests opts
 
 tests :: [Test]
 tests =
-  [ interpolantTests
-  , conditionalTests
-  , fittingTests
+  [ fittingTests
   , functionTests
   , integrationTests
   , linearizeTests
+  , conditionalTests
   , mapTests
   , quadratureTests
   , vectorizeTests
   , viewTests
+  , interpolantTests
   ]
 
 opts :: RunnerOptions' Maybe
