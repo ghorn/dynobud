@@ -61,7 +61,7 @@ before_install:
  # ipopt / hsl
  - export IPOPT_DEFAULT_LINEAR_SOLVER=ma57
  - pushd ../../ && git clone https://github.com/casadi/testbot.git
- - pushd testbot && recipes/setup.sh && popd
+ - pushd testbot && source recipes/setup.sh && popd
  - export SLURP_OS=trusty
  - slurp hsl
  - mkdir -p /home/travis/build/casadi/testbot
