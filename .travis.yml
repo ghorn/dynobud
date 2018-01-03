@@ -60,10 +60,10 @@ before_install:
 
  # ipopt / hsl
  - export IPOPT_DEFAULT_LINEAR_SOLVER=ma57
- - export LD_LIBRARY_PATH=/home/travis/build/libhsl
  - pushd ../../ && git clone https://github.com/casadi/testbot.git
  - pushd testbot && recipes/setup.sh && popd
- - travis_retry testbot/recipes/fetch.sh libhsl.tar.gz && mkdir libhsl && tar -xvf libhsl.tar.gz -C libhsl
+ - export SLURP_OS=trusty
+ - slurp hsl
  - mkdir -p /home/travis/build/casadi/testbot
  - ls -al
  - popd
