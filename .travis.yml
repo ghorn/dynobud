@@ -4,9 +4,6 @@ language: c
 sudo: false
 
 env:
-  matrix:
-    - GHCVER=8.0.2
-
   global:
     secure: "kbkJf+ukAlZMIcbTD/jIGt6p51nkm2VERZ7jHKQ0betHPyQtBz7Ly43bge4oggRP6s9cDoobFSMendQHTuV5Kyv+BHnQTBpReryOzFMqP3Bm0ZGlZzbn+v2Z1HisDIHGK2kLk3iQyO4S8+Pc/yqbJYVf4iUxh+tUoB11/aCmE3k="
 
@@ -20,14 +17,12 @@ cache:
 addons:
   apt:
     sources:
-    - hvr-ghc
     - ubuntu-toolchain-r-test
 # blocked by https://github.com/travis-ci/apt-source-whitelist/issues/149
 #            https://github.com/travis-ci/apt-source-whitelist/pull/150
 #    - chris-lea/zeromq
 
     packages:
-    - ghc-8.0.2
     - pkg-config
     - libgmp-dev
     - libglpk-dev
@@ -62,9 +57,6 @@ before_install:
  - export PATH=$HOME/.local/bin:$PATH
  - travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
  - chmod a+x ~/.local/bin/stack
-
- # haskell deps
- - export PATH=/opt/ghc/$GHCVER/bin:$PATH
 
  # ipopt / hsl
  - export IPOPT_DEFAULT_LINEAR_SOLVER=ma57
