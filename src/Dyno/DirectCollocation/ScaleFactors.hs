@@ -89,8 +89,7 @@ summarizeScaleFactors sfs fracThreshold =
 -- | get scale factors based on the largest magnitude of each type over a trajectory
 getScaleFactors ::
   forall x z u p h c n deg r fp o q qo po
-  . ( Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize h, Vectorize c, Vectorize r
-    , Applicative x, Applicative z, Applicative u, Applicative p, Applicative h, Applicative c
+  . ( Vectorize x, Vectorize z, Vectorize u, Vectorize p, Vectorize h, Vectorize c
     , Lookup (x String), Lookup (z String), Lookup (u String), Lookup (p String)
     , Lookup (h String), Lookup (c String)
     , KnownNat n, KnownNat deg

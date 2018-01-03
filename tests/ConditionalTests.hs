@@ -84,7 +84,7 @@ symordSwitchTests =
   where
     toGroup ::
       forall a
-      . (SymOrd a, Eq a, Fractional a, Show a)
+      . (Eq a, Fractional a, Show a)
       => Proxy a -> String -> (a -> a -> Switch Bool a) -> [(Double, Double, Bool)] -> Test
     toGroup _ opName op tests =
       testGroup ("(" ++ opName ++ ")")
@@ -95,7 +95,7 @@ symordSwitchTests =
 
 test_symord_switch ::
   forall a
-  . (SymOrd a, Eq a, Fractional a, Show a)
+  . (Eq a, Fractional a, Show a)
   => Proxy a -> (a -> a -> Switch Bool a) -> a -> a -> Bool -> HUnit.Assertion
 test_symord_switch _ op x y expectedBool = HUnit.assertEqual "" expectedSwitch actualSwitch
   where

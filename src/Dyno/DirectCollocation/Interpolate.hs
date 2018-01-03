@@ -131,7 +131,7 @@ interpolateTraj taus0 traj0 roots1 = traj0 { ctStages = cat (JVec (fmap cat stag
 interpolateConstraints ::
   forall x p r c h n0 n1 deg0 deg1
   . ( KnownNat n0, KnownNat n1, KnownNat deg0, KnownNat deg1
-    , Vectorize x, Vectorize p, Vectorize r, Vectorize c, Vectorize h
+    , Vectorize x, Vectorize p, Vectorize r, Vectorize h
     )
   => Vec deg0 Double
   -> CollOcpConstraints x p r c h n0 deg0 (V.Vector Double)

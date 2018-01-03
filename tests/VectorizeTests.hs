@@ -178,7 +178,7 @@ prop_vlengthEqLengthOfPure (Vectorizes _ _ p) = vlengthEqLengthOfPure p
 
 transposeUnTranspose ::
   forall n m
-  . (Eq (Vec n (Vec m Int)), KnownNat n, KnownNat m)
+  . (KnownNat n, KnownNat m)
   => Proxy n -> Proxy m -> Bool
 transposeUnTranspose _ _ = x0 == x2
   where

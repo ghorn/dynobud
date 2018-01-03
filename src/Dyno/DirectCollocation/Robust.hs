@@ -348,7 +348,7 @@ propOneCov c2d (dsx1_dsx0 :*: dsx1_dsw0 :*: p0 :*: qs :*: h) = fromMat p1
 
 sensitivityStageFunction ::
   forall x z u p sx sz sw deg sr
-  . (KnownNat deg, View x, View z, View u, View p, View sx, View sz, View sw, View sr)
+  . (KnownNat deg, View sx, View sz, View sw, View sr)
   => (ErrorInD sx sw sz deg MX -> ErrorIn0 x z u p deg MX
       -> M (ErrorOut sr sx deg) (ErrorInD sx sw sz deg) MX)
   -> (S :*: J p :*: J (JVec deg (JV Id)) :*: J x :*: J (JVec deg (CollPoint x z u))) MX

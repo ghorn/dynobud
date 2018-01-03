@@ -178,7 +178,7 @@ tvunzip5 v = (devectorize v1, devectorize v2, devectorize v3, devectorize v4, de
   where
     (v1,v2,v3,v4,v5) = V.unzip5 (unVec v)
 
-tvhead :: KnownNat n => Vec n a -> a
+tvhead :: Vec n a -> a
 tvhead x = case V.length v of
   0 -> error "tvhead: empty"
   _ -> V.head v
@@ -192,7 +192,7 @@ tvtail x = case V.length v of
   where
     v = unVec x
 
-tvlast :: KnownNat n => Vec n a -> a
+tvlast :: Vec n a -> a
 tvlast x = case V.length v of
   0 -> error "tvlast: empty"
   _ -> V.last v

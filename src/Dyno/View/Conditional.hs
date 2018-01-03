@@ -200,7 +200,7 @@ cmNot (UnsafeSwitch x) = UnsafeSwitch $ case mkM' (C.cnot (unM x)) of
 
 cmConditional ::
   forall f b a
-  . (Enum b, Bounded b, Show b, Vectorize f, C.CMatrix a)
+  . (Enum b, Bounded b, Vectorize f, C.CMatrix a)
   => Bool -> Switch b (S a) -> (b -> f (S a)) -> f (S a)
 cmConditional shortCircuit sw handleAnyCase =
   vsplit $ cmConditional' shortCircuit sw (vcat . handleAnyCase)
@@ -208,7 +208,7 @@ cmConditional shortCircuit sw handleAnyCase =
 
 cmConditional' ::
   forall f0 f1 b a
-  . (Enum b, Bounded b, Show b, View f0, View f1, C.CMatrix a)
+  . (Enum b, Bounded b, View f0, View f1, C.CMatrix a)
   => Bool -> Switch b (S a) -> (b -> M f0 f1 a) -> M f0 f1 a
 cmConditional' shortCircuit (UnsafeSwitch sw) handleAnyCase =
   case mkM' output of
@@ -228,7 +228,7 @@ cmConditional' shortCircuit (UnsafeSwitch sw) handleAnyCase =
 {-# NOINLINE functionConditional #-}
 functionConditional ::
   forall f g b
-  . (Enum b, Bounded b, Show b, Scheme f, Scheme g)
+  . (Enum b, Bounded b, Scheme f, Scheme g)
   => (b -> Fun f g) -> Fun (J (JV (Switch b)) :*: f) g
 functionConditional handleAnyCase = unsafePerformIO $ do
   let functions = map handleAnyCase orderKeys :: [Fun f g]

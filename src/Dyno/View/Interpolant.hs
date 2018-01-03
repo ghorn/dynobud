@@ -29,7 +29,7 @@ interpolant1 name solver gridAndValues opts = case checkFunDimensions fun of
 interpolant2 ::
   forall f0 f1
   . ( Vectorize f0, Traversable f0
-    , Vectorize f1, Applicative f1
+    , Vectorize f1
     )
   => String -> String
   -> f0 Double -> f1 Double
@@ -54,8 +54,8 @@ interpolant2 name solver grid0 grid1 values0 opts = case checkFunDimensions fun 
 interpolant3 ::
   forall f0 f1 f2
   . ( Vectorize f0, Traversable f0
-    , Vectorize f1, Applicative f1, Traversable f1
-    , Vectorize f2, Applicative f2
+    , Vectorize f1, Traversable f1
+    , Vectorize f2
     )
   => String -> String
   -> f0 Double -> f1 Double -> f2 Double
@@ -92,8 +92,8 @@ interpolant3 name solver grid0 grid1 grid2 values0 opts = case checkFunDimension
 interpolant4 ::
   forall f0 f1 f2 f3
   . ( Vectorize f0, Traversable f0
-    , Vectorize f1, Applicative f1, Traversable f1
-    , Vectorize f2, Applicative f2, Traversable f2
+    , Vectorize f1, Traversable f1
+    , Vectorize f2, Traversable f2
     , Vectorize f3
     )
   => String -> String

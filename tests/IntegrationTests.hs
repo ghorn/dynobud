@@ -199,7 +199,7 @@ integrationTests =
 
 compareIntegration ::
   forall x p n deg
-  . (Vectorize x, Vectorize p, Additive x, KnownNat n, KnownNat deg)
+  . (Vectorize x, Vectorize p, KnownNat n, KnownNat deg)
   => Proxy n -> Proxy deg
   -> DirCollOptions
   -> (forall a . Floating a => x a -> p a -> a -> x a)

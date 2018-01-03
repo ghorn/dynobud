@@ -18,8 +18,9 @@ import Data.Proxy ( Proxy(..) )
 import Data.Vector ( Vector )
 import qualified Data.Foldable as F
 
-import Casadi.SX ( SX )
+import Casadi.Matrix ( CMatrix )
 import Casadi.MX ( MX )
+import Casadi.SX ( SX )
 import Casadi.Viewable ( Viewable )
 
 import Dyno.View.View ( View(..), J, S, JV, JTuple(..), splitJV, catJV, jfill, fmapJ )
@@ -69,7 +70,8 @@ instance (Vectorize x, Vectorize r, KnownNat n, KnownNat deg)
 
 
 -- todo: code duplication
-dot :: forall x deg a b. (Fractional (J x a), Real b, KnownNat deg) => Vec deg b -> Vec deg (J x a) -> J x a
+dot :: forall x deg a b. (View x, CMatrix a, Real b, KnownNat deg)
+    => Vec deg b -> Vec deg (J x a) -> J x a
 dot cks xs = F.sum $ TV.unVec elemwise
   where
     elemwise :: Vec deg (J x a)
@@ -80,12 +82,13 @@ dot cks xs = F.sum $ TV.unVec elemwise
 
 
 -- todo: code duplication
-interpolateXDots' :: (Real b, Fractional (J x a), KnownNat deg) => Vec deg (Vec deg b) -> Vec deg (J x a) -> Vec deg (J x a)
+interpolateXDots' :: (Real b, View x, CMatrix a, KnownNat deg)
+                  => Vec deg (Vec deg b) -> Vec deg (J x a) -> Vec deg (J x a)
 interpolateXDots' cjks xs = fmap (`dot` xs) cjks
 
 interpolateXDots ::
   forall b deg x a
-  . (Real b, KnownNat deg, Fractional (J x a))
+  . (Real b, KnownNat deg, View x, CMatrix a)
   => Vec (deg + 1) (Vec (deg + 1) b)
   -> Vec (deg + 1) (J x a)
   -> Vec deg (J x a)

@@ -64,7 +64,7 @@ data Err a =
 
 summarizeAccuracy ::
   forall x n
-  . (Vectorize x, Lookup (x Double), KnownNat n)
+  . (Vectorize x, Lookup (x Double))
   => Checks x n -> String
 summarizeAccuracy (Checks _ worstStageMismatch trajMismatch) =
   unlines $

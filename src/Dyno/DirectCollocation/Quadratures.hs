@@ -17,6 +17,7 @@ import GHC.Generics ( Generic )
 import GHC.TypeLits ( KnownNat, natVal )
 import GHC.TypeLits.Witnesses
 
+import Casadi.Matrix ( CMatrix )
 import Data.Aeson ( FromJSON, ToJSON )
 import Data.Proxy ( Proxy(..) )
 import qualified Data.Vector as V
@@ -25,7 +26,7 @@ import Data.Binary ( Binary )
 
 import JacobiRoots ( shiftedLegendreRoots, shiftedRadauRoots )
 
-import Dyno.View.View ( J )
+import Dyno.View.View ( View, J )
 import Dyno.TypeVecs ( Vec )
 import Dyno.View.Vectorize ( devectorize )
 import qualified Dyno.TypeVecs as TV
@@ -52,7 +53,7 @@ mkTaus quadratureRoots = case taus of
 
 
 -- todo: code duplication
-dot :: forall x deg a b. (Fractional (J x a), Real b, KnownNat deg) => Vec deg b -> Vec deg (J x a) -> J x a
+dot :: forall x deg a b. (View x, CMatrix a, Real b, KnownNat deg) => Vec deg b -> Vec deg (J x a) -> J x a
 dot cks xs = F.sum $ TV.unVec elemwise
   where
     elemwise :: Vec deg (J x a)
@@ -63,7 +64,7 @@ dot cks xs = F.sum $ TV.unVec elemwise
 
 -- todo: code duplication
 interpolate :: forall deg b x a
-            . (KnownNat deg, Real b, Fractional b, Fractional (J x a))
+            . (KnownNat deg, Real b, Fractional b, View x, CMatrix a)
             => Vec deg b -> J x a -> Vec deg (J x a) -> J x a
 interpolate taus x0 xs =
   withNatOp (%+) (Proxy :: Proxy deg) (Proxy :: Proxy 1) $
