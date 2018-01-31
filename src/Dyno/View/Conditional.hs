@@ -6,6 +6,7 @@
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Dyno.View.Conditional
@@ -25,6 +26,7 @@ import Control.Lens ( Lens' )
 import Control.Compose ( Id(..), unId )
 import Data.Aeson ( ToJSON, FromJSON )
 import Data.Binary ( Binary )
+import Data.Data ( Data )
 import qualified Data.Vector as V
 import Linear ( V2(..), V3(..) )
 import System.IO.Unsafe ( unsafePerformIO )
@@ -45,7 +47,7 @@ import Dyno.View.Unsafe ( mkM', unM )
 import Dyno.View.Vectorize ( Vectorize )
 import Dyno.View.View ( View, S, J, JV )
 
-newtype Switch f a = UnsafeSwitch a deriving (Functor, Foldable, Traversable, Eq, Ord, Generic, Generic1, Show)
+newtype Switch f a = UnsafeSwitch a deriving (Data, Functor, Foldable, Traversable, Eq, Ord, Generic, Generic1, Show)
 -- | This is why it's called UnsafeSwitch
 instance Applicative (Switch f) where
   pure = UnsafeSwitch
