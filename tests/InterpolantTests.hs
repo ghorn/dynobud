@@ -20,43 +20,36 @@ import qualified Test.HUnit.Base as HUnit
 import Test.Framework ( Test, testGroup )
 import Test.Framework.Providers.HUnit ( testCase )
 
---import Casadi.DM ( DM )
-import Dyno.View
+import Dyno.View ( Vectorize, Fun, J, JV, S, callV, vcountUp, catJV, splitJV, unId )
+import Dyno.View.Interpolant ( Interps(..), casadiInterps, ffiInterps )
 
-call1 :: Fun S S -> Double -> IO Double
-call1 f x = (unId . splitJV) <$> callV f (catJV (Id x))
 
-call2 :: Fun (J (JV V2)) S -> Double -> Double -> IO Double
-call2 f x0 x1 = (unId . splitJV) <$> callV f (catJV (V2 x0 x1))
-
-call3 :: Fun (J (JV V3)) S -> Double -> Double -> Double -> IO Double
-call3 f x0 x1 x2 = (unId . splitJV) <$> callV f (catJV (V3 x0 x1 x2))
-
-call4 :: Fun (J (JV V4)) S -> Double -> Double -> Double -> Double -> IO Double
-call4 f x0 x1 x2 x3 = (unId . splitJV) <$> callV f (catJV (V4 x0 x1 x2 x3))
-
-test_knots_interpolant1 :: HUnit.Assertion
-test_knots_interpolant1 = HUnit.assert $ do
+test_knots_interpolant1 :: (V.Vector (Double, Double) -> IO (Double -> IO Double))
+                        -> HUnit.Assertion
+test_knots_interpolant1 mkInterp1 = HUnit.assert $ do
   let gridAndValues = V.fromList [(1, 10), (2, 20), (3, 30)]
-      f = interpolant1 "woo" "linear" gridAndValues mempty
-  newValues <- mapM (call1 f) (fmap fst gridAndValues)
+  f <- mkInterp1 gridAndValues
+  newValues <- mapM f (fmap fst gridAndValues)
 
   return $ HUnit.assertEqual "" (fmap snd gridAndValues) newValues
 
-test_in_between_interpolant1 :: HUnit.Assertion
-test_in_between_interpolant1 = HUnit.assert $ do
+test_in_between_interpolant1 :: (V.Vector (Double, Double) -> IO (Double -> IO Double))
+                             -> HUnit.Assertion
+test_in_between_interpolant1 mkInterp1 = HUnit.assert $ do
   let gridAndValues = V.fromList [(1, 10), (2, 20), (3, 30)]
-      f = interpolant1 "woo" "linear" gridAndValues mempty
+  f <- mkInterp1 gridAndValues
 
-      expected = V.fromList [(1.5, 15), (1.7, 17), (2.5, 25), (3.2, 32)]
+  let expected = V.fromList [(1.5, 15), (1.7, 17), (2.5, 25), (3.2, 32)]
 
-  newValues <- mapM (call1 f) (fmap fst expected)
+  newValues <- mapM f (fmap fst expected)
 
   return $ HUnit.assertEqual "" (fmap snd expected) newValues
 
 
-test_knots_interpolant2 :: HUnit.Assertion
-test_knots_interpolant2 = HUnit.assert $ do
+test_knots_interpolant2 :: (V2 Double -> V3 Double -> V2 (V3 Double)
+                            -> IO (V2 Double -> IO Double))
+                        -> HUnit.Assertion
+test_knots_interpolant2 mkInterpolant = HUnit.assert $ do
   let grid0 :: V2 Double
       grid0 = V2 10 15
 
@@ -66,20 +59,23 @@ test_knots_interpolant2 = HUnit.assert $ do
       values :: V2 (V3 Double)
       values = V2 (V3 10 11 12) (V3 20 21 22)
 
-      f = interpolant2 "woo" "linear" grid0 grid1 values mempty
+  f <- mkInterpolant grid0 grid1 values
 
-      xs :: V2 (V3 Double)
+  let xs :: V2 (V3 Double)
       xs = fmap pure grid0
 
       ys :: V2 (V3 Double)
       ys = pure grid1
 
-  O newValues <- sequenceA (call2 f <$> O xs <*> O ys)
+  O newValues <- mapM f (V2 <$> O xs <*> O ys)
 
   return $ HUnit.assertEqual "" values newValues
 
-test_in_between_interpolant2 :: HUnit.Assertion
-test_in_between_interpolant2 = HUnit.assert $ do
+
+test_in_between_interpolant2 :: (V2 Double -> V3 Double -> V2 (V3 Double)
+                                -> IO (V2 Double -> IO Double))
+                             -> HUnit.Assertion
+test_in_between_interpolant2 mkInterpolant = HUnit.assert $ do
   let grid0 :: V2 Double
       grid0 = V2 10 15
 
@@ -88,17 +84,20 @@ test_in_between_interpolant2 = HUnit.assert $ do
 
       values = V2 (V3 10 11 12) (V3 20 21 22)
 
-      f = interpolant2 "woo" "linear" grid0 grid1 values mempty
+  f <- mkInterpolant grid0 grid1 values
 
-      expected = V.fromList [((12.5, 1), 15), ((15, 4), 21.5)]
+  let expected :: V.Vector (V2 Double, Double)
+      expected = V.fromList [(V2 12.5 1, 15), (V2 15 4, 21.5)]
 
-  newValues <- mapM (uncurry (call2 f)) (fmap fst expected)
+  newValues <- mapM f (fmap fst expected)
 
   return $ HUnit.assertEqual "" (fmap snd expected) newValues
 
-
-test_knots_interpolant3 :: HUnit.Assertion
-test_knots_interpolant3 = HUnit.assert $ do
+test_knots_interpolant3 :: (V2 Double -> V3 Double -> V4 Double -> V2 (V3 (V4 Double))
+                            -> IO (V3 Double -> IO Double)
+                           )
+                        -> HUnit.Assertion
+test_knots_interpolant3 mkInterpolant = HUnit.assert $ do
   let grid0 :: V2 Double
       grid0 = V2 10 15
 
@@ -114,9 +113,9 @@ test_knots_interpolant3 = HUnit.assert $ do
         (V3 (V4 1 2 3 4) (V4 5 6 7 8) (V4 9 10 11 12))
         (V3 (V4 13 14 15 16) (V4 17 18 19 20) (V4 21 22 23 34))
 
-      f = interpolant3 "woo" "linear" grid0 grid1 grid2 values mempty
+  f <- mkInterpolant grid0 grid1 grid2 values
 
-      xs :: V2 (V3 (V4 Double))
+  let xs :: V2 (V3 (V4 Double))
       xs = fmap (fmap pure) $ fmap pure grid0
 
       ys :: V2 (V3 (V4 Double))
@@ -125,7 +124,7 @@ test_knots_interpolant3 = HUnit.assert $ do
       zs :: V2 (V3 (V4 Double))
       zs = pure $ pure grid2
 
-  O (O newValues) <- sequenceA (call3 f <$> O (O xs) <*> O (O ys) <*> O (O zs))
+  O (O newValues) <- mapM f (V3 <$> O (O xs) <*> O (O ys) <*> O (O zs))
 
   return $ HUnit.assertEqual "" values newValues
 
@@ -141,8 +140,10 @@ v2345 = r
   where
     O (O (O r)) = realToFrac <$> vcountUp
 
-test_knots_interpolant4 :: HUnit.Assertion
-test_knots_interpolant4 = HUnit.assert $ do
+test_knots_interpolant4 :: (V2 Double -> V3 Double -> V4 Double -> V5 Double -> V2 (V3 (V4 (V5 Double)))
+                             -> IO (V4 Double -> IO Double))
+                        -> HUnit.Assertion
+test_knots_interpolant4 mkInterp4 = HUnit.assert $ do
   let grid0 :: V2 Double
       grid0 = V2 10 15
 
@@ -158,9 +159,9 @@ test_knots_interpolant4 = HUnit.assert $ do
       values :: V2 (V3 (V4 (V5 Double)))
       values = v2345
 
-      f = interpolant4 "woo" "linear" grid0 grid1 grid2 grid3 values mempty
+  f <- mkInterp4 grid0 grid1 grid2 grid3 values
 
-      xs :: V2 (V3 (V4 (V5 Double)))
+  let xs :: V2 (V3 (V4 (V5 Double)))
       xs = fmap (fmap (fmap pure)) $ fmap (fmap pure) $ fmap pure grid0
 
       ys :: V2 (V3 (V4 (V5 Double)))
@@ -172,18 +173,28 @@ test_knots_interpolant4 = HUnit.assert $ do
       ws :: V2 (V3 (V4 (V5 Double)))
       ws = pure $ pure $ pure grid3
 
-  O (O (O newValues)) <- sequenceA (call4 f <$> O (O (O xs)) <*> O (O (O ys)) <*> O (O (O zs)) <*> O (O (O ws)))
+  O (O (O newValues)) <- mapM f (V4 <$> O (O (O xs)) <*> O (O (O ys)) <*> O (O (O zs)) <*> O (O (O ws)))
 
   return $ HUnit.assertEqual "" values newValues
 
 
+callF :: Vectorize f => Fun (J (JV f)) S -> f Double -> IO Double
+callF f x = (unId . splitJV) <$> callV f (catJV x)
+
+
 interpolantTests :: Test
 interpolantTests =
-  testGroup "interpolant tests"
-  [ testCase "interp1 in between" test_in_between_interpolant1
-  , testCase "interp2 in between" test_in_between_interpolant2
-  , testCase "interp1 knots" test_knots_interpolant1
-  , testCase "interp2 knots" test_knots_interpolant2
-  , testCase "interp3 knots" test_knots_interpolant3
-  , testCase "interp4 knots" test_knots_interpolant4
+  testGroup "interpolant tests" $
+  [ testGroup name
+    [ testCase "interp1 in between" (test_in_between_interpolant1 mkInterp1)
+    , testCase "interp2 in between" (test_in_between_interpolant2 mkInterp2)
+    , testCase "interp1 knots" (test_knots_interpolant1 mkInterp1)
+    , testCase "interp2 knots" (test_knots_interpolant2 mkInterp2)
+    , testCase "interp3 knots" (test_knots_interpolant3 mkInterp3)
+    , testCase "interp4 knots" (test_knots_interpolant4 mkInterp4)
+    ]
+  | (name, Interps mkInterp1 mkInterp2 mkInterp3 mkInterp4) <-
+      [ ("casadi", casadiInterps callF)
+      , ("ffi", ffiInterps)
+      ]
   ]
