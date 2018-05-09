@@ -2,6 +2,9 @@
 // NOLINT(legal/copyright)
 // SYMBOL "interpn"
 //template<typename double>
+#ifdef __cplusplus
+extern "C"
+#endif  // __cplusplus
 void casadi_interpn(double* res, casadi_int ndim, const double* grid, const casadi_int* offset, const double* values, const double* x, const casadi_int* lookup_mode, casadi_int m, casadi_int* iw, double* w) { // NOLINT(whitespace/line_length)
   // Work vectors
   double* alpha;

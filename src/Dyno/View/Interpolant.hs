@@ -6,17 +6,23 @@
 
 module Dyno.View.Interpolant
        ( Interpolant(..)
+         -- * FFI
+       , CInterpolant(..)
+       , newCInterpolant
+       , evalCInterpolant
        ) where
 
 import Control.Monad ( void, when )
 import Data.List ( intercalate )
 import Data.Map ( Map )
-import Data.Int ( Int32 )
+import Data.Int ( Int8, Int64 )
 import qualified Data.Vector as V
+import qualified Data.Vector.Storable as SV
+import qualified Data.Vector.Storable.Mutable as SVM
+import Data.Word ( Word64 )
 import Foreign.C.String
 import Foreign.C.Types
-import Foreign.ForeignPtr ( ForeignPtr, newForeignPtr, withForeignPtr )
-import Foreign.Ptr ( FunPtr, Ptr )
+import Foreign.Ptr ( Ptr )
 import Foreign.Marshal.Alloc ( free )
 import Foreign.Marshal.Array ( mallocArray, newArray, peekArray, withArray )
 import Linear ( V2(..), V3(..), V4(..) )
@@ -32,20 +38,32 @@ import Dyno.View.Vectorize ( Vectorize(vectorize, devectorize') )
 import Dyno.View.View ( J, JV, S )
 import Dyno.View.M ( vcat, vsplit )
 
-data RawInterpolant
 foreign import ccall unsafe "interpolant.hpp new_interpolant" c_newInterpolant
-  :: Ptr (Ptr CDouble) -> Int32 -> Ptr Int32 -> Ptr CDouble -> Int32 -> CString -> IO (Ptr RawInterpolant)
+  :: Ptr (Ptr CDouble) -> Int64 -> Ptr Int64 -> Int64 -> CString
+  -> Ptr CDouble -> Word64
+  -> Ptr Int64 -> Word64
+  -> Ptr Int64 -> Word64
+  -> IO Int8
 
-foreign import ccall unsafe "interpolant.hpp eval_interpolant" c_evalInterpolant
-  :: Ptr RawInterpolant -> Ptr CDouble -> Ptr CDouble -> IO ()
+foreign import ccall unsafe "casadi_interpn" c_casadiInterpn
+  :: Ptr CDouble -> Int64 -> Ptr CDouble -> Ptr Int64 -> Ptr CDouble
+  -> Ptr CDouble -> Ptr Int64 -> Int64 -> Ptr Int64 -> Ptr CDouble
+  -> IO ()
 
-foreign import ccall unsafe "interpolant.hpp &delete_interpolant" c_deleteInterpolant
-  :: FunPtr (Ptr RawInterpolant-> IO ())
+data CInterpolant
+  = CInterpolant
+    { ciNDims :: Int
+    , ciNOutputs :: Int
+    , ciGrid :: SV.Vector CDouble
+    , ciOffset :: SV.Vector Int64
+    , ciValues :: SV.Vector CDouble
+    , ciLookupModes :: SV.Vector Int64
+    , ciIW :: SVM.IOVector Int64
+    , ciW :: SVM.IOVector CDouble
+    }
 
-data CInterpolant = CInterpolant Int Int (ForeignPtr RawInterpolant)
-
-newInterpolant :: String -> [[Double]] -> [Double] -> IO CInterpolant
-newInterpolant lookupMode grid values = do
+newCInterpolant :: String -> [[Double]] -> [Double] -> IO CInterpolant
+newCInterpolant lookupMode grid values = do
   let ndims = length grid
       gridLengths = map length grid
       nvalues = length values
@@ -66,31 +84,69 @@ newInterpolant lookupMode grid values = do
 
   gridPtrs <- mapM (newArray . map realToFrac) grid :: IO [Ptr CDouble]
   gridPtr <- newArray gridPtrs :: IO (Ptr (Ptr CDouble))
-  gridLengthsPtr <- newArray (map fromIntegral gridLengths) :: IO (Ptr Int32)
-  valuesPtr <- newArray (map realToFrac values) :: IO (Ptr CDouble)
-  raw <- withCString lookupMode $
-         c_newInterpolant gridPtr (fromIntegral ndims) gridLengthsPtr valuesPtr (fromIntegral nvalues)
+  gridLengthsPtr <- newArray (map fromIntegral gridLengths) :: IO (Ptr Int64)
+
+  stackedGridMut <- SVM.new (sum gridLengths) :: IO (SVM.IOVector CDouble)
+  offsetMut <- SVM.new (ndims + 1) :: IO (SVM.IOVector Int64)
+  lookupModesMut <- SVM.new ndims :: IO (SVM.IOVector Int64)
+
+  ret <-
+    SVM.unsafeWith stackedGridMut $ \stackedGridPtr ->
+    SVM.unsafeWith offsetMut $ \offsetPtr ->
+    SVM.unsafeWith lookupModesMut $ \lookupModesPtr ->
+    withCString lookupMode $ \lookupModePtr ->
+    c_newInterpolant gridPtr (fromIntegral ndims) gridLengthsPtr (fromIntegral nvalues) lookupModePtr
+    stackedGridPtr (fromIntegral (SVM.length stackedGridMut))
+    offsetPtr (fromIntegral (SVM.length offsetMut))
+    lookupModesPtr (fromIntegral (SVM.length lookupModesMut))
+
+  stackedGrid <- SV.freeze stackedGridMut
+  offset <- SV.freeze offsetMut
+  lookupModes <- SV.freeze lookupModesMut
+
   free gridLengthsPtr
-  free valuesPtr
   free gridPtr
   mapM_ free gridPtrs
 
-  CInterpolant ndims noutputs <$> newForeignPtr c_deleteInterpolant raw
+  iw <- SVM.new (2 * ndims)
+  w <- SVM.new ndims
 
-evalInterpolant :: CInterpolant -> [Double] -> IO [Double]
-evalInterpolant (CInterpolant ndims noutputs raw) inputs
-  | length inputs /= ndims =
+  if ret /= 0
+    then error "interpolant creation failed!"
+    else return
+           CInterpolant
+           { ciNDims = ndims
+           , ciNOutputs = noutputs
+           , ciGrid = stackedGrid
+           , ciOffset = offset
+           , ciValues = SV.fromList (fmap realToFrac values)
+           , ciLookupModes = lookupModes
+           , ciIW = iw
+           , ciW = w
+           }
+
+evalCInterpolant :: CInterpolant -> [Double] -> IO [Double]
+evalCInterpolant cinterpolant inputs
+  | length inputs /= ciNDims cinterpolant =
       error $
       intercalate "\n"
       [ "interpolant called with wrong number of values"
-      , "expected dimension: " ++ show ndims
+      , "expected dimension: " ++ show (ciNDims cinterpolant)
       , "given dimensions: " ++ show (length inputs)
       ]
   | otherwise = do
+      let noutputs = ciNOutputs cinterpolant
       outputPtr <- mallocArray noutputs :: IO (Ptr CDouble)
       withArray (map realToFrac inputs) $ \inputPtr ->
-        withForeignPtr raw $ \obj ->
-        c_evalInterpolant obj inputPtr outputPtr
+        SV.unsafeWith (ciGrid cinterpolant) $ \gridPtr ->
+        SV.unsafeWith (ciOffset cinterpolant) $ \offsetPtr ->
+        SV.unsafeWith (ciLookupModes cinterpolant) $ \lookupModesPtr ->
+        SV.unsafeWith (ciValues cinterpolant) $ \valuesPtr ->
+        SVM.unsafeWith (ciIW cinterpolant) $ \iwPtr ->
+        SVM.unsafeWith (ciW cinterpolant) $ \wPtr ->
+        c_casadiInterpn outputPtr (fromIntegral (ciNDims cinterpolant))
+          gridPtr offsetPtr valuesPtr
+          inputPtr lookupModesPtr (fromIntegral noutputs) iwPtr wPtr
       ret <- peekArray noutputs outputPtr :: IO [CDouble]
       free outputPtr
       return (map realToFrac ret)
@@ -327,11 +383,11 @@ makeCInterpolant1 :: forall g .
 makeCInterpolant1 lookupName gridAndValues = do
   let (grid, values) = V.unzip gridAndValues
 
-  interpolant <- newInterpolant lookupName [V.toList grid] (V.toList (concatValues values))
+  interpolant <- newCInterpolant lookupName [V.toList grid] (V.toList (concatValues values))
   let {-# NOINLINE interpolate #-}
       interpolate :: Double -> g Double
       interpolate x = unsafePerformIO $ do
-        ret <- evalInterpolant interpolant [x]
+        ret <- evalCInterpolant interpolant [x]
         case devectorize' (V.fromList ret) of
           Right r -> return r
           Left err -> error $ "interpolant1 error devectorizing outputs: " ++ err
@@ -354,11 +410,11 @@ makeCInterpolant2 lookupName grid0 grid1 values0 = do
   let grid :: V.Vector (V.Vector Double)
       vectorizedValues :: V.Vector Double
       (grid, vectorizedValues) = arrangeValues2 grid0 grid1 values0
-  interpolant <- newInterpolant lookupName (map V.toList (V.toList grid)) (V.toList vectorizedValues)
+  interpolant <- newCInterpolant lookupName (map V.toList (V.toList grid)) (V.toList vectorizedValues)
   let {-# NOINLINE interpolate #-}
       interpolate :: V2 Double -> g Double
       interpolate (V2 x y) = unsafePerformIO $ do
-        ret <- evalInterpolant interpolant [x, y]
+        ret <- evalCInterpolant interpolant [x, y]
         case devectorize' (V.fromList ret) of
           Right r -> return r
           Left err -> error $ "interpolant2 error devectorizing outputs: " ++ err
@@ -381,11 +437,11 @@ makeCInterpolant3 lookupName grid0 grid1 grid2 values0 = do
   let grid :: V.Vector (V.Vector Double)
       vectorizedValues :: V.Vector Double
       (grid, vectorizedValues) = arrangeValues3 grid0 grid1 grid2 values0
-  interpolant <- newInterpolant lookupName (map V.toList (V.toList grid)) (V.toList vectorizedValues)
+  interpolant <- newCInterpolant lookupName (map V.toList (V.toList grid)) (V.toList vectorizedValues)
   let {-# NOINLINE interpolate #-}
       interpolate :: V3 Double -> g Double
       interpolate (V3 x y z) = unsafePerformIO $ do
-        ret <- evalInterpolant interpolant [x, y, z]
+        ret <- evalCInterpolant interpolant [x, y, z]
         case devectorize' (V.fromList ret) of
           Right r -> return r
           Left err -> error $ "interpolant3 error devectorizing outputs: " ++ err
@@ -410,11 +466,11 @@ makeCInterpolant4 lookupName grid0 grid1 grid2 grid3 values0 = do
   let grid :: V.Vector (V.Vector Double)
       vectorizedValues :: V.Vector Double
       (grid, vectorizedValues) = arrangeValues4 grid0 grid1 grid2 grid3 values0
-  interpolant <- newInterpolant lookupName (map V.toList (V.toList grid)) (V.toList vectorizedValues)
+  interpolant <- newCInterpolant lookupName (map V.toList (V.toList grid)) (V.toList vectorizedValues)
   let {-# NOINLINE interpolate #-}
       interpolate :: V4 Double -> g Double
       interpolate (V4 x y z w) = unsafePerformIO $ do
-        ret <- evalInterpolant interpolant [x, y, z, w]
+        ret <- evalCInterpolant interpolant [x, y, z, w]
         case devectorize' (V.fromList ret) of
           Right r -> return r
           Left err -> error $ "interpolant4 error devectorizing outputs: " ++ err
