@@ -10,6 +10,9 @@ module Dyno.View.Interpolant
        , CInterpolant(..)
        , newCInterpolant
        , evalCInterpolant
+       , arrangeValues2
+       , arrangeValues3
+       , arrangeValues4
        ) where
 
 import Control.Monad ( void, when )
