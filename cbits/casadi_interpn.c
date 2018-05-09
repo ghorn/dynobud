@@ -91,7 +91,7 @@ static void casadi_interpn_weights(int64_t ndim, const double* grid, const int64
   }
 }
 
-void casadi_interpn_interpolate(double* res, int64_t ndim, const int64_t* offset, const double* values, const double* alpha, const int64_t* index, const int64_t* corner, double* coeff, int64_t m) { // NOLINT(whitespace/line_length)
+static void casadi_interpn_interpolate(double* res, int64_t ndim, const int64_t* offset, const double* values, const double* alpha, const int64_t* index, const int64_t* corner, double* coeff, int64_t m) { // NOLINT(whitespace/line_length)
   double c;
   int64_t ld, i;
   // Get weight and value for corner
