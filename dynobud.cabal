@@ -103,13 +103,9 @@ library
   ghc-options:         -O2 -Wall -Werror -fwarn-redundant-constraints
   cc-options:          -Wall -Wextra
   c-sources:           cbits/interpolant.cpp
---                       cbits/casadi_fill.hpp
---                       cbits/casadi_flip.hpp
---                       cbits/casadi_interpn.hpp
---                       cbits/casadi_interpn_interpolate.hpp
---                       cbits/casadi_interpn_weights.hpp
---                       cbits/casadi_low.hpp
+                       cbits/casadi_interpn.c
 --                       cbits/interpolant.hpp
+--                       cbits/casadi_interpn.h
 
 flag examples
     description:    build the examples

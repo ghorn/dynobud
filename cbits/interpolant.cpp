@@ -1,14 +1,6 @@
 #include "interpolant.hpp"
 
-#include "casadi_fill.hpp"
-inline void casadi_fill_casadi_int(casadi_int* x, casadi_int n, casadi_int alpha) {
-  casadi_fill(x, n, alpha);
-}
-#include "casadi_flip.hpp"
-#include "casadi_low.hpp"
-#include "casadi_interpn_weights.hpp"
-#include "casadi_interpn_interpolate.hpp"
-#include "casadi_interpn.hpp"
+#include "casadi_interpn.h"
 
 #include <iostream>
 #include <limits>
