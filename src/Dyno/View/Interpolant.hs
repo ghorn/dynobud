@@ -76,7 +76,7 @@ newCInterpolant lookupMode grid values = do
   void $ when (noutputs * gridLengthProd /= nvalues) $
     error $
     intercalate "\n"
-    [ "newInterpolant:"
+    [ "newInterpolant: noutputs * gridLengthProd /= nvalues"
     , "grid lengths: " ++ show gridLengths
     , "# values: " ++ show nvalues
     , "noutputs: " ++ show noutputs
