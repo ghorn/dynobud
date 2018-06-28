@@ -143,7 +143,14 @@ writeCField' fieldName (Right (GAData typeName0 con)) = case parseVecName typeNa
 
 primitiveName :: GAField a -> String
 primitiveName (FieldDouble _) = "double"
-primitiveName (FieldInt _   ) = "int64_t"
+primitiveName (FieldInt64 _   ) = "int64_t"
+primitiveName (FieldInt32 _   ) = "int32_t"
+primitiveName (FieldInt16 _   ) = "int16_t"
+primitiveName (FieldInt8 _   ) = "int8_t"
+primitiveName (FieldWord64 _   ) = "uint64_t"
+primitiveName (FieldWord32 _   ) = "uint32_t"
+primitiveName (FieldWord16 _   ) = "uint16_t"
+primitiveName (FieldWord8 _   ) = "uint8_t"
 primitiveName (FieldFloat _ ) = "float"
 primitiveName (FieldString _) = error "writeCField: strings can't be struct fields :("
 primitiveName FieldSorry    =
@@ -241,7 +248,14 @@ toString theData (FieldFloat f) = case show (theData ^. f) of
   "Infinity" -> "INFINITY"
   "-Infinity" -> "-INFINITY"
   r -> r
-toString theData (FieldInt f) = show (theData ^. f)
+toString theData (FieldInt64  f) = show (theData ^. f)
+toString theData (FieldInt32  f) = show (theData ^. f)
+toString theData (FieldInt16  f) = show (theData ^. f)
+toString theData (FieldInt8   f) = show (theData ^. f)
+toString theData (FieldWord64 f) = show (theData ^. f)
+toString theData (FieldWord32 f) = show (theData ^. f)
+toString theData (FieldWord16 f) = show (theData ^. f)
+toString theData (FieldWord8  f) = show (theData ^. f)
 toString _ (FieldString _) = "NAN"
 toString _ FieldSorry = "NAN"
 

@@ -90,8 +90,8 @@ library
                        binary,
                        distributive,
                        process,
-                       Plot-ho-matic >= 0.11.0.0,
-                       generic-accessors >= 0.6.0.1,
+                       Plot-ho-matic >= 0.12.2.2,
+                       generic-accessors >= 0.7.0.0,
                        time,
                        directory,
                        TypeCompose >= 0.9.12,
@@ -423,7 +423,7 @@ executable dynoplot
                        binary,
                        bytestring,
                        zeromq4-haskell,
-                       Plot-ho-matic >= 0.5.0.0,
+                       Plot-ho-matic >= 0.12.2.2,
                        cmdargs
   ghc-options:         -O2 -threaded -Wall -Werror -with-rtsopts=-T -fwarn-redundant-constraints
 

@@ -253,7 +253,14 @@ npArray str = "numpy.array(" ++ str ++ ")"
 toDub :: GATip (xzu Double) -> xzu Double -> Double
 toDub (GATipField (FieldDouble f)) = (^. f)
 toDub (GATipField (FieldFloat f)) = realToFrac . (^. f)
-toDub (GATipField (FieldInt f)) = realToFrac . (^. f)
+toDub (GATipField (FieldInt64 f)) = realToFrac . (^. f)
+toDub (GATipField (FieldInt32 f)) = realToFrac . (^. f)
+toDub (GATipField (FieldInt16 f)) = realToFrac . (^. f)
+toDub (GATipField (FieldInt8 f)) = realToFrac . (^. f)
+toDub (GATipField (FieldWord64 f)) = realToFrac . (^. f)
+toDub (GATipField (FieldWord32 f)) = realToFrac . (^. f)
+toDub (GATipField (FieldWord16 f)) = realToFrac . (^. f)
+toDub (GATipField (FieldWord8 f)) = realToFrac . (^. f)
 toDub (GATipField (FieldString _)) = const (read "NaN")
 toDub (GATipField FieldSorry) = const (read "NaN")
 toDub (GATipSimpleEnum enum) = realToFrac . eToIndex enum

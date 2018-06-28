@@ -42,12 +42,12 @@ packages:
 extra-deps: [ # casadi-bindings-3.1.0.22
             # , casadi-bindings-core-3.1.0.22
             # , casadi-bindings-internal-0.1.5.0
-              generic-accessors-0.6.0.1
+              generic-accessors-0.7.0.0
             , gtk3-0.14.8
             , gio-0.13.4.1
             , jacobi-roots-0.2.0.4
             , not-gloss-0.7.6.5
-            , Plot-ho-matic-0.11.0.0
+            , Plot-ho-matic-0.12.2.2
             , spatial-math-0.4.0.0
             , TypeCompose-0.9.12
             , vector-binary-instances-0.2.1.0

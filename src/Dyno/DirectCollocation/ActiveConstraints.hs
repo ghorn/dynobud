@@ -25,6 +25,7 @@ import Control.Lens ( (^.) )
 import Data.List ( intercalate )
 import Data.Maybe ( catMaybes )
 import qualified Data.Foldable as F
+import Data.Int ( Int64 )
 import qualified Data.Traversable as T
 import Data.Vector ( Vector )
 import Text.Printf ( printf )
@@ -56,12 +57,12 @@ instance ( Lookup (x a), Lookup (z a), Lookup (u a), Lookup (p a)
 
 summarizeActiveConstraints ::
   ( Functor x, Functor z, Functor u, Functor p, Functor h, Functor c
-  , Lookup (x Int)
-  , Lookup (z Int)
-  , Lookup (u Int)
-  , Lookup (p Int)
-  , Lookup (h Int)
-  , Lookup (c Int)
+  , Lookup (x Int64)
+  , Lookup (z Int64)
+  , Lookup (u Int64)
+  , Lookup (p Int64)
+  , Lookup (h Int64)
+  , Lookup (c Int64)
   ) => ActiveConstraints x z u p h c (Active Int) -> String
 summarizeActiveConstraints activeCons =
   unlines $ catMaybes $ map report $ flattenActiveConstraints activeCons
@@ -75,12 +76,12 @@ summarizeActiveConstraints activeCons =
 
 matlabActiveConstraints ::
   ( Functor x, Functor z, Functor u, Functor p, Functor h, Functor c
-  , Lookup (x Int)
-  , Lookup (z Int)
-  , Lookup (u Int)
-  , Lookup (p Int)
-  , Lookup (h Int)
-  , Lookup (c Int)
+  , Lookup (x Int64)
+  , Lookup (z Int64)
+  , Lookup (u Int64)
+  , Lookup (p Int64)
+  , Lookup (h Int64)
+  , Lookup (c Int64)
   ) => ActiveConstraints x z u p h c (Active Int) -> String
 matlabActiveConstraints activeCons = "{" ++ intercalate "; " cons ++ "}"
   where
@@ -92,12 +93,12 @@ matlabActiveConstraints activeCons = "{" ++ intercalate "; " cons ++ "}"
 
 pythonActiveConstraints ::
   ( Functor x, Functor z, Functor u, Functor p, Functor h, Functor c
-  , Lookup (x Int)
-  , Lookup (z Int)
-  , Lookup (u Int)
-  , Lookup (p Int)
-  , Lookup (h Int)
-  , Lookup (c Int)
+  , Lookup (x Int64)
+  , Lookup (z Int64)
+  , Lookup (u Int64)
+  , Lookup (p Int64)
+  , Lookup (h Int64)
+  , Lookup (c Int64)
   ) => ActiveConstraints x z u p h c (Active Int) -> String
 pythonActiveConstraints activeCons = "[" ++ intercalate ", " cons ++ "]"
   where
@@ -111,16 +112,24 @@ pythonActiveConstraints activeCons = "[" ++ intercalate ", " cons ++ "]"
 flattenActiveConstraints ::
   forall x z u p h c .
   ( Functor x, Functor z, Functor u, Functor p, Functor h, Functor c
-  , Lookup (x Int)
-  , Lookup (z Int)
-  , Lookup (u Int)
-  , Lookup (p Int)
-  , Lookup (h Int)
-  , Lookup (c Int)
+  , Lookup (x Int64)
+  , Lookup (z Int64)
+  , Lookup (u Int64)
+  , Lookup (p Int64)
+  , Lookup (h Int64)
+  , Lookup (c Int64)
   ) => ActiveConstraints x z u p h c (Active Int) -> [([Maybe String], Active Int)]
-flattenActiveConstraints activeCons = map report $ flatten' accessors
+flattenActiveConstraints activeCons0 = map report $ flatten' accessors
   where
-    report (mnames, GATipField (FieldInt f)) = (mnames, Active (lbs ^. f) (ubs ^. f))
+    activeCons :: ActiveConstraints x z u p h c (Active Int64)
+    activeCons = (fromIntegral <$>) <$> activeCons0 -- so that FieldInt64 works
+
+    report :: ([Maybe String], GATip (ActiveConstraints x z u p h c Int64))
+           -> ([Maybe String], Active Int)
+    report (mnames, GATipField (FieldInt64  f)) =
+      ( mnames
+      , fromIntegral <$> Active (lbs ^. f) (ubs ^. f)
+      )
     report (mnames, GATipField f) =
       error $ "the 'impossible' happened, " ++
       "flattenActiveConstraints got a non-int getter " ++ show mnames ++
@@ -128,6 +137,8 @@ flattenActiveConstraints activeCons = map report $ flatten' accessors
     report (mnames, GATipSimpleEnum _) =
       error $ "the 'impossible' happened, " ++
       "flattenActiveConstraints got a SimpleEnum getter " ++ show mnames
+
+    lbs, ubs :: ActiveConstraints x z u p h c Int64
     lbs = fmap activeLower activeCons
     ubs = fmap activeUpper activeCons
 
