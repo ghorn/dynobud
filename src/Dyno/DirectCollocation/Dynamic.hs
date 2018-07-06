@@ -1,5 +1,8 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE PolyKinds #-}
 
@@ -77,7 +80,7 @@ data DynPlotPoints a = DynPlotPoints
                        (Vector (Vector (a, Vector a)))
                        (Vector (Vector (a, Vector a)))
                        (Vector (Vector (a, Vector a)))
-                     deriving Generic
+                     deriving (Generic, Functor, Foldable, Traversable)
 
 
 instance Binary a => Binary (DynPlotPoints a) -- binary used to be slower than serial by 2x on this
