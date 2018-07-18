@@ -13,7 +13,7 @@ data ArmilloParams a =
                 }
 
 -- | reasonable default parameters for armillo line search
-defaultArmilloParams :: (Fractional a, Ord a) => ArmilloParams a
+defaultArmilloParams :: Fractional a => ArmilloParams a
 defaultArmilloParams = ArmilloParams 0.01 0.6 1000
 
 -- | armillo line search with reasonable default parameters

@@ -45,6 +45,7 @@ library
                        Dyno.KalmanFilter
                        Dyno.Linearize
                        Dyno.Random
+                       Dyno.Sqp.LineSearch
                        Dyno.View
                        Dyno.View.Conditional
                        Dyno.View.Cov
