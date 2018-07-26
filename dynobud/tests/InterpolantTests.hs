@@ -26,9 +26,9 @@ import qualified Test.HUnit.Base as HUnit
 import Test.Framework ( Test, testGroup )
 import Test.Framework.Providers.HUnit ( testCase )
 
+import Dyno.Interpolant ( Interpolant(..) )
 import Dyno.View ( Vectorize, Fun, Id(..), J, JV, S, None(..)
                  , toFun, callDM, vcountUp, catJV, splitJV, unId, d2v, v2d, vcat )
-import Dyno.View.Interpolant ( Interpolant(..) )
 import Dyno.View.Unsafe ( M(UnsafeM) )
 
 overSnd :: (b -> f b) -> (a, b) -> (a, f b)

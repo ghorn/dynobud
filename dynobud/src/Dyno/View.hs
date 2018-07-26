@@ -9,7 +9,7 @@ import Dyno.View.Conditional as X
 import Dyno.View.Cov as X
 import Dyno.View.Fun as X
 import Dyno.View.HList as X
-import Dyno.View.Interpolant as X
+import Dyno.View.InterpolantOrphans ()
 import Dyno.View.JVec as X
 import Dyno.View.M as X
 import Dyno.View.MapFun as X

@@ -47,7 +47,7 @@ library
 --                       Dyno.View.CustomFunction
                        Dyno.View.Fun
                        Dyno.View.HList
-                       Dyno.View.Interpolant
+                       Dyno.View.InterpolantOrphans
                        Dyno.View.JVec
                        Dyno.View.M
                        Dyno.View.MapFun
@@ -70,6 +70,7 @@ library
                        casadi-bindings-core >= 3.1.0.22,
 --                       casadi-bindings-internal,
                        data-default-class,
+                       dynobud-interpolant,
                        dynobud-typevecs,
                        dynobud-vectorize,
                        jacobi-roots >=0.2 && <0.3,
@@ -99,10 +100,6 @@ library
   default-language:    Haskell2010
   ghc-options:         -O2 -Wall -Werror -fwarn-redundant-constraints
   cc-options:          -Wall -Wextra
-  c-sources:           cbits/interpolant.cpp
-                       cbits/casadi_interpn.c
---                       cbits/interpolant.hpp
---                       cbits/casadi_interpn.h
 
 flag examples
     description:    build the examples
@@ -519,6 +516,7 @@ test-suite unit-tests
                        Utils
   default-language:    Haskell2010
   build-depends:       dynobud,
+                       dynobud-interpolant,
                        dynobud-typevecs,
                        dynobud-vectorize,
                        QuickCheck >= 2,
