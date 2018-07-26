@@ -6,7 +6,9 @@ compiler-check: newer-minor
 
 # Local packages, usually specified by relative directory name
 packages:
-- .
+- dynobud
+- dynobud-typevecs
+- dynobud-vectorize
 
 - location:
     git: https://github.com/ghorn/casadi-bindings
