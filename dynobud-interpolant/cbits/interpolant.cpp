@@ -168,9 +168,12 @@ int8_t new_interpolant(const double * const * const user_grid_ptr,
   }
 
   // Grid must be strictly increasing
+  std::cout << "================" << std::endl;
   for (auto&& g : user_grid) {
     double last = -inf;
+    std::cout << "---------------" << std::endl;
     for (auto&& e : g) {
+      std::cout << "grid point: " << e << std::endl;
       if (std::isinf(e) || e <= last) {
         printf("Gridpoints must be finite and strictly increasing\n");
         return 1;
