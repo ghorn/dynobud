@@ -145,7 +145,7 @@ int8_t new_interpolant(const double * const * const user_grid_ptr,
 
   // Dimension at least 1
   if (user_grid.size() == 0) {
-    printf("At least one input required");
+    printf("At least one input required\n");
     return 1;
   }
 
@@ -153,17 +153,17 @@ int8_t new_interpolant(const double * const * const user_grid_ptr,
   casadi_uint nel=1;
   for (auto&& g : user_grid) {
     if (g.size() < 2) {
-      printf("Need at least two grid points for every input");
+      printf("Need at least two grid points for every input\n");
       return 1;
     }
     nel *= g.size();
   }
   if (n_values % nel != 0) {
-    printf("Inconsistent number of elements");
+    printf("Inconsistent number of elements\n");
     return 1;
   }
   if (n_values == 0) {
-    printf("Values cannot be empty");
+    printf("Values cannot be empty\n");
     return 1;
   }
 
@@ -172,7 +172,7 @@ int8_t new_interpolant(const double * const * const user_grid_ptr,
     double last = -inf;
     for (auto&& e : g) {
       if (std::isinf(e) || e <= last) {
-        printf("Gridpoints must be finite and strictly increasing");
+        printf("Gridpoints must be finite and strictly increasing\n");
         return 1;
       }
       last = e;
