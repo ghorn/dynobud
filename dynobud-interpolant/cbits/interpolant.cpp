@@ -47,17 +47,18 @@ bool is_increasing(const std::vector<T> &v) {
   return el==el; // nan -> false
 }
 
-
-bool is_equally_spaced(const std::vector<double> &v) {
-  if (v.size()<=1) return true;
-
-  double margin = (v[v.size()-1]-v[0])*1e-14;
-
-  for (casadi_uint i=2;i<v.size();++i) {
-    double ref = v[0]+(static_cast<double>(i)*(v[v.size()-1]-v[0]))/
-      static_cast<double>(v.size()-1);
-    if (abs(ref-v[i])>margin) return false;
+bool is_equally_spaced(const std::vector<double>& v) {
+  // Quick return if 2 or less entries
+  if (v.size()<=2) return true;
+  // Permitted error margin
+  // NOTE(@jaeandersson) 1e-14 good idea?
+  double margin = (v.back()-v.front())*1e-14;
+  // Make sure spacing is consistent throughout
+  double spacing = v[1]-v[0];
+  for (size_t i=2; i<v.size(); ++i) {
+    if (fabs(v[i]-v[i-1]-spacing)>margin) return false;
   }
+  // Equal if reached this point
   return true;
 }
 
