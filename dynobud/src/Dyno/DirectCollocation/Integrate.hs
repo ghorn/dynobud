@@ -4,17 +4,19 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 module Dyno.DirectCollocation.Integrate
        ( withIntegrator
        ) where
 
 import GHC.Generics ( Generic )
-import GHC.TypeLits
-import GHC.TypeLits.Witnesses
 
 import qualified Control.Concurrent as CC
 import Data.Proxy ( Proxy(..) )
+import Data.Singletons.TypeLits (KnownNat, natVal, withKnownNat, pattern SNat)
+import Data.Singletons.Prelude.Num (PNum((+)), (%+))
 import Data.Vector ( Vector )
 import qualified Data.Foldable as F
 
@@ -93,7 +95,7 @@ interpolateXDots ::
   -> Vec (deg + 1) (J x a)
   -> Vec deg (J x a)
 interpolateXDots cjks xs =
-  withNatOp (%+) (Proxy :: Proxy deg) (Proxy :: Proxy 1) $
+  withKnownNat (SNat @deg %+ SNat @1) $
   TV.tvtail $ interpolateXDots' cjks xs
 
 
@@ -164,7 +166,7 @@ withIntegrator _ _ roots initialX dae solver = do
       -- coefficients for getting xdot by lagrange interpolating polynomials
       cijs :: Vec (deg + 1) (Vec (deg + 1) Double)
       cijs =
-        withNatOp (%+) (Proxy :: Proxy deg) (Proxy :: Proxy 1) $
+        withKnownNat (SNat @deg %+ SNat @1) $
         lagrangeDerivCoeffs (0 TV.<| taus)
 
   dynFun <- flip (toFun "dynamics") mempty $ dynamicsFunction' $

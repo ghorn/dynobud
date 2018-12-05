@@ -4,6 +4,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 module Dyno.DirectCollocation.Quadratures
        ( QuadratureRoots(..)
@@ -15,11 +17,12 @@ module Dyno.DirectCollocation.Quadratures
 
 import GHC.Generics ( Generic )
 import GHC.TypeLits ( KnownNat, natVal )
-import GHC.TypeLits.Witnesses
 
 import Casadi.Matrix ( CMatrix )
 import Data.Aeson ( FromJSON, ToJSON )
 import Data.Proxy ( Proxy(..) )
+import Data.Singletons.TypeLits (withKnownNat, pattern SNat)
+import Data.Singletons.Prelude.Num ((%+))
 import qualified Data.Vector as V
 import qualified Data.Foldable as F
 import Data.Binary ( Binary )
@@ -67,7 +70,7 @@ interpolate :: forall deg b x a
             . (KnownNat deg, Real b, Fractional b, View x, CMatrix a)
             => Vec deg b -> J x a -> Vec deg (J x a) -> J x a
 interpolate taus x0 xs =
-  withNatOp (%+) (Proxy :: Proxy deg) (Proxy :: Proxy 1) $
+  withKnownNat (SNat @deg %+ SNat @1) $
   dot (TV.mkVec' xis) (x0 TV.<| xs)
   where
     xis = map (lagrangeXis (0 : F.toList taus) 1) [0..deg]

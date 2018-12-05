@@ -4,6 +4,8 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 module Dyno.DirectCollocation.Formulate
        ( CollProblem(..), CollProblem'
@@ -19,14 +21,14 @@ module Dyno.DirectCollocation.Formulate
        ) where
 
 import GHC.Generics ( Generic, Generic1 )
-import GHC.TypeLits
-import GHC.TypeLits.Witnesses
 
 import Control.Monad.State ( StateT(..), runStateT )
 import Data.Default.Class ( Default(..) )
 import qualified Data.Map as M
 import Data.Maybe ( fromMaybe )
 import Data.Proxy ( Proxy(..) )
+import Data.Singletons.TypeLits (KnownNat, natVal, withKnownNat, pattern SNat)
+import Data.Singletons.Prelude.Num (PNum((+)), (%+))
 import Data.Vector ( Vector )
 import qualified Data.Foldable as F
 import qualified Data.Traversable as T
@@ -197,7 +199,7 @@ makeCollProblem dirCollOpts ocp ocpInputs guess = do
       -- coefficients for getting xdot by lagrange interpolating polynomials
       cijs :: Vec (deg + 1) (Vec (deg + 1) Double)
       cijs =
-        withNatOp (%+) (Proxy :: Proxy deg) (Proxy :: Proxy 1) $
+        withKnownNat (SNat @deg %+ SNat @1) $
         lagrangeDerivCoeffs (0 TV.<| taus)
 
       interpolate' :: View f => (J f :*: J (JVec deg f)) MX -> J f MX
@@ -1013,7 +1015,7 @@ interpolateXDots ::
   -> Vec (deg + 1) (J x a)
   -> Vec deg (J x a)
 interpolateXDots cjks xs =
-  withNatOp (%+) (Proxy :: Proxy deg) (Proxy :: Proxy 1) $
+  withKnownNat (SNat @deg %+ SNat @1) $
   TV.tvtail $ interpolateXDots' cjks xs
 
 -- return dynamics constraints and interpolated state

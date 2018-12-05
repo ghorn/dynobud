@@ -5,6 +5,8 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 module Dyno.DirectCollocation.Robust
        ( CovarianceSensitivities(..)
@@ -16,11 +18,11 @@ module Dyno.DirectCollocation.Robust
        ) where
 
 import GHC.Generics ( Generic, Generic1 )
-import GHC.TypeLits
-import GHC.TypeLits.Witnesses
 
-import Data.Proxy ( Proxy(..) )
 import qualified Data.Foldable as F
+import Data.Proxy ( Proxy(..) )
+import Data.Singletons.TypeLits (KnownNat, natVal, withKnownNat, pattern SNat)
+import Data.Singletons.Prelude.Num (PNum((+)), (%+))
 import qualified Data.Traversable as T
 
 import Casadi.MX ( MX )
@@ -81,7 +83,7 @@ mkComputeSensitivities roots covDae = do
       -- coefficients for getting xdot by lagrange interpolating polynomials
       cijs :: Vec (deg + 1) (Vec (deg + 1) Double)
       cijs =
-        withNatOp (%+) (Proxy :: Proxy deg) (Proxy :: Proxy 1) $
+        withKnownNat (SNat @deg %+ SNat @1) $
         lagrangeDerivCoeffs (0 TV.<| taus)
 
   errorDynFun <- flip (toFun "error dynamics") mempty $ errorDynamicsFunction $
@@ -227,7 +229,7 @@ interpolateXDots ::
   -> Vec (deg + 1) (J x a)
   -> Vec deg (J x a)
 interpolateXDots cjks xs =
-  withNatOp (%+) (Proxy :: Proxy deg) (Proxy :: Proxy 1) $
+  withKnownNat (SNat @deg %+ SNat @1) $
   TV.tvtail $ interpolateXDots' cjks xs
 
 

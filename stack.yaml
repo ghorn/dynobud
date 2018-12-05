@@ -1,6 +1,6 @@
 # For more information, see: https://github.com/commercialhaskell/stack/blob/release/doc/yaml_configuration.md
 
-resolver: lts-10.2
+resolver: lts-12.21
 
 compiler-check: newer-minor
 
@@ -46,13 +46,12 @@ extra-deps: [ # casadi-bindings-3.1.0.22
             # , casadi-bindings-core-3.1.0.22
             # , casadi-bindings-internal-0.1.5.0
               generic-accessors-0.7.0.0
-            , gtk3-0.14.8
-            , gio-0.13.4.1
+            , Chart-1.9
+            , Chart-cairo-1.9
             , jacobi-roots-0.2.0.4
             , not-gloss-0.7.6.5
             , Plot-ho-matic-0.12.2.2
             , spatial-math-0.4.0.0
-            , TypeCompose-0.9.12
             , vector-binary-instances-0.2.1.0
             ]
 
