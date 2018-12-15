@@ -11,14 +11,15 @@ packages:
 - dynobud-typevecs
 - dynobud-vectorize
 
-- location:
-    git: https://github.com/ghorn/casadi-bindings
-    commit: ee999a2f3dec1bb815929b63d6d3de51eedd4214
-  extra-dep: true
-  subdirs:
-  - casadi-bindings
-  - casadi-bindings-internal
-  - genpath/casadi-bindings-core
+#- location:
+#    /home/greg/hslibs/casadi-bindings
+#    #git: https://github.com/ghorn/casadi-bindings
+#    #commit: 30733a45519b37bd2a5e160f84655b2b15c2c3c5
+#  extra-dep: true
+#  subdirs:
+#  - casadi-bindings
+#  - casadi-bindings-internal
+#  - genpath/casadi-bindings-core
 
 # - location:
 #     git: https://github.com/ghorn/generic-accessors
@@ -30,11 +31,11 @@ packages:
 #    commit: c18883ba529187c448fe6cc144dad323e78c41c2
 #  extra-dep: true
 
-#- location:
-##    git: /home/greghorn/hslibs/Plot-ho-matic
-#    git: https://github.com/ghorn/Plot-ho-matic
-#    commit: e148ad3ec9603ed3694ea709c6e01b7d4670ff88
-#  extra-dep: true
+- location:
+#    git: /home/greg/hslibs/Plot-ho-matic
+    git: https://github.com/ghorn/Plot-ho-matic
+    commit: de0e7a2a49cdd5a92a87b7ca13241c9838f469cd
+  extra-dep: true
 
 #- location:
 #    git: https://github.com/ghorn/spatial-math
@@ -42,15 +43,15 @@ packages:
 #  extra-dep: true
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
-extra-deps: [ # casadi-bindings-3.1.0.22
-            # , casadi-bindings-core-3.1.0.22
-            # , casadi-bindings-internal-0.1.5.0
-              generic-accessors-0.7.0.0
+extra-deps: [ casadi-bindings-3.4.5.0
+            , casadi-bindings-core-3.4.5.0
+            , casadi-bindings-internal-0.1.6.1
+            , generic-accessors-0.7.0.0
             , Chart-1.9
             , Chart-cairo-1.9
             , jacobi-roots-0.2.0.4
             , not-gloss-0.7.6.5
-            , Plot-ho-matic-0.12.2.2
+#            , Plot-ho-matic-0.12.2.3
             , spatial-math-0.4.0.0
             , vector-binary-instances-0.2.1.0
             ]

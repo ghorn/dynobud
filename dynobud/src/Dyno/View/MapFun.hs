@@ -65,7 +65,7 @@ mapFun :: forall f g n
           -> IO (Fun (Par f n) (Par g n))
 mapFun _ (Fun f) mapStrategy = do
   let n = fromIntegral (natVal (Proxy :: Proxy n))
-  fm <- C.function_map__5 f n (mapStrategyString mapStrategy) :: IO C.Function
+  fm <- C.function_map__6 f n (mapStrategyString mapStrategy) :: IO C.Function
   checkFunDimensionsWith "mapFun'" (Fun fm)
 -- {-# NOINLINE mapFun #-}
 

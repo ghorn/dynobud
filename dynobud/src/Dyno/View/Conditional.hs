@@ -77,7 +77,7 @@ class Conditional a where
   not' :: Switch Bool a -> Switch Bool a
 
 instance Conditional (S SX) where
-  conditional = cmConditional
+  conditional = \_ -> cmConditional False
   and' = cmAnd
   or' = cmOr
   not' = cmNot
@@ -89,7 +89,7 @@ instance Conditional (S MX) where
   not' = cmNot
 
 instance Conditional (S DM) where
-  conditional = cmConditional
+  conditional = \_ -> cmConditional False
   and' = cmAnd
   or' = cmOr
   not' = cmNot
@@ -111,11 +111,11 @@ class Conditional' a where
                   => Bool -> Switch b (S a) -> (b -> M f0 f1 a) -> M f0 f1 a
 
 instance Conditional' SX where
-  conditional' = cmConditional'
+  conditional' = \_ -> cmConditional' False
 instance Conditional' MX where
   conditional' = cmConditional'
 instance Conditional' DM where
-  conditional' = cmConditional'
+  conditional' = \_ -> cmConditional' False
 
 -- | Switches over scalar Conditional
 sconditional :: (Conditional a, Enum b, Bounded b, Show b) => Bool -> Switch b a -> (b -> a) -> a

@@ -20,18 +20,20 @@ import qualified Data.Traversable as T
 import Data.Time.Clock ( getCurrentTime, diffUTCTime )
 import Data.Vector ( Vector )
 import qualified Data.Vector as V
+import Foreign.ForeignPtr ( touchForeignPtr )
 
 import System.IO ( stdout, hFlush )
 import Text.Printf ( printf )
 
 import qualified Casadi.Core.Classes.Function as C
 import qualified Casadi.Core.Tools as C
+import Casadi.Core.Data ( Function(..) ) -- unsafe, for touchForeignPtr
 
 import Casadi.Callback ( makeCallback )
 import Casadi.Matrix ( CMatrix )
 import qualified Casadi.Matrix as CM
 import Casadi.DM ( DM, dnonzeros )
-import Casadi.Function ( Function, callV' )
+import Casadi.Function ( callV' )
 import Casadi.GenericType ( GType(..), fromGType, toGType )
 import Casadi.MX ( MX )
 import Casadi.Sparsity ( Sparsity, dense, scalar )
@@ -130,6 +132,7 @@ data NlpSol x p g =
   , isNg :: Int
   , isNp :: Int
   , isSolver :: Function
+  , isTouchCallbackForeignPtr :: IO () -- so that callback is not deleted before nlpsol
   , isVerbose :: Bool
   , isInterrupt :: IO ()
   , isSetParam :: J p (Vector Double) -> IO ()
@@ -180,6 +183,9 @@ callNlpsol nlpSol nlpInputs = do
         Just (GInt r) -> show r
         Just (GString r) -> r
         Just r -> error $ "nlp solver error: return status is not {string,int}, it's " ++ show r
+
+  -- keep it alive when nlpsol is alive
+  isTouchCallbackForeignPtr nlpSol
 
   return $ case (solveStatus `elem` (isSuccessCodes nlpSol), moutputMap) of
     (True, Right outputMap) -> (stats, Right $ toNlpSolOut nlpSol outputMap)
@@ -270,7 +276,7 @@ toNlpSol solverStuff nlpFun scaleX scaleG scaleF userCallback = do
           toSpIn r = error $ "when creating callback for nlpsol, got unhandled nlpsol output: " ++ show r
   let spOut :: Vector Sparsity
       spOut = V.singleton scalar
-  casadiCallback <- makeCallback spIn spOut cb
+  casadiCallback <- makeCallback "callback" spIn spOut cb
 
   -- make the solver
   solverOptions <-
@@ -300,6 +306,9 @@ toNlpSol solverStuff nlpFun scaleX scaleG scaleF userCallback = do
         , isNp = size (proxy inputsP)
         , isNg = size (proxy g)
         , isSolver = solver
+        , isTouchCallbackForeignPtr =
+            let Function callbackForeignPtr = casadiCallback
+            in touchForeignPtr callbackForeignPtr
         , isVerbose = verbose (runnerOptions solverStuff)
         , isInterrupt = writeIORef intref True
         , isSetParam = writeIORef paramRef
