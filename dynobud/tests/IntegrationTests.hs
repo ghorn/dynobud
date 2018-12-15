@@ -119,7 +119,7 @@ runIntegration _ _ dirCollOpts ode x0 p tf = do
   let guess :: J (CollTraj x None None p n deg) (Vector Double)
       guess = cat $ makeGuessSim (collocationRoots dirCollOpts) tf x0 (\_ x _ -> ode x p 0) (\_ _ -> None) p
   cp  <- makeCollProblem dirCollOpts ocp ocpInputs guess :: IO (CollProblem x None None p x None x None None None None None n deg)
-  (_, eopt) <- solveNlp solver (cpNlp cp) Nothing
+  (_, eopt) <- solveNlp "test_ocp_integrator" solver (cpNlp cp) Nothing
   return $ case eopt of
     Left m -> Left m
     Right opt -> Right (toXf (xOpt opt))

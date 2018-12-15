@@ -209,7 +209,7 @@ compareIntegration (mapStrat, roots, stateOrOutput, quadOrLag, unrollMapInHaskel
         }
   cp  <- makeCollProblem dirCollOpts (quadOcp stateOrOutput quadOrLag) quadOcpInputs (guess roots)
   let nlp = cpNlp cp
-  (_, eopt) <- solveNlp solver nlp Nothing
+  (_, eopt) <- solveNlp "quadrature_integrator" solver nlp Nothing
   case eopt of
    Left msg -> return (HUnit.assertString msg)
    Right opt -> return (goodSolution opt) :: IO HUnit.Assertion

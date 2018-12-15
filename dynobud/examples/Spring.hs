@@ -179,5 +179,5 @@ main =
           plotPoints <- cpPlotPoints cp traj (catJV None)
           send (plotPoints, meta)
 
-    _ <- solveNlp solver nlp (Just cb')
+    _ <- solveNlp "spring" solver nlp (Just cb')
     return ()

@@ -127,7 +127,7 @@ solveOcp' simple _ _ = do
       guess = makeGuess roots tf (\t -> Tuple (initialGuess simple t) (pure 0)) (const None) (const (pure 0)) None
   cp <- makeCollProblem dirCollOpts ocp ocpInputs (cat guess)
   let _ = cp :: CollProblem (Tuple x u) None u None (Tuple x u) None (SimpleBc x) None None None None None n deg
-  (_, eopt) <- solveNlp solver (cpNlp cp) Nothing
+  (_, eopt) <- solveNlp "simple_ocp" solver (cpNlp cp) Nothing
   case eopt of
     Left msg -> return (Left msg)
     Right opt -> do

@@ -64,7 +64,7 @@ runOcpHomotopy dirCollOpts step0 homotopyParams ocpHomotopy ocpHomotopyInputs gu
             else Nothing
 
   putStrLn "running startup solver..."
-  (_, eret) <- solveNlp startupSolver nlpHomotopy scb
+  (_, eret) <- solveNlp "ocp_homotopy_startup_solver" startupSolver nlpHomotopy scb
 
   opt0 <- case eret of
     Left msg -> error msg
@@ -89,7 +89,7 @@ runOcpHomotopy dirCollOpts step0 homotopyParams ocpHomotopy ocpHomotopyInputs gu
 
   putStrLn "\ninitial solve done, starting homotopy steps"
   let hcb = if useHomotopyCallback then Just homoCallback else Nothing
-  solveNlpHomotopy step0 homotopyParams
+  solveNlpHomotopy "ocp_homotopy" step0 homotopyParams
     homotopySolver
     (nlpHomotopy {nlpIn =
                     (nlpIn nlpHomotopy)

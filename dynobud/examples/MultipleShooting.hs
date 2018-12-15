@@ -71,7 +71,7 @@ ode (X x v) (U u) _p _t = X v (-x -0.1*v + u)
 main :: IO ()
 main = do
   myNlp <- makeMsNlp ocp :: IO (Nlp (MsDvs X U P 40) (JV None) (MsConstraints X 40) MX)
-  (_, eopt) <- solveNlp ipoptSolver myNlp Nothing
+  (_, eopt) <- solveNlp "multiple_shooting" ipoptSolver myNlp Nothing
   opt <- case eopt of
           Left err -> error $ "nlp solver returned status " ++ show err
           Right r -> return r

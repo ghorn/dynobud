@@ -198,7 +198,7 @@ main =
           plotPoints <- cpPlotPoints cp traj (catJV None)
           send (plotPoints, meta)
 
-    (_, eopt) <- solveNlp solver nlp (Just cb')
+    (_, eopt) <- solveNlp "rocket" solver nlp (Just cb')
     case eopt of
       Left msg -> putStrLn $ "\nsolve failed with " ++ show msg
       Right opt -> do

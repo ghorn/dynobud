@@ -69,5 +69,5 @@ myNlp = Nlp { nlpFG = fg
 
 main :: IO ()
 main = do
-  opt <- solveNlp ipoptSolver myNlp Nothing
+  opt <- solveNlp "basic_nlp" ipoptSolver myNlp Nothing
   print opt

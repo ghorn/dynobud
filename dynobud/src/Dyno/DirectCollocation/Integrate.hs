@@ -222,7 +222,7 @@ withIntegrator _ _ roots initialX dae solver = do
           xs0 :: J (CollStage (JV x) (JV z) (JV None) (JV None) deg) (Vector (Maybe Double))
           xs0 = cat $ CollStage (catJV (fmap Just x0)) (jfill Nothing) (jfill Nothing) (jfill Nothing)
 
-  nlpSol <- toNlpSol solver fg scaleX scaleG Nothing Nothing
+  nlpSol <- toNlpSol "collocation_integrator" solver fg scaleX scaleG Nothing Nothing
 
   let initialGuess = cat $
           IntegratorX

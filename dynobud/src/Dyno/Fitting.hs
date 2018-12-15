@@ -166,7 +166,7 @@ withL1Fit eps solver fitModel qConstraints mapStrat mapOpts userFun = do
           g :: GSlacks g y n MX
           g = GSlacks (vcat (qConstraints (vsplit q))) gs0 gs1
 
-  nlpSol <- toNlpSol solver fg Nothing Nothing Nothing Nothing
+  nlpSol <- toNlpSol "L1_fit" solver fg Nothing Nothing Nothing Nothing
 
   let solveOne :: (Maybe (q Double), q Bounds, g Bounds, Vec n (x Double, y Double))
                   -> IO (Either String (q Double))
@@ -312,7 +312,7 @@ withL2Fit eps solver fitModel qConstraints mapStrat mapOpts userFun = do
           g :: J (JV g) MX
           g = vcat (qConstraints (vsplit q))
 
-  nlpSol <- toNlpSol solver fg Nothing Nothing Nothing Nothing
+  nlpSol <- toNlpSol "L2_fit" solver fg Nothing Nothing Nothing Nothing
   let solveOne :: (Maybe (q Double), q Bounds, g Bounds, Vec n (x Double, y Double))
                   -> IO (Either String (q Double))
       solveOne (mq0, qbnds, gbnds', featuresData) = do
@@ -466,7 +466,7 @@ withLInfFit eps solver fitModel qConstraints mapStrat mapOpts userFun = do
           g :: GSlacks g y n MX
           g = GSlacks (vcat (qConstraints (vsplit q))) gs0 gs1
 
-  nlpSol <- toNlpSol solver fg Nothing Nothing Nothing Nothing
+  nlpSol <- toNlpSol "L_inf_fit" solver fg Nothing Nothing Nothing Nothing
 
   let solveOne :: (Maybe (q Double), q Bounds, g Bounds, Vec n (x Double, y Double))
                       -> IO (Either String (q Double))

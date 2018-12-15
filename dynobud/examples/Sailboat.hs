@@ -354,7 +354,7 @@ main = do
 --            sendOptTelemMsg "opt_telem" (encodeProto optTelemMsg)
             return True
 
-      (_, eopt) <- solveNlp solver nlp (Just callback)
+      (_, eopt) <- solveNlp "sailboat" solver nlp (Just callback)
       opt <- case eopt of
         Left msg -> error msg
         Right r -> return r

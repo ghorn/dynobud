@@ -74,7 +74,7 @@ solver = ipoptSolver { options = [ ("print_time", GBool False)
 
 main :: IO ()
 main = do
-  (_, eopt) <- solveNlp solver myNlp Nothing
+  (_, eopt) <- solveNlp "nlp_solver_ex" solver myNlp Nothing
   let opt = case eopt of
         Left msg -> error msg
         Right r -> r

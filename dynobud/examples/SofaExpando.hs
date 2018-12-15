@@ -260,7 +260,7 @@ main =
     putStrLn $ "# design vars: " ++ show (vlength (Proxy :: Proxy X))
     putStrLn $ "# constraints: " ++ show (vlength (Proxy :: Proxy G))
     iters <- newIORef 0
-    _ <- solveNlpV solver fg bx bg guess $ Just $ \x _ -> do
+    _ <- solveNlpV "sofa_expando" solver fg bx bg guess $ Just $ \x _ -> do
       k <- readIORef iters
       writeIORef iters (k + 1)
       let msg = SofaMessage

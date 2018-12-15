@@ -45,5 +45,5 @@ solver = ipoptSolver
 
 main :: IO ()
 main = do
-  opt <- solveNlpV solver fg bx bg x0 Nothing
+  opt <- solveNlpV "easy_nlp" solver fg bx bg x0 Nothing
   print opt

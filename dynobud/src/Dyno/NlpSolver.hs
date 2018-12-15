@@ -197,14 +197,15 @@ callNlpsol nlpSol nlpInputs = do
 toNlpSol ::
   forall x p g .
   (View x, View p, View g)
-  => Solver
+  => String
+  -> Solver
   -> (J x MX -> J p MX -> (S MX, J g MX))
   -> Maybe (J x (Vector Double))
   -> Maybe (J g (Vector Double))
   -> Maybe Double
   -> Maybe (J x (Vector Double) -> J p (Vector Double) -> M.Map String GType -> IO Bool)
   -> IO (NlpSol x p g)
-toNlpSol solverStuff nlpFun scaleX scaleG scaleF userCallback = do
+toNlpSol name solverStuff nlpFun scaleX scaleG scaleF userCallback = do
   inputsX <- mkM <$> CM.sym "x" (size (Proxy :: Proxy x)) 1
   inputsP <- mkM <$> CM.sym "p" (size (Proxy :: Proxy p)) 1
 
@@ -237,9 +238,9 @@ toNlpSol solverStuff nlpFun scaleX scaleG scaleF userCallback = do
                 let inputMap :: M.Map String (Vector Double)
                     inputMap = M.fromList $ zip (V.toList nlpsolOut) (map dnonzeros (V.toList cbInputs))
 
-                    lookupError name =
+                    lookupError varname =
                       error $
-                      "in nlpsol callback, error looking up " ++ show name ++ ": " ++
+                      "in nlpsol callback, error looking up " ++ show varname ++ ": " ++
                       "available keys: " ++ show (V.toList nlpsolOut)
                     xval = case M.lookup "x" inputMap of
                       Nothing -> lookupError "x"
@@ -276,7 +277,7 @@ toNlpSol solverStuff nlpFun scaleX scaleG scaleF userCallback = do
           toSpIn r = error $ "when creating callback for nlpsol, got unhandled nlpsol output: " ++ show r
   let spOut :: Vector Sparsity
       spOut = V.singleton scalar
-  casadiCallback <- makeCallback "callback" spIn spOut cb
+  casadiCallback <- makeCallback (name ++ "_callback") spIn spOut cb
 
   -- make the solver
   solverOptions <-

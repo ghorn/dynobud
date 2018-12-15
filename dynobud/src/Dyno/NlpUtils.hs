@@ -57,20 +57,21 @@ data HomotopyParams =
 solveNlpHomotopy ::
   forall x p g t .
   (View x, View p, View g, T.Traversable t)
-  => Double -> HomotopyParams
+  => String
+  -> Double -> HomotopyParams
   -> Solver
   -> Nlp x p g MX -> t (J p (Vector Double))
   -> Maybe (J x (Vector Double) -> J p (Vector Double) -> M.Map String GType -> IO Bool)
   -> Maybe (J x (Vector Double) -> J p (Vector Double) -> Double -> IO ())
   -> IO (t (NlpOut x g (Vector Double)))
-solveNlpHomotopy userStep hp
+solveNlpHomotopy name userStep hp
   solverStuff nlp pFs callback callbackP = do
   when ((reduction hp) >= 1) $ error $ "homotopy reduction factor " ++ show (reduction hp) ++ " >= 1"
   when ((increase hp)  <= 1) $ error $ "homotopy increase factor "  ++ show (increase hp)  ++ " <= 1"
 
   let p0 = nlpP (nlpIn nlp)
 
-  nlpSol <- toNlpSol solverStuff (nlpFG nlp) (nlpScaleX nlp) (nlpScaleG nlp) (nlpScaleF nlp) callback
+  nlpSol <- toNlpSol name solverStuff (nlpFG nlp) (nlpScaleX nlp) (nlpScaleG nlp) (nlpScaleF nlp) callback
 
   _ <- case callback of
    Nothing -> return True
@@ -158,14 +159,15 @@ solveNlpHomotopy userStep hp
 -- For better performance on large problems and more options, use the View-based interfaces instead
 solveNlpV :: forall x g .
   (Vectorize x, Vectorize g)
-  => Solver
+  => String
+  -> Solver
   -> (x (S MX) -> (S MX, g (S MX)))
   -> x Bounds
   -> g Bounds
   -> x Double
   -> Maybe (x Double -> M.Map String GType -> IO Bool)
   -> IO (Either String (Double, x Double))
-solveNlpV solverStuff fg bx bg x0 cb = do
+solveNlpV name solverStuff fg bx bg x0 cb = do
   let nlp :: Nlp (JV x) (JV None) (JV g) MX
       nlp =
         Nlp
@@ -200,7 +202,7 @@ solveNlpV solverStuff fg bx bg x0 cb = do
         Nothing -> Nothing
         Just cb' -> Just $ \x _ stats -> cb' (splitJV x) stats
 
-  (_stats, ret0) <- solveNlp solverStuff nlp callback
+  (_stats, ret0) <- solveNlp name solverStuff nlp callback
   return $ case ret0 of
     Left m  -> Left m
     Right sol -> Right $ (unId (splitJV (fOpt sol)), splitJV (xOpt sol))
@@ -209,12 +211,13 @@ solveNlpV solverStuff fg bx bg x0 cb = do
 -- | convenience function to solve a pure Nlp
 solveNlp ::
   (View x, View p, View g)
-  => Solver
+  => String
+  -> Solver
   -> Nlp x p g MX
   -> Maybe (J x (Vector Double) -> J p (Vector Double) -> M.Map String GType -> IO Bool)
   -> IO (M.Map String GType, Either String (NlpOut x g (Vector Double)))
-solveNlp solverStuff nlp callback = do
+solveNlp name solverStuff nlp callback = do
   nlpSol <-
-    toNlpSol solverStuff
+    toNlpSol name solverStuff
     (nlpFG nlp) (nlpScaleX nlp) (nlpScaleG nlp) (nlpScaleF nlp) callback
   callNlpsol nlpSol (nlpIn nlp)

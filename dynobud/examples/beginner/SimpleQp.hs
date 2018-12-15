@@ -50,5 +50,5 @@ xguess = X 2 3
 
 main :: IO ()
 main = do
-  opt <- solveNlpV ipoptSolver fg bx bg xguess Nothing
+  opt <- solveNlpV "simple_qp" ipoptSolver fg bx bg xguess Nothing
   print opt

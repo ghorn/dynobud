@@ -220,7 +220,7 @@ compareIntegration (roots, stateOrOutput, quadOrLag) = do
         cb traj _ _ = do
           plotPoints <- cpPlotPoints cp traj (catJV None)
           send (plotPoints, meta)
-    (_, eopt) <- solveNlp solver nlp (Just cb)
+    (_, eopt) <- solveNlp "quadrature" solver nlp (Just cb)
     case eopt of
      Left msg -> return (error msg)
      Right out -> putStrLn (goodSolution out)

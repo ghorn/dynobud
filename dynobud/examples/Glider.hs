@@ -156,14 +156,14 @@ main = do
           plotPoints <- cpPlotPoints cp traj (catJV None)
           send (plotPoints, meta)
 
-    (_, eopt) <- solveNlp ipoptSolver nlp (Just cb')
+    (_, eopt) <- solveNlp "glider" ipoptSolver nlp (Just cb')
     case eopt of
       Left msg -> putStrLn $ "optimization failed, message: " ++ msg
       Right _ -> putStrLn "optimization succeeded"
 --    let xopt = xOpt opt
 --        lambda = lambdaOpt opt
 --
---    snoptOpt' <- solveNlp snoptSolver (nlp {nlpX0 = xopt}) (Just cb) (Just lambda)
+--    snoptOpt' <- solveNlp "glider" snoptSolver (nlp {nlpX0 = xopt}) (Just cb) (Just lambda)
 --    snoptOpt <- case snoptOpt' of Left msg -> error msg
 --                                  Right opt'' -> return opt''
 --    let xopt' = xOpt snoptOpt
