@@ -31,11 +31,11 @@ packages:
 #    commit: c18883ba529187c448fe6cc144dad323e78c41c2
 #  extra-dep: true
 
-- location:
-#    git: /home/greg/hslibs/Plot-ho-matic
-    git: https://github.com/ghorn/Plot-ho-matic
-    commit: de0e7a2a49cdd5a92a87b7ca13241c9838f469cd
-  extra-dep: true
+#- location:
+##    git: /home/greg/hslibs/Plot-ho-matic
+#    git: https://github.com/ghorn/Plot-ho-matic
+#    commit: de0e7a2a49cdd5a92a87b7ca13241c9838f469cd
+#  extra-dep: true
 
 #- location:
 #    git: https://github.com/ghorn/spatial-math
@@ -51,7 +51,7 @@ extra-deps: [ casadi-bindings-3.4.5.0
             , Chart-cairo-1.9
             , jacobi-roots-0.2.0.4
             , not-gloss-0.7.6.5
-#            , Plot-ho-matic-0.12.2.3
+            , Plot-ho-matic-0.12.2.3
             , spatial-math-0.4.0.0
             , vector-binary-instances-0.2.1.0
             ]
