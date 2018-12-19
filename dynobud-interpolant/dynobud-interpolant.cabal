@@ -29,6 +29,7 @@ library
   default-language:    Haskell2010
   ghc-options:         -O2 -Wall -Werror -fwarn-redundant-constraints
   cc-options:          -Wall -Wextra
+  extra-libraries:     stdc++
   c-sources:           cbits/casadi_interpn.c
                        cbits/interpolant.cpp
 --                       cbits/interpolant.hpp
