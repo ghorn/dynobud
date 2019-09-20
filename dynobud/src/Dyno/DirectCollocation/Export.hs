@@ -262,6 +262,7 @@ toDub (GATipField (FieldWord32 f)) = realToFrac . (^. f)
 toDub (GATipField (FieldWord16 f)) = realToFrac . (^. f)
 toDub (GATipField (FieldWord8 f)) = realToFrac . (^. f)
 toDub (GATipField (FieldString _)) = const (read "NaN")
+toDub (GATipField FieldUnit) = const (read "NaN")
 toDub (GATipField FieldSorry) = const (read "NaN")
 toDub (GATipSimpleEnum enum) = realToFrac . eToIndex enum
 
